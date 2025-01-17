@@ -1,21 +1,23 @@
 # Use Node.js for building
-FROM node:18-alpine as builder
+FROM node:18-slim as builder
 
 # Set working directory
 WORKDIR /app
 
-# Install dependencies
+# Cache package.json and package-lock.json to avoid re-installing dependencies if unchanged
 COPY package.json package-lock.json ./
-RUN npm install
 
-# Copy the source code
+# Install dependencies
+RUN npm ci --prefer-offline --verbose
+
+# Copy the rest of the source code
 COPY . .
 
 # Build the application
 RUN npm run build
 
 # Use a lightweight image for serving
-FROM node:18-alpine
+FROM node:18-slim
 
 # Set working directory
 WORKDIR /app
@@ -27,7 +29,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.js ./
 
 # Install only production dependencies
-RUN npm install --production
+RUN npm ci --production
 
 # Expose the application port
 EXPOSE 3000
