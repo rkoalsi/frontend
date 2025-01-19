@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN npm ci --prefer-offline --verbose
+RUN npm install --verbose
 
 # Copy the rest of the source code
 COPY . .
@@ -29,7 +29,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.js ./
 
 # Install only production dependencies
-RUN npm ci --production
+RUN npm install --production
 
 # Expose the application port
 EXPOSE 3000
