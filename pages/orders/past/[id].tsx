@@ -51,7 +51,7 @@ const OrderDetails = () => {
    */
   if (loading) {
     return (
-      <Box sx={{ padding: 4, maxWidth: '600px', margin: '0 auto' }}>
+      <Box sx={{ padding: 3, maxWidth: '600px', margin: '0 auto' }}>
         <Skeleton variant='rectangular' height={40} sx={{ mb: 2 }} />
         <Skeleton variant='rectangular' height={200} sx={{ mb: 2 }} />
         <Skeleton variant='rectangular' height={40} />
@@ -64,7 +64,7 @@ const OrderDetails = () => {
    */
   if (error || !orderData) {
     return (
-      <Box sx={{ padding: 4, textAlign: 'center' }}>
+      <Box sx={{ padding: 3, textAlign: 'center' }}>
         <Typography variant='h6' color='error'>
           {error || 'No order details available.'}
         </Typography>
@@ -85,7 +85,7 @@ const OrderDetails = () => {
    */
   if (!orderData) {
     return (
-      <Box sx={{ padding: 4 }}>
+      <Box sx={{ padding: 3 }}>
         <Skeleton variant='rectangular' height={40} sx={{ mb: 2 }} />
         <Skeleton variant='rectangular' height={200} sx={{ mb: 2 }} />
         <Skeleton variant='rectangular' height={40} />
@@ -94,11 +94,11 @@ const OrderDetails = () => {
   }
 
   return (
-    <Box sx={{ padding: 4, maxWidth: '600px', margin: '0 auto' }}>
+    <Box sx={{ padding: 3, maxWidth: '600px', margin: '0 auto' }}>
       <Paper
         elevation={3}
         sx={{
-          padding: 4,
+          padding: 3,
           borderRadius: '12px',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
           marginX: { xs: 2, sm: 'auto' },

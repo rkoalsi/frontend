@@ -200,7 +200,7 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
           />
         )}
       />
-      {!selectedOption && (
+      {/* {!selectedOption && (
         <Button
           variant='outlined'
           color='primary'
@@ -209,10 +209,10 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
         >
           Create New Customer
         </Button>
-      )}
+      )} */}
 
       {/* Dialog for Creating New Customer */}
-      <Dialog
+      {/* <Dialog
         open={showCreateForm}
         onClose={() => setShowCreateForm(false)}
         fullWidth
@@ -220,7 +220,6 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
         <DialogTitle>Create New Customer</DialogTitle>
         <DialogContent>
           <Box display='flex' flexDirection='column' gap={2}>
-            {/* Customer Type */}
             <FormControl>
               <FormLabel>Customer Type</FormLabel>
               <RadioGroup
@@ -244,7 +243,6 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
               </RadioGroup>
             </FormControl>
 
-            {/* Remaining Fields */}
             <TextField
               label='Customer Name'
               name='customer_name'
@@ -417,7 +415,7 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
             Submit
           </Button>
         </DialogActions>
-      </Dialog>
+      </Dialog> */}
       {/* Snackbar */}
       <Snackbar
         open={snackbar.open}

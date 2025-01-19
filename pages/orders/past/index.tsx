@@ -83,8 +83,7 @@ const PastOrders = () => {
         <Box
           sx={{
             background: 'none',
-            width: '35%',
-            maxWidth: '1200px',
+            width: isMobile ? '100%' : '35%',
             borderRadius: '8px',
           }}
         >

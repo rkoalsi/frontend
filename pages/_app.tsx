@@ -7,9 +7,15 @@ import CssBaseline from '@mui/material/CssBaseline';
 import theme from '../src/theme';
 import { AuthProvider } from '../src/Auth';
 import Layout from '../src/Layout';
+import AdminLayout from '../src/AdminLayout'; // Import AdminLayout
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css'; // Import react-toastify styles
 
 export default function MyApp(props: AppProps) {
   const { Component, pageProps } = props;
+
+  const isAdminRoute = props.router?.pathname.startsWith('/admin');
+
   return (
     <AppCacheProvider {...props}>
       <AuthProvider>
@@ -17,11 +23,17 @@ export default function MyApp(props: AppProps) {
           <meta name='viewport' content='initial-scale=1, width=device-width' />
         </Head>
         <ThemeProvider theme={theme}>
-          {/* CssBaseline kickstart an elegant, consistent, and simple baseline to build upon. */}
           <CssBaseline />
-          <Layout>
-            <Component {...pageProps} />
-          </Layout>
+          <ToastContainer position='top-right' autoClose={3000} />
+          {isAdminRoute ? (
+            <AdminLayout>
+              <Component {...pageProps} />
+            </AdminLayout>
+          ) : (
+            <Layout>
+              <Component {...pageProps} />
+            </Layout>
+          )}
         </ThemeProvider>
       </AuthProvider>
     </AppCacheProvider>

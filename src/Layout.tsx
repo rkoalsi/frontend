@@ -91,16 +91,31 @@ const Layout = ({ children }: any) => {
           >
             Order Management
           </Typography>
-          {user && (
-            <Button
-              variant='contained'
-              color='error'
-              onClick={logout}
-              sx={{ textTransform: 'none' }}
-            >
-              Logout
-            </Button>
-          )}
+          <Box display={'flex'} flexDirection={'row'} gap={'16px'}>
+            {user &&
+              user.data &&
+              user.data.role === 'admin' &&
+              !router.pathname.includes('admin') && (
+                <Button
+                  variant='contained'
+                  color='primary'
+                  onClick={() => router.push('/admin')}
+                  sx={{ textTransform: 'none' }}
+                >
+                  Admin Dashboard
+                </Button>
+              )}
+            {user && (
+              <Button
+                variant='contained'
+                color='error'
+                onClick={logout}
+                sx={{ textTransform: 'none' }}
+              >
+                Logout
+              </Button>
+            )}
+          </Box>
         </Toolbar>
       </AppBar>
 

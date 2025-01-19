@@ -2,6 +2,7 @@ import { createContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const AuthContext = createContext({});
 
@@ -22,8 +23,10 @@ export const AuthProvider = ({ children }: any) => {
       setUser(decodedUser);
       localStorage.setItem('token', access_token);
       router.push('/');
+      toast.success(`You have successfully logged in`);
     } catch (error) {
       console.error('Login failed', error);
+      toast.error(`Invalid Email or Password`);
     }
   };
 
@@ -31,6 +34,7 @@ export const AuthProvider = ({ children }: any) => {
     setUser(null);
     localStorage.removeItem('token');
     router.push('/login');
+    toast.info(`You have been logged out`);
   };
 
   useEffect(() => {
