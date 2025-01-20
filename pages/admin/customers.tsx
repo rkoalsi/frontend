@@ -14,6 +14,9 @@ import {
   TextField,
   Switch,
   IconButton,
+  Drawer,
+  Button,
+  capitalize,
 } from '@mui/material';
 import { Edit, Delete } from '@mui/icons-material';
 import axios from 'axios';
@@ -26,6 +29,8 @@ const Customers = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [customer, setSelectedCustomer]: any = useState(null);
 
   const baseApiUrl = process.env.api_url;
 
@@ -41,13 +46,21 @@ const Customers = () => {
       setLoading(false);
     }
   };
+  const handleViewDetails = (customer: any) => {
+    setSelectedCustomer(customer);
+    setDrawerOpen(true);
+  };
 
+  const handleCloseDrawer = () => {
+    setDrawerOpen(false);
+    setSelectedCustomer(null);
+  };
   const handleSearch = (e: any) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
 
     const filtered = customers.filter((customer: any) =>
-      customer?.company_name?.toLowerCase().includes(query)
+      customer?.contact_name?.toLowerCase().includes(query)
     );
     setFilteredCustomers(filtered);
     setPage(0);
@@ -80,7 +93,7 @@ const Customers = () => {
         )
       );
       toast.success(
-        `Customer ${customer.company_name} marked as ${
+        `Customer ${customer.contact_name} marked as ${
           updatedFields.status === 'active' ? 'Active' : 'Inactive'
         }`
       );
@@ -152,11 +165,12 @@ const Customers = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Name</TableCell>
-                    <TableCell>GST Number</TableCell>
+                    <TableCell>Sales Person</TableCell>
                     <TableCell>Type</TableCell>
                     <TableCell>Margin</TableCell>
                     <TableCell>Inclusive/Exclusive</TableCell>
                     <TableCell>Status</TableCell>
+                    <TableCell>Actions</TableCell>
                     {/* <TableCell>Actions</TableCell> */}
                   </TableRow>
                 </TableHead>
@@ -166,12 +180,11 @@ const Customers = () => {
                     .map((customer: any) => (
                       <TableRow key={customer._id}>
                         <TableCell>{customer.contact_name}</TableCell>
-                        <TableCell>{customer.gst_no}</TableCell>
                         <TableCell>
-                          {String(customer.customer_sub_type)
-                            .charAt(0)
-                            .toUpperCase() +
-                            String(customer.customer_sub_type).slice(1)}
+                          {customer.cf_sales_person || 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {capitalize(customer.customer_sub_type)}
                         </TableCell>
                         <TableCell>{customer.cf_margin || '40%'}</TableCell>
                         <TableCell>
@@ -182,6 +195,14 @@ const Customers = () => {
                             checked={customer.status === 'active'}
                             onChange={() => handleToggleActive(customer)}
                           />
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant='outlined'
+                            onClick={() => handleViewDetails(customer)}
+                          >
+                            View Details
+                          </Button>
                         </TableCell>
                         {/* <TableCell>
                           <IconButton
@@ -213,6 +234,119 @@ const Customers = () => {
             />
           </>
         )}
+        <Drawer
+          anchor='right'
+          open={drawerOpen}
+          onClose={handleCloseDrawer}
+          sx={{
+            '& .MuiDrawer-paper': {
+              width: 400,
+              padding: 3,
+            },
+          }}
+        >
+          <Box>
+            <Typography
+              variant='h5'
+              gutterBottom
+              sx={{
+                fontWeight: 'bold',
+                marginBottom: 2,
+                fontFamily: 'Roboto, sans-serif',
+              }}
+            >
+              Order Details
+            </Typography>
+            {customer && (
+              <>
+                {/* Order Info */}
+                <Box sx={{ marginBottom: 3 }}>
+                  <Typography>
+                    <strong>Customer Name:</strong> {customer.contact_name}
+                  </Typography>
+                  <Typography>
+                    <strong>Status:</strong> {capitalize(customer.status)}
+                  </Typography>
+                  <Typography>
+                    <strong>GST Number:</strong> {customer.gst_no || 'Unknown'}
+                  </Typography>
+                  <Typography>
+                    <strong>Type:</strong>{' '}
+                    {capitalize(customer.customer_sub_type)}
+                  </Typography>
+                  <Typography>
+                    <strong>Margin:</strong> {customer.cf_margin || '40%'}
+                  </Typography>
+                  <Typography>
+                    <strong>GST Treatment:</strong>{' '}
+                    {customer.cf_in_ex || 'Exclusive'}
+                  </Typography>
+                  <Typography>
+                    <strong>Sales Person:</strong>{' '}
+                    {customer.cf_sales_person || 'N/A'}
+                  </Typography>
+                  <Typography>
+                    <strong>Created At:</strong>{' '}
+                    {customer.created_at
+                      ? new Date(customer.created_at).toLocaleString()
+                      : new Date(customer.created_time).toLocaleString()}
+                  </Typography>
+                </Box>
+
+                {/* Products Section */}
+                <Typography
+                  variant='h6'
+                  sx={{
+                    fontWeight: 'bold',
+                    marginBottom: 2,
+                    fontFamily: 'Roboto, sans-serif',
+                  }}
+                >
+                  Products
+                </Typography>
+                <TableContainer
+                  component={Paper}
+                  sx={{
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    borderRadius: 2,
+                  }}
+                >
+                  <Table size='small'>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Image</TableCell>
+                        <TableCell>Product Name</TableCell>
+                        <TableCell>Qty</TableCell>
+                        <TableCell>Price</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {/* {customer.products.map((product: any) => (
+                        <TableRow key={product.product_id.$oid}>
+                          <TableCell>
+                            <img
+                              src={product.image_url || '/placeholder.png'}
+                              alt={product.name}
+                              style={{
+                                width: '50px',
+                                height: '50px',
+                                borderRadius: '4px',
+                                objectFit: 'cover',
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>{product.name}</TableCell>
+                          <TableCell>{product.quantity}</TableCell>
+                          <TableCell>₹{product.price.toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))} */}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </>
+            )}
+          </Box>
+        </Drawer>
       </Paper>
     </Box>
   );

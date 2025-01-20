@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import {
   TextField,
@@ -22,6 +22,7 @@ import {
   FormLabel,
   Alert,
 } from '@mui/material';
+import AuthContext from './Auth';
 
 interface SearchResult {
   _id: { $oid: string };
@@ -41,6 +42,7 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
   value,
   initialValue,
 }) => {
+  const { user }: any = useContext(AuthContext);
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -92,7 +94,12 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
     setLoading(true);
     try {
       const base = `${process.env.api_url}`;
-      const response = await axios.get(`${base}/customers?name=${value}`);
+      const response = await axios.get(`${base}/customers`, {
+        params: {
+          user_code: user.data.code, // Pass salesperson's code
+          name: value, // Pass search value
+        },
+      });
       setOptions(response.data.customers);
     } catch (error) {
       console.error('Error fetching search results:', error);

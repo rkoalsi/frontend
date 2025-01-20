@@ -12,6 +12,7 @@ import {
   CircularProgress,
   Button,
   Drawer,
+  capitalize,
 } from '@mui/material';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -154,7 +155,7 @@ const Orders = () => {
                     <strong>Order ID:</strong> {selectedOrder._id}
                   </Typography>
                   <Typography>
-                    <strong>Status:</strong> {selectedOrder.status}
+                    <strong>Status:</strong> {capitalize(selectedOrder.status)}
                   </Typography>
                   <Typography>
                     <strong>Created By:</strong>{' '}

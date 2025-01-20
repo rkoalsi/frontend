@@ -18,7 +18,7 @@ const AdminDashboard = () => {
         gutterBottom
         sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 'bold' }}
       >
-        Welcome, {user.data.name || 'User'}
+        Welcome, {user.data.first_name || 'User'}
       </Typography>
       <Typography variant='body1' sx={{ color: '#6B7280' }}>
         This is your central hub to manage users, view analytics, and update

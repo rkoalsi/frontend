@@ -42,7 +42,7 @@ const Home = () => {
           }}
         >
           <Typography variant='h4' fontWeight='bold' color='white'>
-            Welcome, {user?.data?.name || 'Guest'}!
+            Welcome, {user?.data?.first_name || 'Guest'}!
           </Typography>
           <Typography variant='body1' color='white'>
             Your gateway to seamless order management.

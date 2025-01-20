@@ -29,7 +29,7 @@ import { toast } from 'react-toastify';
 import AuthContext from './Auth';
 
 const menuItems = [
-  { text: 'Dashboard', icon: <Dashboard />, path: '/admin' },
+  // { text: 'Dashboard', icon: <Dashboard />, path: '/admin' },
   { text: 'Customers', icon: <CustomersIcon />, path: '/admin/customers' },
   { text: 'Products', icon: <ProductsIcon />, path: '/admin/products' },
   { text: 'Orders', icon: <OrdersIcon />, path: '/admin/orders' },
@@ -38,7 +38,7 @@ const menuItems = [
     icon: <SalesPeopleIcon />,
     path: '/admin/sales_people',
   },
-  { text: 'Settings', icon: <Settings />, path: '/admin/settings' },
+  // { text: 'Settings', icon: <Settings />, path: '/admin/settings' },
 ];
 
 const AdminLayout = ({ children }: any) => {
@@ -58,7 +58,7 @@ const AdminLayout = ({ children }: any) => {
       }
 
       // If user is not an admin
-      if (user.data.role !== 'admin') {
+      if (!user.data.role.includes('admin')) {
         toast.error('You are not authorized to access this page.');
         router.replace('/');
       }
@@ -66,7 +66,7 @@ const AdminLayout = ({ children }: any) => {
   }, [user, loading, router]);
 
   // Show nothing while loading user info
-  if (loading || !user || user.data.role !== 'admin') {
+  if (loading || !user || !user.data.role.includes('admin')) {
     return null;
   }
 
@@ -119,7 +119,7 @@ const AdminLayout = ({ children }: any) => {
           </Box>
           <Box display={'flex'} gap={'16px'} flexDirection={'row'}>
             {user &&
-              user.data.role === 'admin' &&
+              user.data.role.includes('admin') &&
               router.pathname.includes('/admin') && (
                 <Button
                   variant='contained'

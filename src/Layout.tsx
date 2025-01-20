@@ -94,7 +94,7 @@ const Layout = ({ children }: any) => {
           <Box display={'flex'} flexDirection={'row'} gap={'16px'}>
             {user &&
               user.data &&
-              user.data.role === 'admin' &&
+              user.data.role.includes('admin') &&
               !router.pathname.includes('admin') && (
                 <Button
                   variant='contained'

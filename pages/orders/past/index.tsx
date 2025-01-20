@@ -189,7 +189,7 @@ const PastOrders = () => {
             <Typography
               variant='body1'
               align='center'
-              sx={{ padding: '16px', color: 'text.secondary' }}
+              sx={{ padding: '16px', color: 'white' }}
             >
               No past orders available.
             </Typography>
