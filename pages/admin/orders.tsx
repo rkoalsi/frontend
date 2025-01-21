@@ -145,24 +145,26 @@ const Orders = () => {
               <Table>
                 <TableHead>
                   <TableRow>
+                    <TableCell>Created At</TableCell>
                     <TableCell>Order ID</TableCell>
+                    <TableCell>Status</TableCell>
                     <TableCell>Created By</TableCell>
                     <TableCell>Total Amount</TableCell>
-                    <TableCell>Created At</TableCell>
                     <TableCell>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {orders.map((order: any) => (
                     <TableRow key={order._id}>
+                      <TableCell>
+                        {new Date(order.created_at).toLocaleString()}
+                      </TableCell>
                       <TableCell>{order._id}</TableCell>
+                      <TableCell>{capitalize(order.status)}</TableCell>
                       <TableCell>
                         {order.created_by_info?.name || 'Unknown'}
                       </TableCell>
                       <TableCell>₹{order.total_amount || 0}</TableCell>
-                      <TableCell>
-                        {new Date(order.created_at).toLocaleString()}
-                      </TableCell>
                       <TableCell>
                         <Button
                           variant='outlined'
