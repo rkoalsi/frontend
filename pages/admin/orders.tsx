@@ -18,8 +18,10 @@ import {
 } from '@mui/material';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { useRouter } from 'next/router';
 
 const Orders = () => {
+  const router = useRouter();
   // Orders data
   const [orders, setOrders] = useState([]);
 
@@ -91,6 +93,7 @@ const Orders = () => {
 
   // Drawer logic
   const handleViewDetails = (order: any) => {
+    console.log(order);
     setSelectedOrder(order);
     setDrawerOpen(true);
   };
@@ -265,6 +268,10 @@ const Orders = () => {
                     <strong>Created At:</strong>{' '}
                     {new Date(selectedOrder.created_at).toLocaleString()}
                   </Typography>
+                  <Typography>
+                    <strong>Updated At:</strong>{' '}
+                    {new Date(selectedOrder.updated_at).toLocaleString()}
+                  </Typography>
                 </Box>
 
                 {/* Products Section */}
@@ -317,6 +324,21 @@ const Orders = () => {
                     </TableBody>
                   </Table>
                 </TableContainer>
+                <Box
+                  display={'flex'}
+                  justifyContent={'center'}
+                  alignItems={'center'}
+                  marginTop={'16px'}
+                >
+                  <Button
+                    variant='contained'
+                    onClick={() =>
+                      router.push(`/orders/new/${selectedOrder._id}`)
+                    }
+                  >
+                    Edit Order
+                  </Button>
+                </Box>
               </>
             )}
           </Box>

@@ -145,7 +145,9 @@ const NewOrder: React.FC = () => {
       if (resp.status == 200) {
         setError({ message: resp.data.message, status: resp.data.status });
         handleClick();
-        setTimeout(() => router.push(`/orders/past/${id}`), 5000);
+        if (resp.data.message.includes('created')) {
+          setTimeout(() => router.push(`/orders/past/${id}`), 5000);
+        }
       }
     } catch (error) {
       console.log(error);

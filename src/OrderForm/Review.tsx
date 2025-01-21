@@ -320,6 +320,8 @@ function Review(props: Props) {
               </TableHead>
               <TableBody>
                 {products.map((product: any, index: number) => {
+                  const isActive = product.status === 'active';
+
                   // Calculate selling price
                   const sellingPrice = parseFloat(
                     (
@@ -333,7 +335,14 @@ function Review(props: Props) {
                   const itemTotal = (product.quantity || 1) * sellingPrice;
 
                   return (
-                    <TableRow key={product._id.$oid || index}>
+                    <TableRow
+                      key={product._id.$oid || index}
+                      /* If product is NOT active, apply a 'greyed-out' style */
+                      sx={{
+                        backgroundColor: !isActive ? '#f0f0f0' : 'inherit',
+                        opacity: !isActive ? 0.7 : 1,
+                      }}
+                    >
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>
                         <img
@@ -365,6 +374,7 @@ function Review(props: Props) {
                       <TableCell>{customer.cf_margin || '40%'}</TableCell>
                       <TableCell>₹{sellingPrice}</TableCell>
                       <TableCell>{product.stock}</TableCell>
+
                       <TableCell>
                         <TextField
                           type='number'
@@ -378,11 +388,13 @@ function Review(props: Props) {
                           inputProps={{ min: 1, max: product.stock }}
                           size='small'
                           sx={{ width: '60px' }}
+                          /* Disable editing if NOT active */
+                          disabled={!isActive}
                         />
                       </TableCell>
-                      <TableCell>
-                        ₹{itemTotal.toFixed(2)} {/* New Total Cell */}
-                      </TableCell>
+
+                      <TableCell>₹{itemTotal.toFixed(2)}</TableCell>
+
                       <TableCell>
                         <Button
                           variant='outlined'
@@ -398,6 +410,7 @@ function Review(props: Props) {
                     </TableRow>
                   );
                 })}
+
                 <TableRow>
                   <TableCell colSpan={7}>
                     <strong>Total GST:</strong> ₹{totals.totalGST.toFixed(2)}{' '}
