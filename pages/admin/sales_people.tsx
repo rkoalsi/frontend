@@ -41,7 +41,7 @@ const SalesPeople = () => {
 
   const fetchSalesPeople = async () => {
     try {
-      const response = await axios.get(`${baseApiUrl}/salespeoples`);
+      const response = await axios.get(`${baseApiUrl}/admin/salespeople`);
       setSalesPeople(response.data.users);
       setLoading(false);
     } catch (error) {
@@ -64,7 +64,7 @@ const SalesPeople = () => {
   const handleSaveChanges = async () => {
     try {
       await axios.put(
-        `${baseApiUrl}/salespeoples/${selectedPerson._id}`,
+        `${baseApiUrl}/admin/salespeople/${selectedPerson._id}`,
         selectedPerson
       );
       setSalesPeople((prev: any) =>
@@ -229,7 +229,7 @@ const SalesPeople = () => {
                           try {
                             // Update status in the backend
                             await axios.put(
-                              `${baseApiUrl}/salespeoples/${salesPerson._id}`,
+                              `${baseApiUrl}/admin/salespeople/${salesPerson._id}`,
                               {
                                 status: newStatus,
                               }
