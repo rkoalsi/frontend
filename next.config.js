@@ -6,8 +6,8 @@ module.exports = {
       {
         protocol: 'https',
         hostname: 'order-form.s3.ap-south-1.amazonaws.com',
-        port: '', // Leave this empty for default ports
-        pathname: '/signatures/**', // Match the "signatures" path and all subpaths
+        port: '',
+        pathname: '/signatures/**',
       },
     ],
   },
