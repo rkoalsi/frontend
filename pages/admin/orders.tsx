@@ -13,29 +13,83 @@ import {
   Button,
   Drawer,
   capitalize,
+  TablePagination,
+  TextField,
 } from '@mui/material';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
 const Orders = () => {
+  // Orders data
   const [orders, setOrders] = useState([]);
+
+  // Pagination states
+  const [page, setPage] = useState(0); // 0-based current page
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0); // total number of orders from backend
+
+  // "Go to page" input
+  const [skipPage, setSkipPage] = useState('');
+
+  // Loading and selected order
   const [loading, setLoading] = useState(true);
-  const [selectedOrder, setSelectedOrder]: any = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // Fetch orders from the server
   const fetchOrders = async () => {
+    setLoading(true);
     try {
       const baseApiUrl = process.env.api_url;
-      const response = await axios.get(`${baseApiUrl}/orders?role=admin`);
-      setOrders(response.data);
-      setLoading(false);
+      // Pass page & limit for server-side pagination
+      const response = await axios.get(
+        `${baseApiUrl}/admin/orders?page=${page}&limit=${rowsPerPage}`
+      );
+
+      // The backend returns { orders, total_count }
+      const { orders, total_count } = response.data;
+
+      setOrders(orders);
+      setTotalCount(total_count);
     } catch (error) {
       console.error(error);
       toast.error('Error fetching orders.');
+    } finally {
       setLoading(false);
     }
   };
 
+  // Re-fetch orders whenever page or rowsPerPage changes
+  useEffect(() => {
+    fetchOrders();
+  }, [page, rowsPerPage]);
+
+  // MUI Pagination: next/previous
+  const handleChangePage = (event: any, newPage: number) => {
+    setPage(newPage);
+    setSkipPage(''); // reset skipPage so text field shows the new page
+  };
+
+  // MUI Pagination: rows per page
+  const handleChangeRowsPerPage = (event: any) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+    setSkipPage('');
+  };
+
+  // "Go to page" button or Enter
+  const handleSkipPage = () => {
+    const requestedPage = parseInt(skipPage, 10);
+    if (isNaN(requestedPage) || requestedPage < 1) {
+      toast.error('Invalid page number');
+      return;
+    }
+    // Our internal page is 0-based; user typed 1-based
+    setPage(requestedPage - 1);
+    setSkipPage(''); // clear input so it displays the new page on next render
+  };
+
+  // Drawer logic
   const handleViewDetails = (order: any) => {
     setSelectedOrder(order);
     setDrawerOpen(true);
@@ -45,10 +99,6 @@ const Orders = () => {
     setDrawerOpen(false);
     setSelectedOrder(null);
   };
-
-  useEffect(() => {
-    fetchOrders();
-  }, []);
 
   return (
     <Box sx={{ padding: 3 }}>
@@ -86,41 +136,80 @@ const Orders = () => {
             <CircularProgress />
           </Box>
         ) : (
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Order ID</TableCell>
-                  <TableCell>Created By</TableCell>
-                  <TableCell>Total Amount</TableCell>
-                  <TableCell>Created At</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {orders.map((order: any) => (
-                  <TableRow key={order._id}>
-                    <TableCell>{order._id}</TableCell>
-                    <TableCell>
-                      {order.created_by_info?.name || 'Unknown'}
-                    </TableCell>
-                    <TableCell>₹{order.total_amount || 0}</TableCell>
-                    <TableCell>
-                      {new Date(order.created_at).toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant='outlined'
-                        onClick={() => handleViewDetails(order)}
-                      >
-                        View Details
-                      </Button>
-                    </TableCell>
+          <>
+            {/* Orders Table */}
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Order ID</TableCell>
+                    <TableCell>Created By</TableCell>
+                    <TableCell>Total Amount</TableCell>
+                    <TableCell>Created At</TableCell>
+                    <TableCell>Actions</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {orders.map((order: any) => (
+                    <TableRow key={order._id}>
+                      <TableCell>{order._id}</TableCell>
+                      <TableCell>
+                        {order.created_by_info?.name || 'Unknown'}
+                      </TableCell>
+                      <TableCell>₹{order.total_amount || 0}</TableCell>
+                      <TableCell>
+                        {new Date(order.created_at).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant='outlined'
+                          onClick={() => handleViewDetails(order)}
+                        >
+                          View Details
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            {/* Pagination + "Go to page" */}
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25]}
+                component='div'
+                // totalCount from server
+                count={totalCount}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+              />
+
+              {/* "Go to page" UI */}
+              <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
+                <TextField
+                  label='Go to page'
+                  type='number'
+                  variant='outlined'
+                  size='small'
+                  sx={{ width: 100, mr: 1 }}
+                  // If user typed something, show that; otherwise, current page + 1
+                  value={skipPage !== '' ? skipPage : page + 1}
+                  onChange={(e) => setSkipPage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSkipPage();
+                    }
+                  }}
+                />
+                <Button variant='contained' onClick={handleSkipPage}>
+                  Go
+                </Button>
+              </Box>
+            </Box>
+          </>
         )}
 
         {/* Drawer for Order Details */}
@@ -155,7 +244,10 @@ const Orders = () => {
                     <strong>Order ID:</strong> {selectedOrder._id}
                   </Typography>
                   <Typography>
-                    <strong>Status:</strong> {capitalize(selectedOrder.status)}
+                    <strong>Status:</strong>{' '}
+                    {selectedOrder.status
+                      ? capitalize(selectedOrder.status)
+                      : ''}
                   </Typography>
                   <Typography>
                     <strong>Created By:</strong>{' '}
@@ -203,7 +295,7 @@ const Orders = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {selectedOrder.products.map((product: any) => (
+                      {selectedOrder.products?.map((product: any) => (
                         <TableRow key={product.product_id.$oid}>
                           <TableCell>
                             <img
@@ -219,7 +311,7 @@ const Orders = () => {
                           </TableCell>
                           <TableCell>{product.name}</TableCell>
                           <TableCell>{product.quantity}</TableCell>
-                          <TableCell>₹{product.price.toFixed(2)}</TableCell>
+                          <TableCell>₹{product.price?.toFixed(2)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
