@@ -29,7 +29,7 @@ import { toast } from 'react-toastify';
 import AuthContext from './Auth';
 
 const menuItems = [
-  // { text: 'Dashboard', icon: <Dashboard />, path: '/admin' },
+  { text: 'Dashboard', icon: <Dashboard />, path: '/admin' },
   { text: 'Customers', icon: <CustomersIcon />, path: '/admin/customers' },
   { text: 'Products', icon: <ProductsIcon />, path: '/admin/products' },
   { text: 'Orders', icon: <OrdersIcon />, path: '/admin/orders' },
