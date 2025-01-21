@@ -24,6 +24,7 @@ import {
   TextField,
   MenuItem,
   Select,
+  Chip,
 } from '@mui/material';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -33,12 +34,17 @@ const SalesPeople = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPerson, setSelectedPerson] = useState<any>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // For "Add Customers" dialog
   const [addCustomerDialogOpen, setAddCustomerDialogOpen] = useState(false);
   const [availableCustomers, setAvailableCustomers] = useState([]);
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
 
   const baseApiUrl = process.env.api_url;
 
+  // ------------------------------------------------------------------
+  // 1) Fetch all salespeople
+  // ------------------------------------------------------------------
   const fetchSalesPeople = async () => {
     try {
       const response = await axios.get(`${baseApiUrl}/admin/salespeople`);
@@ -51,6 +57,41 @@ const SalesPeople = () => {
     }
   };
 
+  // ------------------------------------------------------------------
+  // 2) Refetch the currently selected person
+  //    + Refresh the entire list (to keep table in sync).
+  // ------------------------------------------------------------------
+  const refetchSelectedPerson = async (personId: string) => {
+    try {
+      // 2A) Fetch single
+      const { data } = await axios.get(
+        `${baseApiUrl}/admin/salespeople/${personId}`
+      );
+      // Depending on your API response shape:
+      const updatedSalesPerson = data.sales_person || data;
+      console.log(updatedSalesPerson);
+      // 2B) Also re-fetch the entire list
+      const fullListResp = await axios.get(`${baseApiUrl}/admin/salespeople`);
+      setSalesPeople(fullListResp.data.users);
+
+      // 2C) Now update "selectedPerson"
+      setSelectedPerson(updatedSalesPerson);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to refresh selected person.');
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // 3) Lifecycle: on mount, fetch the list
+  // ------------------------------------------------------------------
+  useEffect(() => {
+    fetchSalesPeople();
+  }, []);
+
+  // ------------------------------------------------------------------
+  // 4) Opening & Closing the Drawer
+  // ------------------------------------------------------------------
   const handleViewDetails = (person: any) => {
     setSelectedPerson(person);
     setDrawerOpen(true);
@@ -61,12 +102,18 @@ const SalesPeople = () => {
     setSelectedPerson(null);
   };
 
+  // ------------------------------------------------------------------
+  // 5) Updating the sales person’s info (name, status, etc.)
+  // ------------------------------------------------------------------
   const handleSaveChanges = async () => {
+    if (!selectedPerson) return;
+
     try {
       await axios.put(
         `${baseApiUrl}/admin/salespeople/${selectedPerson._id}`,
         selectedPerson
       );
+      // Locally update the table row
       setSalesPeople((prev: any) =>
         prev.map((p: any) =>
           p._id === selectedPerson._id ? selectedPerson : p
@@ -86,46 +133,85 @@ const SalesPeople = () => {
       [field]: value,
     }));
   };
+
+  // Toggle status from active to inactive
+  const toggleStatus = async (person: any) => {
+    const newStatus = person.status === 'active' ? 'inactive' : 'active';
+    try {
+      await axios.put(`${baseApiUrl}/admin/salespeople/${person._id}`, {
+        status: newStatus,
+      });
+      // Update local state
+      setSalesPeople((prev: any) =>
+        prev.map((p: any) =>
+          p._id === person._id ? { ...p, status: newStatus } : p
+        )
+      );
+      toast.success(`Status updated to ${newStatus}`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update status');
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // 6) Editing each customer's assigned salesperson(s)
+  // ------------------------------------------------------------------
   const handleCustomerFieldChange = (
     customerId: string,
     field: string,
-    value: any
+    updatedValue: string
   ) => {
+    // We update the local "selectedPerson.customers" array
     setSelectedPerson((prev: any) => ({
       ...prev,
-      customers: prev.customers.map((customer: any) =>
-        customer._id === customerId ? { ...customer, [field]: value } : customer
+      customers: prev.customers.map((c: any) =>
+        c._id === customerId ? { ...c, [field]: updatedValue } : c
       ),
     }));
   };
+
+  // Actually saving the updated "cf_sales_person" to backend
+  const handleUpdateCustomer = async (
+    customerId: string,
+    cfSalesPerson: string
+  ) => {
+    try {
+      // Convert to array and remove empty spaces
+      const sanitizedSalesPeople = cfSalesPerson
+        .split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean);
+
+      // Put to server
+      await axios.put(`${baseApiUrl}/customers/${customerId}`, {
+        cf_sales_person: sanitizedSalesPeople.join(', '),
+      });
+
+      toast.success('Customer updated successfully');
+
+      // Immediately refetch so changes appear without refresh
+      if (selectedPerson) {
+        await refetchSelectedPerson(selectedPerson._id);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update customer');
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // 7) "Add Customers" flow: listing unassigned customers, selecting them
+  // ------------------------------------------------------------------
   const fetchAvailableCustomers = async () => {
     try {
       const response = await axios.get(`${baseApiUrl}/customers/salespersons`, {
-        params: { code: selectedPerson.code }, // Fetch all customers
+        params: { code: selectedPerson.code },
       });
       setAvailableCustomers(response.data.customers);
     } catch (error) {
       console.error(error);
       toast.error('Error fetching available customers.');
-    }
-  };
-
-  const handleAddCustomers = async () => {
-    try {
-      // Update all selected customers
-      for (const customerId of selectedCustomers) {
-        await axios.put(`${baseApiUrl}/customers/${customerId}`, {
-          cf_sales_person: selectedPerson.code,
-        });
-      }
-
-      toast.success('Customers assigned successfully.');
-      setAddCustomerDialogOpen(false);
-      setSelectedCustomers([]);
-      fetchSalesPeople(); // Refresh salespeople data
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to assign customers.');
     }
   };
 
@@ -136,31 +222,36 @@ const SalesPeople = () => {
         : [...prev, customerId]
     );
   };
-  const handleUpdateCustomer = async (
-    customerId: string,
-    cfSalesPerson: string
-  ) => {
+
+  const handleAddCustomers = async () => {
+    if (!selectedPerson) return;
+
     try {
-      const sanitizedSalesPeople = cfSalesPerson
-        .split(',')
-        .map((s: string) => s.trim())
-        .filter((s: string) => s);
+      // 1) Update each selected customer on the server, but in parallel:
+      await Promise.all(
+        selectedCustomers.map((customerId) =>
+          axios.put(`${baseApiUrl}/customers/${customerId}`, {
+            cf_sales_person: selectedPerson.code.trim(),
+          })
+        )
+      );
 
-      await axios.put(`${baseApiUrl}/customers/${customerId}`, {
-        cf_sales_person: sanitizedSalesPeople.join(', '),
-      });
+      // 2) Now re-fetch the selectedPerson data from the backend
+      //    to get the new assigned customers *immediately* in state.
+      await refetchSelectedPerson(selectedPerson._id);
 
-      toast.success('Customer updated successfully');
+      toast.success('Customers assigned successfully.');
+      setAddCustomerDialogOpen(false);
+      setSelectedCustomers([]);
     } catch (error) {
       console.error(error);
-      toast.error('Failed to update customer');
+      toast.error('Failed to assign customers.');
     }
   };
 
-  useEffect(() => {
-    fetchSalesPeople();
-  }, []);
-
+  // ------------------------------------------------------------------
+  // 8) Render
+  // ------------------------------------------------------------------
   return (
     <Box sx={{ padding: 3 }}>
       <Paper
@@ -211,51 +302,23 @@ const SalesPeople = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {salesPeople.map((salesPerson: any) => (
-                  <TableRow key={salesPerson._id}>
-                    <TableCell>{salesPerson.name}</TableCell>
-                    <TableCell>{salesPerson.code}</TableCell>
-                    <TableCell>{salesPerson.designation}</TableCell>
-                    <TableCell>{salesPerson.email}</TableCell>
-                    <TableCell>{salesPerson.phone}</TableCell>
+                {salesPeople.map((person: any) => (
+                  <TableRow key={person._id}>
+                    <TableCell>{person.name}</TableCell>
+                    <TableCell>{person.code}</TableCell>
+                    <TableCell>{person.designation}</TableCell>
+                    <TableCell>{person.email}</TableCell>
+                    <TableCell>{person.phone}</TableCell>
                     <TableCell>
                       <Switch
-                        checked={salesPerson.status === 'active'}
-                        onChange={async () => {
-                          const newStatus =
-                            salesPerson.status === 'active'
-                              ? 'inactive'
-                              : 'active';
-                          try {
-                            // Update status in the backend
-                            await axios.put(
-                              `${baseApiUrl}/admin/salespeople/${salesPerson._id}`,
-                              {
-                                status: newStatus,
-                              }
-                            );
-
-                            // Update the local state
-                            setSalesPeople((prev: any) =>
-                              prev.map((p: any) =>
-                                p._id === salesPerson._id
-                                  ? { ...p, status: newStatus }
-                                  : p
-                              )
-                            );
-
-                            toast.success(`Status updated to ${newStatus}`);
-                          } catch (error) {
-                            console.error(error);
-                            toast.error('Failed to update status');
-                          }
-                        }}
+                        checked={person.status === 'active'}
+                        onChange={() => toggleStatus(person)}
                       />
                     </TableCell>
                     <TableCell>
                       <Button
                         variant='outlined'
-                        onClick={() => handleViewDetails(salesPerson)}
+                        onClick={() => handleViewDetails(person)}
                       >
                         Edit
                       </Button>
@@ -267,9 +330,8 @@ const SalesPeople = () => {
           </TableContainer>
         )}
 
-        {/* Drawer for Editing Sales Person */}
+        {/* Drawer: Edit Sales Person */}
         <Box sx={{ padding: 3 }}>
-          {/* Drawer for Editing Sales Person */}
           <Drawer
             anchor='right'
             open={drawerOpen}
@@ -305,6 +367,7 @@ const SalesPeople = () => {
                   Edit Sales Person
                 </Typography>
 
+                {/* Basic info form */}
                 <Box
                   component='form'
                   sx={{
@@ -328,6 +391,7 @@ const SalesPeople = () => {
                     disabled
                     fullWidth
                   />
+
                   <TextField
                     select
                     label='Status'
@@ -362,13 +426,14 @@ const SalesPeople = () => {
                     </Button>
                   </Box>
                 </Box>
+
+                {/* Assigned Customers Section */}
                 <Box
-                  display={'flex'}
-                  flexDirection={'row'}
-                  alignItems={'baseline'}
-                  justifyContent={'space-between'}
+                  display='flex'
+                  flexDirection='row'
+                  alignItems='baseline'
+                  justifyContent='space-between'
                 >
-                  {/* Assigned Customers List */}
                   <Typography
                     variant='h6'
                     sx={{
@@ -390,10 +455,10 @@ const SalesPeople = () => {
                     size='small'
                     sx={{ marginBottom: 2 }}
                   >
-                    Add Customers
+                    Assign More Customers
                   </Button>
                 </Box>
-                {/* Add Customers Button */}
+
                 {selectedPerson.customers &&
                 selectedPerson.customers.length > 0 ? (
                   <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
@@ -403,64 +468,81 @@ const SalesPeople = () => {
                           <TableCell>No.</TableCell>
                           <TableCell>Customer Name</TableCell>
                           <TableCell>Sales People Assigned</TableCell>
-                          <TableCell>Actions</TableCell>
+                          <TableCell>Action</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {selectedPerson.customers.map(
-                          (customer: any, index: number) => (
-                            <TableRow key={customer._id}>
-                              <TableCell>{index + 1}</TableCell>
-                              <TableCell>{customer.contact_name}</TableCell>
-                              <TableCell>
-                                <Select
-                                  variant='outlined'
-                                  size='small'
-                                  multiple
-                                  value={
-                                    customer.cf_sales_person !== ''
-                                      ? customer?.cf_sales_person
-                                          ?.split(',')
-                                          .map((s: string) => s.trim())
-                                      : []
-                                  }
-                                  onChange={(e) => {
-                                    const updatedSalesPeople = e.target.value;
-                                    handleCustomerFieldChange(
-                                      customer._id,
-                                      'cf_sales_person',
-                                      updatedSalesPeople.join(', ')
-                                    );
-                                  }}
-                                  fullWidth
-                                >
-                                  {salesPeople.map((salesPerson: any) => (
-                                    <MenuItem
-                                      key={salesPerson.code}
-                                      value={salesPerson.code}
-                                    >
-                                      {salesPerson.code}
-                                    </MenuItem>
-                                  ))}
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Button
-                                  variant='contained'
-                                  color='primary'
-                                  size='small'
-                                  onClick={() =>
-                                    handleUpdateCustomer(
-                                      customer._id,
-                                      customer.cf_sales_person
-                                    )
-                                  }
-                                >
-                                  Save
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          )
+                          (customer: any, idx: number) => {
+                            // For the multi select value, parse the comma string -> array
+                            const arrayOfCodes =
+                              typeof customer.cf_sales_person === 'string'
+                                ? customer.cf_sales_person
+                                    .split(',')
+                                    .map((s: any) => s.trim())
+                                : Array.isArray(customer.cf_sales_person)
+                                ? customer.cf_sales_person
+                                : [];
+                            return (
+                              <TableRow key={customer._id}>
+                                <TableCell>{idx + 1}</TableCell>
+                                <TableCell>{customer.contact_name}</TableCell>
+                                <TableCell>
+                                  <Select
+                                    variant='outlined'
+                                    size='small'
+                                    multiple
+                                    value={arrayOfCodes}
+                                    onChange={(e) => {
+                                      const newVal = e.target.value as string[];
+                                      // Convert array -> comma separated
+                                      handleCustomerFieldChange(
+                                        customer._id,
+                                        'cf_sales_person',
+                                        newVal.join(', ')
+                                      );
+                                    }}
+                                    fullWidth
+                                    // RENDER TAG-LIKE CHIPS:
+                                    renderValue={(selected: string[]) => (
+                                      <Box
+                                        sx={{
+                                          display: 'flex',
+                                          flexWrap: 'wrap',
+                                          gap: 0.5,
+                                        }}
+                                      >
+                                        {selected.map((value) => (
+                                          <Chip key={value} label={value} />
+                                        ))}
+                                      </Box>
+                                    )}
+                                  >
+                                    {salesPeople.map((sp: any) => (
+                                      <MenuItem key={sp.code} value={sp.code}>
+                                        {sp.code}
+                                      </MenuItem>
+                                    ))}
+                                  </Select>
+                                </TableCell>
+                                <TableCell>
+                                  <Button
+                                    variant='contained'
+                                    color='primary'
+                                    size='small'
+                                    onClick={() =>
+                                      handleUpdateCustomer(
+                                        customer._id,
+                                        customer.cf_sales_person
+                                      )
+                                    }
+                                  >
+                                    Save
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          }
                         )}
                       </TableBody>
                     </Table>
@@ -474,7 +556,7 @@ const SalesPeople = () => {
             )}
           </Drawer>
 
-          {/* Add Customers Dialog */}
+          {/* Dialog: Add Customers */}
           <Dialog
             open={addCustomerDialogOpen}
             onClose={() => setAddCustomerDialogOpen(false)}
@@ -487,12 +569,13 @@ const SalesPeople = () => {
                 {availableCustomers.map((customer: any) => (
                   <ListItem
                     key={customer._id}
-                    component={'button'}
+                    component='div' // changed from 'button' to 'div' to avoid conflicts
                     onClick={() => toggleCustomerSelection(customer._id)}
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
+                      cursor: 'pointer',
                     }}
                   >
                     <ListItemText primary={customer.contact_name} />
