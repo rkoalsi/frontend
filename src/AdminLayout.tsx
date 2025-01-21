@@ -46,7 +46,7 @@ const AdminLayout = ({ children }: any) => {
   const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { user, loading }: any = useContext(AuthContext);
+  const { user, loading, logout }: any = useContext(AuthContext);
 
   useEffect(() => {
     if (!loading) {
@@ -137,7 +137,7 @@ const AdminLayout = ({ children }: any) => {
             <Button
               variant='contained'
               color='error'
-              onClick={() => router.push('/login')}
+              onClick={logout}
               sx={{
                 textTransform: 'none',
                 fontWeight: 'bold',
