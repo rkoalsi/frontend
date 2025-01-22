@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import {
   Box,
   Divider,
@@ -22,6 +22,7 @@ import {
 import { Close, Edit } from '@mui/icons-material';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import axios from 'axios';
 
 interface Props {
   customer: any;
@@ -47,12 +48,57 @@ function Review(props: Props) {
     setActiveStep,
     isShared,
   } = props;
+
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
-  if (!customer) {
-    return <Typography>This is content for Review</Typography>;
-  }
+
+  // ------------------ NEW: specialMargins State ---------------------
+  /**
+   * Will store data like:
+   *   {
+   *     "abc123": "45%",   // product_id => margin string
+   *     "xyz789": "50%"
+   *   }
+   */
+  const [specialMargins, setSpecialMargins] = useState<{
+    [key: string]: string;
+  }>({});
+
+  // ------------------ FETCH SPECIAL MARGINS -------------------------
+  /**
+   * Once we know the customer's _id, fetch the special margins from your API.
+   * Adjust the endpoint/response to match your backend.
+   */
+  useEffect(() => {
+    if (!customer?._id) return;
+
+    const fetchSpecialMargins = async () => {
+      try {
+        const baseApiUrl = process.env.api_url;
+        const res = await axios.get(
+          `${baseApiUrl}/admin/customer/special_margins/${customer._id}`
+        );
+        // Suppose it returns: { products: [ { product_id: 'abc123', margin: '45%' }, ... ] }
+        const productList = res.data.products || [];
+
+        // Transform the array into a dictionary for easy lookup
+        const marginMap: { [key: string]: string } = {};
+        productList.forEach((item: any) => {
+          marginMap[item.product_id] = item.margin; // e.g. "45%"
+        });
+
+        setSpecialMargins(marginMap);
+      } catch (error) {
+        console.error('Error fetching special margins:', error);
+      }
+    };
+
+    fetchSpecialMargins();
+  }, [customer]);
+
+  // ------------------ PDF Download Ref & Logic -----------------------
   const componentRef = useRef<HTMLDivElement>(null);
+
   const downloadAsPDF = async () => {
     if (componentRef.current) {
       // Temporarily hide edit icons
@@ -84,10 +130,12 @@ function Review(props: Props) {
       const imgWidth = pdfWidth - 40; // Add 20px margin on each side
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-      pdf.addImage(imgData, 'PNG', 20, 20, imgWidth, imgHeight); // Center the image with margins
+      pdf.addImage(imgData, 'PNG', 20, 20, imgWidth, imgHeight);
       pdf.save('Order_Review.pdf');
     }
   };
+
+  // ------------------ Recalculate Totals w/ Special Margins ----------
   const calculateLocalTotals = (products: any) => {
     return products.reduce(
       (acc: any, product: any) => {
@@ -95,9 +143,25 @@ function Review(props: Props) {
           product?.item_tax_preferences?.[0]?.tax_percentage || 0;
         const rate = product?.rate || 0;
         const quantity = product?.quantity || 1;
-        const margin = parseInt(customer?.cf_margin || '40') / 100; // Default to 40% if not defined
 
-        // Calculate Selling Price
+        // Convert _id to a string if it's an object
+        const productId =
+          typeof product._id === 'string' ? product._id : product._id?.$oid;
+
+        // 1) Check for special margin
+        let margin = 0.4; // default to 40%
+        if (specialMargins[productId]) {
+          // "45%" => parseInt("45") => 0.45
+          margin =
+            parseInt(specialMargins[productId].replace('%', '')) / 100 || 0.4;
+        } else {
+          // fallback to customer's default margin (like "40" or "40%")
+          const fallbackMarginStr =
+            customer?.cf_margin?.replace('%', '') || '40';
+          margin = parseInt(fallbackMarginStr, 10) / 100;
+        }
+
+        // 2) Calculate Selling Price
         const sellingPrice = rate - rate * margin;
 
         let gstAmount = 0;
@@ -112,21 +176,27 @@ function Review(props: Props) {
           totalAmount =
             (sellingPrice + sellingPrice * (taxPercentage / 100)) * quantity;
         }
+        // Round half .5 up
         totalAmount =
           totalAmount % 1 === 0.5
             ? Math.ceil(totalAmount)
             : Math.floor(totalAmount);
+
         acc.totalGST += gstAmount;
         acc.totalAmount += totalAmount;
-
         return acc;
       },
       { totalGST: 0, totalAmount: 0 }
     );
   };
+
+  // ------------------ Quantity Change & Remove Product ---------------
   const handleQuantityChange = async (id: string, newQuantity: number) => {
     const updatedProducts = products.map((product: any) => {
-      if (product._id === id) {
+      const pid =
+        typeof product._id === 'string' ? product._id : product._id?.$oid;
+
+      if (pid === id) {
         return {
           ...product,
           quantity: Math.max(1, Math.min(newQuantity, product.stock)),
@@ -136,39 +206,51 @@ function Review(props: Props) {
     });
 
     setSelectedProducts(updatedProducts); // Update state locally
-    const totals = calculateLocalTotals(updatedProducts); // Recalculate totals
+    const localTotals = calculateLocalTotals(updatedProducts);
 
     await updateOrder({
       products: updatedProducts,
-      total_gst: parseFloat(totals.totalGST.toFixed(2)),
-      total_amount: parseFloat(totals.totalAmount.toFixed(2)),
+      total_gst: parseFloat(localTotals.totalGST.toFixed(2)),
+      total_amount: parseFloat(localTotals.totalAmount.toFixed(2)),
     });
   };
+
   const handleRemoveProduct = async (id: string) => {
-    const updatedProducts = products.filter(
-      (product: any) => product._id !== id
-    );
+    const updatedProducts = products.filter((product: any) => {
+      const pid =
+        typeof product._id === 'string' ? product._id : product._id?.$oid;
+      return pid !== id;
+    });
 
-    setSelectedProducts(updatedProducts); // Update state locally
-    const totals = calculateLocalTotals(updatedProducts); // Recalculate totals
+    setSelectedProducts(updatedProducts);
+    const localTotals = calculateLocalTotals(updatedProducts);
 
     await updateOrder({
       products: updatedProducts,
-      total_gst: parseFloat(totals.totalGST.toFixed(2)),
-      total_amount: parseFloat(totals.totalAmount.toFixed(2)),
+      total_gst: parseFloat(localTotals.totalGST.toFixed(2)),
+      total_amount: parseFloat(localTotals.totalAmount.toFixed(2)),
     });
   };
+
+  // ------------------ Image Popup -----------------------------------
   const handleImageClick = (src: any) => {
     setPopupImageSrc(src);
     setOpenImagePopup(true);
   };
-
   const handleClosePopup = () => {
     setOpenImagePopup(false);
   };
+
+  if (!customer) {
+    return <Typography>This is content for Review</Typography>;
+  }
+
+  // ------------------------------------------------------------------
+  // Render
+  // ------------------------------------------------------------------
   return (
     <Box sx={{ p: 3 }}>
-      {/* Customer Information */}
+      {/* Header */}
       <Box
         display='flex'
         justifyContent='space-between'
@@ -182,12 +264,15 @@ function Review(props: Props) {
           Download as PDF
         </Button>
       </Box>
+
+      {/* PDF Content */}
       <Box ref={componentRef}>
+        {/* Customer Info */}
         <Paper elevation={3} sx={{ p: 3, mb: 2, borderRadius: 2 }}>
           <Box
-            display={'flex'}
-            alignContent={'center'}
-            justifyContent={'space-between'}
+            display='flex'
+            alignContent='center'
+            justifyContent='space-between'
           >
             <Typography variant='h6' fontWeight='bold' gutterBottom>
               Customer Information
@@ -210,15 +295,15 @@ function Review(props: Props) {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Address Information */}
+        {/* Addresses */}
         <Stack direction={{ xs: 'row', md: 'row' }} spacing={2} sx={{ mb: 2 }}>
           {/* Billing Address */}
           <Card sx={{ flex: 1 }}>
             <CardContent>
               <Box
-                display={'flex'}
-                alignContent={'center'}
-                justifyContent={'space-between'}
+                display='flex'
+                alignContent='center'
+                justifyContent='space-between'
               >
                 <Typography variant='h6' fontWeight='bold' gutterBottom>
                   Billing Address
@@ -238,9 +323,9 @@ function Review(props: Props) {
           <Card sx={{ flex: 1 }}>
             <CardContent>
               <Box
-                display={'flex'}
-                alignContent={'center'}
-                justifyContent={'space-between'}
+                display='flex'
+                alignContent='center'
+                justifyContent='space-between'
               >
                 <Typography variant='h6' fontWeight='bold' gutterBottom>
                   Shipping Address
@@ -261,18 +346,19 @@ function Review(props: Props) {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Products List */}
+        {/* Products */}
         <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
           <Box
-            display={'flex'}
-            alignContent={'center'}
-            justifyContent={'space-between'}
+            display='flex'
+            alignContent='center'
+            justifyContent='space-between'
           >
             <Typography variant='h6' fontWeight='bold' gutterBottom>
               Products
             </Typography>
             <Edit onClick={() => setActiveStep(3)} className='no-pdf' />
           </Box>
+
           <TableContainer component={Paper} sx={{ overflowY: 'auto', mt: 2 }}>
             <Table stickyHeader>
               <TableHead>
@@ -311,7 +397,7 @@ function Review(props: Props) {
                     <strong>Quantity</strong>
                   </TableCell>
                   <TableCell>
-                    <strong>Total</strong> {/* New Total Column */}
+                    <strong>Total</strong>
                   </TableCell>
                   <TableCell>
                     <strong>Actions</strong>
@@ -322,22 +408,37 @@ function Review(props: Props) {
                 {products.map((product: any, index: number) => {
                   const isActive = product.status === 'active';
 
-                  // Calculate selling price
+                  // Convert _id to string
+                  const productId =
+                    typeof product._id === 'string'
+                      ? product._id
+                      : product._id?.$oid;
+
+                  // 1) If special margin exists, use it; otherwise fallback
+                  let marginPercent = 40; // default
+                  if (specialMargins[productId]) {
+                    marginPercent = parseInt(
+                      specialMargins[productId].replace('%', '')
+                    );
+                  } else if (customer.cf_margin) {
+                    marginPercent = parseInt(
+                      customer.cf_margin.replace('%', '') || '40'
+                    );
+                  }
+                  const margin = marginPercent / 100;
+
+                  // 2) Calculate selling price
                   const sellingPrice = parseFloat(
-                    (
-                      product.rate -
-                      (parseInt(customer.cf_margin || '40') / 100) *
-                        product.rate
-                    ).toFixed(2)
+                    (product.rate - product.rate * margin).toFixed(2)
                   );
 
-                  // Calculate item-level total
-                  const itemTotal = (product.quantity || 1) * sellingPrice;
+                  // 3) Item-level total
+                  const quantity = product.quantity || 1;
+                  const itemTotal = (quantity * sellingPrice).toFixed(2);
 
                   return (
                     <TableRow
-                      key={product._id.$oid || index}
-                      /* If product is NOT active, apply a 'greyed-out' style */
+                      key={productId || index}
                       sx={{
                         backgroundColor: !isActive ? '#f0f0f0' : 'inherit',
                         opacity: !isActive ? 0.7 : 1,
@@ -371,38 +472,45 @@ function Review(props: Props) {
                         %
                       </TableCell>
                       <TableCell>₹{product.rate}</TableCell>
-                      <TableCell>{customer.cf_margin || '40%'}</TableCell>
+
+                      {/* Show special margin or fallback margin */}
+                      <TableCell>
+                        {specialMargins[productId]
+                          ? specialMargins[productId]
+                          : customer.cf_margin || '40%'}
+                      </TableCell>
+
                       <TableCell>₹{sellingPrice}</TableCell>
                       <TableCell>{product.stock}</TableCell>
 
+                      {/* Quantity */}
                       <TableCell>
                         <TextField
                           type='number'
                           value={product.quantity || 1}
                           onChange={(e: any) =>
                             handleQuantityChange(
-                              product._id.$oid || product._id,
+                              productId,
                               parseInt(e.target.value) || 1
                             )
                           }
                           inputProps={{ min: 1, max: product.stock }}
                           size='small'
                           sx={{ width: '60px' }}
-                          /* Disable editing if NOT active */
                           disabled={!isActive}
                         />
                       </TableCell>
 
-                      <TableCell>₹{itemTotal.toFixed(2)}</TableCell>
+                      {/* Item total */}
+                      <TableCell>₹{itemTotal}</TableCell>
 
+                      {/* Remove button */}
                       <TableCell>
                         <Button
                           variant='outlined'
                           color='error'
                           size='small'
-                          onClick={() =>
-                            handleRemoveProduct(product._id.$oid || product._id)
-                          }
+                          onClick={() => handleRemoveProduct(productId)}
                         >
                           Remove
                         </Button>
@@ -411,6 +519,7 @@ function Review(props: Props) {
                   );
                 })}
 
+                {/* Totals Row */}
                 <TableRow>
                   <TableCell colSpan={7}>
                     <strong>Total GST:</strong> ₹{totals.totalGST.toFixed(2)}{' '}
@@ -419,13 +528,15 @@ function Review(props: Props) {
                   <TableCell colSpan={6}>
                     <strong>Total Amount:</strong> ₹
                     {totals.totalAmount.toFixed(2)}{' '}
-                    <strong>(GST {customer.cf_in_ex || 'Exclusive'}) </strong>
+                    <strong>(GST {customer.cf_in_ex || 'Exclusive'})</strong>
                   </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
           </TableContainer>
         </Paper>
+
+        {/* Image Popup */}
         <Dialog
           open={openImagePopup}
           onClose={handleClosePopup}
