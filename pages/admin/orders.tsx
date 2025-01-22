@@ -140,80 +140,94 @@ const Orders = () => {
           </Box>
         ) : (
           <>
-            {/* Orders Table */}
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Created At</TableCell>
-                    <TableCell>Order ID</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Created By</TableCell>
-                    <TableCell>Total Amount</TableCell>
-                    <TableCell>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {orders.map((order: any) => (
-                    <TableRow key={order._id}>
-                      <TableCell>
-                        {new Date(order.created_at).toLocaleString()}
-                      </TableCell>
-                      <TableCell>{order._id}</TableCell>
-                      <TableCell>{capitalize(order.status)}</TableCell>
-                      <TableCell>
-                        {order.created_by_info?.name || 'Unknown'}
-                      </TableCell>
-                      <TableCell>₹{order.total_amount || 0}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant='outlined'
-                          onClick={() => handleViewDetails(order)}
-                        >
-                          View Details
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            {orders.length > 0 ? (
+              <>
+                {/* Orders Table */}
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Created At</TableCell>
+                        <TableCell>Order ID</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell>Created By</TableCell>
+                        <TableCell>Total Amount</TableCell>
+                        <TableCell>Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {orders.map((order: any) => (
+                        <TableRow key={order._id}>
+                          <TableCell>
+                            {new Date(order.created_at).toLocaleString()}
+                          </TableCell>
+                          <TableCell>{order._id}</TableCell>
+                          <TableCell>{capitalize(order.status)}</TableCell>
+                          <TableCell>
+                            {order.created_by_info?.name || 'Unknown'}
+                          </TableCell>
+                          <TableCell>₹{order.total_amount || 0}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant='outlined'
+                              onClick={() => handleViewDetails(order)}
+                            >
+                              View Details
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
 
-            {/* Pagination + "Go to page" */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-              <TablePagination
-                rowsPerPageOptions={[5, 10, 25]}
-                component='div'
-                // totalCount from server
-                count={totalCount}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={handleChangePage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-              />
+                {/* Pagination + "Go to page" */}
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                  <TablePagination
+                    rowsPerPageOptions={[5, 10, 25]}
+                    component='div'
+                    // totalCount from server
+                    count={totalCount}
+                    rowsPerPage={rowsPerPage}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                  />
 
-              {/* "Go to page" UI */}
-              <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
-                <TextField
-                  label='Go to page'
-                  type='number'
-                  variant='outlined'
-                  size='small'
-                  sx={{ width: 100, mr: 1 }}
-                  // If user typed something, show that; otherwise, current page + 1
-                  value={skipPage !== '' ? skipPage : page + 1}
-                  onChange={(e) => setSkipPage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSkipPage();
-                    }
-                  }}
-                />
-                <Button variant='contained' onClick={handleSkipPage}>
-                  Go
-                </Button>
+                  {/* "Go to page" UI */}
+                  <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
+                    <TextField
+                      label='Go to page'
+                      type='number'
+                      variant='outlined'
+                      size='small'
+                      sx={{ width: 100, mr: 1 }}
+                      // If user typed something, show that; otherwise, current page + 1
+                      value={skipPage !== '' ? skipPage : page + 1}
+                      onChange={(e) => setSkipPage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSkipPage();
+                        }
+                      }}
+                    />
+                    <Button variant='contained' onClick={handleSkipPage}>
+                      Go
+                    </Button>
+                  </Box>
+                </Box>
+              </>
+            ) : (
+              <Box
+                display={'flex'}
+                justifyContent={'center'}
+                alignItems={'center'}
+              >
+                <Typography variant='h5' fontWeight={'bold'}>
+                  No Orders Created
+                </Typography>
               </Box>
-            </Box>
+            )}
           </>
         )}
 

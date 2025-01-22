@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Typography,
   List,
@@ -31,15 +31,20 @@ import { toast } from 'react-toastify';
 
 const SalesPeople = () => {
   const [salesPeople, setSalesPeople] = useState([]);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerLoading, setCustomerLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedPerson, setSelectedPerson] = useState<any>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [originalCustomersString, setOriginalCustomersString] = useState('');
 
   // For "Add Customers" dialog
   const [addCustomerDialogOpen, setAddCustomerDialogOpen] = useState(false);
   const [availableCustomers, setAvailableCustomers] = useState([]);
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
-
   const baseApiUrl = process.env.api_url;
 
   // ------------------------------------------------------------------
@@ -92,11 +97,26 @@ const SalesPeople = () => {
   // ------------------------------------------------------------------
   // 4) Opening & Closing the Drawer
   // ------------------------------------------------------------------
-  const handleViewDetails = (person: any) => {
-    setSelectedPerson(person);
-    setDrawerOpen(true);
-  };
+  const handleViewDetails = async (rowPerson: any) => {
+    try {
+      // 1) Make an API call to get the *fresh* updated person data from the server
+      const { data } = await axios.get(
+        `${baseApiUrl}/admin/salespeople/${rowPerson._id}`
+      );
+      // 2) The API might return { sales_person: {...} } or just {...}
+      const updatedSalesPerson = data.sales_person || data;
 
+      // 3) Now set that as the selected person
+      setSelectedPerson(updatedSalesPerson);
+      const stringified = JSON.stringify(updatedSalesPerson.customers || []);
+      setOriginalCustomersString(stringified);
+      // 4) Finally open the drawer
+      setDrawerOpen(true);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load person details.');
+    }
+  };
   const handleCloseDrawer = () => {
     setDrawerOpen(false);
     setSelectedPerson(null);
@@ -204,16 +224,33 @@ const SalesPeople = () => {
   // 7) "Add Customers" flow: listing unassigned customers, selecting them
   // ------------------------------------------------------------------
   const fetchAvailableCustomers = async () => {
+    // setCustomerLoading(true);
     try {
-      const response = await axios.get(`${baseApiUrl}/customers/salespersons`, {
-        params: { code: selectedPerson.code },
-      });
+      const response = await axios.get(
+        `${process.env.api_url}/customers/salesperson`,
+        {
+          params: {
+            code: selectedPerson?.code, // the salesperson code
+            page,
+            limit,
+            search: customerSearch,
+          },
+        }
+      );
       setAvailableCustomers(response.data.customers);
+      setTotalPages(response.data.totalPages || 1);
     } catch (error) {
       console.error(error);
       toast.error('Error fetching available customers.');
     }
+    setCustomerLoading(false);
   };
+
+  useEffect(() => {
+    if (addCustomerDialogOpen) {
+      fetchAvailableCustomers();
+    }
+  }, [page, limit, addCustomerDialogOpen, customerSearch]);
 
   const toggleCustomerSelection = (customerId: string) => {
     setSelectedCustomers((prev) =>
@@ -246,6 +283,32 @@ const SalesPeople = () => {
     } catch (error) {
       console.error(error);
       toast.error('Failed to assign customers.');
+    }
+  };
+
+  const handleBulkSaveCustomers = async () => {
+    if (!selectedPerson) return;
+    try {
+      // Build the array of updates
+      const updates = selectedPerson.customers.map((c: any) => ({
+        _id: c._id,
+        cf_sales_person: c.cf_sales_person,
+      }));
+
+      const { data } = await axios.put(
+        `${baseApiUrl}/admin/customers/bulk-update`,
+        {
+          updates,
+        }
+      );
+
+      console.log(data.results); // see who was updated vs. skipped
+      toast.success('All customers updated successfully.');
+      // Optionally refetch
+      await refetchSelectedPerson(selectedPerson._id);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to bulk update customers');
     }
   };
 
@@ -468,7 +531,6 @@ const SalesPeople = () => {
                           <TableCell>No.</TableCell>
                           <TableCell>Customer Name</TableCell>
                           <TableCell>Sales People Assigned</TableCell>
-                          <TableCell>Action</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -525,21 +587,6 @@ const SalesPeople = () => {
                                     ))}
                                   </Select>
                                 </TableCell>
-                                <TableCell>
-                                  <Button
-                                    variant='contained'
-                                    color='primary'
-                                    size='small'
-                                    onClick={() =>
-                                      handleUpdateCustomer(
-                                        customer._id,
-                                        customer.cf_sales_person
-                                      )
-                                    }
-                                  >
-                                    Save
-                                  </Button>
-                                </TableCell>
                               </TableRow>
                             );
                           }
@@ -552,6 +599,19 @@ const SalesPeople = () => {
                     No customers assigned to this salesperson.
                   </Typography>
                 )}
+                {selectedPerson.customers &&
+                  selectedPerson.customers.length > 0 && (
+                    <Box mt={2} textAlign='right'>
+                      <Button
+                        variant='contained'
+                        color='primary'
+                        onClick={handleBulkSaveCustomers}
+                        size='small'
+                      >
+                        Save All Customer Changes
+                      </Button>
+                    </Box>
+                  )}
               </Box>
             )}
           </Drawer>
@@ -564,45 +624,98 @@ const SalesPeople = () => {
             maxWidth='sm'
           >
             <DialogTitle>Add Customers</DialogTitle>
-            <DialogContent>
-              <List>
-                {availableCustomers.map((customer: any) => (
-                  <ListItem
-                    key={customer._id}
-                    component='div' // changed from 'button' to 'div' to avoid conflicts
-                    onClick={() => toggleCustomerSelection(customer._id)}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                    }}
+            {customerLoading ? (
+              <Box
+                display={'flex'}
+                alignItems={'center'}
+                justifyContent={'center'}
+              >
+                <CircularProgress />
+              </Box>
+            ) : (
+              <>
+                <DialogContent>
+                  <TextField
+                    fullWidth
+                    label='Search Customers'
+                    variant='outlined'
+                    size='small'
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                    sx={{ marginBottom: 2 }}
+                  />
+                  <List>
+                    {availableCustomers.map((customer: any) => (
+                      <ListItem
+                        key={customer._id}
+                        component='div' // changed from 'button' to 'div' to avoid conflicts
+                        onClick={() => toggleCustomerSelection(customer._id)}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <ListItemText
+                          primary={customer.contact_name}
+                          secondary={
+                            customer.cf_sales_person
+                              ? `Currently assigned: ${customer.cf_sales_person}`
+                              : 'Currently unassigned'
+                          }
+                        />
+                        <Checkbox
+                          checked={selectedCustomers.includes(customer._id)}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                  <Box
+                    display='flex'
+                    justifyContent='space-between'
+                    alignItems='center'
                   >
-                    <ListItemText primary={customer.contact_name} />
-                    <Checkbox
-                      checked={selectedCustomers.includes(customer._id)}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </DialogContent>
-            <DialogActions>
-              <Button
-                onClick={() => setAddCustomerDialogOpen(false)}
-                color='secondary'
-                size='small'
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleAddCustomers}
-                color='primary'
-                size='small'
-                variant='contained'
-              >
-                Add Selected
-              </Button>
-            </DialogActions>
+                    <Button
+                      variant='outlined'
+                      disabled={page <= 1}
+                      onClick={() => setPage(page - 1)}
+                    >
+                      Previous
+                    </Button>
+
+                    <Typography variant='body2'>
+                      Page {page} of {totalPages}
+                    </Typography>
+
+                    <Button
+                      variant='outlined'
+                      disabled={page >= totalPages}
+                      onClick={() => setPage(page + 1)}
+                    >
+                      Next
+                    </Button>
+                  </Box>
+                </DialogContent>
+                <DialogActions>
+                  <Button
+                    onClick={() => setAddCustomerDialogOpen(false)}
+                    color='secondary'
+                    size='small'
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleAddCustomers}
+                    color='primary'
+                    size='small'
+                    variant='contained'
+                  >
+                    Add Selected
+                  </Button>
+                </DialogActions>
+              </>
+            )}
           </Dialog>
         </Box>
       </Paper>
