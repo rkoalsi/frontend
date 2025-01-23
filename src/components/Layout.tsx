@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import Auth from '../src/Auth';
+import Auth from './Auth';
 import {
   Container,
   Box,

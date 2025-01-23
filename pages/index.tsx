@@ -1,7 +1,7 @@
 import { Box, Typography, Paper } from '@mui/material';
 import { useContext } from 'react';
-import AuthContext from '../src/Auth';
-import OrderForm from '../src/OrderForm';
+import AuthContext from '../src/components/Auth';
+import OrderForm from '../src/components/OrderForm';
 
 const Home = () => {
   const { user }: any = useContext(AuthContext);

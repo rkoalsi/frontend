@@ -15,7 +15,6 @@ import {
   Switch,
   Button,
   Drawer,
-  capitalize,
   FormControl,
   InputLabel,
   Select,
@@ -29,26 +28,29 @@ import {
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
+// Utility function to capitalize strings
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 const Customers = () => {
-  // Data and loading
-  const [customers, setCustomers] = useState([]);
+  // --------------------- Main Table States ---------------------
+  const [customers, setCustomers] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // Pagination states
+  // Pagination states for main table
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
 
-  // "Skip to page" typed by the user; if empty, show actual page
+  // "Skip to page" input for main table
   const [skipPage, setSkipPage] = useState('');
 
-  // Optional client-side search
+  // Client-side search for main table
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredCustomers, setFilteredCustomers] = useState([]);
+  const [filteredCustomers, setFilteredCustomers] = useState<any[]>([]);
 
-  // Drawer
+  // --------------------- Drawer States ---------------------
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [customer, setSelectedCustomer] = useState<any>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
 
   // Editable fields in the drawer
   const [editMargin, setEditMargin] = useState('');
@@ -57,12 +59,12 @@ const Customers = () => {
   // Special margin products
   const [specialMarginProducts, setSpecialMarginProducts] = useState<any[]>([]);
 
-  // Add Special Margin Dialog
+  // --------------------- "Add Special Margin" Dialog States ---------------------
   const [addDialogOpen, setAddDialogOpen] = useState(false);
 
-  // -------------- States for the "Add Special Margin" Product List --------------
+  // States for the "Add Special Margin" Product List
   const [dialogLoading, setDialogLoading] = useState(true);
-  const [dialogProducts, setDialogProducts] = useState<any[]>([]); // current page
+  const [dialogProducts, setDialogProducts] = useState<any[]>([]); // Current page products
   const [dialogTotalCount, setDialogTotalCount] = useState(0);
   const [dialogPage, setDialogPage] = useState(0);
   const [dialogRowsPerPage, setDialogRowsPerPage] = useState(5);
@@ -79,7 +81,7 @@ const Customers = () => {
 
   const baseApiUrl = process.env.api_url;
 
-  // ------------------- Fetch All Customers (Main) -------------------
+  // --------------------- Fetch All Customers (Main Table) ---------------------
   const getData = async () => {
     setLoading(true);
     try {
@@ -98,33 +100,35 @@ const Customers = () => {
     }
   };
 
-  // On mount & whenever page or rowsPerPage changes, fetch again
+  // On mount & whenever page, rowsPerPage, or searchQuery changes, fetch again
   useEffect(() => {
     getData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, page, rowsPerPage]);
 
-  // Local filtering by name (client-side)
-  const handleSearch = (e: any) => {
+  // Handle client-side search for main table
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
     setPage(0);
   };
 
-  // MUI next/previous page (main table)
-  const handleChangePage = (event: any, newPage: number) => {
+  // Handle page change for main table
+  const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
     setSkipPage('');
   };
 
-  // MUI rows-per-page (main table)
-  const handleChangeRowsPerPage = (event: any) => {
+  // Handle rows per page change for main table
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
     setSkipPage('');
   };
 
-  // "Go to page" logic (main table)
+  // Handle "Go to page" for main table
   const handleSkipPage = () => {
     const requestedPage = parseInt(skipPage, 10);
     if (isNaN(requestedPage) || requestedPage < 1) {
@@ -135,11 +139,11 @@ const Customers = () => {
     setSkipPage('');
   };
 
-  // ------------------- Drawer (Customer Details) -------------------
-  const handleViewDetails = (selectedCust: any) => {
-    setSelectedCustomer(selectedCust);
-    setEditMargin(selectedCust.cf_margin || '40%');
-    setEditInEx(selectedCust.cf_in_ex || 'Exclusive');
+  // --------------------- Drawer (Customer Details) Functions ---------------------
+  const handleViewDetails = (cust: any) => {
+    setSelectedCustomer(cust);
+    setEditMargin(cust.cf_margin || '40%');
+    setEditInEx(cust.cf_in_ex || 'Exclusive');
     setDrawerOpen(true);
   };
 
@@ -147,9 +151,10 @@ const Customers = () => {
     setDrawerOpen(false);
     setSelectedCustomer(null);
     setSpecialMarginProducts([]); // Clear old data
+    setGlobalSelections({}); // Reset globalSelections
   };
 
-  // Toggle active/inactive
+  // Toggle active/inactive status for a customer
   const handleToggleActive = async (cust: any) => {
     try {
       const updatedFields = {
@@ -158,12 +163,13 @@ const Customers = () => {
 
       await axios.put(`${baseApiUrl}/customers/${cust._id}`, updatedFields);
 
-      setCustomers((prev: any) =>
+      // Update local customer list
+      setCustomers((prev: any[]) =>
         prev.map((p: any) =>
           p._id === cust._id ? { ...p, ...updatedFields } : p
         )
       );
-      setFilteredCustomers((prev: any) =>
+      setFilteredCustomers((prev: any[]) =>
         prev.map((p: any) =>
           p._id === cust._id ? { ...p, ...updatedFields } : p
         )
@@ -182,7 +188,7 @@ const Customers = () => {
 
   // Save changes to margin and inclusive/exclusive
   const handleSaveDrawer = async () => {
-    if (!customer) return;
+    if (!selectedCustomer) return;
 
     try {
       const updatedFields = {
@@ -190,17 +196,20 @@ const Customers = () => {
         cf_in_ex: editInEx,
       };
 
-      await axios.put(`${baseApiUrl}/customers/${customer._id}`, updatedFields);
+      await axios.put(
+        `${baseApiUrl}/customers/${selectedCustomer._id}`,
+        updatedFields
+      );
 
-      // Update local states so main table also reflects changes
-      setCustomers((prev: any) =>
+      // Update local customer list
+      setCustomers((prev: any[]) =>
         prev.map((c: any) =>
-          c._id === customer._id ? { ...c, ...updatedFields } : c
+          c._id === selectedCustomer._id ? { ...c, ...updatedFields } : c
         )
       );
-      setFilteredCustomers((prev: any) =>
+      setFilteredCustomers((prev: any[]) =>
         prev.map((c: any) =>
-          c._id === customer._id ? { ...c, ...updatedFields } : c
+          c._id === selectedCustomer._id ? { ...c, ...updatedFields } : c
         )
       );
 
@@ -212,25 +221,28 @@ const Customers = () => {
     }
   };
 
-  // ------------------- Fetch Special Margins (in Drawer) -------------------
+  // --------------------- Fetch Special Margins (in Drawer) ---------------------
   useEffect(() => {
-    if (drawerOpen && customer?._id) {
+    if (drawerOpen && selectedCustomer?._id) {
       (async () => {
         setLoading(true);
         try {
           const response = await axios.get(
-            `${baseApiUrl}/admin/customer/special_margins/${customer._id}`
+            `${baseApiUrl}/admin/customer/special_margins/${selectedCustomer._id}`
           );
           const { products = [] } = response.data;
           setSpecialMarginProducts(products);
-          const updatedSelections = { ...globalSelections };
-          for (const item of products) {
-            updatedSelections[item.product_id] = {
+
+          // Initialize globalSelections using product_id
+          const updatedSelections: Record<string, any> = {};
+          products.forEach((p: any) => {
+            updatedSelections[p.product_id] = {
+              // Changed from p._id to p.product_id
               selected: true,
-              name: item.name,
-              margin: item.margin,
+              name: p.name,
+              margin: p.margin,
             };
-          }
+          });
           setGlobalSelections(updatedSelections);
         } catch (err) {
           console.error(err);
@@ -240,26 +252,44 @@ const Customers = () => {
         }
       })();
     }
-  }, [drawerOpen, customer, baseApiUrl]);
+  }, [drawerOpen, selectedCustomer, baseApiUrl]);
 
-  // Delete a special margin product
+  // --------------------- Handle Deletion of Special Margin Product ---------------------
   const handleDeleteSpecialMargin = async (prod: any) => {
-    if (!customer?._id) return;
+    if (!selectedCustomer?._id) return;
     try {
       await axios.delete(
-        `${baseApiUrl}/admin/customer/special_margins/${customer._id}/${prod._id}`
+        `${baseApiUrl}/admin/customer/special_margins/${selectedCustomer._id}/${prod._id}`
       );
       setSpecialMarginProducts((prev) =>
         prev.filter((p) => p._id !== prod._id)
       );
       toast.success('Special margin deleted successfully');
+
+      // **Remove the product from globalSelections using product_id**
+      setGlobalSelections((prev) => {
+        const updatedSelections = { ...prev };
+        delete updatedSelections[prod.product_id]; // Changed from p._id to p.product_id
+        return updatedSelections;
+      });
+
+      // **If the dialog is open, update dialogProducts to uncheck the deleted product**
+      if (addDialogOpen) {
+        setDialogProducts((prev) =>
+          prev.map((p) =>
+            p._id === prod.product_id // Changed comparison from p._id === prod._id
+              ? { ...p, selected: false, customMargin: '' }
+              : p
+          )
+        );
+      }
     } catch (error) {
       console.error(error);
       toast.error('Failed to delete special margin product');
     }
   };
 
-  // -------------- "Add Special Margin" Dialog Logic --------------
+  // --------------------- "Add Special Margin" Dialog Functions ---------------------
   const handleOpenAddDialog = () => {
     setAddDialogOpen(true);
     setDialogPage(0);
@@ -274,11 +304,11 @@ const Customers = () => {
     setDialogLoading(true);
   };
 
-  // -------------- Fetch Products for Dialog (Paginated) --------------
+  // --------------------- Fetch Products for Dialog (Paginated) ---------------------
   const fetchDialogProducts = async () => {
     setDialogLoading(true);
     try {
-      // server does actual searching & paging
+      // Fetch paginated products based on search and pagination
       const response = await axios.get(
         `${baseApiUrl}/admin/products?search=${dialogSearchQuery}&page=${dialogPage}&limit=${dialogRowsPerPage}`
       );
@@ -286,8 +316,30 @@ const Customers = () => {
       const { products: prodList, total_count } = response.data;
       setDialogTotalCount(total_count);
 
-      const mapped = prodList.map((p: any) => {
+      // Get selected product_ids from globalSelections
+      const selectedProductIds = Object.keys(globalSelections).filter(
+        (id) => globalSelections[id].selected
+      );
+
+      // **Remove the addition of selectedProductsNotInList to prevent duplicates**
+      /*
+      const selectedProductsNotInList = specialMarginProducts
+        .filter(
+          (p) =>
+            selectedProductIds.includes(p.product_id) && // Use product_id
+            !prodList.some((fp: any) => fp._id === p.product_id) // Compare with prodList's _id
+        )
+        .map((p: any) => ({
+          ...p,
+          selected: true,
+          customMargin: p.margin,
+        }));
+      */
+
+      // Map fetched products with their selection status
+      const mappedFetched = prodList.map((p: any) => {
         const selectionInfo = globalSelections[p._id] || {
+          // Use p._id to match prodList
           selected: false,
           margin: '',
           name: p.name,
@@ -299,7 +351,32 @@ const Customers = () => {
         };
       });
 
-      setDialogProducts(mapped);
+      console.log(
+        selectedProductIds,
+        /*selectedProductsNotInList,*/ mappedFetched
+      );
+
+      // **Remove the merging of selectedProductsNotInList to prevent duplicates**
+      /*
+      const productMap = new Map<string, any>();
+
+      mappedFetched.forEach((p) => {
+        productMap.set(p._id, p); // Use p._id as key
+      });
+
+      selectedProductsNotInList.forEach((p) => {
+        if (!productMap.has(p.product_id)) { // Check using product_id
+          productMap.set(p.product_id, p); // Add using product_id as key
+        }
+      });
+
+      const mergedProducts = Array.from(productMap.values());
+
+      setDialogProducts(mergedProducts);
+      */
+
+      // **Set dialogProducts to mappedFetched only**
+      setDialogProducts(mappedFetched);
     } catch (error) {
       console.error(error);
       toast.error('Error Fetching Products');
@@ -308,18 +385,91 @@ const Customers = () => {
     }
   };
 
-  // On page/rowsPerPage change in the dialog, re-fetch
+  // Re-fetch dialog products when dependencies change
   useEffect(() => {
     if (addDialogOpen) {
       fetchDialogProducts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addDialogOpen, dialogPage, dialogRowsPerPage]);
+  }, [
+    addDialogOpen,
+    dialogPage,
+    dialogRowsPerPage,
+    dialogSearchQuery,
+    // specialMarginProducts, // Removed to prevent re-fetching unnecessarily
+  ]);
 
-  // Dialog search logic (client-side)
-  const handleDialogSearch = (e: any) => {
+  // Handle search in dialog
+  const handleDialogSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDialogSearchQuery(e.target.value.toLowerCase());
     setDialogPage(0);
+  };
+
+  // Handle "Clear Margin" in dialog with deletion if exists
+  const handleClearMarginInDialog = async (prodId: string) => {
+    try {
+      // Find if the product has a special margin
+      const specialMarginEntry = specialMarginProducts.find(
+        (p) => p.product_id === prodId
+      );
+
+      if (specialMarginEntry) {
+        // Delete the special margin entry
+        await axios.delete(
+          `${baseApiUrl}/admin/customer/special_margins/${selectedCustomer._id}/${specialMarginEntry._id}`
+        );
+
+        // Remove from specialMarginProducts
+        setSpecialMarginProducts((prev) =>
+          prev.filter((p) => p._id !== specialMarginEntry._id)
+        );
+
+        // Remove from globalSelections
+        setGlobalSelections((prev) => {
+          const updatedSelections = { ...prev };
+          delete updatedSelections[prodId];
+          return updatedSelections;
+        });
+
+        // If dialog is open, uncheck the product in dialogProducts
+        if (addDialogOpen) {
+          setDialogProducts((prev) =>
+            prev.map((p) =>
+              p._id === prodId ? { ...p, selected: false, customMargin: '' } : p
+            )
+          );
+        }
+
+        toast.success(`Special margin for product has been deleted`);
+      } else {
+        // If no special margin exists, just clear the margin in the state
+        const clearedMargin = ''; // Clear the margin
+
+        // Update globalSelections: unselect the product and clear the margin
+        setGlobalSelections((prev) => ({
+          ...prev,
+          [prodId]: {
+            ...prev[prodId],
+            margin: clearedMargin,
+            selected: false, // Unselect the product
+          },
+        }));
+
+        // Update dialogProducts to reflect the cleared margin and unselected state
+        setDialogProducts((prev) =>
+          prev.map((p) =>
+            p._id === prodId
+              ? { ...p, customMargin: clearedMargin, selected: false }
+              : p
+          )
+        );
+
+        toast.info(`Margin for product has been cleared`);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to clear margin for the product');
+    }
   };
 
   // Filter the displayed products by search (only on the current page’s products)
@@ -332,13 +482,15 @@ const Customers = () => {
     );
   };
 
-  // Pagination (dialog) handlers
-  const handleDialogChangePage = (event: any, newPage: number) => {
+  // Pagination handlers for dialog
+  const handleDialogChangePage = (event: unknown, newPage: number) => {
     setDialogPage(newPage);
     setDialogSkipPage('');
   };
 
-  const handleDialogChangeRowsPerPage = (event: any) => {
+  const handleDialogChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     setDialogRowsPerPage(parseInt(event.target.value, 10));
     setDialogPage(0);
     setDialogSkipPage('');
@@ -354,31 +506,41 @@ const Customers = () => {
     setDialogSkipPage('');
   };
 
-  // -------------- Selection & Margin Handlers (Dialog) --------------
+  // --------------------- Selection & Margin Handlers (Dialog) ---------------------
   const handleSelectProduct = (prodId: string, newSelected: boolean) => {
-    // Find the product in our current page's dialogProducts
+    // Find the product in the current page's dialogProducts
     const product = dialogProducts.find((p) => p._id === prodId);
 
     setGlobalSelections((prev) => ({
       ...prev,
       [prodId]: {
-        // Use any existing data, or default to empty object
+        // Preserve existing data or initialize
         ...(prev[prodId] || {}),
         // Always store the product name
         name: product ? product.name : '',
         // Update selection
         selected: newSelected,
+        // If unselected, remove the margin
+        margin: newSelected ? prev[prodId]?.margin || '' : '',
       },
     }));
 
-    // Also update local dialogProducts array to reflect selection state
+    // Update local dialogProducts to reflect selection state
     setDialogProducts((prev) =>
-      prev.map((p) => (p._id === prodId ? { ...p, selected: newSelected } : p))
+      prev.map((p) =>
+        p._id === prodId
+          ? {
+              ...p,
+              selected: newSelected,
+              customMargin: newSelected ? p.customMargin : '',
+            }
+          : p
+      )
     );
   };
 
   const handleMarginChange = (prodId: string, rawValue: string) => {
-    // Ensure the product is found so we can store the name
+    // Find the product in the current page's dialogProducts
     const product = dialogProducts.find((p) => p._id === prodId);
 
     // Strip out an existing '%' and append it back
@@ -390,7 +552,7 @@ const Customers = () => {
       [prodId]: {
         // Preserve existing fields
         ...(prev[prodId] || {}),
-        // Always store the name
+        // Always store the product name
         name: product ? product.name : '',
         // Whenever margin changes, auto-select the product
         selected: true,
@@ -398,7 +560,7 @@ const Customers = () => {
       },
     }));
 
-    // Update local state so user sees the changes in the UI
+    // Update local dialogProducts array to reflect the margin change
     setDialogProducts((prev) =>
       prev.map((p) =>
         p._id === prodId
@@ -408,11 +570,11 @@ const Customers = () => {
     );
   };
 
-  // -------------- Bulk Save --------------
+  // --------------------- Bulk Save Margins Function ---------------------
   const handleBulkSaveMargins = async () => {
-    if (!customer?._id) return;
+    if (!selectedCustomer?._id) return;
 
-    // Gather from globalSelections any item that is .selected === true
+    // Gather from globalSelections any item that is selected
     const selectedItems = Object.entries(globalSelections).filter(
       ([, val]) => val.selected
     );
@@ -432,7 +594,7 @@ const Customers = () => {
     }
 
     let successCount = 0;
-    // One request per product or use your /bulk endpoint
+    // One request per product; consider using a bulk endpoint if available
     for (const [prodId, info] of selectedItems) {
       try {
         const payload = {
@@ -441,10 +603,18 @@ const Customers = () => {
           margin: info.margin,
         };
         await axios.post(
-          `${baseApiUrl}/admin/customer/special_margins/${customer._id}`,
+          `${baseApiUrl}/admin/customer/special_margins/${selectedCustomer._id}`,
           payload
         );
         successCount++;
+        setGlobalSelections((prev) => ({
+          ...prev,
+          [prodId]: {
+            ...prev[prodId],
+            selected: true,
+            margin: info.margin,
+          },
+        }));
       } catch (err) {
         console.error(err);
         toast.error(`Failed to add margin for product: ${info.name}`);
@@ -458,10 +628,20 @@ const Customers = () => {
       // Refresh the special margins in the drawer
       try {
         const response = await axios.get(
-          `${baseApiUrl}/admin/customer/special_margins/${customer._id}`
+          `${baseApiUrl}/admin/customer/special_margins/${selectedCustomer._id}`
         );
         const { products = [] } = response.data;
         setSpecialMarginProducts(products);
+        const updatedSelections: Record<string, any> = {};
+        products.forEach((p: any) => {
+          updatedSelections[p.product_id] = {
+            // Changed from p._id to p.product_id
+            selected: true,
+            name: p.name,
+            margin: p.margin,
+          };
+        });
+        setGlobalSelections(updatedSelections);
       } catch (error) {
         console.error(error);
       }
@@ -574,7 +754,7 @@ const Customers = () => {
               <TablePagination
                 rowsPerPageOptions={[5, 10, 25]}
                 component='div'
-                count={searchQuery ? filteredCustomers.length : totalCount}
+                count={totalCount}
                 rowsPerPage={rowsPerPage}
                 page={page}
                 onPageChange={handleChangePage}
@@ -626,22 +806,25 @@ const Customers = () => {
               Customer Details
             </Typography>
 
-            {customer && (
+            {selectedCustomer && (
               <>
                 <Box sx={{ marginBottom: 3 }}>
                   <Typography>
-                    <strong>Customer Name:</strong> {customer.contact_name}
+                    <strong>Customer Name:</strong>{' '}
+                    {selectedCustomer.contact_name}
                   </Typography>
                   <Typography>
-                    <strong>Status:</strong> {capitalize(customer.status)}
+                    <strong>Status:</strong>{' '}
+                    {capitalize(selectedCustomer.status)}
                   </Typography>
                   <Typography>
-                    <strong>GST Number:</strong> {customer.gst_no || 'Unknown'}
+                    <strong>GST Number:</strong>{' '}
+                    {selectedCustomer.gst_no || 'Unknown'}
                   </Typography>
                   <Typography>
                     <strong>Type:</strong>{' '}
-                    {customer.customer_sub_type
-                      ? capitalize(customer.customer_sub_type)
+                    {selectedCustomer.customer_sub_type
+                      ? capitalize(selectedCustomer.customer_sub_type)
                       : 'N/A'}
                   </Typography>
 
@@ -674,13 +857,15 @@ const Customers = () => {
 
                   <Typography sx={{ mt: 2 }}>
                     <strong>Sales Person:</strong>{' '}
-                    {customer.cf_sales_person || 'N/A'}
+                    {selectedCustomer.cf_sales_person || 'N/A'}
                   </Typography>
                   <Typography>
                     <strong>Created At:</strong>{' '}
-                    {customer.created_at
-                      ? new Date(customer.created_at).toLocaleString()
-                      : new Date(customer.created_time).toLocaleString()}
+                    {selectedCustomer.created_at
+                      ? new Date(selectedCustomer.created_at).toLocaleString()
+                      : new Date(
+                          selectedCustomer.created_time
+                        ).toLocaleString()}
                   </Typography>
                 </Box>
 
@@ -720,13 +905,17 @@ const Customers = () => {
                             <TableCell>{prod.name}</TableCell>
                             <TableCell>{prod.margin}</TableCell>
                             <TableCell>
-                              <Button
-                                variant='outlined'
-                                color='error'
-                                onClick={() => handleDeleteSpecialMargin(prod)}
-                              >
-                                Delete
-                              </Button>
+                              <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Button
+                                  variant='outlined'
+                                  color='error'
+                                  onClick={() =>
+                                    handleDeleteSpecialMargin(prod)
+                                  }
+                                >
+                                  Delete
+                                </Button>
+                              </Box>
                             </TableCell>
                           </TableRow>
                         ))
@@ -750,7 +939,7 @@ const Customers = () => {
         </Drawer>
       </Paper>
 
-      {/* Dialog: Add Special Margin (shows list of all products w/pagination) */}
+      {/* Dialog: Add Special Margin (shows list of all products with pagination) */}
       <Dialog
         open={addDialogOpen}
         onClose={handleCloseAddDialog}
@@ -800,6 +989,7 @@ const Customers = () => {
                       <TableCell>SKU</TableCell>
                       <TableCell>Price</TableCell>
                       <TableCell>Custom Margin</TableCell>
+                      <TableCell>Action</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -830,12 +1020,21 @@ const Customers = () => {
                         <TableCell>₹{prod.rate}</TableCell>
                         <TableCell>
                           <TextField
-                            placeholder='e.g. 45%'
+                            placeholder={selectedCustomer?.cf_margin || '40%'}
                             value={prod.customMargin}
                             onChange={(e) =>
                               handleMarginChange(prod._id, e.target.value)
                             }
                           />
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant='outlined'
+                            size='small'
+                            onClick={() => handleClearMarginInDialog(prod._id)}
+                          >
+                            Clear
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -848,12 +1047,7 @@ const Customers = () => {
                 <TablePagination
                   rowsPerPageOptions={[5, 10, 25]}
                   component='div'
-                  // We only know total_count for the entire dataset, so if the user is searching,
-                  // we can do client-side filtering of this page's results. For a large dataset,
-                  // you might do server-side searching instead.
-                  count={
-                    dialogSearchQuery ? filteredDialog.length : dialogTotalCount
-                  }
+                  count={dialogTotalCount}
                   rowsPerPage={dialogRowsPerPage}
                   page={dialogPage}
                   onPageChange={handleDialogChangePage}

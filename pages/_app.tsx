@@ -5,9 +5,9 @@ import { AppCacheProvider } from '@mui/material-nextjs/v15-pagesRouter';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from '../src/theme';
-import { AuthProvider } from '../src/Auth';
-import Layout from '../src/Layout';
-import AdminLayout from '../src/AdminLayout'; // Import AdminLayout
+import { AuthProvider } from '../src/components/Auth';
+import Layout from '../src/components/Layout';
+import AdminLayout from '../src/components/AdminLayout'; // Import AdminLayout
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css'; // Import react-toastify styles
 

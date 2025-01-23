@@ -8,7 +8,7 @@ import {
   useMediaQuery,
   Paper,
 } from '@mui/material';
-import AuthContext from '../src/Auth';
+import AuthContext from '../src/components/Auth';
 
 const LoginPage = () => {
   const { login }: any = useContext(AuthContext);
@@ -31,7 +31,7 @@ const LoginPage = () => {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        minHeight: isMobile ? '85vh' : null,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

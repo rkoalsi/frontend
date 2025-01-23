@@ -8,7 +8,7 @@ import {
   Grid,
   Divider,
 } from '@mui/material';
-import AuthContext from '../../src/Auth';
+import AuthContext from '../../src/components/Auth';
 import axios from 'axios';
 import { useRouter } from 'next/router';
 
