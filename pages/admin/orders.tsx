@@ -149,6 +149,7 @@ const Orders = () => {
                       <TableRow>
                         <TableCell>Created At</TableCell>
                         <TableCell>Order ID</TableCell>
+                        <TableCell>Customer Name</TableCell>
                         <TableCell>Status</TableCell>
                         <TableCell>Created By</TableCell>
                         <TableCell>Total Amount</TableCell>
@@ -162,6 +163,7 @@ const Orders = () => {
                             {new Date(order.created_at).toLocaleString()}
                           </TableCell>
                           <TableCell>{order._id}</TableCell>
+                          <TableCell>{order.customer_name}</TableCell>
                           <TableCell>{capitalize(order.status)}</TableCell>
                           <TableCell>
                             {order.created_by_info?.name || 'Unknown'}
