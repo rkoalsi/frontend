@@ -25,9 +25,16 @@ import {
   MenuItem,
   Select,
   Chip,
+  FormControl,
+  InputLabel,
+  FormHelperText,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { green, red } from '@mui/material/colors';
 
 const SalesPeople = () => {
   const [salesPeople, setSalesPeople] = useState([]);
@@ -45,6 +52,43 @@ const SalesPeople = () => {
   const [addCustomerDialogOpen, setAddCustomerDialogOpen] = useState(false);
   const [availableCustomers, setAvailableCustomers] = useState([]);
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
+  const [rowErrors, setRowErrors] = useState<{ [customerId: string]: string }>(
+    {}
+  );
+
+  const handleChange = (
+    event: React.ChangeEvent<{ value: unknown }>,
+    customer: any
+  ) => {
+    const newValues = event.target.value as string[];
+
+    // Validate that there is at least one non-empty code
+    const hasAtLeastOneNonEmpty = newValues.some(
+      (code) => code.trim().length > 0
+    );
+
+    setRowErrors((prev) => {
+      // Make a copy of the current error object
+      const updatedErrors = { ...prev };
+
+      if (!hasAtLeastOneNonEmpty) {
+        updatedErrors[customer._id] =
+          'Please select at least one non-empty code.';
+      } else {
+        // Clear the error for this row if it exists
+        delete updatedErrors[customer._id];
+        // Then actually do your update logic
+        handleCustomerFieldChange(
+          customer._id,
+          'cf_sales_person',
+          newValues.join(', ')
+        );
+      }
+
+      return updatedErrors;
+    });
+  };
+
   const baseApiUrl = process.env.api_url;
 
   // ------------------------------------------------------------------
@@ -191,32 +235,72 @@ const SalesPeople = () => {
     }));
   };
 
-  // Actually saving the updated "cf_sales_person" to backend
-  const handleUpdateCustomer = async (
-    customerId: string,
-    cfSalesPerson: string
-  ) => {
+  const handleRemoveCustomer = async (customer: any) => {
+    if (!selectedPerson) return;
+
     try {
-      // Convert to array and remove empty spaces
-      const sanitizedSalesPeople = cfSalesPerson
-        .split(',')
-        .map((s: string) => s.trim())
-        .filter(Boolean);
+      let updatedSalesPersons: string[] = [];
 
-      // Put to server
-      await axios.put(`${baseApiUrl}/customers/${customerId}`, {
-        cf_sales_person: sanitizedSalesPeople.join(', '),
-      });
-
-      toast.success('Customer updated successfully');
-
-      // Immediately refetch so changes appear without refresh
-      if (selectedPerson) {
-        await refetchSelectedPerson(selectedPerson._id);
+      // Determine the current format of cf_sales_person and normalize it to an array
+      if (typeof customer.cf_sales_person === 'string') {
+        // Split the string by comma and trim whitespace
+        updatedSalesPersons = customer.cf_sales_person
+          .split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean); // Remove any empty strings
+      } else if (Array.isArray(customer.cf_sales_person)) {
+        // If it's already an array, use it directly
+        updatedSalesPersons = customer.cf_sales_person;
+      } else {
+        // Handle unexpected formats gracefully
+        console.warn(
+          `Unexpected cf_sales_person format for customer ID ${customer._id}:`,
+          customer.cf_sales_person
+        );
       }
+
+      // Remove the selected salesperson's code
+      updatedSalesPersons = updatedSalesPersons.filter(
+        (code) => code !== selectedPerson.code
+      );
+
+      // Determine the new value for cf_sales_person
+      const newCfSalesPerson =
+        updatedSalesPersons.length > 0 ? updatedSalesPersons.join(', ') : '';
+
+      // If no change is needed, exit early
+      if (
+        (typeof customer.cf_sales_person === 'string' &&
+          customer.cf_sales_person.trim() === newCfSalesPerson.trim()) ||
+        (Array.isArray(customer.cf_sales_person) &&
+          customer.cf_sales_person.length === updatedSalesPersons.length &&
+          customer.cf_sales_person.every((code: string) =>
+            updatedSalesPersons.includes(code)
+          ))
+      ) {
+        toast.info('No changes detected.');
+        return;
+      }
+
+      // Construct the "updates" payload
+      const updates = [
+        {
+          _id: customer._id,
+          cf_sales_person: newCfSalesPerson, // Updated value
+        },
+      ];
+
+      // Send the bulk-update request to the backend
+      await axios.put(`${baseApiUrl}/admin/customers/bulk-update`, { updates });
+
+      // Provide user feedback
+      toast.success('Customer unassigned successfully.');
+
+      // Re-fetch the selected person's data to update the UI
+      await refetchSelectedPerson(selectedPerson._id);
     } catch (error) {
       console.error(error);
-      toast.error('Failed to update customer');
+      toast.error('Failed to remove customer.');
     }
   };
 
@@ -294,7 +378,6 @@ const SalesPeople = () => {
         _id: c._id,
         cf_sales_person: c.cf_sales_person,
       }));
-
       const { data } = await axios.put(
         `${baseApiUrl}/admin/customers/bulk-update`,
         {
@@ -512,6 +595,7 @@ const SalesPeople = () => {
                     variant='contained'
                     color='primary'
                     onClick={() => {
+                      setSelectedCustomers([]);
                       fetchAvailableCustomers();
                       setAddCustomerDialogOpen(true);
                     }}
@@ -531,6 +615,7 @@ const SalesPeople = () => {
                           <TableCell>No.</TableCell>
                           <TableCell>Customer Name</TableCell>
                           <TableCell>Sales People Assigned</TableCell>
+                          <TableCell>Remove</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -550,42 +635,56 @@ const SalesPeople = () => {
                                 <TableCell>{idx + 1}</TableCell>
                                 <TableCell>{customer.contact_name}</TableCell>
                                 <TableCell>
-                                  <Select
+                                  <FormControl
                                     variant='outlined'
                                     size='small'
-                                    multiple
-                                    value={arrayOfCodes}
-                                    onChange={(e) => {
-                                      const newVal = e.target.value as string[];
-                                      // Convert array -> comma separated
-                                      handleCustomerFieldChange(
-                                        customer._id,
-                                        'cf_sales_person',
-                                        newVal.join(', ')
-                                      );
-                                    }}
                                     fullWidth
-                                    // RENDER TAG-LIKE CHIPS:
-                                    renderValue={(selected: string[]) => (
-                                      <Box
-                                        sx={{
-                                          display: 'flex',
-                                          flexWrap: 'wrap',
-                                          gap: 0.5,
-                                        }}
-                                      >
-                                        {selected.map((value) => (
-                                          <Chip key={value} label={value} />
-                                        ))}
-                                      </Box>
-                                    )}
+                                    error={Boolean(rowErrors[customer._id])}
                                   >
-                                    {salesPeople.map((sp: any) => (
-                                      <MenuItem key={sp.code} value={sp.code}>
-                                        {sp.code}
-                                      </MenuItem>
-                                    ))}
-                                  </Select>
+                                    <InputLabel>Sales Person</InputLabel>
+                                    <Select
+                                      label='Sales Person'
+                                      multiple
+                                      value={arrayOfCodes}
+                                      onChange={(e: any) =>
+                                        handleChange(e, customer)
+                                      }
+                                      renderValue={(selected: string[]) => (
+                                        <Box
+                                          sx={{
+                                            display: 'flex',
+                                            flexWrap: 'wrap',
+                                            gap: 0.5,
+                                          }}
+                                        >
+                                          {selected.map((value) => (
+                                            <Chip key={value} label={value} />
+                                          ))}
+                                        </Box>
+                                      )}
+                                    >
+                                      {salesPeople.map((sp: any) => (
+                                        <MenuItem key={sp.code} value={sp.code}>
+                                          {sp.code}
+                                        </MenuItem>
+                                      ))}
+                                    </Select>
+                                    {rowErrors[customer._id] && (
+                                      <FormHelperText>
+                                        {rowErrors[customer._id]}
+                                      </FormHelperText>
+                                    )}
+                                  </FormControl>
+                                </TableCell>
+                                <TableCell>
+                                  <IconButton
+                                    color='error'
+                                    onClick={() =>
+                                      handleRemoveCustomer(customer)
+                                    }
+                                  >
+                                    <DeleteIcon />
+                                  </IconButton>
                                 </TableCell>
                               </TableRow>
                             );
@@ -657,16 +756,41 @@ const SalesPeople = () => {
                           cursor: 'pointer',
                         }}
                       >
-                        <ListItemText
-                          primary={customer.contact_name}
-                          secondary={
-                            customer.cf_sales_person
-                              ? `Currently assigned: ${customer.cf_sales_person}`
-                              : 'Currently unassigned'
-                          }
-                        />
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          {/* Status Indicator */}
+                          <Tooltip
+                            title={
+                              customer.status === 'active'
+                                ? 'Active'
+                                : 'Inactive'
+                            }
+                          >
+                            <Box
+                              sx={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: '50%',
+                                backgroundColor:
+                                  customer.status === 'active'
+                                    ? green[500]
+                                    : red[500],
+                                marginRight: 2,
+                              }}
+                            />
+                          </Tooltip>
+                          <ListItemText
+                            primary={customer.contact_name}
+                            secondary={
+                              customer.cf_sales_person
+                                ? `Currently assigned: ${customer.cf_sales_person}`
+                                : 'Currently unassigned'
+                            }
+                          />
+                        </Box>
                         <Checkbox
                           checked={selectedCustomers.includes(customer._id)}
+                          onChange={() => toggleCustomerSelection(customer._id)}
+                          onClick={(e) => e.stopPropagation()} // Prevents triggering the ListItem onClick
                         />
                       </ListItem>
                     ))}

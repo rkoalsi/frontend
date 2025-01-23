@@ -14,7 +14,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import AuthContext from '../../../src/Auth';
+import AuthContext from '../../../src/components/Auth';
 
 const PastOrders = () => {
   const [loading, setLoading] = useState(false);

@@ -14,11 +14,11 @@ import {
   Alert,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import CustomerSearchBar from '../../../src/CustomerSearchBar';
-import Address from '../../../src/OrderForm/SelectAddress';
-import CompanyForm from '../../../src/OrderForm/CustomerForm';
-import Products from '../../../src/OrderForm/Products';
-import Review from '../../../src/OrderForm/Review';
+import CustomerSearchBar from '../../../src/components/CustomerSearchBar';
+import Address from '../../../src/components/OrderForm/SelectAddress';
+import CompanyForm from '../../../src/components/OrderForm/CustomerForm';
+import Products from '../../../src/components/OrderForm/Products';
+import Review from '../../../src/components/OrderForm/Review';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 
