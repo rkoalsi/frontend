@@ -39,7 +39,7 @@ const Customers = () => {
 
   // Pagination states for main table
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
 
   // "Skip to page" input for main table
   const [skipPage, setSkipPage] = useState('');
@@ -70,7 +70,114 @@ const Customers = () => {
   const [dialogRowsPerPage, setDialogRowsPerPage] = useState(5);
   const [dialogSkipPage, setDialogSkipPage] = useState('');
   const [dialogSearchQuery, setDialogSearchQuery] = useState('');
+  const [brands, setBrands] = useState<string[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<string>('');
+  // Add new state for the "Select All" functionality
+  const [allSelected, setAllSelected] = useState(false);
 
+  // Handle "Select All" toggle
+  const handleSelectAll = async (isChecked: boolean) => {
+    setAllSelected(isChecked);
+
+    if (isChecked) {
+      try {
+        // Fetch all products for the selected brand
+        const response = await axios.get(
+          `${baseApiUrl}/admin/products?brand=${
+            selectedBrand || ''
+          }&limit=10000` // Use a large limit to fetch all products
+        );
+        const allProducts = response.data.products;
+
+        // Update `globalSelections` with all products of the brand
+        const updatedSelections = allProducts.reduce(
+          (acc: any, product: any) => {
+            acc[product._id] = {
+              selected: true,
+              name: product.name,
+              margin: globalSelections[product._id]?.margin || '',
+            };
+            return acc;
+          },
+          {}
+        );
+
+        setGlobalSelections((prev) => ({ ...prev, ...updatedSelections }));
+
+        // Update the current page's `dialogProducts` state to reflect selection
+        setDialogProducts((prev) =>
+          prev.map((product) => ({
+            ...product,
+            selected: true,
+          }))
+        );
+      } catch (error) {
+        console.error(error);
+        toast.error('Failed to fetch all products for selection.');
+      }
+    } else {
+      // Deselect all products globally
+      const updatedSelections = { ...globalSelections };
+      Object.keys(updatedSelections).forEach((key) => {
+        updatedSelections[key].selected = false;
+      });
+
+      setGlobalSelections(updatedSelections);
+
+      // Deselect products on the current page
+      setDialogProducts((prev) =>
+        prev.map((product) => ({
+          ...product,
+          selected: false,
+        }))
+      );
+    }
+  };
+
+  const handleGlobalMarginChange = async (margin: string) => {
+    const formattedMargin = margin.replace('%', '').trim() + '%';
+
+    // Validate margin
+    if (parseInt(formattedMargin) > 100) {
+      toast.warning('Margin cannot be greater than 100');
+      return;
+    }
+
+    // Update all selected products globally
+    const updatedSelections = { ...globalSelections };
+    Object.keys(updatedSelections).forEach((key) => {
+      if (updatedSelections[key].selected) {
+        updatedSelections[key].margin = formattedMargin;
+      }
+    });
+
+    setGlobalSelections(updatedSelections);
+
+    // Update the current page's products to reflect the margin
+    setDialogProducts((prev) =>
+      prev.map((product) => ({
+        ...product,
+        customMargin: globalSelections[product._id]?.selected
+          ? formattedMargin
+          : product.customMargin,
+      }))
+    );
+  };
+
+  // Fetch brands when the dialog opens
+  useEffect(() => {
+    if (addDialogOpen) {
+      (async () => {
+        try {
+          const response = await axios.get(`${baseApiUrl}/admin/brands`);
+          setBrands(response.data.brands || []);
+        } catch (error) {
+          console.error(error);
+          toast.error('Error Fetching Brands');
+        }
+      })();
+    }
+  }, [addDialogOpen]);
   /**
    * A global dictionary to store product selections across pages:
    *   { [productId]: { selected: boolean, margin: string, name: string } }
@@ -106,11 +213,16 @@ const Customers = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, page, rowsPerPage]);
 
+  const handleBrandChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+    setSelectedBrand(event.target.value as string);
+    setDialogPage(0); // Reset to first page when changing the brand
+    fetchDialogProducts();
+  };
   // Handle client-side search for main table
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
-    setPage(0);
+    setPage(1);
   };
 
   // Handle page change for main table
@@ -124,7 +236,7 @@ const Customers = () => {
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
+    setPage(1);
     setSkipPage('');
   };
 
@@ -310,7 +422,9 @@ const Customers = () => {
     try {
       // Fetch paginated products based on search and pagination
       const response = await axios.get(
-        `${baseApiUrl}/admin/products?search=${dialogSearchQuery}&page=${dialogPage}&limit=${dialogRowsPerPage}`
+        `${baseApiUrl}/admin/products?search=${dialogSearchQuery}&page=${dialogPage}&limit=${dialogRowsPerPage}&brand=${
+          selectedBrand || ''
+        }`
       );
 
       const { products: prodList, total_count } = response.data;
@@ -337,19 +451,11 @@ const Customers = () => {
       */
 
       // Map fetched products with their selection status
-      const mappedFetched = prodList.map((p: any) => {
-        const selectionInfo = globalSelections[p._id] || {
-          // Use p._id to match prodList
-          selected: false,
-          margin: '',
-          name: p.name,
-        };
-        return {
-          ...p,
-          selected: selectionInfo.selected,
-          customMargin: selectionInfo.margin,
-        };
-      });
+      const mappedFetched = prodList.map((p: any) => ({
+        ...p,
+        selected: globalSelections[p._id]?.selected || false,
+        customMargin: globalSelections[p._id]?.margin || '',
+      }));
 
       console.log(
         selectedProductIds,
@@ -396,7 +502,7 @@ const Customers = () => {
     dialogPage,
     dialogRowsPerPage,
     dialogSearchQuery,
-    // specialMarginProducts, // Removed to prevent re-fetching unnecessarily
+    selectedBrand,
   ]);
 
   // Handle search in dialog
@@ -546,7 +652,8 @@ const Customers = () => {
     // Strip out an existing '%' and append it back
     const stripped = rawValue.replace('%', '').trim();
     const withPercent = stripped ? stripped + '%' : '';
-
+    if (parseInt(stripped) > 100)
+      return toast.warning(`Margin cannot be greater than 100`);
     setGlobalSelections((prev) => ({
       ...prev,
       [prodId]: {
@@ -573,88 +680,79 @@ const Customers = () => {
   // --------------------- Bulk Save Margins Function ---------------------
   const handleBulkSaveMargins = async () => {
     if (!selectedCustomer?._id) return;
-
-    // Gather from globalSelections any item that is selected
-    const selectedItems = Object.entries(globalSelections).filter(
-      ([, val]) => val.selected
+    const globalMargin = Object.values(globalSelections).find(
+      (item) => item.selected && (!item.margin || item.margin.trim() === '')
     );
-    console.log(selectedItems);
 
-    if (!selectedItems.length) {
-      toast.error('No products selected');
+    if (globalMargin) {
+      toast.error('Please define a margin for all selected products.');
+      return;
+    }
+    // Gather selected items from globalSelections
+    const selectedItems = Object.entries(globalSelections)
+      .filter(([, value]) => value.selected)
+      .map(([key, value]) => ({
+        product_id: key, // Send product_id as a string
+        name: value.name,
+        margin: value.margin,
+      }));
+
+    if (selectedItems.length === 0) {
+      toast.error('No products selected.');
       return;
     }
 
-    // Validate margins
-    for (const [prodId, info] of selectedItems) {
-      if (!info.margin || !info.margin.replace('%', '').trim()) {
-        toast.error(`Please enter margin for product: ${info.name}`);
-        return;
-      }
+    // Divide data into manageable chunks
+    const chunkSize = 100;
+    const chunks = [];
+    for (let i = 0; i < selectedItems.length; i += chunkSize) {
+      chunks.push(selectedItems.slice(i, i + chunkSize));
     }
 
-    let successCount = 0;
-    // One request per product; consider using a bulk endpoint if available
-    for (const [prodId, info] of selectedItems) {
-      try {
-        const payload = {
-          product_id: prodId,
-          name: info.name,
-          margin: info.margin,
-        };
+    // Send each chunk to the backend
+    try {
+      for (const chunk of chunks) {
         await axios.post(
-          `${baseApiUrl}/admin/customer/special_margins/${selectedCustomer._id}`,
-          payload
+          `${baseApiUrl}/admin/customer/special_margins/bulk/${selectedCustomer._id}`,
+          chunk
         );
-        successCount++;
-        setGlobalSelections((prev) => ({
-          ...prev,
-          [prodId]: {
-            ...prev[prodId],
-            selected: true,
-            margin: info.margin,
-          },
-        }));
-      } catch (err) {
-        console.error(err);
-        toast.error(`Failed to add margin for product: ${info.name}`);
       }
+      toast.success('Special margins updated successfully.');
+      handleCloseAddDialog();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update special margins.');
     }
-
-    if (successCount > 0) {
-      toast.success(
-        `Successfully added special margin for ${successCount} product(s)`
-      );
-      // Refresh the special margins in the drawer
-      try {
-        const response = await axios.get(
-          `${baseApiUrl}/admin/customer/special_margins/${selectedCustomer._id}`
-        );
-        const { products = [] } = response.data;
-        setSpecialMarginProducts(products);
-        const updatedSelections: Record<string, any> = {};
-        products.forEach((p: any) => {
-          updatedSelections[p.product_id] = {
-            // Changed from p._id to p.product_id
-            selected: true,
-            name: p.name,
-            margin: p.margin,
-          };
-        });
-        setGlobalSelections(updatedSelections);
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    // Close the dialog
-    handleCloseAddDialog();
   };
 
   // --------------------------------------------------------------------
   // RENDER
   // --------------------------------------------------------------------
   const filteredDialog = getFilteredDialogProducts();
+
+  const handleDeleteAllSpecialMargins = async () => {
+    if (!selectedCustomer?._id) return;
+
+    try {
+      await axios.delete(
+        `${baseApiUrl}/admin/customer/special_margins/${selectedCustomer._id}/bulk`
+      ); // Assuming you have a bulk delete API
+      setSpecialMarginProducts([]);
+      toast.success('All special margins deleted successfully.');
+
+      // Clear globalSelections
+      setGlobalSelections((prev) => {
+        const updatedSelections = { ...prev };
+        specialMarginProducts.forEach((prod: any) => {
+          delete updatedSelections[prod.product_id];
+        });
+        return updatedSelections;
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to delete all special margins.');
+    }
+  };
 
   return (
     <Box sx={{ padding: 3 }}>
@@ -792,7 +890,7 @@ const Customers = () => {
           onClose={handleCloseDrawer}
           sx={{
             '& .MuiDrawer-paper': {
-              width: 400,
+              width: 600,
               padding: 3,
             },
           }}
@@ -884,11 +982,20 @@ const Customers = () => {
                 >
                   Add Special Margin
                 </Button>
+                <Button
+                  variant='contained'
+                  color='error'
+                  sx={{ mb: 2 }}
+                  onClick={handleDeleteAllSpecialMargins}
+                >
+                  Remove All Special Margins
+                </Button>
 
                 <TableContainer component={Paper}>
                   <Table size='small'>
                     <TableHead>
                       <TableRow>
+                        <TableCell>#</TableCell>
                         <TableCell>Product Name</TableCell>
                         <TableCell>Custom Margin</TableCell>
                         <TableCell>Action</TableCell>
@@ -900,25 +1007,28 @@ const Customers = () => {
                           <TableCell colSpan={3}>No products found</TableCell>
                         </TableRow>
                       ) : (
-                        specialMarginProducts.map((prod: any) => (
-                          <TableRow key={prod._id}>
-                            <TableCell>{prod.name}</TableCell>
-                            <TableCell>{prod.margin}</TableCell>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Button
-                                  variant='outlined'
-                                  color='error'
-                                  onClick={() =>
-                                    handleDeleteSpecialMargin(prod)
-                                  }
-                                >
-                                  Delete
-                                </Button>
-                              </Box>
-                            </TableCell>
-                          </TableRow>
-                        ))
+                        specialMarginProducts.map(
+                          (prod: any, index: number) => (
+                            <TableRow key={prod._id}>
+                              <TableCell>{index + 1}</TableCell>
+                              <TableCell>{prod.name}</TableCell>
+                              <TableCell>{prod.margin}</TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  <Button
+                                    variant='outlined'
+                                    color='error'
+                                    onClick={() =>
+                                      handleDeleteSpecialMargin(prod)
+                                    }
+                                  >
+                                    Delete
+                                  </Button>
+                                </Box>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        )
                       )}
                     </TableBody>
                   </Table>
@@ -948,6 +1058,22 @@ const Customers = () => {
       >
         <DialogTitle>Add Special Margin to Products</DialogTitle>
         <DialogContent>
+          <FormControl fullWidth sx={{ marginBottom: 3 }}>
+            <InputLabel id='brand-select-label'>Filter by Brand</InputLabel>
+            <Select
+              labelId='brand-select-label'
+              value={selectedBrand}
+              onChange={(e: any) => handleBrandChange(e)}
+            >
+              <MenuItem value=''>All Brands</MenuItem>
+              {brands.map((brand) => (
+                <MenuItem key={brand} value={brand}>
+                  {brand}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
           {/* Search Bar */}
           <TextField
             label='Search by Name or SKU'
@@ -957,7 +1083,34 @@ const Customers = () => {
             onChange={handleDialogSearch}
             sx={{ marginBottom: 3, marginTop: 1 }}
           />
+          {selectedBrand && (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 2,
+              }}
+            >
+              {/* Select All Checkbox */}
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Checkbox
+                  checked={allSelected}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                />
+                <Typography>Select All</Typography>
+              </Box>
 
+              {/* Global Margin Input */}
+              <TextField
+                label='Global Margin'
+                placeholder='Enter margin (e.g., 40%)'
+                variant='outlined'
+                size='small'
+                onChange={(e) => handleGlobalMarginChange(e.target.value)}
+              />
+            </Box>
+          )}
           {dialogLoading ? (
             <Box
               sx={{
