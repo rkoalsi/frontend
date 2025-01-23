@@ -238,7 +238,7 @@ const Orders = () => {
           onClose={handleCloseDrawer}
           sx={{
             '& .MuiDrawer-paper': {
-              width: 400,
+              width: 500,
               padding: 3,
             },
           }}
@@ -315,6 +315,7 @@ const Orders = () => {
                         <TableCell>Product Name</TableCell>
                         <TableCell>Qty</TableCell>
                         <TableCell>Price</TableCell>
+                        <TableCell>Added By</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -335,6 +336,11 @@ const Orders = () => {
                           <TableCell>{product.name}</TableCell>
                           <TableCell>{product.quantity}</TableCell>
                           <TableCell>₹{product.price?.toFixed(2)}</TableCell>
+                          <TableCell>
+                            {capitalize(
+                              product?.added_by?.split('_')?.join(' ')
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
