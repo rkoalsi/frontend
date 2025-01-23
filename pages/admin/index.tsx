@@ -18,7 +18,11 @@ const AdminDashboard = () => {
 
   // State to store stats from server
   const [stats, setStats] = useState<any>({
+    active_stock_products: 0,
     active_products: 0,
+    inactive_products: 0,
+    total_products: 0,
+    out_of_stock_products: 0,
     active_customers: 0,
     active_sales_people: 0,
     orders_draft: 0,
@@ -41,13 +45,8 @@ const AdminDashboard = () => {
     }
   };
 
-  // Updated cards array with one card for Orders
+  // Updated cards array with sub-stats for Products and Orders
   const cards = [
-    {
-      label: 'Active Products',
-      value: stats.active_products,
-      route: 'products',
-    },
     {
       label: 'Active Customers',
       value: stats.active_customers,
@@ -57,6 +56,16 @@ const AdminDashboard = () => {
       label: 'Active Sales People',
       value: stats.active_sales_people,
       route: 'sales_people',
+    },
+    {
+      label: 'Products',
+      route: 'products',
+      subStats: [
+        { label: 'Active Stock Products', value: stats.active_stock_products },
+        { label: 'Active Products', value: stats.active_products },
+        { label: 'Inactive Products', value: stats.inactive_products },
+        { label: 'Total Products', value: stats.total_products },
+      ],
     },
     {
       label: 'Orders',
@@ -93,41 +102,50 @@ const AdminDashboard = () => {
 
       <Box mt={3}>
         {/* Card Grid */}
-        <Grid container spacing={2}>
+        <Grid container spacing={2} justifyContent={'center'}>
           {cards.map((card, idx) => {
-            // Make the Orders card span the full width
-            const isOrdersCard = card.label === 'Orders';
+            const isWideCard =
+              card.label === 'Orders' || card.label === 'Products';
             return (
               <Grid
                 item
                 xs={12}
-                sm={isOrdersCard ? 12 : 6}
-                md={isOrdersCard ? 12 : 4}
+                sm={isWideCard ? 8 : 6}
+                md={isWideCard ? 8 : 4}
                 key={idx}
               >
                 <Card
-                  sx={{ p: 2, borderRadius: 2, cursor: 'pointer' }}
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+                    '&:hover': {
+                      boxShadow: '0 4px 15px rgba(0, 0, 0, 0.15)',
+                      transform: 'translateY(-3px)',
+                    },
+                    transition: 'all 0.3s ease',
+                  }}
                   onClick={() => router.push(`/admin/${card.route}`)}
                 >
                   <CardContent>
-                    {/* If the card has subStats (i.e., Orders), render them differently */}
                     {card.subStats ? (
                       <>
                         <Typography
-                          variant='h5'
+                          variant='h6'
                           color='textSecondary'
                           gutterBottom
-                          sx={{ fontWeight: 'medium' }}
+                          sx={{ fontWeight: 'bold', color: '#3f51b5', mb: 1 }}
                         >
                           {card.label}
                         </Typography>
 
-                        <Divider sx={{ mb: 2 }} />
+                        <Divider sx={{ mb: 1 }} />
 
                         {/* Display each sub-stat in a grid */}
-                        <Grid container spacing={2}>
+                        <Grid container spacing={1}>
                           {card.subStats.map((sub, subIdx) => (
-                            <Grid item xs={6} sm={3} key={subIdx}>
+                            <Grid item xs={6} key={subIdx}>
                               <Box
                                 sx={{
                                   display: 'flex',
@@ -136,17 +154,17 @@ const AdminDashboard = () => {
                                 }}
                               >
                                 <Typography
-                                  variant='h5'
+                                  variant='body2'
                                   color='textSecondary'
-                                  sx={{ fontWeight: 500 }}
+                                  sx={{ fontWeight: 'medium' }}
                                 >
                                   {sub.label}
                                 </Typography>
                                 <Typography
-                                  variant='h3'
+                                  variant='h5'
                                   sx={{
                                     fontWeight: 'bold',
-                                    color: 'primary.main',
+                                    color: '#2e7d32',
                                     mt: 0.5,
                                   }}
                                 >
@@ -158,19 +176,22 @@ const AdminDashboard = () => {
                         </Grid>
                       </>
                     ) : (
-                      // Original single-value layout for the other cards
+                      // Single-value layout for smaller cards
                       <>
                         <Typography
                           variant='h6'
                           color='textSecondary'
                           gutterBottom
-                          sx={{ fontWeight: 'medium' }}
+                          sx={{ fontWeight: 'bold', color: '#3f51b5' }}
                         >
                           {card.label}
                         </Typography>
                         <Typography
-                          variant='h3'
-                          sx={{ fontWeight: 'bold', color: 'primary.main' }}
+                          variant='h4'
+                          sx={{
+                            fontWeight: 'bold',
+                            color: '#2e7d32',
+                          }}
                         >
                           {card.value}
                         </Typography>

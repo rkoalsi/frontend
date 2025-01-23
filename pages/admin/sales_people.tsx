@@ -37,7 +37,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { green, red } from '@mui/material/colors';
 
 const SalesPeople = () => {
-  const [salesPeople, setSalesPeople] = useState([]);
+  const [salesPeople, setSalesPeople]: any = useState([]);
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerLoading, setCustomerLoading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -55,6 +55,48 @@ const SalesPeople = () => {
   const [rowErrors, setRowErrors] = useState<{ [customerId: string]: string }>(
     {}
   );
+  // State for "Add Salesperson" dialog
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [newSalesPerson, setNewSalesPerson] = useState({
+    name: '',
+    code: '',
+    designation: '',
+    email: '',
+    phone: '',
+    status: 'active',
+    role: 'sales_person',
+  });
+
+  const handleAddFieldChange = (field: string, value: any) => {
+    setNewSalesPerson((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleCreateSalesPerson = async () => {
+    try {
+      const response = await axios.post(
+        `${baseApiUrl}/admin/salespeople`,
+        newSalesPerson
+      );
+      setSalesPeople((prev: any) => [...prev, response.data]);
+      toast.success('Salesperson added successfully');
+      setAddDialogOpen(false);
+      setNewSalesPerson({
+        name: '',
+        code: '',
+        designation: '',
+        email: '',
+        phone: '',
+        status: 'active',
+        role: 'sales_person',
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to add salesperson');
+    }
+  };
 
   const handleChange = (
     event: React.ChangeEvent<{ value: unknown }>,
@@ -408,20 +450,107 @@ const SalesPeople = () => {
           backgroundColor: 'white',
         }}
       >
-        <Typography
-          variant='h4'
-          gutterBottom
-          sx={{
-            fontFamily: 'Roboto, sans-serif',
-            fontWeight: 'bold',
-          }}
+        <Box
+          display={'flex'}
+          justifyContent={'space-between'}
+          alignItems={'center'}
         >
-          All Sales People
-        </Typography>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
-          View and manage all sales people below.
-        </Typography>
+          <Typography
+            variant='h4'
+            gutterBottom
+            sx={{
+              fontFamily: 'Roboto, sans-serif',
+              fontWeight: 'bold',
+            }}
+          >
+            All Sales People
+          </Typography>
+          <Box textAlign='right' marginBottom={2}>
+            {/* <Button
+              variant='contained'
+              color='primary'
+              onClick={() => setAddDialogOpen(true)}
+            >
+              Add Salesperson
+            </Button> */}
+          </Box>
 
+          <Dialog
+            open={addDialogOpen}
+            onClose={() => setAddDialogOpen(false)}
+            fullWidth
+            maxWidth='sm'
+          >
+            <DialogTitle>Add Salesperson</DialogTitle>
+            <DialogContent>
+              <TextField
+                label='Name'
+                variant='outlined'
+                value={newSalesPerson.name}
+                onChange={(e) => handleAddFieldChange('name', e.target.value)}
+                fullWidth
+                margin='normal'
+              />
+              <TextField
+                label='Code'
+                variant='outlined'
+                value={newSalesPerson.code}
+                onChange={(e) => handleAddFieldChange('code', e.target.value)}
+                fullWidth
+                margin='normal'
+              />
+              <TextField
+                label='Designation'
+                variant='outlined'
+                value={newSalesPerson.designation}
+                onChange={(e) =>
+                  handleAddFieldChange('designation', e.target.value)
+                }
+                fullWidth
+                margin='normal'
+              />
+              <TextField
+                label='Email'
+                variant='outlined'
+                value={newSalesPerson.email}
+                onChange={(e) => handleAddFieldChange('email', e.target.value)}
+                fullWidth
+                margin='normal'
+              />
+              <TextField
+                label='Phone'
+                variant='outlined'
+                value={newSalesPerson.phone}
+                onChange={(e) => handleAddFieldChange('phone', e.target.value)}
+                fullWidth
+                margin='normal'
+              />
+              <TextField
+                select
+                label='Status'
+                value={newSalesPerson.status}
+                onChange={(e) => handleAddFieldChange('status', e.target.value)}
+                fullWidth
+                margin='normal'
+              >
+                <MenuItem value='active'>Active</MenuItem>
+                <MenuItem value='inactive'>Inactive</MenuItem>
+              </TextField>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setAddDialogOpen(false)} color='secondary'>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateSalesPerson}
+                color='primary'
+                variant='contained'
+              >
+                Create
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </Box>
         {loading ? (
           <Box
             sx={{
