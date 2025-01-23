@@ -15,6 +15,7 @@ import { useTheme } from '@mui/material/styles';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import AuthContext from '../../../src/components/Auth';
+import { toast } from 'react-toastify';
 
 const PastOrders = () => {
   const [loading, setLoading] = useState(false);
@@ -42,16 +43,29 @@ const PastOrders = () => {
     }
   };
 
-  useEffect(() => {
-    getData();
-  }, []);
-
   /**
    * Navigate to order details page
    */
   const handleOrderClick = (id: number) => {
     router.push(`/orders/past/${id}`);
   };
+
+  const clearEmptyOrders = async () => {
+    try {
+      await axios.delete(
+        `${process.env.api_url}/orders/${user?.data?._id?.$oid}`
+      );
+      toast.success(`Empty Orders Deleted Successfully`);
+      await getData();
+    } catch (error) {
+      console.log(error);
+      toast.error(`Error Deleting Orders`);
+    }
+  };
+
+  useEffect(() => {
+    getData();
+  }, []);
 
   return (
     <Box
@@ -70,6 +84,10 @@ const PastOrders = () => {
       <Typography variant='h4' fontWeight='bold' sx={{ mb: 2, color: 'white' }}>
         Past Orders
       </Typography>
+
+      <Button variant='contained' color={'error'} onClick={clearEmptyOrders}>
+        Clear Empty Orders
+      </Button>
 
       {/* Loading State */}
       {loading ? (
