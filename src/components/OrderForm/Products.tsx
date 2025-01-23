@@ -237,11 +237,18 @@ const Products: React.FC<SearchBarProps> = ({
       (product: any) => product._id === values._id
     );
     const quantity = temporaryQuantities[values._id] || values.quantity || 1;
-
     if (!isAlreadySelected) {
+      const queryString = window.location.search;
+      const urlParams = new URLSearchParams(queryString);
+      const isShared = urlParams.has('shared');
       const updatedProducts = [
         ...selectedProductsRef.current,
-        { ...values, product_id: values._id, quantity },
+        {
+          ...values,
+          product_id: values._id,
+          quantity,
+          added_by: isShared ? 'customer' : 'sales_person',
+        },
       ];
 
       setSelectedProducts(updatedProducts);
