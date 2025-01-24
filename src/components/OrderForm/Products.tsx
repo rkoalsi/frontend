@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, memo } from 'react';
 import axios from 'axios';
 import {
   TextField,
@@ -32,7 +32,6 @@ import {
   Close,
   RemoveShoppingCart,
 } from '@mui/icons-material';
-
 interface SearchResult {
   id: number;
   name: string;
@@ -44,6 +43,7 @@ interface SearchResult {
   rate: number;
   stock: number;
   image_url?: string;
+  new?: boolean;
 }
 
 interface SearchBarProps {
@@ -53,6 +53,7 @@ interface SearchBarProps {
   updateOrder: any;
   customer: any; // Key to determine GST type
   totals: any;
+  order: any;
 }
 
 const Products: React.FC<SearchBarProps> = ({
@@ -62,6 +63,7 @@ const Products: React.FC<SearchBarProps> = ({
   updateOrder = () => {},
   customer = {},
   totals = {},
+  order = {},
 }) => {
   const [query, setQuery] = useState('');
   const [temporaryQuantities, setTemporaryQuantities] = useState<{
@@ -71,6 +73,15 @@ const Products: React.FC<SearchBarProps> = ({
   const [popupImageSrc, setPopupImageSrc] = useState('');
   const [options, setOptions] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [paginationState, setPaginationState] = useState<{
+    [key: string]: { page: number; hasMore: boolean };
+  }>({});
+  const [productsByBrand, setProductsByBrand] = useState<{
+    [key: string]: SearchResult[];
+  }>({});
+  const [loadingMore, setLoadingMore] = useState(false); // Loading indicator for more products
+  const PRODUCTS_PER_PAGE = 25; // Number of products per batch
+
   const { id = '' } = useRouter().query;
 
   // ------------------ NEW: specialMargins State ---------------------
@@ -117,16 +128,15 @@ const Products: React.FC<SearchBarProps> = ({
   }, [customer]);
 
   // ------------------ Helper: Local Totals Calculation --------------
-  const calculateLocalTotals = (products: SearchResult[]) => {
-    return products.reduce(
-      (acc, product) => {
+  const calculateLocalTotals = (products: any) => {
+    const totals = products.reduce(
+      (acc: any, product: any) => {
         const taxPercentage =
           product?.item_tax_preferences?.[0]?.tax_percentage || 0;
-        const rate = product?.rate || 0;
-        const quantity = product?.quantity || 1;
+        const rate = parseFloat(product.rate.toString()) || 0;
+        const quantity = parseInt(product.quantity.toString()) || 1;
 
         // 1) Check if there's a special margin for this product
-        //    e.g. "45%" => parseInt("45") = 45 => 0.45
         let margin = 0.4; // default 40%
         const productId =
           typeof product._id === 'string' ? product._id : product._id.$oid;
@@ -155,18 +165,22 @@ const Products: React.FC<SearchBarProps> = ({
             (sellingPrice + sellingPrice * (taxPercentage / 100)) * quantity;
         }
 
-        // Round half .5 up
-        totalAmount =
-          totalAmount % 1 === 0.5
-            ? Math.ceil(totalAmount)
-            : Math.floor(totalAmount);
-
+        // Accumulate without rounding
         acc.totalGST += gstAmount;
         acc.totalAmount += totalAmount;
         return acc;
       },
       { totalGST: 0, totalAmount: 0 }
     );
+
+    // Apply rounding once at the end
+    const roundedTotalGST = Math.round(totals.totalGST * 100) / 100; // Round to 2 decimals
+    const roundedTotalAmount =
+      totals.totalAmount % 1 >= 0.5
+        ? Math.ceil(totals.totalAmount) // Round up if decimal >= 0.5
+        : Math.floor(totals.totalAmount); // Round down otherwise
+
+    return { totalGST: roundedTotalGST, totalAmount: roundedTotalAmount };
   };
 
   const [products, setProducts] = useState<SearchResult[]>([]);
@@ -188,34 +202,132 @@ const Products: React.FC<SearchBarProps> = ({
     }
     setSnackbarOpen(false);
   };
-
-  /**
-   * Fetch products from your main /products endpoint
-   */
-  const handleSearch = async () => {
-    setLoading(true);
+  const fetchAllBrands = async () => {
     try {
-      const base = `${process.env.api_url}`;
-      const response = await axios.get(`${base}/products`);
-      const allProducts = response.data.products;
+      const base = process.env.api_url;
+      const response = await axios.get(`${base}/products/brands`); // Endpoint that returns all available brands
+      const allBrands = response.data.brands || []; // Ensure an array is returned
 
-      // Filter out those already in the selected list
-      const filteredOptions = allProducts.filter(
-        (p: SearchResult) =>
-          !selectedProducts.some(
-            (selected: SearchResult) => selected._id === p._id
-          )
+      // Initialize pagination state for all brands
+      const initialPaginationState = allBrands.reduce(
+        (acc: any, brand: any) => {
+          acc[brand] = { page: 0, hasMore: true }; // Default pagination state
+          return acc;
+        },
+        {}
       );
-      setOptions(filteredOptions);
-      setProducts(allProducts);
 
-      if (allProducts.length > 0) {
-        setActiveTab(allProducts[0].brand); // Default tab to first brand
+      setPaginationState(initialPaginationState);
+      setProductsByBrand(
+        allBrands.reduce(
+          (acc: any, brand: any) => ({ ...acc, [brand]: [] }),
+          {}
+        )
+      );
+
+      // Set the first brand as the active tab
+      if (allBrands.length > 0) {
+        setActiveTab(allBrands[0]); // Set the first brand as default
       }
+    } catch (error) {
+      console.error('Error fetching brands:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllBrands(); // Fetch brands when the component mounts
+  }, []);
+
+  const fetchProducts = async (brand: string, page: number) => {
+    setLoadingMore(true);
+    try {
+      const base = process.env.api_url;
+      const response = await axios.get(`${base}/products`, {
+        params: {
+          page,
+          per_page: PRODUCTS_PER_PAGE,
+          brand,
+        },
+      });
+
+      const newProducts = response.data.products || [];
+
+      setProductsByBrand((prev) => ({
+        ...prev,
+        [brand]:
+          page === 1 ? newProducts : [...(prev[brand] || []), ...newProducts], // Reset data if fetching the first page
+      }));
+
+      setPaginationState((prev) => ({
+        ...prev,
+        [brand]: {
+          page,
+          hasMore: newProducts.length === PRODUCTS_PER_PAGE,
+        },
+      }));
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
-      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!activeTab) return; // No active tab to fetch data for
+
+    const brandPagination = paginationState[activeTab];
+    if (!brandPagination || brandPagination.page === 0) {
+      // Fetch the first page of products for the active tab
+      fetchProducts(activeTab, 1);
+    }
+  }, [activeTab, paginationState]);
+  useEffect(() => {
+    if (!activeTab && Object.keys(productsByBrand).length > 0) {
+      setActiveTab(Object.keys(productsByBrand)[0]); // Default to the first brand
+    }
+  }, [productsByBrand]);
+  const handleScroll = () => {
+    if (
+      window.innerHeight + document.documentElement.scrollTop >=
+        document.documentElement.offsetHeight - 500 && // Trigger near bottom
+      !loadingMore &&
+      activeTab &&
+      paginationState[activeTab]?.hasMore
+    ) {
+      const nextPage = (paginationState[activeTab]?.page || 1) + 1;
+      fetchProducts(activeTab, nextPage); // Fetch the next page for the active tab
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [paginationState, activeTab, loadingMore]);
+  /**
+   * Fetch products from your main /products endpoint
+   */
+  const handleSearch = async (page = 1) => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const base = `${process.env.api_url}`;
+      const response = await axios.get(`${base}/products`, {
+        params: {
+          page,
+          per_page: PRODUCTS_PER_PAGE, // Adjust backend to handle pagination
+        },
+      });
+
+      const newProducts = response.data.products || [];
+      const total = response.data.total || 0;
+
+      setProducts((prevProducts) =>
+        page === 1 ? newProducts : [...prevProducts, ...newProducts]
+      );
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -223,7 +335,7 @@ const Products: React.FC<SearchBarProps> = ({
   useEffect(() => {
     if (!customer || options.length > 0) return; // Prevent redundant fetch
     handleSearch();
-  }, [customer, options.length]);
+  }, [customer?._id, options.length]);
 
   const selectedProductsRef = useRef(selectedProducts);
   useEffect(() => {
@@ -363,9 +475,6 @@ const Products: React.FC<SearchBarProps> = ({
     setOpenImagePopup(false);
   };
 
-  // ------------------ Grouping by Brand (Tabs) ----------------------
-  const brands = Array.from(new Set(products.map((p) => p.brand)));
-
   if (!customer) {
     return <Typography>This is content for Products</Typography>;
   }
@@ -393,7 +502,11 @@ const Products: React.FC<SearchBarProps> = ({
             variant='outlined'
             color='secondary'
             onClick={handleClearCart}
-            disabled={selectedProducts.length === 0}
+            disabled={
+              selectedProducts.length === 0 ||
+              order?.status?.toLowerCase().includes('accepted') ||
+              order?.status?.toLowerCase().includes('declined')
+            }
             sx={{
               textTransform: 'none',
               fontWeight: 'bold',
@@ -455,7 +568,7 @@ const Products: React.FC<SearchBarProps> = ({
             '.Mui-selected': { color: 'primary.main' },
           }}
         >
-          {brands.map((brand) => (
+          {Object.keys(productsByBrand).map((brand) => (
             <Tab key={brand} label={brand} value={brand} />
           ))}
         </Tabs>
@@ -486,50 +599,71 @@ const Products: React.FC<SearchBarProps> = ({
               </TableRow>
             </TableHead>
             <TableBody>
-              {products
-                .filter((product) => product.brand === activeTab)
-                .map((product: any) => {
-                  // Convert _id to a string if needed
-                  const productId =
-                    typeof product._id === 'string'
-                      ? product._id
-                      : product._id?.$oid;
+              {(productsByBrand[activeTab] || []).map((product: any) => {
+                // Convert _id to a string if needed
+                const productId =
+                  typeof product._id === 'string'
+                    ? product._id
+                    : product._id?.$oid;
 
-                  // Decide margin from specialMargins if any
-                  let marginPercent = specialMargins[productId]
-                    ? parseInt(specialMargins[productId].replace('%', ''))
-                    : parseInt((customer.cf_margin || '40%').replace('%', ''));
+                // Decide margin from specialMargins if any
+                let marginPercent = specialMargins[productId]
+                  ? parseInt(specialMargins[productId].replace('%', ''))
+                  : parseInt((customer.cf_margin || '40%').replace('%', ''));
 
-                  if (isNaN(marginPercent)) {
-                    marginPercent = 40; // fallback
-                  }
+                if (isNaN(marginPercent)) {
+                  marginPercent = 40; // fallback
+                }
 
-                  const margin = marginPercent / 100;
-                  const selectedProduct = selectedProducts.find(
-                    (p) => p._id === product._id
-                  );
+                const margin = marginPercent / 100;
+                const selectedProduct = selectedProducts.find(
+                  (p) => p._id === product._id
+                );
 
-                  // Calculate selling price
-                  const sellingPrice = parseFloat(
-                    (product.rate - product.rate * margin).toFixed(2)
-                  );
+                // Calculate selling price
+                const sellingPrice = parseFloat(
+                  (product.rate - product.rate * margin).toFixed(2)
+                );
 
-                  // If the product is in the cart, use its quantity; otherwise, use the temp or default
-                  const quantity =
-                    selectedProduct?.quantity ||
-                    temporaryQuantities[productId] ||
-                    1;
-                  // Item-level total
-                  const itemTotal = parseFloat(
-                    (sellingPrice * quantity).toFixed(2)
-                  );
+                // If the product is in the cart, use its quantity; otherwise, use the temp or default
+                const quantity =
+                  selectedProduct?.quantity ||
+                  temporaryQuantities[productId] ||
+                  1;
+                // Item-level total
+                const itemTotal = parseFloat(
+                  (sellingPrice * quantity).toFixed(2)
+                );
 
-                  return (
-                    <TableRow key={productId}>
-                      <TableCell>
+                return (
+                  <TableRow key={productId}>
+                    <TableCell>
+                      <Box
+                        sx={{ position: 'relative', display: 'inline-block' }}
+                      >
+                        {product.new && (
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              backgroundColor: 'primary.main',
+                              color: 'white',
+                              padding: '4px 8px',
+                              borderTopLeftRadius: '4px',
+                              borderBottomRightRadius: '4px',
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold',
+                              zIndex: 1,
+                            }}
+                          >
+                            New
+                          </Box>
+                        )}
                         <img
                           src={product.image_url || '/placeholder.png'}
                           alt={product.name}
+                          loading='lazy'
                           style={{
                             width: '140px',
                             height: '140px',
@@ -543,89 +677,98 @@ const Products: React.FC<SearchBarProps> = ({
                             )
                           }
                         />
-                      </TableCell>
-                      <TableCell>{product.name}</TableCell>
-                      <TableCell>{product.cf_sku_code}</TableCell>
-                      <TableCell>₹{product.rate}</TableCell>
-                      <TableCell>{product.stock}</TableCell>
+                      </Box>
+                    </TableCell>
+                    <TableCell>{product.name}</TableCell>
+                    <TableCell>{product.cf_sku_code}</TableCell>
+                    <TableCell>₹{product.rate}</TableCell>
+                    <TableCell>{product.stock}</TableCell>
 
-                      {/* Margin (either from specialMargins or default) */}
-                      <TableCell>
-                        {specialMargins[productId]
-                          ? specialMargins[productId]
-                          : customer.cf_margin || '40%'}
-                      </TableCell>
+                    {/* Margin (either from specialMargins or default) */}
+                    <TableCell>
+                      {specialMargins[productId]
+                        ? specialMargins[productId]
+                        : customer.cf_margin || '40%'}
+                    </TableCell>
 
-                      {/* Selling Price */}
-                      <TableCell>₹{sellingPrice}</TableCell>
+                    {/* Selling Price */}
+                    <TableCell>₹{sellingPrice}</TableCell>
 
-                      {/* Quantity input */}
-                      <TableCell>
-                        <TextField
-                          type='number'
-                          value={quantity}
-                          onChange={(e) => {
-                            const newQuantity = Math.max(
-                              1,
-                              parseInt(e.target.value) || 1
+                    {/* Quantity input */}
+                    <TableCell>
+                      <TextField
+                        type='number'
+                        value={quantity}
+                        disabled={
+                          order?.status?.toLowerCase()?.includes('accepted') ||
+                          order?.status?.toLowerCase()?.includes('declined')
+                        }
+                        onChange={(e) => {
+                          const newQuantity = Math.max(
+                            1,
+                            parseInt(e.target.value) || 1
+                          );
+                          if (selectedProduct) {
+                            // If already in cart, update quantity
+                            handleQuantityChange(productId, newQuantity);
+                          } else {
+                            // If not in cart, just store temp
+                            setTemporaryQuantities((prev) => ({
+                              ...prev,
+                              [productId]: newQuantity,
+                            }));
+                            showSnackbar(
+                              `Set quantity to ${newQuantity}. Add product to cart to confirm.`
                             );
-                            if (selectedProduct) {
-                              // If already in cart, update quantity
-                              handleQuantityChange(productId, newQuantity);
-                            } else {
-                              // If not in cart, just store temp
-                              setTemporaryQuantities((prev) => ({
-                                ...prev,
-                                [productId]: newQuantity,
-                              }));
-                              showSnackbar(
-                                `Set quantity to ${newQuantity}. Add product to cart to confirm.`
-                              );
-                            }
-                          }}
-                          inputProps={{
-                            min: 1,
-                            max: product.stock,
-                          }}
-                          size='small'
-                          sx={{ width: '80px' }}
-                        />
-                      </TableCell>
-
-                      {/* Item total if in cart */}
-                      <TableCell>
-                        {selectedProduct ? `₹${itemTotal}` : '-'}
-                      </TableCell>
-
-                      {/* Add or Remove button */}
-                      <TableCell>
-                        <IconButton
-                          color='primary'
-                          onClick={() =>
-                            selectedProducts.some(
-                              (prod: any) => prod._id === product._id
-                            )
-                              ? handleRemoveProduct(productId)
-                              : handleAddProducts(null, product)
                           }
-                          sx={{
-                            textTransform: 'none',
-                            fontWeight: 'bold',
-                            borderRadius: '24px',
-                          }}
-                        >
-                          {selectedProducts.some(
+                        }}
+                        inputProps={{
+                          min: 1,
+                          max: product.stock,
+                        }}
+                        size='small'
+                        sx={{ width: '80px' }}
+                      />
+                    </TableCell>
+
+                    {/* Item total if in cart */}
+                    <TableCell>
+                      {selectedProduct ? `₹${itemTotal}` : '-'}
+                    </TableCell>
+
+                    {/* Add or Remove button */}
+                    <TableCell>
+                      <IconButton
+                        color='primary'
+                        disabled={
+                          order?.status?.toLowerCase()?.includes('accepted') ||
+                          order?.status?.toLowerCase()?.includes('declined')
+                        }
+                        onClick={() =>
+                          selectedProducts.some(
                             (prod: any) => prod._id === product._id
-                          ) ? (
-                            <RemoveShoppingCart />
-                          ) : (
-                            <AddShoppingCart />
-                          )}
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                          )
+                            ? handleRemoveProduct(productId)
+                            : handleAddProducts(null, product)
+                        }
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 'bold',
+                          borderRadius: '24px',
+                        }}
+                      >
+                        {selectedProducts.some(
+                          (prod: any) => prod._id === product._id
+                        ) ? (
+                          <RemoveShoppingCart />
+                        ) : (
+                          <AddShoppingCart />
+                        )}
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
@@ -728,7 +871,12 @@ const Products: React.FC<SearchBarProps> = ({
           />
         </DialogContent>
       </Dialog>
-
+      {loadingMore && (
+        <Box sx={{ textAlign: 'center', bottom: 0, right: 0, padding: 2 }}>
+          <CircularProgress color='primary' />
+          <Typography>Loading more products...</Typography>
+        </Box>
+      )}
       {/* Snackbar */}
       <Snackbar
         open={snackbarOpen}
@@ -750,4 +898,4 @@ const Products: React.FC<SearchBarProps> = ({
   );
 };
 
-export default Products;
+export default memo(Products);
