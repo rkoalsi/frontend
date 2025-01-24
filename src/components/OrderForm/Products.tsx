@@ -80,7 +80,7 @@ const Products: React.FC<SearchBarProps> = ({
     [key: string]: SearchResult[];
   }>({});
   const [loadingMore, setLoadingMore] = useState(false); // Loading indicator for more products
-  const PRODUCTS_PER_PAGE = 25; // Number of products per batch
+  const PRODUCTS_PER_PAGE = 75; // Number of products per batch
 
   const { id = '' } = useRouter().query;
 
@@ -769,6 +769,25 @@ const Products: React.FC<SearchBarProps> = ({
                   </TableRow>
                 );
               })}
+              {loadingMore && (
+                <TableRow>
+                  <TableCell colSpan={10} align='center'>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        padding: 2,
+                      }}
+                    >
+                      <CircularProgress color='primary' />
+                      <Typography variant='body2' sx={{ mt: 1 }}>
+                        Loading more products...
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
@@ -871,12 +890,6 @@ const Products: React.FC<SearchBarProps> = ({
           />
         </DialogContent>
       </Dialog>
-      {loadingMore && (
-        <Box sx={{ textAlign: 'center', bottom: 0, right: 0, padding: 2 }}>
-          <CircularProgress color='primary' />
-          <Typography>Loading more products...</Typography>
-        </Box>
-      )}
       {/* Snackbar */}
       <Snackbar
         open={snackbarOpen}
