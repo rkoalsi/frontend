@@ -21,6 +21,7 @@ import Products from '../../../src/components/OrderForm/Products';
 import Review from '../../../src/components/OrderForm/Review';
 import { useRouter } from 'next/router';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 interface StepContent {
   name: string;
@@ -204,9 +205,7 @@ const NewOrder: React.FC = () => {
           });
           handleClick(); // Trigger the toast before navigation
 
-          if (isShared) {
-            await router.push('/login'); // Navigate to the login page
-          } else {
+          if (!isShared) {
             await router.push(`/orders/past/${id}`); // Navigate to the orders page
           }
         } else {
@@ -445,7 +444,16 @@ const NewOrder: React.FC = () => {
     }
     setOpen(false);
   };
-
+  useEffect(() => {
+    if (
+      isShared &&
+      (order?.status?.toLowerCase()?.includes('declined') ||
+        order?.status?.toLowerCase()?.includes('accepted'))
+    ) {
+      toast.success(`Thank you for your order`);
+      router.push('/login');
+    }
+  }, [isShared, order]);
   return (
     <Box
       sx={{
