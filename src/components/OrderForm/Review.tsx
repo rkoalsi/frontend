@@ -292,7 +292,7 @@ function Review(props: Props) {
             {customer.last_name}
           </Typography>
           <Typography variant='body1'>
-            <strong>Phone:</strong> {customer.mobile || 'N/A'}
+            <strong>Phone:</strong> {customer.mobile || customer.phone || 'N/A'}
           </Typography>
         </Paper>
 

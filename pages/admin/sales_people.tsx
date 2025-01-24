@@ -305,7 +305,6 @@ const SalesPeople = () => {
       updatedSalesPersons = updatedSalesPersons.filter(
         (code) => code !== selectedPerson.code
       );
-
       // Determine the new value for cf_sales_person
       const newCfSalesPerson =
         updatedSalesPersons.length > 0 ? updatedSalesPersons.join(', ') : '';
@@ -333,7 +332,9 @@ const SalesPeople = () => {
       ];
 
       // Send the bulk-update request to the backend
-      await axios.put(`${baseApiUrl}/admin/customers/bulk-update`, { updates });
+      await axios.put(`${process.env.api_url}/admin/customers/bulk-update`, {
+        updates,
+      });
 
       // Provide user feedback
       toast.success('Customer unassigned successfully.');
@@ -807,6 +808,11 @@ const SalesPeople = () => {
                                 </TableCell>
                                 <TableCell>
                                   <IconButton
+                                    disabled={
+                                      !arrayOfCodes.includes(
+                                        selectedPerson.code
+                                      )
+                                    }
                                     color='error'
                                     onClick={() =>
                                       handleRemoveCustomer(customer)
