@@ -13,14 +13,13 @@ import {
   TablePagination,
   TextField,
   Switch,
-  Button, // <-- import Button
+  Button,
 } from '@mui/material';
-import { Edit, Delete } from '@mui/icons-material';
-import axios from 'axios';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 
 const Products = () => {
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -28,21 +27,42 @@ const Products = () => {
   const [page, setPage] = useState(0); // 0-based page
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
 
   // NEW: For skip-page functionality
   const [skipPage, setSkipPage] = useState(''); // we'll store a string and convert on "Go"
 
   const baseApiUrl = process.env.api_url;
 
+  // Debounce the search input to prevent excessive API calls
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setPage(0); // Reset to first page on new search
+    }, 500); // 500ms debounce delay
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
+
   const getData = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(
-        `${baseApiUrl}/admin/products?page=${page}&limit=${rowsPerPage}`
-      );
+      // Build the query parameters
+      const params: any = {
+        page,
+        limit: rowsPerPage,
+      };
+      if (debouncedSearchQuery.trim() !== '') {
+        params.search = debouncedSearchQuery.trim();
+      }
+
+      const response = await axios.get(`${baseApiUrl}/admin/products`, {
+        params,
+      });
+
       setProducts(response.data.products);
-      setFilteredProducts(response.data.products);
       setTotalCount(response.data.total_count);
     } catch (error) {
       console.error(error);
@@ -52,32 +72,28 @@ const Products = () => {
     }
   };
 
+  // Fetch data whenever page, rowsPerPage, or debouncedSearchQuery changes
   useEffect(() => {
     getData();
-    // Re-fetch data whenever page or rowsPerPage changes
-  }, [page, rowsPerPage]);
+  }, [page, rowsPerPage, debouncedSearchQuery]);
 
-  // Handle searching client-side (optional)
-  const handleSearch = (e: any) => {
-    const query = e.target.value.toLowerCase();
-    setSearchQuery(query);
-
-    const filtered = products.filter(
-      (product: any) =>
-        product.name.toLowerCase().includes(query) ||
-        product.cf_sku_code.toLowerCase().includes(query)
-    );
-    setFilteredProducts(filtered);
-    setPage(0);
+  // Handle searching by updating the searchQuery state
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
   };
 
-  const handleChangePage = (event: any, newPage: number) => {
+  const handleChangePage = (
+    event: React.MouseEvent<HTMLButtonElement> | null,
+    newPage: number
+  ) => {
     setPage(newPage);
     // Reset skipPage so the TextField shows the new page number
     setSkipPage('');
   };
 
-  const handleChangeRowsPerPage = (event: any) => {
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
     setSkipPage('');
@@ -94,7 +110,13 @@ const Products = () => {
       return;
     }
 
-    // Our table is 0-based, but we let users input 1-based. So subtract 1.
+    // Calculate the zero-based page index
+    const totalPages = Math.ceil(totalCount / rowsPerPage);
+    if (requestedPage > totalPages) {
+      toast.error(`Page number exceeds total pages (${totalPages})`);
+      return;
+    }
+
     setPage(requestedPage - 1);
     setSkipPage('');
   };
@@ -107,13 +129,8 @@ const Products = () => {
       };
 
       await axios.put(`${baseApiUrl}/products/${product._id}`, updatedFields);
-      setProducts((prev: any) =>
-        prev.map((p: any) =>
-          p._id === product._id ? { ...p, ...updatedFields } : p
-        )
-      );
-      setFilteredProducts((prev: any) =>
-        prev.map((p: any) =>
+      setProducts((prev: any[]) =>
+        prev.map((p) =>
           p._id === product._id ? { ...p, ...updatedFields } : p
         )
       );
@@ -189,32 +206,40 @@ const Products = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredProducts.map((product: any) => (
-                    <TableRow key={product._id}>
-                      <TableCell>
-                        <img
-                          src={product.image_url || '/placeholder.png'}
-                          alt={product.name}
-                          style={{
-                            width: '80px',
-                            height: '80px',
-                            borderRadius: '4px',
-                            objectFit: 'cover',
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>{product.name}</TableCell>
-                      <TableCell>{product.cf_sku_code}</TableCell>
-                      <TableCell>₹{product.rate}</TableCell>
-                      <TableCell>{product.stock}</TableCell>
-                      <TableCell>
-                        <Switch
-                          checked={product.status === 'active'}
-                          onChange={() => handleToggleActive(product)}
-                        />
+                  {products.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align='center'>
+                        No products found.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    products.map((product) => (
+                      <TableRow key={product._id}>
+                        <TableCell>
+                          <img
+                            src={product.image_url || '/placeholder.png'}
+                            alt={product.name}
+                            style={{
+                              width: '80px',
+                              height: '80px',
+                              borderRadius: '4px',
+                              objectFit: 'cover',
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>{product.name}</TableCell>
+                        <TableCell>{product.cf_sku_code}</TableCell>
+                        <TableCell>₹{product.rate}</TableCell>
+                        <TableCell>{product.stock}</TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={product.status === 'active'}
+                            onChange={() => handleToggleActive(product)}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -224,8 +249,7 @@ const Products = () => {
               <TablePagination
                 rowsPerPageOptions={[5, 10, 25]}
                 component='div'
-                // If you're searching client side, you can do:
-                count={searchQuery ? filteredProducts.length : totalCount}
+                count={totalCount}
                 rowsPerPage={rowsPerPage}
                 page={page}
                 onPageChange={handleChangePage}
@@ -243,6 +267,10 @@ const Products = () => {
                   // Show skipPage if typed, otherwise show the real page+1
                   value={skipPage !== '' ? skipPage : page + 1}
                   onChange={(e) => setSkipPage(e.target.value)}
+                  inputProps={{
+                    min: 1,
+                    max: Math.ceil(totalCount / rowsPerPage),
+                  }}
                 />
                 <Button variant='contained' onClick={handleSkipPage}>
                   Go
