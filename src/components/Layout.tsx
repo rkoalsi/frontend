@@ -27,6 +27,7 @@ const Layout = ({ children }: any) => {
   useEffect(() => {
     if (router.isReady) {
       setIsRouterReady(true);
+
       if (shared === 'true' && !originalPath) {
         setOriginalPath(router.asPath); // Save the original path on the first render
       }
@@ -34,10 +35,10 @@ const Layout = ({ children }: any) => {
   }, [router.isReady, shared, originalPath]);
 
   useEffect(() => {
-    // Prevent navigation to other routes for shared link users
+    // Prevent navigation for shared link users
     if (shared === 'true' && originalPath) {
       const handleRouteChange = (url: string) => {
-        if (url !== originalPath) {
+        if (url !== originalPath && !url.startsWith('/login')) {
           router.replace(originalPath); // Redirect back to the original path
         }
       };
@@ -50,19 +51,30 @@ const Layout = ({ children }: any) => {
   }, [shared, originalPath, router]);
 
   useEffect(() => {
-    // Prevent unauthorized access to protected routes
     if (!isRouterReady) return;
 
     const publicPaths = ['/login'];
     const pathIsPublic = publicPaths.includes(router.pathname);
 
     if (!loading && !user && !shared && !pathIsPublic) {
-      router.push('/login');
+      router.replace('/login'); // Use replace to prevent adding to history stack
     }
   }, [user, loading, shared, isRouterReady, router]);
 
-  if (!isRouterReady) {
-    return null; // Wait for the router to be ready
+  if (!isRouterReady || (loading && !user)) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+          backgroundColor: '#f4f4f4',
+        }}
+      >
+        <Typography>Loading...</Typography>
+      </Box>
+    ); // Show a loading screen while waiting for the router or authentication
   }
 
   if (!user && !shared && router.pathname !== '/login') {

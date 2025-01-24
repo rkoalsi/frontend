@@ -34,6 +34,7 @@ interface Props {
   updateOrder: any;
   setActiveStep: any;
   isShared: any;
+  order: any;
 }
 
 function Review(props: Props) {
@@ -47,6 +48,7 @@ function Review(props: Props) {
     updateOrder,
     setActiveStep,
     isShared,
+    order,
   } = props;
 
   const [openImagePopup, setOpenImagePopup] = useState(false);
@@ -137,31 +139,27 @@ function Review(props: Props) {
 
   // ------------------ Recalculate Totals w/ Special Margins ----------
   const calculateLocalTotals = (products: any) => {
-    return products.reduce(
+    const totals = products.reduce(
       (acc: any, product: any) => {
         const taxPercentage =
           product?.item_tax_preferences?.[0]?.tax_percentage || 0;
-        const rate = product?.rate || 0;
-        const quantity = product?.quantity || 1;
+        const rate = parseFloat(product.rate.toString()) || 0;
+        const quantity = parseInt(product.quantity.toString()) || 1;
 
-        // Convert _id to a string if it's an object
+        // 1) Check if there's a special margin for this product
+        let margin = 0.4; // default 40%
         const productId =
-          typeof product._id === 'string' ? product._id : product._id?.$oid;
+          typeof product._id === 'string' ? product._id : product._id.$oid;
 
-        // 1) Check for special margin
-        let margin = 0.4; // default to 40%
         if (specialMargins[productId]) {
-          // "45%" => parseInt("45") => 0.45
-          margin =
-            parseInt(specialMargins[productId].replace('%', '')) / 100 || 0.4;
+          margin = parseInt(specialMargins[productId].replace('%', '')) / 100;
         } else {
-          // fallback to customer's default margin (like "40" or "40%")
-          const fallbackMarginStr =
-            customer?.cf_margin?.replace('%', '') || '40';
-          margin = parseInt(fallbackMarginStr, 10) / 100;
+          // fallback to customer's margin (e.g. "40%")
+          margin =
+            parseInt(customer?.cf_margin?.replace('%', '') || '40') / 100;
         }
 
-        // 2) Calculate Selling Price
+        // 2) Calculate Selling Price based on margin
         const sellingPrice = rate - rate * margin;
 
         let gstAmount = 0;
@@ -176,18 +174,23 @@ function Review(props: Props) {
           totalAmount =
             (sellingPrice + sellingPrice * (taxPercentage / 100)) * quantity;
         }
-        // Round half .5 up
-        totalAmount =
-          totalAmount % 1 === 0.5
-            ? Math.ceil(totalAmount)
-            : Math.floor(totalAmount);
 
+        // Accumulate without rounding
         acc.totalGST += gstAmount;
         acc.totalAmount += totalAmount;
         return acc;
       },
       { totalGST: 0, totalAmount: 0 }
     );
+
+    // Apply rounding once at the end
+    const roundedTotalGST = Math.round(totals.totalGST * 100) / 100; // Round to 2 decimals
+    const roundedTotalAmount =
+      totals.totalAmount % 1 >= 0.5
+        ? Math.ceil(totals.totalAmount) // Round up if decimal >= 0.5
+        : Math.floor(totals.totalAmount); // Round down otherwise
+
+    return { totalGST: roundedTotalGST, totalAmount: roundedTotalAmount };
   };
 
   // ------------------ Quantity Change & Remove Product ---------------
@@ -497,7 +500,13 @@ function Review(props: Props) {
                           inputProps={{ min: 1, max: product.stock }}
                           size='small'
                           sx={{ width: '60px' }}
-                          disabled={!isActive}
+                          disabled={
+                            !isActive ||
+                            order?.status
+                              ?.toLowerCase()
+                              ?.includes('accepted') ||
+                            order?.status?.toLowerCase()?.includes('declined')
+                          }
                         />
                       </TableCell>
 
@@ -510,6 +519,12 @@ function Review(props: Props) {
                           variant='outlined'
                           color='error'
                           size='small'
+                          disabled={
+                            order?.status
+                              ?.toLowerCase()
+                              ?.includes('accepted') ||
+                            order?.status?.toLowerCase()?.includes('declined')
+                          }
                           onClick={() => handleRemoveProduct(productId)}
                         >
                           Remove

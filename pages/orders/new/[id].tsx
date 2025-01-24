@@ -44,16 +44,63 @@ const NewOrder: React.FC = () => {
   const [linkCopied, setLinkCopied] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [specialMargins, setSpecialMargins] = useState<{
+    [key: string]: string;
+  }>({});
+
+  // ------------------ FETCH SPECIAL MARGINS -------------------------
+  /**
+   * Once we know the customer's _id, fetch the special margins from your API.
+   */
+  useEffect(() => {
+    if (!customer?._id) return; // Wait until customer is known
+
+    const fetchSpecialMargins = async () => {
+      try {
+        const base = process.env.api_url;
+        const res = await axios.get(
+          `${base}/admin/customer/special_margins/${customer._id}`
+        );
+        // Suppose it returns: { products: [ { product_id: 'abc123', margin: '45%' }, ... ] }
+        const productList = res.data.products || [];
+
+        // Transform the array into a dictionary for easy lookup
+        const marginMap: { [key: string]: string } = {};
+        productList.forEach((item: any) => {
+          marginMap[item.product_id] = item.margin;
+        });
+
+        setSpecialMargins(marginMap);
+      } catch (error) {
+        console.error('Error fetching special margins:', error);
+      }
+    };
+
+    fetchSpecialMargins();
+  }, [customer]);
+
   const totals = useMemo(() => {
-    return selectedProducts.reduce(
-      (acc, product: any) => {
+    const totals = selectedProducts.reduce(
+      (acc: any, product: any) => {
         const taxPercentage =
           product?.item_tax_preferences?.[0]?.tax_percentage || 0;
-        const rate = product?.rate || 0;
-        const quantity = product?.quantity || 1;
-        const margin = parseInt(customer?.cf_margin || '40') / 100; // Default to 40% if not defined
+        const rate = parseFloat(product.rate.toString()) || 0;
+        const quantity = parseInt(product.quantity.toString()) || 1;
 
-        // Calculate Selling Price
+        // 1) Check if there's a special margin for this product
+        let margin = 0.4; // default 40%
+        const productId =
+          typeof product._id === 'string' ? product._id : product._id.$oid;
+
+        if (specialMargins[productId]) {
+          margin = parseInt(specialMargins[productId].replace('%', '')) / 100;
+        } else {
+          // fallback to customer's margin (e.g. "40%")
+          margin =
+            parseInt(customer?.cf_margin?.replace('%', '') || '40') / 100;
+        }
+
+        // 2) Calculate Selling Price based on margin
         const sellingPrice = rate - rate * margin;
 
         let gstAmount = 0;
@@ -68,18 +115,24 @@ const NewOrder: React.FC = () => {
           totalAmount =
             (sellingPrice + sellingPrice * (taxPercentage / 100)) * quantity;
         }
-        totalAmount =
-          totalAmount % 1 === 0.5
-            ? Math.ceil(totalAmount)
-            : Math.floor(totalAmount);
+
+        // Accumulate without rounding
         acc.totalGST += gstAmount;
         acc.totalAmount += totalAmount;
-
         return acc;
       },
       { totalGST: 0, totalAmount: 0 }
     );
-  }, [selectedProducts, customer]);
+
+    // Apply rounding once at the end
+    const roundedTotalGST = Math.round(totals.totalGST * 100) / 100; // Round to 2 decimals
+    const roundedTotalAmount =
+      totals.totalAmount % 1 >= 0.5
+        ? Math.ceil(totals.totalAmount) // Round up if decimal >= 0.5
+        : Math.floor(totals.totalAmount); // Round down otherwise
+
+    return { totalGST: roundedTotalGST, totalAmount: roundedTotalAmount };
+  }, [selectedProducts, customer, specialMargins]);
 
   const handleNext = async () => {
     try {
@@ -142,18 +195,32 @@ const NewOrder: React.FC = () => {
         order_id: id,
         status,
       });
-      if (resp.status == 200) {
-        setError({ message: resp.data.message, status: resp.data.status });
-        handleClick();
-        if (resp.data.message.includes('created')) {
-          setTimeout(() => router.push(`/orders/past/${id}`), 5000);
+      if (resp.status === 200) {
+        await getOrder();
+        if (resp.data.message.toLowerCase().includes('created')) {
+          setError({
+            message: isShared ? 'Thank you for your Order' : resp.data.message,
+            status: resp.data.status,
+          });
+          handleClick(); // Trigger the toast before navigation
+
+          if (isShared) {
+            await router.push('/login'); // Navigate to the login page
+          } else {
+            await router.push(`/orders/past/${id}`); // Navigate to the orders page
+          }
+        } else {
+          setError({ message: resp.data.message, status: resp.data.status });
+          handleClick(); // Show toast for other statuses
         }
       }
     } catch (error) {
       console.log(error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
   const customerRef = useRef(null);
 
   const getOrder = async () => {
@@ -289,6 +356,7 @@ const NewOrder: React.FC = () => {
           selectedProducts={selectedProducts}
           setSelectedProducts={setSelectedProducts}
           updateOrder={updateOrder}
+          order={order}
         />
       ),
     },
@@ -305,6 +373,7 @@ const NewOrder: React.FC = () => {
           updateOrder={updateOrder} // Add this
           setActiveStep={setActiveStep}
           isShared={isShared}
+          order={order}
         />
       ),
     },
@@ -500,13 +569,14 @@ const NewOrder: React.FC = () => {
                   !shippingAddress ||
                   selectedProducts.length === 0 ||
                   !totals.totalAmount ||
-                  loading
+                  loading ||
+                  order.status.toLowerCase().includes('declined') ||
+                  order.status.toLowerCase().includes('accepted')
                 }
               >
                 {'Decline'}
               </Button>
             )}
-
             <Button
               variant='contained'
               color='primary'
@@ -522,7 +592,9 @@ const NewOrder: React.FC = () => {
                     !shippingAddress ||
                     selectedProducts.length === 0 ||
                     !totals.totalAmount ||
-                    loading
+                    loading ||
+                    order.status.toLowerCase().includes('accepted') ||
+                    order.status.toLowerCase().includes('declined')
                   : false
               }
             >
