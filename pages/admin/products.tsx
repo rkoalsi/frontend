@@ -309,6 +309,8 @@ const Products = () => {
                   <TableRow>
                     <TableCell>Image</TableCell>
                     <TableCell>Name</TableCell>
+                    <TableCell>Category</TableCell>
+                    <TableCell>Sub Category</TableCell>
                     <TableCell>SKU</TableCell>
                     <TableCell>Price</TableCell>
                     <TableCell>Stock</TableCell>
@@ -342,6 +344,8 @@ const Products = () => {
                           />
                         </TableCell>
                         <TableCell>{product.name}</TableCell>
+                        <TableCell>{product.category}</TableCell>
+                        <TableCell>{product.sub_category}</TableCell>
                         <TableCell>{product.cf_sku_code}</TableCell>
                         <TableCell>₹{product.rate}</TableCell>
                         <TableCell>{product.stock}</TableCell>
@@ -464,14 +468,6 @@ const Products = () => {
                   <Grid container spacing={2}>
                     <Grid item xs={12} sm={6}>
                       <Typography variant='subtitle2' color='textSecondary'>
-                        Item ID
-                      </Typography>
-                      <Typography variant='body1'>
-                        {selectedProduct.item_id}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant='subtitle2' color='textSecondary'>
                         Item Name
                       </Typography>
                       <Typography variant='body1'>
@@ -480,10 +476,42 @@ const Products = () => {
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <Typography variant='subtitle2' color='textSecondary'>
+                        Category
+                      </Typography>
+                      <Typography variant='body1'>
+                        {selectedProduct.category || 'N/A'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant='subtitle2' color='textSecondary'>
+                        Sub Category
+                      </Typography>
+                      <Typography variant='body1'>
+                        {selectedProduct.sub_category || 'N/A'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant='subtitle2' color='textSecondary'>
+                        Series
+                      </Typography>
+                      <Typography variant='body1'>
+                        {selectedProduct?.series || 'N/A'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant='subtitle2' color='textSecondary'>
                         SKU
                       </Typography>
                       <Typography variant='body1'>
                         {selectedProduct.cf_sku_code}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant='subtitle2' color='textSecondary'>
+                        Manufacture Code
+                      </Typography>
+                      <Typography variant='body1'>
+                        {selectedProduct.cf_item_code}
                       </Typography>
                     </Grid>
                     <Grid item xs={12} sm={6}>
@@ -528,15 +556,6 @@ const Products = () => {
                       </Typography>
                       <Typography variant='body1'>
                         {selectedProduct.hsn_or_sac}
-                      </Typography>
-                    </Grid>
-                    {/* Example: Account Name */}
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant='subtitle2' color='textSecondary'>
-                        Account Name
-                      </Typography>
-                      <Typography variant='body1'>
-                        {selectedProduct.account_name}
                       </Typography>
                     </Grid>
                     {/* Add any other fields you wish to display */}
