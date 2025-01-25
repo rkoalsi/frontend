@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, memo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
 import axios from 'axios';
 import {
   TextField,
@@ -17,21 +17,22 @@ import {
   Button,
   Tabs,
   Tab,
-  Badge,
   Dialog,
   DialogContent,
   useMediaQuery,
   useTheme,
   Snackbar,
+  Badge,
+  debounce,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import { useRouter } from 'next/router';
 import {
   AddShoppingCart,
-  Close,
   RemoveShoppingCart,
+  Close as CloseIcon,
 } from '@mui/icons-material';
+import { useRouter } from 'next/router';
+
+// ------------------ Interface Definitions ---------------------
 interface SearchResult {
   id: number;
   name: string;
@@ -49,44 +50,76 @@ interface SearchResult {
 interface SearchBarProps {
   label: string;
   selectedProducts: SearchResult[];
-  setSelectedProducts: any;
-  updateOrder: any;
-  customer: any; // Key to determine GST type
+  setSelectedProducts: React.Dispatch<React.SetStateAction<SearchResult[]>>;
+  updateOrder: (order: any) => void;
+  customer: any; // Replace with appropriate type
   totals: any;
   order: any;
 }
 
+// ------------------ Products Component -------------------------
 const Products: React.FC<SearchBarProps> = ({
   label = 'Search',
   selectedProducts = [],
-  setSelectedProducts = () => {},
-  updateOrder = () => {},
+  setSelectedProducts,
+  updateOrder,
   customer = {},
   totals = {},
   order = {},
 }) => {
-  const [query, setQuery] = useState('');
+  const router = useRouter();
+  const { id = '' } = router.query;
+
+  // ------------------ State Variables ---------------------
+  const [query, setQuery] = useState<string>(''); // Controlled input for Autocomplete
   const [temporaryQuantities, setTemporaryQuantities] = useState<{
     [key: string]: number;
   }>({});
-  const [openImagePopup, setOpenImagePopup] = useState(false);
-  const [popupImageSrc, setPopupImageSrc] = useState('');
+  const [openImagePopup, setOpenImagePopup] = useState<boolean>(false);
+  const [popupImageSrc, setPopupImageSrc] = useState<string>('');
   const [options, setOptions] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [paginationState, setPaginationState] = useState<{
     [key: string]: { page: number; hasMore: boolean };
   }>({});
   const [productsByBrand, setProductsByBrand] = useState<{
     [key: string]: SearchResult[];
   }>({});
-  const [loadingMore, setLoadingMore] = useState(false); // Loading indicator for more products
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const PRODUCTS_PER_PAGE = 75; // Number of products per batch
+  const [searchTerm, setSearchTerm] = useState<string>(''); // Current search term
+  const [activeTab, setActiveTab] = useState<string>(''); // Currently active brand tab
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
+  const [snackbarMessage, setSnackbarMessage] = useState<string>('');
 
-  const { id = '' } = useRouter().query;
+  // ------------------ Ref for Selected Products ---------------------
+  const selectedProductsRef = useRef<SearchResult[]>(selectedProducts);
+  useEffect(() => {
+    selectedProductsRef.current = selectedProducts;
+  }, [selectedProducts]);
 
-  // ------------------ NEW: specialMargins State ---------------------
+  // ------------------ Snackbar Handlers ---------------------
+  const showSnackbar = (message: string) => {
+    setSnackbarMessage(message);
+    setSnackbarOpen(true);
+  };
+
+  const handleSnackbarClose = (
+    event?: React.SyntheticEvent,
+    reason?: string
+  ) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
+  };
+
+  // ------------------ Special Margins State ---------------------
   /**
-   * Will store data like:
+   * Stores special margins for products.
+   * Example:
    * {
    *   "abc123": "45%",   // product_id => margin string
    *   "xyz789": "50%"
@@ -96,10 +129,7 @@ const Products: React.FC<SearchBarProps> = ({
     [key: string]: string;
   }>({});
 
-  // ------------------ FETCH SPECIAL MARGINS -------------------------
-  /**
-   * Once we know the customer's _id, fetch the special margins from your API.
-   */
+  // ------------------ Fetch Special Margins ---------------------
   useEffect(() => {
     if (!customer?._id) return; // Wait until customer is known
 
@@ -109,7 +139,7 @@ const Products: React.FC<SearchBarProps> = ({
         const res = await axios.get(
           `${base}/admin/customer/special_margins/${customer._id}`
         );
-        // Suppose it returns: { products: [ { product_id: 'abc123', margin: '45%' }, ... ] }
+        // Expected response: { products: [ { product_id: 'abc123', margin: '45%' }, ... ] }
         const productList = res.data.products || [];
 
         // Transform the array into a dictionary for easy lookup
@@ -127,14 +157,14 @@ const Products: React.FC<SearchBarProps> = ({
     fetchSpecialMargins();
   }, [customer]);
 
-  // ------------------ Helper: Local Totals Calculation --------------
-  const calculateLocalTotals = (products: any) => {
+  // ------------------ Calculate Local Totals ---------------------
+  const calculateLocalTotals = (products: SearchResult[]) => {
     const totals = products.reduce(
-      (acc: any, product: any) => {
+      (acc: { totalGST: number; totalAmount: number }, product) => {
         const taxPercentage =
           product?.item_tax_preferences?.[0]?.tax_percentage || 0;
         const rate = parseFloat(product.rate.toString()) || 0;
-        const quantity = parseInt(product.quantity.toString()) || 1;
+        const quantity = parseInt(product.quantity?.toString() || '1') || 1;
 
         // 1) Check if there's a special margin for this product
         let margin = 0.4; // default 40%
@@ -183,25 +213,7 @@ const Products: React.FC<SearchBarProps> = ({
     return { totalGST: roundedTotalGST, totalAmount: roundedTotalAmount };
   };
 
-  const [products, setProducts] = useState<SearchResult[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('');
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const showSnackbar = (message: string) => {
-    setSnackbarMessage(message);
-    setSnackbarOpen(true);
-  };
-  const handleSnackbarClose = (
-    event?: React.SyntheticEvent,
-    reason?: string
-  ) => {
-    if (reason === 'clickaway') {
-      return; // Don't close on clickaway
-    }
-    setSnackbarOpen(false);
-  };
+  // ------------------ Fetch All Brands ---------------------
   const fetchAllBrands = async () => {
     try {
       const base = process.env.api_url;
@@ -210,7 +222,7 @@ const Products: React.FC<SearchBarProps> = ({
 
       // Initialize pagination state for all brands
       const initialPaginationState = allBrands.reduce(
-        (acc: any, brand: any) => {
+        (acc: any, brand: string) => {
           acc[brand] = { page: 0, hasMore: true }; // Default pagination state
           return acc;
         },
@@ -220,7 +232,7 @@ const Products: React.FC<SearchBarProps> = ({
       setPaginationState(initialPaginationState);
       setProductsByBrand(
         allBrands.reduce(
-          (acc: any, brand: any) => ({ ...acc, [brand]: [] }),
+          (acc: any, brand: string) => ({ ...acc, [brand]: [] }),
           {}
         )
       );
@@ -238,117 +250,146 @@ const Products: React.FC<SearchBarProps> = ({
     fetchAllBrands(); // Fetch brands when the component mounts
   }, []);
 
-  const fetchProducts = async (brand: string, page: number) => {
+  // ------------------ Fetch Products ---------------------
+  const fetchProducts = async (
+    brand: string | undefined,
+    page: number,
+    search: string = ''
+  ) => {
     setLoadingMore(true);
     try {
       const base = process.env.api_url;
-      const response = await axios.get(`${base}/products`, {
-        params: {
-          page,
-          per_page: PRODUCTS_PER_PAGE,
-          brand,
-        },
-      });
+      const params: any = {
+        page,
+        per_page: PRODUCTS_PER_PAGE,
+      };
+
+      if (brand && !search) {
+        params.brand = brand;
+      }
+
+      if (search) {
+        params.search = search;
+      }
+
+      const response = await axios.get(`${base}/products`, { params });
 
       const newProducts = response.data.products || [];
+      const totalPages = response.data.total_pages || 1; // Adjust based on your API response
+
+      console.log('Fetched Products:', newProducts); // Debugging
+
+      if (search) {
+        // When searching, set options to search results
+        setOptions(newProducts);
+      } else if (brand) {
+        // When not searching, set options to products of the active brand
+        setOptions(newProducts);
+      }
 
       setProductsByBrand((prev) => ({
         ...prev,
-        [brand]:
-          page === 1 ? newProducts : [...(prev[brand] || []), ...newProducts], // Reset data if fetching the first page
+        // Use a unique key for search results
+        [brand || 'search']:
+          page === 1
+            ? newProducts
+            : [...(prev[brand || 'search'] || []), ...newProducts], // Append if not first page
       }));
 
       setPaginationState((prev) => ({
         ...prev,
-        [brand]: {
+        [brand || 'search']: {
           page,
-          hasMore: newProducts.length === PRODUCTS_PER_PAGE,
+          hasMore: page < totalPages,
         },
       }));
-    } catch (error) {
+
+      // Automatic Tab Switching: If on first page and search is active, switch to the brand of the first product
+      if (page === 1 && search && newProducts.length > 0) {
+        const firstProduct = newProducts[0];
+        if (firstProduct.brand && firstProduct.brand !== brand) {
+          setActiveTab(firstProduct.brand);
+        }
+      }
+    } catch (error: any) {
       console.error('Error fetching products:', error);
+      // Handle specific error for invalid page number
+      if (error.response && error.response.status === 400) {
+        console.warn(
+          `Invalid page number ${page} for brand ${brand}. Resetting to page 1.`
+        );
+        // Reset to page 1 and refetch
+        setPaginationState((prev) => ({
+          ...prev,
+          [brand || 'search']: { page: 1, hasMore: true },
+        }));
+        fetchProducts(brand, 1, search);
+      }
     } finally {
       setLoadingMore(false);
     }
   };
 
-  useEffect(() => {
-    if (!activeTab) return; // No active tab to fetch data for
+  // ------------------ Debounced Fetch Products ---------------------
+  const debouncedFetchProducts = useMemo(
+    () => debounce(fetchProducts, 300),
+    [fetchProducts]
+  );
 
-    const brandPagination = paginationState[activeTab];
-    if (!brandPagination || brandPagination.page === 0) {
-      // Fetch the first page of products for the active tab
-      fetchProducts(activeTab, 1);
-    }
-  }, [activeTab, paginationState]);
-  useEffect(() => {
-    if (!activeTab && Object.keys(productsByBrand).length > 0) {
-      setActiveTab(Object.keys(productsByBrand)[0]); // Default to the first brand
-    }
-  }, [productsByBrand]);
-  const handleScroll = () => {
-    if (
-      window.innerHeight + document.documentElement.scrollTop >=
-        document.documentElement.offsetHeight - 500 && // Trigger near bottom
-      !loadingMore &&
-      activeTab &&
-      paginationState[activeTab]?.hasMore
-    ) {
-      const nextPage = (paginationState[activeTab]?.page || 1) + 1;
-      fetchProducts(activeTab, nextPage); // Fetch the next page for the active tab
-    }
+  // ------------------ Handle Search ---------------------
+  const handleSearch = useMemo(
+    () =>
+      debounce(async (search: string) => {
+        if (search.trim() === '') {
+          // If search is cleared, reset to active tab's products
+          if (activeTab) {
+            setPaginationState((prev) => ({
+              ...prev,
+              [activeTab]: { page: 1, hasMore: true },
+            }));
+            await fetchProducts(activeTab, 1, '');
+          }
+          return;
+        }
+
+        // When searching, fetch all products matching the search term without brand
+        setPaginationState((prev) => ({
+          ...prev,
+          ['search']: { page: 1, hasMore: true },
+        }));
+
+        await fetchProducts(undefined, 1, search);
+      }, 500), // Debounce delay of 500ms
+    [activeTab]
+  );
+
+  // ------------------ Handle Input Change ---------------------
+  const handleInputChange = (event: any, value: string) => {
+    setQuery(value);
+    setSearchTerm(value);
+    handleSearch(value);
   };
 
-  useEffect(() => {
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [paginationState, activeTab, loadingMore]);
-  /**
-   * Fetch products from your main /products endpoint
-   */
-  const handleSearch = async (page = 1) => {
-    if (loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const base = `${process.env.api_url}`;
-      const response = await axios.get(`${base}/products`, {
-        params: {
-          page,
-          per_page: PRODUCTS_PER_PAGE, // Adjust backend to handle pagination
-        },
-      });
-
-      const newProducts = response.data.products || [];
-      const total = response.data.total || 0;
-
-      setProducts((prevProducts) =>
-        page === 1 ? newProducts : [...prevProducts, ...newProducts]
-      );
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
-  // Only fetch products once (or whenever you want to refresh)
-  useEffect(() => {
-    if (!customer || options.length > 0) return; // Prevent redundant fetch
-    handleSearch();
-  }, [customer?._id, options.length]);
-
-  const selectedProductsRef = useRef(selectedProducts);
-  useEffect(() => {
-    selectedProductsRef.current = selectedProducts;
-  }, [selectedProducts]);
-
-  // ------------------ Adding/Removing Products -----------------------
-  const handleAddProducts = (event: any, values: any | null) => {
+  // ------------------ Handle Adding Products ---------------------
+  const handleAddProducts = (
+    event: any,
+    values: SearchResult | string | null
+  ) => {
     if (!values) return;
+
+    if (typeof values === 'string') {
+      // Handle freeSolo input if necessary
+      // For example, you might want to add it as a new product or prompt the user
+      showSnackbar(`You entered: ${values}. Please select a valid product.`);
+      return;
+    }
+
     const isAlreadySelected = selectedProducts.some(
-      (product: any) => product._id === values._id
+      (product) => product._id === values._id
     );
-    const quantity = temporaryQuantities[values._id] || values.quantity || 1;
+    const quantity =
+      temporaryQuantities[values._id as string] || values.quantity || 1;
+
     if (!isAlreadySelected) {
       const queryString = window.location.search;
       const urlParams = new URLSearchParams(queryString);
@@ -377,7 +418,7 @@ const Products: React.FC<SearchBarProps> = ({
       // Clear temporary quantity
       setTemporaryQuantities((prev) => {
         const updated = { ...prev };
-        delete updated[values._id];
+        delete updated[values._id as string];
         return updated;
       });
     } else {
@@ -386,19 +427,23 @@ const Products: React.FC<SearchBarProps> = ({
 
     // Remove from the autocomplete list
     setOptions((prevOptions) =>
-      prevOptions.filter((option) => option._id !== values._id)
+      prevOptions.filter((option) => {
+        if (typeof option === 'string') return true; // Keep string inputs
+        return option._id !== values._id;
+      })
     );
   };
 
-  const handleRemoveProduct = (id: any) => {
+  // ------------------ Handle Removing Products ---------------------
+  const handleRemoveProduct = (id: string) => {
     const removedProduct = selectedProductsRef.current.find(
-      (product: any) => product._id === id
+      (product) => product._id === id
     );
     if (!removedProduct) return;
 
     // Filter out the removed product
     const updatedProducts = selectedProductsRef.current.filter(
-      (product: any) => product._id !== id
+      (product) => product._id !== id
     );
 
     setSelectedProducts(updatedProducts);
@@ -416,9 +461,9 @@ const Products: React.FC<SearchBarProps> = ({
     showSnackbar(`Removed ${removedProduct.name} from cart`);
   };
 
-  // ------------------ Quantity Changes ------------------------------
+  // ------------------ Handle Quantity Change ---------------------
   const handleQuantityChange = (id: string, newQuantity: number) => {
-    const updatedProducts = selectedProducts.map((product: any) => {
+    const updatedProducts = selectedProducts.map((product) => {
       if (product._id === id) {
         return {
           ...product,
@@ -445,29 +490,29 @@ const Products: React.FC<SearchBarProps> = ({
     }
   };
 
-  // ------------------ Clear Cart (Backend + Frontend) ---------------
+  // ------------------ Handle Clear Cart ---------------------
   const handleClearCart = async () => {
     try {
-      const base = `${process.env.api_url}`;
+      const base = process.env.api_url;
       await axios.put(`${base}/orders/clear/${id}`);
 
       setSelectedProducts([]);
       const newTotals = calculateLocalTotals([]);
-
       updateOrder({
         products: [],
         total_gst: parseFloat(newTotals.totalGST.toFixed(2)),
         total_amount: parseFloat(newTotals.totalAmount.toFixed(2)),
       });
       setOptions([]);
-      console.log('✅ Cart cleared successfully');
+      showSnackbar('Cart cleared successfully.');
     } catch (error) {
-      console.error('❌ Failed to clear the cart:', error);
+      console.error('Failed to clear the cart:', error);
+      showSnackbar('Failed to clear the cart.');
     }
   };
 
-  // ------------------ Image Popup -----------------------------------
-  const handleImageClick = (src: any) => {
+  // ------------------ Handle Image Popup ---------------------
+  const handleImageClick = (src: string) => {
     setPopupImageSrc(src);
     setOpenImagePopup(true);
   };
@@ -475,6 +520,43 @@ const Products: React.FC<SearchBarProps> = ({
     setOpenImagePopup(false);
   };
 
+  // ------------------ Handle Scroll for Infinite Scrolling ---------------------
+  const handleScroll = () => {
+    if (
+      window.innerHeight + document.documentElement.scrollTop >=
+        document.documentElement.offsetHeight - 500 && // Trigger near bottom
+      !loadingMore &&
+      ((searchTerm && paginationState['search']?.hasMore) ||
+        (!searchTerm && activeTab && paginationState[activeTab]?.hasMore))
+    ) {
+      const nextPage = searchTerm
+        ? (paginationState['search']?.page || 1) + 1
+        : (paginationState[activeTab]?.page || 1) + 1;
+      const brand = searchTerm ? undefined : activeTab;
+      fetchProducts(brand, nextPage, searchTerm);
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [paginationState, activeTab, loadingMore, searchTerm]);
+
+  // ------------------ Reset Pagination on Tab Switch ---------------------
+  useEffect(() => {
+    if (activeTab && !searchTerm) {
+      // Reset pagination state for the new active tab
+      setPaginationState((prev) => ({
+        ...prev,
+        [activeTab]: { page: 1, hasMore: true },
+      }));
+
+      // Fetch the first page for the new active tab
+      fetchProducts(activeTab, 1, '');
+    }
+  }, [activeTab, searchTerm]);
+
+  // ------------------ Render Component ---------------------
   if (!customer) {
     return <Typography>This is content for Products</Typography>;
   }
@@ -519,17 +601,23 @@ const Products: React.FC<SearchBarProps> = ({
 
         {/* Search Bar */}
         <Autocomplete
+          freeSolo
           options={options}
-          getOptionLabel={(option: any) => option?.name || 'Unknown Name'}
-          isOptionEqualToValue={(option: any, value: any) =>
-            option?._id?.$oid === value?._id?.$oid
+          getOptionLabel={(option: any) =>
+            typeof option === 'string'
+              ? option
+              : option?.name
+              ? option.name
+              : 'Unknown Product'
           }
-          onInputChange={(event, value) => {
-            setQuery(value);
-            handleSearch();
-          }}
+          isOptionEqualToValue={(option: any, value: any) =>
+            typeof option === 'string' && typeof value === 'string'
+              ? option === value
+              : option?._id?.$oid === value?._id?.$oid
+          }
+          onInputChange={handleInputChange}
           onChange={(event, value) => handleAddProducts(event, value)}
-          value={null}
+          value={query} // Controlled input
           loading={loading}
           renderInput={(params) => (
             <TextField
@@ -552,26 +640,28 @@ const Products: React.FC<SearchBarProps> = ({
           )}
         />
 
-        {/* Tabs for brand */}
-        <Tabs
-          value={activeTab}
-          onChange={(e, newValue) => setActiveTab(newValue)}
-          variant='scrollable'
-          scrollButtons='auto'
-          sx={{
-            mt: 2,
-            '.MuiTab-root': {
-              textTransform: 'none',
-              fontWeight: 'bold',
-              padding: '10px 20px',
-            },
-            '.Mui-selected': { color: 'primary.main' },
-          }}
-        >
-          {Object.keys(productsByBrand).map((brand) => (
-            <Tab key={brand} label={brand} value={brand} />
-          ))}
-        </Tabs>
+        {/* Tabs for Brands */}
+        {!searchTerm && (
+          <Tabs
+            value={activeTab}
+            onChange={(e, newValue) => setActiveTab(newValue)}
+            variant='scrollable'
+            scrollButtons='auto'
+            sx={{
+              mt: 2,
+              '.MuiTab-root': {
+                textTransform: 'none',
+                fontWeight: 'bold',
+                padding: '10px 20px',
+              },
+              '.Mui-selected': { color: 'primary.main' },
+            }}
+          >
+            {Object.keys(productsByBrand).map((brand) => (
+              <Tab key={brand} label={brand} value={brand} />
+            ))}
+          </Tabs>
+        )}
 
         {/* Product Table */}
         <TableContainer
@@ -599,12 +689,15 @@ const Products: React.FC<SearchBarProps> = ({
               </TableRow>
             </TableHead>
             <TableBody>
-              {(productsByBrand[activeTab] || []).map((product: any) => {
+              {(searchTerm
+                ? productsByBrand['search']
+                : productsByBrand[activeTab]
+              )?.map((product: SearchResult) => {
                 // Convert _id to a string if needed
                 const productId =
                   typeof product._id === 'string'
                     ? product._id
-                    : product._id?.$oid;
+                    : product._id.$oid;
 
                 // Decide margin from specialMargins if any
                 let marginPercent = specialMargins[productId]
@@ -630,6 +723,7 @@ const Products: React.FC<SearchBarProps> = ({
                   selectedProduct?.quantity ||
                   temporaryQuantities[productId] ||
                   1;
+
                 // Item-level total
                 const itemTotal = parseFloat(
                   (sellingPrice * quantity).toFixed(2)
@@ -638,28 +732,15 @@ const Products: React.FC<SearchBarProps> = ({
                 return (
                   <TableRow key={productId}>
                     <TableCell>
-                      <Box
-                        sx={{ position: 'relative', display: 'inline-block' }}
+                      <Badge
+                        badgeContent={product.new ? 'New' : undefined}
+                        color='secondary'
+                        overlap='rectangular'
+                        anchorOrigin={{
+                          vertical: 'top',
+                          horizontal: 'right',
+                        }}
                       >
-                        {product.new && (
-                          <Box
-                            sx={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              backgroundColor: 'primary.main',
-                              color: 'white',
-                              padding: '4px 8px',
-                              borderTopLeftRadius: '4px',
-                              borderBottomRightRadius: '4px',
-                              fontSize: '0.75rem',
-                              fontWeight: 'bold',
-                              zIndex: 1,
-                            }}
-                          >
-                            New
-                          </Box>
-                        )}
                         <img
                           src={product.image_url || '/placeholder.png'}
                           alt={product.name}
@@ -677,10 +758,10 @@ const Products: React.FC<SearchBarProps> = ({
                             )
                           }
                         />
-                      </Box>
+                      </Badge>
                     </TableCell>
                     <TableCell>{product.name}</TableCell>
-                    <TableCell>{product.cf_sku_code}</TableCell>
+                    <TableCell>{product.cf_sku_code || '-'}</TableCell>
                     <TableCell>₹{product.rate}</TableCell>
                     <TableCell>{product.stock}</TableCell>
 
@@ -746,10 +827,10 @@ const Products: React.FC<SearchBarProps> = ({
                         }
                         onClick={() =>
                           selectedProducts.some(
-                            (prod: any) => prod._id === product._id
+                            (prod) => prod._id === product._id
                           )
                             ? handleRemoveProduct(productId)
-                            : handleAddProducts(null, product)
+                            : handleAddProducts(event, product)
                         }
                         sx={{
                           textTransform: 'none',
@@ -758,7 +839,7 @@ const Products: React.FC<SearchBarProps> = ({
                         }}
                       >
                         {selectedProducts.some(
-                          (prod: any) => prod._id === product._id
+                          (prod) => prod._id === product._id
                         ) ? (
                           <RemoveShoppingCart />
                         ) : (
@@ -769,6 +850,7 @@ const Products: React.FC<SearchBarProps> = ({
                   </TableRow>
                 );
               })}
+              {/* Loading Indicator for More Products */}
               {loadingMore && (
                 <TableRow>
                   <TableCell colSpan={10} align='center'>
@@ -877,7 +959,7 @@ const Products: React.FC<SearchBarProps> = ({
               zIndex: 1400,
             }}
           >
-            <Close />
+            <CloseIcon />
           </IconButton>
           <img
             src={popupImageSrc}
@@ -890,7 +972,8 @@ const Products: React.FC<SearchBarProps> = ({
           />
         </DialogContent>
       </Dialog>
-      {/* Snackbar */}
+
+      {/* Snackbar for Notifications */}
       <Snackbar
         open={snackbarOpen}
         onClose={(e: any, r: any) => handleSnackbarClose(e, r)}
@@ -903,7 +986,7 @@ const Products: React.FC<SearchBarProps> = ({
             color='inherit'
             onClick={handleSnackbarClose}
           >
-            <Close fontSize='small' />
+            <CloseIcon fontSize='small' />
           </IconButton>
         }
       />
