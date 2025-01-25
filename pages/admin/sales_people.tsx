@@ -579,7 +579,10 @@ const SalesPeople = () => {
               </TableHead>
               <TableBody>
                 {salesPeople.map((person: any) => (
-                  <TableRow key={person._id}>
+                  <TableRow
+                    key={person._id}
+                    onClick={() => handleViewDetails(person)}
+                  >
                     <TableCell>{person.name}</TableCell>
                     <TableCell>{person.code}</TableCell>
                     <TableCell>{person.designation}</TableCell>

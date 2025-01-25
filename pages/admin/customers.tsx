@@ -817,7 +817,10 @@ const Customers = () => {
                 </TableHead>
                 <TableBody>
                   {customers.map((cust: any) => (
-                    <TableRow key={cust._id}>
+                    <TableRow
+                      key={cust._id}
+                      onClick={() => handleViewDetails(cust)}
+                    >
                       <TableCell>{cust.contact_name}</TableCell>
                       <TableCell>{cust.cf_sales_person || 'N/A'}</TableCell>
                       <TableCell>
