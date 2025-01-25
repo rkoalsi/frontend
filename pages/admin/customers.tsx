@@ -332,39 +332,39 @@ const Customers = () => {
       toast.error('Failed to update customer details.');
     }
   };
+  const getSpecialMargins = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(
+        `${baseApiUrl}/admin/customer/special_margins/${selectedCustomer._id}`
+      );
+      const { products = [] } = response.data;
+      setSpecialMarginProducts(products);
 
+      // Initialize globalSelections using product_id
+      const updatedSelections: Record<string, any> = {};
+      products.forEach((p: any) => {
+        updatedSelections[p.product_id] = {
+          // Changed from p._id to p.product_id
+          selected: true,
+          name: p.name,
+          margin: p.margin,
+        };
+      });
+      setGlobalSelections(updatedSelections);
+    } catch (err) {
+      console.error(err);
+      toast.error('Error Fetching Products With Special Margin');
+    } finally {
+      setLoading(false);
+    }
+  };
   // --------------------- Fetch Special Margins (in Drawer) ---------------------
   useEffect(() => {
     if (drawerOpen && selectedCustomer?._id) {
-      (async () => {
-        setLoading(true);
-        try {
-          const response = await axios.get(
-            `${baseApiUrl}/admin/customer/special_margins/${selectedCustomer._id}`
-          );
-          const { products = [] } = response.data;
-          setSpecialMarginProducts(products);
-
-          // Initialize globalSelections using product_id
-          const updatedSelections: Record<string, any> = {};
-          products.forEach((p: any) => {
-            updatedSelections[p.product_id] = {
-              // Changed from p._id to p.product_id
-              selected: true,
-              name: p.name,
-              margin: p.margin,
-            };
-          });
-          setGlobalSelections(updatedSelections);
-        } catch (err) {
-          console.error(err);
-          toast.error('Error Fetching Products With Special Margin');
-        } finally {
-          setLoading(false);
-        }
-      })();
+      getSpecialMargins();
     }
-  }, [drawerOpen, selectedCustomer, baseApiUrl]);
+  }, [drawerOpen, selectedCustomer]);
 
   // --------------------- Handle Deletion of Special Margin Product ---------------------
   const handleDeleteSpecialMargin = async (prod: any) => {
@@ -719,6 +719,7 @@ const Customers = () => {
       }
       toast.success('Special margins updated successfully.');
       handleCloseAddDialog();
+      await getSpecialMargins();
     } catch (error) {
       console.error(error);
       toast.error('Failed to update special margins.');
@@ -920,7 +921,7 @@ const Customers = () => {
                   </Typography>
                   <Typography>
                     <strong>GST Number:</strong>{' '}
-                    {selectedCustomer.gst_no || 'Unknown'}
+                    {selectedCustomer.gst_no || 'N/A'}
                   </Typography>
                   <Typography>
                     <strong>Type:</strong>{' '}
@@ -976,23 +977,23 @@ const Customers = () => {
                 >
                   Special Margin Products
                 </Typography>
-
-                {/* "Add Special Margin" button -> opens product-list dialog */}
-                <Button
-                  variant='contained'
-                  sx={{ mb: 2 }}
-                  onClick={handleOpenAddDialog}
-                >
-                  Add Special Margin
-                </Button>
-                <Button
-                  variant='contained'
-                  color='error'
-                  sx={{ mb: 2 }}
-                  onClick={handleDeleteAllSpecialMargins}
-                >
-                  Remove All Special Margins
-                </Button>
+                <Box display={'flex'} flexDirection={'row'} gap={'24px'}>
+                  <Button
+                    variant='contained'
+                    sx={{ mb: 2 }}
+                    onClick={handleOpenAddDialog}
+                  >
+                    Add Special Margin
+                  </Button>
+                  <Button
+                    variant='contained'
+                    color='error'
+                    sx={{ mb: 2 }}
+                    onClick={handleDeleteAllSpecialMargins}
+                  >
+                    Remove All Special Margins
+                  </Button>
+                </Box>
 
                 <TableContainer component={Paper}>
                   <Table size='small'>
@@ -1110,6 +1111,7 @@ const Customers = () => {
                 placeholder='Enter margin (e.g., 40%)'
                 variant='outlined'
                 size='small'
+                disabled={!allSelected}
                 onChange={(e) => handleGlobalMarginChange(e.target.value)}
               />
             </Box>

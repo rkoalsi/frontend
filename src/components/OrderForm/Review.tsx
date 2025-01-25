@@ -382,6 +382,12 @@ function Review(props: Props) {
                     <strong>Name</strong>
                   </TableCell>
                   <TableCell>
+                    <strong>Category</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Sub Catgory</strong>
+                  </TableCell>
+                  <TableCell>
                     <strong>GST</strong>
                   </TableCell>
                   <TableCell>
@@ -469,6 +475,8 @@ function Review(props: Props) {
                       <TableCell>{product.brand}</TableCell>
                       <TableCell>{product.cf_sku_code}</TableCell>
                       <TableCell>{product.name}</TableCell>
+                      <TableCell>{product.category}</TableCell>
+                      <TableCell>{product.sub_category}</TableCell>
                       <TableCell>
                         {product?.item_tax_preferences?.[0]?.tax_percentage ||
                           'N/A'}
