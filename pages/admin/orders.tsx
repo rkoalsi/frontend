@@ -158,7 +158,10 @@ const Orders = () => {
                     </TableHead>
                     <TableBody>
                       {orders.map((order: any) => (
-                        <TableRow key={order._id}>
+                        <TableRow
+                          key={order._id}
+                          onClick={() => handleViewDetails(order)}
+                        >
                           <TableCell>
                             {new Date(order.created_at).toLocaleString()}
                           </TableCell>

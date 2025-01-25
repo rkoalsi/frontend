@@ -14,9 +14,15 @@ import {
   TextField,
   Switch,
   Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Grid,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import { useDropzone } from 'react-dropzone';
 
 const Products = () => {
   const [products, setProducts] = useState<any[]>([]);
@@ -33,6 +39,11 @@ const Products = () => {
   const [skipPage, setSkipPage] = useState(''); // we'll store a string and convert on "Go"
 
   const baseApiUrl = process.env.api_url;
+
+  // State for Edit Modal
+  const [openEditModal, setOpenEditModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [updating, setUpdating] = useState(false);
 
   // Debounce the search input to prevent excessive API calls
   useEffect(() => {
@@ -145,6 +156,105 @@ const Products = () => {
     }
   };
 
+  // Open Edit Modal
+  const handleOpenEditModal = (product: any) => {
+    setSelectedProduct(product);
+    setOpenEditModal(true);
+  };
+
+  // Close Edit Modal
+  const handleCloseEditModal = () => {
+    setSelectedProduct(null);
+    setOpenEditModal(false);
+  };
+
+  // Handle Image Upload
+  const handleImageUpload = async (file: File) => {
+    if (!selectedProduct) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('product_id', selectedProduct._id);
+
+    try {
+      setUpdating(true);
+      const response = await axios.post(
+        `${baseApiUrl}/admin/upload-image`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      const newImageUrl = response.data.image_url;
+
+      // Update the product's image_url in the backend
+      await axios.put(`${baseApiUrl}/products/${selectedProduct._id}`, {
+        image_url: newImageUrl,
+      });
+
+      // Update the product in the local state
+      setProducts((prev) =>
+        prev.map((p) =>
+          p._id === selectedProduct._id ? { ...p, image_url: newImageUrl } : p
+        )
+      );
+
+      // Update the selected product
+      setSelectedProduct((prev: any) =>
+        prev ? { ...prev, image_url: newImageUrl } : prev
+      );
+
+      toast.success('Image updated successfully.');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to upload image.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Dropzone Component for Image Upload
+  const ImageDropzone = () => {
+    const onDrop = (acceptedFiles: File[]) => {
+      if (acceptedFiles && acceptedFiles.length > 0) {
+        handleImageUpload(acceptedFiles[0]);
+      }
+    };
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+      onDrop,
+      accept: {
+        'image/*': [],
+      },
+      multiple: false,
+    });
+
+    return (
+      <Box
+        {...getRootProps()}
+        sx={{
+          border: '2px dashed #cccccc',
+          padding: 2,
+          textAlign: 'center',
+          cursor: 'pointer',
+          backgroundColor: isDragActive ? '#f0f0f0' : 'transparent',
+        }}
+      >
+        <input {...getInputProps()} />
+        {isDragActive ? (
+          <Typography>Drop the image here...</Typography>
+        ) : (
+          <Typography>
+            Drag and drop an image here, or click to select an image
+          </Typography>
+        )}
+      </Box>
+    );
+  };
+
   return (
     <Box sx={{ padding: 3 }}>
       <Paper
@@ -203,18 +313,22 @@ const Products = () => {
                     <TableCell>Price</TableCell>
                     <TableCell>Stock</TableCell>
                     <TableCell>Status</TableCell>
+                    <TableCell>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {products.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} align='center'>
+                      <TableCell colSpan={7} align='center'>
                         No products found.
                       </TableCell>
                     </TableRow>
                   ) : (
                     products.map((product) => (
-                      <TableRow key={product._id}>
+                      <TableRow
+                        key={product._id}
+                        onClick={() => handleOpenEditModal(product)}
+                      >
                         <TableCell>
                           <img
                             src={product.image_url || '/placeholder.png'}
@@ -236,6 +350,15 @@ const Products = () => {
                             checked={product.status === 'active'}
                             onChange={() => handleToggleActive(product)}
                           />
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant='outlined'
+                            size='small'
+                            onClick={() => handleOpenEditModal(product)}
+                          >
+                            Edit
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
@@ -280,6 +403,155 @@ const Products = () => {
           </>
         )}
       </Paper>
+
+      {/* Edit Product Modal */}
+      <Dialog
+        open={openEditModal}
+        onClose={handleCloseEditModal}
+        fullWidth
+        maxWidth='md'
+      >
+        <DialogTitle>Edit Product Details</DialogTitle>
+        <DialogContent>
+          {selectedProduct && (
+            <Box sx={{ mt: 2 }}>
+              <Grid container spacing={2}>
+                {/* Image Section */}
+                <Grid item xs={12} md={4}>
+                  <Typography
+                    variant='subtitle2'
+                    color='textSecondary'
+                    gutterBottom
+                  >
+                    Product Image
+                  </Typography>
+                  <Box
+                    sx={{
+                      mb: 2,
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <img
+                      src={selectedProduct.image_url || '/placeholder.png'}
+                      alt={selectedProduct.name}
+                      style={{
+                        width: '100%',
+                        maxWidth: '200px',
+                        height: 'auto',
+                        borderRadius: '4px',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  </Box>
+                  <ImageDropzone />
+                  {updating && (
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        mt: 2,
+                      }}
+                    >
+                      <CircularProgress size={24} />
+                    </Box>
+                  )}
+                </Grid>
+
+                {/* Details Section */}
+                <Grid item xs={12} md={8}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant='subtitle2' color='textSecondary'>
+                        Item ID
+                      </Typography>
+                      <Typography variant='body1'>
+                        {selectedProduct.item_id}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant='subtitle2' color='textSecondary'>
+                        Item Name
+                      </Typography>
+                      <Typography variant='body1'>
+                        {selectedProduct.item_name}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant='subtitle2' color='textSecondary'>
+                        SKU
+                      </Typography>
+                      <Typography variant='body1'>
+                        {selectedProduct.cf_sku_code}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant='subtitle2' color='textSecondary'>
+                        Price
+                      </Typography>
+                      <Typography variant='body1'>
+                        ₹{selectedProduct.rate}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant='subtitle2' color='textSecondary'>
+                        Stock
+                      </Typography>
+                      <Typography variant='body1'>
+                        {selectedProduct.stock}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant='subtitle2' color='textSecondary'>
+                        Status
+                      </Typography>
+                      <Typography variant='body1'>
+                        {selectedProduct.status.charAt(0).toUpperCase() +
+                          selectedProduct.status.slice(1)}
+                      </Typography>
+                    </Grid>
+                    {/* Add more fields as necessary */}
+                    {/* Example: Brand */}
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant='subtitle2' color='textSecondary'>
+                        Brand
+                      </Typography>
+                      <Typography variant='body1'>
+                        {selectedProduct.brand}
+                      </Typography>
+                    </Grid>
+                    {/* Example: HSN/SAC */}
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant='subtitle2' color='textSecondary'>
+                        HSN/SAC
+                      </Typography>
+                      <Typography variant='body1'>
+                        {selectedProduct.hsn_or_sac}
+                      </Typography>
+                    </Grid>
+                    {/* Example: Account Name */}
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant='subtitle2' color='textSecondary'>
+                        Account Name
+                      </Typography>
+                      <Typography variant='body1'>
+                        {selectedProduct.account_name}
+                      </Typography>
+                    </Grid>
+                    {/* Add any other fields you wish to display */}
+                  </Grid>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseEditModal} color='primary'>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
