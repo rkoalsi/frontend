@@ -50,7 +50,7 @@ interface SearchResult {
 interface SearchBarProps {
   label: string;
   selectedProducts: SearchResult[];
-  setSelectedProducts: React.Dispatch<React.SetStateAction<SearchResult[]>>;
+  setSelectedProducts: any;
   updateOrder: (order: any) => void;
   customer: any; // Replace with appropriate type
   totals: any;
