@@ -327,10 +327,7 @@ const Products = () => {
                     </TableRow>
                   ) : (
                     products.map((product) => (
-                      <TableRow
-                        key={product._id}
-                        onClick={() => handleOpenEditModal(product)}
-                      >
+                      <TableRow key={product._id}>
                         <TableCell>
                           <img
                             src={product.image_url || '/placeholder.png'}

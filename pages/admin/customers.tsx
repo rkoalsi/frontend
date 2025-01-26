@@ -24,6 +24,7 @@ import {
   DialogContent,
   DialogActions,
   Checkbox,
+  InputAdornment,
 } from '@mui/material';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -818,10 +819,7 @@ const Customers = () => {
                 </TableHead>
                 <TableBody>
                   {customers.map((cust: any) => (
-                    <TableRow
-                      key={cust._id}
-                      onClick={() => handleViewDetails(cust)}
-                    >
+                    <TableRow key={cust._id}>
                       <TableCell>{cust.contact_name}</TableCell>
                       <TableCell>{cust.cf_sales_person || 'N/A'}</TableCell>
                       <TableCell>
@@ -935,6 +933,13 @@ const Customers = () => {
                     <TextField
                       fullWidth
                       label='Margin'
+                      slotProps={{
+                        input: {
+                          endAdornment: (
+                            <InputAdornment position='end'>%</InputAdornment>
+                          ),
+                        },
+                      }}
                       variant='outlined'
                       value={editMargin}
                       onChange={(e) => setEditMargin(e.target.value)}
