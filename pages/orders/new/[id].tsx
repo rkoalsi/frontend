@@ -1,4 +1,10 @@
-import React, { useState, useMemo, useContext, useEffect, useRef } from 'react';
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+} from 'react';
 import {
   Box,
   Button,
@@ -37,10 +43,10 @@ const NewOrder: React.FC = () => {
   const [order, setOrder]: any = useState(null);
   const [billingAddress, setBillingAddress]: any = useState(null);
   const [shippingAddress, setShippingAddress]: any = useState(null);
-  const [selectedProducts, setSelectedProducts] = useState<[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
   const [activeStep, setActiveStep] = useState(isShared ? 3 : 0);
-  const [open, setOpen] = React.useState(false);
-  const [error, setError]: any = React.useState(null);
+  const [open, setOpen] = useState(false);
+  const [error, setError]: any = useState(null);
   const [sharedLink, setSharedLink] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
   const theme = useTheme();
@@ -50,9 +56,6 @@ const NewOrder: React.FC = () => {
   }>({});
 
   // ------------------ FETCH SPECIAL MARGINS -------------------------
-  /**
-   * Once we know the customer's _id, fetch the special margins from your API.
-   */
   useEffect(() => {
     if (!customer?._id) return; // Wait until customer is known
 
@@ -80,13 +83,14 @@ const NewOrder: React.FC = () => {
     fetchSpecialMargins();
   }, [customer]);
 
+  // ------------------ Calculate Totals ---------------------
   const totals = useMemo(() => {
     const totals = selectedProducts.reduce(
-      (acc: any, product: any) => {
+      (acc: { totalGST: number; totalAmount: number }, product) => {
         const taxPercentage =
           product?.item_tax_preferences?.[0]?.tax_percentage || 0;
         const rate = parseFloat(product.rate.toString()) || 0;
-        const quantity = parseInt(product.quantity.toString()) || 1;
+        const quantity = parseInt(product.quantity?.toString() || '1') || 1;
 
         // 1) Check if there's a special margin for this product
         let margin = 0.4; // default 40%
@@ -135,6 +139,25 @@ const NewOrder: React.FC = () => {
     return { totalGST: roundedTotalGST, totalAmount: roundedTotalAmount };
   }, [selectedProducts, customer, specialMargins]);
 
+  // ------------------ Update Order on Changes ---------------------
+  useEffect(() => {
+    const updateOrder = async () => {
+      try {
+        await axios.put(`${process.env.api_url}/orders/${id}`, {
+          products: selectedProducts,
+          total_gst: parseFloat(totals.totalGST.toFixed(2)),
+          total_amount: parseFloat(totals.totalAmount.toFixed(2)),
+        });
+      } catch (error) {
+        console.error('Error updating order:', error);
+      }
+    };
+
+    if (selectedProducts.length > 0 || totals.totalAmount > 0) {
+      updateOrder();
+    }
+  }, [selectedProducts, totals, id]);
+
   const handleNext = async () => {
     try {
       let body = {};
@@ -159,15 +182,6 @@ const NewOrder: React.FC = () => {
                 'Shipping address is missing.\nPlease Select Shipping address or Add if it does not exist';
             body = { shipping_address: shippingAddress };
             break;
-          // case 3:
-          //   if (selectedProducts.length === 0)
-          //     message = 'No products selected.\nPlease Select Product(s)';
-          //   body = {
-          //     products: selectedProducts,
-          //     total_gst: parseFloat(totals.totalGST.toFixed(2)),
-          //     total_amount: parseFloat(totals.totalAmount.toFixed(2)),
-          //   };
-          //   break;
           default:
             break;
         }
@@ -188,6 +202,7 @@ const NewOrder: React.FC = () => {
       console.error('Error updating order:', error);
     }
   };
+
   const handleEnd = async (status = 'draft') => {
     setLoading(true);
     const base = `${process.env.api_url}`;
@@ -222,7 +237,7 @@ const NewOrder: React.FC = () => {
 
   const customerRef = useRef(null);
 
-  const getOrder = async () => {
+  const getOrder = useCallback(async () => {
     const base = `${process.env.api_url}`;
     try {
       const resp = await axios.get(`${base}/orders/${id}`);
@@ -276,27 +291,21 @@ const NewOrder: React.FC = () => {
     } catch (error) {
       console.error('Error fetching order:', error);
     }
-  };
+  }, [id]);
 
-  const generateSharedLink = () => {
+  const generateSharedLink = useCallback(() => {
     const baseURL = window.location.origin;
     const sharedLink = `${baseURL}/orders/new/${id}?shared=true`; // Assuming `id` is the current order ID
     setSharedLink(sharedLink);
     navigator.clipboard.writeText(sharedLink);
     setLinkCopied(true);
-  };
+  }, [id]);
 
   useEffect(() => {
     if (id) getOrder();
-  }, [id]);
-  const updateOrder = async (data: any) => {
-    try {
-      await axios.put(`${process.env.api_url}/orders/${id}`, {
-        ...data,
-      });
-    } catch (error) {
-      console.log(error);
-    }
+  }, [id, getOrder]);
+  const handleCheckout = () => {
+    setActiveStep(activeStep + 1);
   };
   const steps: StepContent[] = [
     {
@@ -309,7 +318,9 @@ const NewOrder: React.FC = () => {
             setBillingAddress(null);
             setShippingAddress(null);
             if (value?._id?.$oid) {
-              updateOrder({ customer_id: value._id.$oid });
+              await axios.put(`${process.env.api_url}/orders/${id}`, {
+                customer_id: value._id.$oid,
+              });
             }
           }}
           value={customer}
@@ -354,8 +365,9 @@ const NewOrder: React.FC = () => {
           customer={customer}
           selectedProducts={selectedProducts}
           setSelectedProducts={setSelectedProducts}
-          updateOrder={updateOrder}
+          specialMargins={specialMargins}
           order={order}
+          onCheckout={handleCheckout}
         />
       ),
     },
@@ -369,14 +381,16 @@ const NewOrder: React.FC = () => {
           shippingAddress={shippingAddress}
           billingAddress={billingAddress}
           setSelectedProducts={setSelectedProducts} // Add this
-          updateOrder={updateOrder} // Add this
+          // updateOrder={updateO} // Remove if not needed
           setActiveStep={setActiveStep}
+          specialMargins={specialMargins}
           isShared={isShared}
           order={order}
         />
       ),
     },
   ];
+
   const handleStepClick = (index: number) => {
     if (isShared) {
       // Shared link users can only navigate between steps 3 (Products) and 4 (Review)
@@ -444,6 +458,7 @@ const NewOrder: React.FC = () => {
     }
     setOpen(false);
   };
+
   useEffect(() => {
     if (
       isShared &&
@@ -453,7 +468,8 @@ const NewOrder: React.FC = () => {
       toast.success(`Thank you for your order`);
       router.push('/login');
     }
-  }, [isShared, order]);
+  }, [isShared, order, router]);
+
   return (
     <Box
       sx={{
@@ -532,7 +548,7 @@ const NewOrder: React.FC = () => {
             <Button
               variant='outlined'
               color='secondary'
-              disabled={isShared && activeStep == 3}
+              disabled={isShared && activeStep === 3}
               onClick={() => {
                 activeStep === 0
                   ? router.push('/')
@@ -578,8 +594,8 @@ const NewOrder: React.FC = () => {
                   selectedProducts.length === 0 ||
                   !totals.totalAmount ||
                   loading ||
-                  order.status.toLowerCase().includes('declined') ||
-                  order.status.toLowerCase().includes('accepted')
+                  order?.status?.toLowerCase()?.includes('declined') ||
+                  order?.status?.toLowerCase()?.includes('accepted')
                 }
               >
                 {'Decline'}
@@ -601,8 +617,8 @@ const NewOrder: React.FC = () => {
                     selectedProducts.length === 0 ||
                     !totals.totalAmount ||
                     loading ||
-                    order.status.toLowerCase().includes('accepted') ||
-                    order.status.toLowerCase().includes('declined')
+                    order?.status?.toLowerCase()?.includes('accepted') ||
+                    order?.status?.toLowerCase()?.includes('declined')
                   : false
               }
             >

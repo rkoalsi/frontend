@@ -1,4 +1,5 @@
-import { useRef, useState, useEffect } from 'react';
+// Review.tsx
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Divider,
@@ -22,22 +23,24 @@ import {
 import { Close, Edit } from '@mui/icons-material';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import axios from 'axios';
 
 interface Props {
   customer: any;
   shippingAddress: any;
   billingAddress: any;
-  products: any;
+  products: any[];
   setSelectedProducts: any;
-  totals: any;
-  updateOrder: any;
-  setActiveStep: any;
-  isShared: any;
+  totals: {
+    totalGST: number;
+    totalAmount: number;
+  };
+  specialMargins: { [key: string]: string };
+  setActiveStep: (step: number) => void;
+  isShared: boolean;
   order: any;
 }
 
-function Review(props: Props) {
+const Review: React.FC<Props> = React.memo((props) => {
   const {
     customer,
     shippingAddress,
@@ -45,7 +48,7 @@ function Review(props: Props) {
     products,
     setSelectedProducts,
     totals,
-    updateOrder,
+    specialMargins,
     setActiveStep,
     isShared,
     order,
@@ -54,54 +57,10 @@ function Review(props: Props) {
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
 
-  // ------------------ NEW: specialMargins State ---------------------
-  /**
-   * Will store data like:
-   *   {
-   *     "abc123": "45%",   // product_id => margin string
-   *     "xyz789": "50%"
-   *   }
-   */
-  const [specialMargins, setSpecialMargins] = useState<{
-    [key: string]: string;
-  }>({});
-
-  // ------------------ FETCH SPECIAL MARGINS -------------------------
-  /**
-   * Once we know the customer's _id, fetch the special margins from your API.
-   * Adjust the endpoint/response to match your backend.
-   */
-  useEffect(() => {
-    if (!customer?._id) return;
-
-    const fetchSpecialMargins = async () => {
-      try {
-        const baseApiUrl = process.env.api_url;
-        const res = await axios.get(
-          `${baseApiUrl}/admin/customer/special_margins/${customer._id}`
-        );
-        // Suppose it returns: { products: [ { product_id: 'abc123', margin: '45%' }, ... ] }
-        const productList = res.data.products || [];
-
-        // Transform the array into a dictionary for easy lookup
-        const marginMap: { [key: string]: string } = {};
-        productList.forEach((item: any) => {
-          marginMap[item.product_id] = item.margin; // e.g. "45%"
-        });
-
-        setSpecialMargins(marginMap);
-      } catch (error) {
-        console.error('Error fetching special margins:', error);
-      }
-    };
-
-    fetchSpecialMargins();
-  }, [customer]);
-
-  // ------------------ PDF Download Ref & Logic -----------------------
+  // PDF Download Ref & Logic
   const componentRef = useRef<HTMLDivElement>(null);
 
-  const downloadAsPDF = async () => {
+  const downloadAsPDF = useCallback(async () => {
     if (componentRef.current) {
       // Temporarily hide edit icons
       const editIcons = componentRef.current.querySelectorAll('.no-pdf');
@@ -135,122 +94,59 @@ function Review(props: Props) {
       pdf.addImage(imgData, 'PNG', 20, 20, imgWidth, imgHeight);
       pdf.save('Order_Review.pdf');
     }
-  };
+  }, []);
 
-  // ------------------ Recalculate Totals w/ Special Margins ----------
-  const calculateLocalTotals = (products: any) => {
-    const totals = products.reduce(
-      (acc: any, product: any) => {
-        const taxPercentage =
-          product?.item_tax_preferences?.[0]?.tax_percentage || 0;
-        const rate = parseFloat(product.rate.toString()) || 0;
-        const quantity = parseInt(product.quantity.toString()) || 1;
+  // Quantity Change Handler
+  const handleQuantityChange = useCallback(
+    (id: string, newQuantity: number) => {
+      const updatedProducts = products.map((product) => {
+        const pid =
+          typeof product._id === 'string' ? product._id : product._id?.$oid;
 
-        // 1) Check if there's a special margin for this product
-        let margin = 0.4; // default 40%
-        const productId =
-          typeof product._id === 'string' ? product._id : product._id.$oid;
-
-        if (specialMargins[productId]) {
-          margin = parseInt(specialMargins[productId].replace('%', '')) / 100;
-        } else {
-          // fallback to customer's margin (e.g. "40%")
-          margin =
-            parseInt(customer?.cf_margin?.replace('%', '') || '40') / 100;
+        if (pid === id) {
+          return {
+            ...product,
+            quantity: Math.max(1, Math.min(newQuantity, product.stock)),
+          };
         }
+        return product;
+      });
 
-        // 2) Calculate Selling Price based on margin
-        const sellingPrice = rate - rate * margin;
+      setSelectedProducts(updatedProducts);
+      // Parent component handles totals and order update via useEffect
+    },
+    [products, setSelectedProducts]
+  );
 
-        let gstAmount = 0;
-        let totalAmount = 0;
+  // Remove Product Handler
+  const handleRemoveProduct = useCallback(
+    (id: string) => {
+      const updatedProducts = products.filter((product) => {
+        const pid =
+          typeof product._id === 'string' ? product._id : product._id?.$oid;
+        return pid !== id;
+      });
 
-        if (customer?.cf_in_ex === 'Inclusive') {
-          const basePrice = sellingPrice / (1 + taxPercentage / 100);
-          gstAmount = (sellingPrice - basePrice) * quantity;
-          totalAmount = sellingPrice * quantity;
-        } else {
-          gstAmount = sellingPrice * (taxPercentage / 100) * quantity;
-          totalAmount =
-            (sellingPrice + sellingPrice * (taxPercentage / 100)) * quantity;
-        }
+      setSelectedProducts(updatedProducts);
+      // Parent component handles totals and order update via useEffect
+    },
+    [products, setSelectedProducts]
+  );
 
-        // Accumulate without rounding
-        acc.totalGST += gstAmount;
-        acc.totalAmount += totalAmount;
-        return acc;
-      },
-      { totalGST: 0, totalAmount: 0 }
-    );
-
-    // Apply rounding once at the end
-    const roundedTotalGST = Math.round(totals.totalGST * 100) / 100; // Round to 2 decimals
-    const roundedTotalAmount =
-      totals.totalAmount % 1 >= 0.5
-        ? Math.ceil(totals.totalAmount) // Round up if decimal >= 0.5
-        : Math.floor(totals.totalAmount); // Round down otherwise
-
-    return { totalGST: roundedTotalGST, totalAmount: roundedTotalAmount };
-  };
-
-  // ------------------ Quantity Change & Remove Product ---------------
-  const handleQuantityChange = async (id: string, newQuantity: number) => {
-    const updatedProducts = products.map((product: any) => {
-      const pid =
-        typeof product._id === 'string' ? product._id : product._id?.$oid;
-
-      if (pid === id) {
-        return {
-          ...product,
-          quantity: Math.max(1, Math.min(newQuantity, product.stock)),
-        };
-      }
-      return product;
-    });
-
-    setSelectedProducts(updatedProducts); // Update state locally
-    const localTotals = calculateLocalTotals(updatedProducts);
-
-    await updateOrder({
-      products: updatedProducts,
-      total_gst: parseFloat(localTotals.totalGST.toFixed(2)),
-      total_amount: parseFloat(localTotals.totalAmount.toFixed(2)),
-    });
-  };
-
-  const handleRemoveProduct = async (id: string) => {
-    const updatedProducts = products.filter((product: any) => {
-      const pid =
-        typeof product._id === 'string' ? product._id : product._id?.$oid;
-      return pid !== id;
-    });
-
-    setSelectedProducts(updatedProducts);
-    const localTotals = calculateLocalTotals(updatedProducts);
-
-    await updateOrder({
-      products: updatedProducts,
-      total_gst: parseFloat(localTotals.totalGST.toFixed(2)),
-      total_amount: parseFloat(localTotals.totalAmount.toFixed(2)),
-    });
-  };
-
-  // ------------------ Image Popup -----------------------------------
-  const handleImageClick = (src: any) => {
+  // Image Popup Handlers
+  const handleImageClick = useCallback((src: string) => {
     setPopupImageSrc(src);
     setOpenImagePopup(true);
-  };
-  const handleClosePopup = () => {
+  }, []);
+
+  const handleClosePopup = useCallback(() => {
     setOpenImagePopup(false);
-  };
+  }, []);
 
   if (!customer) {
     return <Typography>This is content for Review</Typography>;
   }
 
-  // ------------------------------------------------------------------
-  // Render
-  // ------------------------------------------------------------------
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
@@ -258,7 +154,7 @@ function Review(props: Props) {
         display='flex'
         justifyContent='space-between'
         alignItems='flex-start'
-        mb={'8px'}
+        mb={2}
       >
         <Typography variant='h6' sx={{ mb: 1 }}>
           Review
@@ -274,7 +170,7 @@ function Review(props: Props) {
         <Paper elevation={3} sx={{ p: 3, mb: 2, borderRadius: 2 }}>
           <Box
             display='flex'
-            alignContent='center'
+            alignItems='center'
             justifyContent='space-between'
           >
             <Typography variant='h6' fontWeight='bold' gutterBottom>
@@ -299,13 +195,17 @@ function Review(props: Props) {
         <Divider sx={{ my: 2 }} />
 
         {/* Addresses */}
-        <Stack direction={{ xs: 'row', md: 'row' }} spacing={2} sx={{ mb: 2 }}>
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={2}
+          sx={{ mb: 2 }}
+        >
           {/* Billing Address */}
           <Card sx={{ flex: 1 }}>
             <CardContent>
               <Box
                 display='flex'
-                alignContent='center'
+                alignItems='center'
                 justifyContent='space-between'
               >
                 <Typography variant='h6' fontWeight='bold' gutterBottom>
@@ -327,7 +227,7 @@ function Review(props: Props) {
             <CardContent>
               <Box
                 display='flex'
-                alignContent='center'
+                alignItems='center'
                 justifyContent='space-between'
               >
                 <Typography variant='h6' fontWeight='bold' gutterBottom>
@@ -353,7 +253,7 @@ function Review(props: Props) {
         <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
           <Box
             display='flex'
-            alignContent='center'
+            alignItems='center'
             justifyContent='space-between'
           >
             <Typography variant='h6' fontWeight='bold' gutterBottom>
@@ -385,7 +285,7 @@ function Review(props: Props) {
                     <strong>Category</strong>
                   </TableCell>
                   <TableCell>
-                    <strong>Sub Catgory</strong>
+                    <strong>Sub Category</strong>
                   </TableCell>
                   <TableCell>
                     <strong>GST</strong>
@@ -414,34 +314,25 @@ function Review(props: Props) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {products.map((product: any, index: number) => {
+                {products.map((product, index) => {
                   const isActive = product.status === 'active';
-
-                  // Convert _id to string
                   const productId =
                     typeof product._id === 'string'
                       ? product._id
                       : product._id?.$oid;
 
-                  // 1) If special margin exists, use it; otherwise fallback
-                  let marginPercent = 40; // default
-                  if (specialMargins[productId]) {
-                    marginPercent = parseInt(
-                      specialMargins[productId].replace('%', '')
-                    );
-                  } else if (customer.cf_margin) {
-                    marginPercent = parseInt(
-                      customer.cf_margin.replace('%', '') || '40'
-                    );
-                  }
+                  // Determine margin
+                  const marginPercent = specialMargins[productId]
+                    ? parseInt(specialMargins[productId].replace('%', ''))
+                    : parseInt(customer.cf_margin.replace('%', '') || '40');
                   const margin = marginPercent / 100;
 
-                  // 2) Calculate selling price
+                  // Calculate selling price
                   const sellingPrice = parseFloat(
                     (product.rate - product.rate * margin).toFixed(2)
                   );
 
-                  // 3) Item-level total
+                  // Calculate item total
                   const quantity = product.quantity || 1;
                   const itemTotal = (quantity * sellingPrice).toFixed(2);
 
@@ -483,23 +374,18 @@ function Review(props: Props) {
                         %
                       </TableCell>
                       <TableCell>₹{product.rate}</TableCell>
-
-                      {/* Show special margin or fallback margin */}
                       <TableCell>
-                        {specialMargins[productId]
-                          ? specialMargins[productId]
-                          : customer.cf_margin || '40%'}
+                        {specialMargins[productId] ||
+                          customer.cf_margin ||
+                          '40%'}
                       </TableCell>
-
                       <TableCell>₹{sellingPrice}</TableCell>
                       <TableCell>{product.stock}</TableCell>
-
-                      {/* Quantity */}
                       <TableCell>
                         <TextField
                           type='number'
                           value={product.quantity || 1}
-                          onChange={(e: any) =>
+                          onChange={(e) =>
                             handleQuantityChange(
                               productId,
                               parseInt(e.target.value) || 1
@@ -517,11 +403,7 @@ function Review(props: Props) {
                           }
                         />
                       </TableCell>
-
-                      {/* Item total */}
                       <TableCell>₹{itemTotal}</TableCell>
-
-                      {/* Remove button */}
                       <TableCell>
                         <Button
                           variant='outlined'
@@ -601,6 +483,6 @@ function Review(props: Props) {
       </Box>
     </Box>
   );
-}
+});
 
 export default Review;
