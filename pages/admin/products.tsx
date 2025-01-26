@@ -45,6 +45,13 @@ const Products = () => {
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [updating, setUpdating] = useState(false);
 
+  // NEW: State for editable fields
+  const [editableFields, setEditableFields] = useState({
+    category: '',
+    sub_category: '',
+    series: '',
+  });
+
   // Debounce the search input to prevent excessive API calls
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -160,12 +167,24 @@ const Products = () => {
   const handleOpenEditModal = (product: any) => {
     setSelectedProduct(product);
     setOpenEditModal(true);
+
+    // Initialize editable fields with current product data
+    setEditableFields({
+      category: product.category || '',
+      sub_category: product.sub_category || '',
+      series: product.series || '',
+    });
   };
 
   // Close Edit Modal
   const handleCloseEditModal = () => {
     setSelectedProduct(null);
     setOpenEditModal(false);
+    setEditableFields({
+      category: '',
+      sub_category: '',
+      series: '',
+    });
   };
 
   // Handle Image Upload
@@ -211,6 +230,70 @@ const Products = () => {
     } catch (error) {
       console.error(error);
       toast.error('Failed to upload image.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Handle Editable Field Changes
+  const handleEditableFieldChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setEditableFields((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // Save Edited Fields
+  const handleSaveEdit = async () => {
+    if (!selectedProduct) return;
+
+    const { category, sub_category, series } = editableFields;
+
+    // Basic validation
+    if (
+      category.trim() === '' ||
+      sub_category.trim() === '' ||
+      series.trim() === ''
+    ) {
+      toast.error('All fields are required.');
+      return;
+    }
+
+    try {
+      setUpdating(true);
+
+      const updatedFields = {
+        category: category.trim(),
+        sub_category: sub_category.trim(),
+        series: series.trim(),
+      };
+
+      // Send update request to the backend
+      await axios.put(
+        `${baseApiUrl}/products/${selectedProduct._id}`,
+        updatedFields
+      );
+
+      // Update the product in the local state
+      setProducts((prev) =>
+        prev.map((p) =>
+          p._id === selectedProduct._id ? { ...p, ...updatedFields } : p
+        )
+      );
+
+      // Update the selected product
+      setSelectedProduct((prev: any) =>
+        prev ? { ...prev, ...updatedFields } : prev
+      );
+
+      toast.success('Product details updated successfully.');
+      handleCloseEditModal();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update product details.');
     } finally {
       setUpdating(false);
     }
@@ -321,7 +404,7 @@ const Products = () => {
                 <TableBody>
                   {products.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} align='center'>
+                      <TableCell colSpan={9} align='center'>
                         No products found.
                       </TableCell>
                     </TableRow>
@@ -463,6 +546,7 @@ const Products = () => {
                 {/* Details Section */}
                 <Grid item xs={12} md={8}>
                   <Grid container spacing={2}>
+                    {/* Item Name (Read-only) */}
                     <Grid item xs={12} sm={6}>
                       <Typography variant='subtitle2' color='textSecondary'>
                         Item Name
@@ -471,30 +555,53 @@ const Products = () => {
                         {selectedProduct.item_name}
                       </Typography>
                     </Grid>
+
+                    {/* Category (Editable) */}
                     <Grid item xs={12} sm={6}>
                       <Typography variant='subtitle2' color='textSecondary'>
                         Category
                       </Typography>
-                      <Typography variant='body1'>
-                        {selectedProduct.category || 'N/A'}
-                      </Typography>
+                      <TextField
+                        name='category'
+                        variant='outlined'
+                        fullWidth
+                        value={editableFields.category}
+                        onChange={handleEditableFieldChange}
+                        size='small'
+                      />
                     </Grid>
+
+                    {/* Sub Category (Editable) */}
                     <Grid item xs={12} sm={6}>
                       <Typography variant='subtitle2' color='textSecondary'>
                         Sub Category
                       </Typography>
-                      <Typography variant='body1'>
-                        {selectedProduct.sub_category || 'N/A'}
-                      </Typography>
+                      <TextField
+                        name='sub_category'
+                        variant='outlined'
+                        fullWidth
+                        value={editableFields.sub_category}
+                        onChange={handleEditableFieldChange}
+                        size='small'
+                      />
                     </Grid>
+
+                    {/* Series (Editable) */}
                     <Grid item xs={12} sm={6}>
                       <Typography variant='subtitle2' color='textSecondary'>
                         Series
                       </Typography>
-                      <Typography variant='body1'>
-                        {selectedProduct?.series || 'N/A'}
-                      </Typography>
+                      <TextField
+                        name='series'
+                        variant='outlined'
+                        fullWidth
+                        value={editableFields.series}
+                        onChange={handleEditableFieldChange}
+                        size='small'
+                      />
                     </Grid>
+
+                    {/* SKU (Read-only) */}
                     <Grid item xs={12} sm={6}>
                       <Typography variant='subtitle2' color='textSecondary'>
                         SKU
@@ -503,6 +610,8 @@ const Products = () => {
                         {selectedProduct.cf_sku_code}
                       </Typography>
                     </Grid>
+
+                    {/* Manufacture Code (Read-only) */}
                     <Grid item xs={12} sm={6}>
                       <Typography variant='subtitle2' color='textSecondary'>
                         Manufacture Code
@@ -511,6 +620,8 @@ const Products = () => {
                         {selectedProduct.cf_item_code}
                       </Typography>
                     </Grid>
+
+                    {/* Price (Read-only) */}
                     <Grid item xs={12} sm={6}>
                       <Typography variant='subtitle2' color='textSecondary'>
                         Price
@@ -519,6 +630,8 @@ const Products = () => {
                         ₹{selectedProduct.rate}
                       </Typography>
                     </Grid>
+
+                    {/* Stock (Read-only) */}
                     <Grid item xs={12} sm={6}>
                       <Typography variant='subtitle2' color='textSecondary'>
                         Stock
@@ -527,6 +640,8 @@ const Products = () => {
                         {selectedProduct.stock}
                       </Typography>
                     </Grid>
+
+                    {/* Status (Read-only) */}
                     <Grid item xs={12} sm={6}>
                       <Typography variant='subtitle2' color='textSecondary'>
                         Status
@@ -536,8 +651,8 @@ const Products = () => {
                           selectedProduct.status.slice(1)}
                       </Typography>
                     </Grid>
-                    {/* Add more fields as necessary */}
-                    {/* Example: Brand */}
+
+                    {/* Brand (Read-only) */}
                     <Grid item xs={12} sm={6}>
                       <Typography variant='subtitle2' color='textSecondary'>
                         Brand
@@ -546,7 +661,8 @@ const Products = () => {
                         {selectedProduct.brand}
                       </Typography>
                     </Grid>
-                    {/* Example: HSN/SAC */}
+
+                    {/* HSN/SAC (Read-only) */}
                     <Grid item xs={12} sm={6}>
                       <Typography variant='subtitle2' color='textSecondary'>
                         HSN/SAC
@@ -563,8 +679,20 @@ const Products = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseEditModal} color='primary'>
-            Close
+          <Button
+            onClick={handleCloseEditModal}
+            color='primary'
+            disabled={updating}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveEdit}
+            color='primary'
+            variant='contained'
+            disabled={updating}
+          >
+            Save
           </Button>
         </DialogActions>
       </Dialog>

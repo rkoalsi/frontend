@@ -393,7 +393,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                           }
                           inputProps={{ min: 1, max: product.stock }}
                           size='small'
-                          sx={{ width: '60px' }}
+                          sx={{ width: '70px' }}
                           disabled={
                             !isActive ||
                             order?.status
