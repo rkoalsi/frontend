@@ -151,6 +151,112 @@ const Products: React.FC<SearchBarProps> = ({
     };
   }, [debouncedSuccess, debouncedWarn, debouncedInfo, debouncedError]);
 
+  const RowRenderer = ({
+    index,
+    style,
+    data,
+  }: {
+    index: number;
+    style: React.CSSProperties;
+    data: SearchResult[];
+  }) => {
+    const product = data[index];
+    const productId = product._id;
+    const selectedProduct = selectedProducts.find((p) => p._id === productId);
+    const sellingPrice = getSellingPrice(product);
+    const quantity =
+      selectedProduct?.quantity || temporaryQuantities[productId] || 1;
+    const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
+
+    return (
+      <TableRow style={style} key={productId}>
+        <TableCell>
+          <Badge
+            badgeContent={product.new ? 'New' : undefined}
+            color='secondary'
+            overlap='rectangular'
+            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            <img
+              src={product.image_url || '/placeholder.png'}
+              alt={product.name}
+              loading='lazy'
+              style={{
+                width: '100px',
+                height: '100px',
+                borderRadius: '4px',
+                objectFit: 'cover',
+                cursor: 'pointer',
+              }}
+              onClick={() =>
+                handleImageClick(product.image_url || '/placeholder.png')
+              }
+            />
+          </Badge>
+        </TableCell>
+        <TableCell>{product.name}</TableCell>
+        <TableCell>{product.sub_category || '-'}</TableCell>
+        <TableCell>{product.series || '-'}</TableCell>
+        <TableCell>{product.cf_sku_code || '-'}</TableCell>
+        <TableCell>₹{product.rate}</TableCell>
+        <TableCell>{product.stock}</TableCell>
+        <TableCell>
+          {specialMargins[productId]
+            ? specialMargins[productId]
+            : customer.cf_margin || '40%'}
+        </TableCell>
+        <TableCell>₹{sellingPrice}</TableCell>
+        <TableCell>
+          <TextField
+            type='number'
+            value={quantity}
+            disabled={
+              order?.status?.toLowerCase()?.includes('accepted') ||
+              order?.status?.toLowerCase()?.includes('declined')
+            }
+            onChange={(e) => {
+              const parsedValue = parseInt(e.target.value || '1');
+              const newQuantity = Math.max(
+                1,
+                Math.min(parsedValue, product.stock)
+              );
+              if (selectedProduct) {
+                handleQuantityChange(productId, newQuantity);
+              } else {
+                setTemporaryQuantities((prev) => ({
+                  ...prev,
+                  [productId]: newQuantity,
+                }));
+                debouncedInfo(
+                  `Set quantity to ${newQuantity}. Add product to cart to confirm.`
+                );
+              }
+            }}
+            inputProps={{ min: 1, max: product.stock, step: 1 }}
+            size='small'
+            sx={{ width: '80px' }}
+          />
+        </TableCell>
+        <TableCell>{selectedProduct ? `₹${itemTotal}` : '-'}</TableCell>
+        <TableCell>
+          <IconButton
+            color='primary'
+            onClick={() =>
+              selectedProducts.some((prod) => prod._id === productId)
+                ? handleRemoveProduct(productId)
+                : handleAddProducts(product)
+            }
+          >
+            {selectedProducts.some((prod) => prod._id === productId) ? (
+              <RemoveShoppingCart />
+            ) : (
+              <AddShoppingCart />
+            )}
+          </IconButton>
+        </TableCell>
+      </TableRow>
+    );
+  };
   // Get selling price
   const getSellingPrice = useCallback(
     (product: SearchResult): number => {
@@ -561,12 +667,12 @@ const Products: React.FC<SearchBarProps> = ({
     <Box
       sx={{
         display: 'flex',
-        flexDirection: { xs: 'column', md: 'row' },
-        gap: 2,
+        flexDirection: { xs: 'column', md: 'column' }, // Use column for full-width
+        gap: 3, // Increase gap for spacing
         width: '100%',
-        padding: 2,
-        maxWidth: '1200px',
-        margin: '0 auto',
+        padding: 3, // Increase padding
+        maxWidth: '100%', // Ensure full width on larger screens
+        margin: '0 auto', // Center horizontally
         position: 'relative',
       }}
     >
@@ -637,65 +743,82 @@ const Products: React.FC<SearchBarProps> = ({
             />
           )}
         />
-
-        {/* Tabs for Brands */}
-        {!searchTerm.trim() && (
-          <Tabs
-            value={activeBrand || Object.keys(productsByBrandCategory)[0] || ''} // Ensure a valid default value
-            onChange={(e, newValue) => handleTabChange(newValue)}
-            variant='scrollable'
-            scrollButtons='auto'
-            sx={{
-              mt: 2,
-              '.MuiTab-root': {
-                textTransform: 'none',
-                fontWeight: 'bold',
-                padding: '10px 20px',
-              },
-              '.Mui-selected': { color: 'primary.main' },
-            }}
-          >
-            {Object.keys(productsByBrandCategory)
-              .filter((brand) => brand !== 'search' && !brand.includes('-')) // Ensure valid brand keys
-              .map((brand) => (
-                <Tab key={brand} label={brand} value={brand} />
+        <Box
+          display={'flex'}
+          justifyContent={'flex-start'}
+          alignItems={'baseline'}
+          gap={'8px'}
+        >
+          {/* <Typography variant='subtitle2'>Brands:</Typography> */}
+          {/* Tabs for Brands */}
+          {!searchTerm.trim() && (
+            <Tabs
+              value={
+                activeBrand || Object.keys(productsByBrandCategory)[0] || ''
+              } // Ensure a valid default value
+              onChange={(e, newValue) => handleTabChange(newValue)}
+              variant='scrollable'
+              scrollButtons='auto'
+              sx={{
+                mt: 2,
+                '.MuiTab-root': {
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  padding: '10px 20px',
+                },
+                '.Mui-selected': { color: 'primary.main' },
+              }}
+            >
+              {Object.keys(productsByBrandCategory)
+                .filter((brand) => brand !== 'search' && !brand.includes('-')) // Ensure valid brand keys
+                .map((brand) => (
+                  <Tab key={brand} label={brand} value={brand} />
+                ))}
+            </Tabs>
+          )}
+        </Box>
+        <Box
+          display={'flex'}
+          justifyContent={'flex-start'}
+          alignItems={'baseline'}
+          gap={'8px'}
+        >
+          {/* <Typography variant='subtitle2'>Categories</Typography> */}
+          {/* Tabs for Categories (Sub Tabs) */}
+          {!searchTerm.trim() && activeBrand && categories.length > 0 && (
+            <Tabs
+              value={activeCategory || categories[0] || ''} // Ensure a valid default value
+              onChange={(e, newValue) => handleCategoryTabChange(newValue)}
+              variant='scrollable'
+              scrollButtons='auto'
+              sx={{
+                mt: 2,
+                mb: 2,
+                '.MuiTab-root': {
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  padding: '8px 16px',
+                },
+                '.Mui-selected': { color: 'primary.main' },
+              }}
+            >
+              {categories.map((category) => (
+                <Tab key={category} label={category} value={category} />
               ))}
-          </Tabs>
-        )}
-
-        {/* Tabs for Categories (Sub Tabs) */}
-        {!searchTerm.trim() && activeBrand && categories.length > 0 && (
-          <Tabs
-            value={activeCategory || categories[0] || ''} // Ensure a valid default value
-            onChange={(e, newValue) => handleCategoryTabChange(newValue)}
-            variant='scrollable'
-            scrollButtons='auto'
-            sx={{
-              mt: 2,
-              mb: 2,
-              '.MuiTab-root': {
-                textTransform: 'none',
-                fontWeight: 'bold',
-                padding: '8px 16px',
-              },
-              '.Mui-selected': { color: 'primary.main' },
-            }}
-          >
-            {categories.map((category) => (
-              <Tab key={category} label={category} value={category} />
-            ))}
-          </Tabs>
-        )}
+            </Tabs>
+          )}
+        </Box>
 
         {/* Product Table without Grouping */}
         <TableContainer
           component={Paper}
           sx={{
-            mt: 2,
+            mt: 4, // Increase margin-top for more spacing
             borderRadius: '8px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
             overflowX: 'auto',
-            maxHeight: '600px', // Set a max height for the table container
+            width: '100%', // Make the table container full width
+            padding: 2, // Add padding for spacing inside the container
           }}
         >
           <Table stickyHeader>
