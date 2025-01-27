@@ -74,7 +74,6 @@ const PastOrders = () => {
       alignItems='center'
       justifyContent='flex-start'
       sx={{
-        minHeight: '100vh',
         width: '100%',
         gap: '16px',
         padding: isMobile ? '16px' : '32px',
