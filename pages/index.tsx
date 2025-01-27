@@ -34,7 +34,7 @@ const Home = () => {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'flex-start',
-            minHeight: '100vh',
+            // minHeight: '100vh',
             width: '100%',
             padding: '16px',
             gap: '16px',

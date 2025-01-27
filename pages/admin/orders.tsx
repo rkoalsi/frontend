@@ -170,12 +170,26 @@ const Orders = () => {
                           </TableCell>
                           <TableCell>₹{order.total_amount || 0}</TableCell>
                           <TableCell>
-                            <Button
-                              variant='outlined'
-                              onClick={() => handleViewDetails(order)}
+                            <Box
+                              display={'flex'}
+                              flexDirection={'row'}
+                              gap={'8px'}
                             >
-                              View Details
-                            </Button>
+                              <Button
+                                variant='outlined'
+                                onClick={() => handleViewDetails(order)}
+                              >
+                                View Details
+                              </Button>
+                              <Button
+                                variant='contained'
+                                onClick={() =>
+                                  router.push(`/orders/new/${order._id}`)
+                                }
+                              >
+                                Edit Order
+                              </Button>
+                            </Box>
                           </TableCell>
                         </TableRow>
                       ))}

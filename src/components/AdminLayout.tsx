@@ -113,6 +113,7 @@ const AdminLayout = ({ children }: any) => {
                 color: 'white',
                 fontFamily: 'Roboto, sans-serif',
               }}
+              onClick={() => router.push('/admin')}
             >
               Admin Dashboard
             </Typography>
