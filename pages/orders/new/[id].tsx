@@ -402,6 +402,14 @@ const NewOrder: React.FC = () => {
         handleClick();
         return;
       }
+      if (index >= 3 && selectedProducts.length === 0) {
+        setError({
+          message: 'Cannot proceed as no products are selected.',
+          status: 'error',
+        });
+        handleClick();
+        return;
+      }
       // Allow navigation between steps 3 and 4
       setActiveStep(index);
       return;
