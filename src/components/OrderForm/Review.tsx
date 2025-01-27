@@ -325,7 +325,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                   // Determine margin
                   const marginPercent = specialMargins[productId]
                     ? parseInt(specialMargins[productId].replace('%', ''))
-                    : parseInt(customer?.cf_margin.replace('%', '') || '40');
+                    : parseInt(customer?.cf_margin?.replace('%', '') || '40');
                   const margin = marginPercent / 100;
 
                   // Calculate selling price
