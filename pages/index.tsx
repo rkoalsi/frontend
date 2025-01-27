@@ -16,6 +16,7 @@ const Home = () => {
         minHeight: '100vh',
         width: '100%',
         padding: '16px',
+        color: 'white',
       }}
     >
       {/* Header */}
@@ -34,22 +35,22 @@ const Home = () => {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'flex-start',
-            // minHeight: '100vh',
             width: '100%',
             padding: '16px',
             gap: '16px',
-            color: 'black',
           }}
         >
-          <Typography variant='h4' fontWeight='bold' color='white'>
+          <Typography variant='h4' fontWeight='bold' color={'white'}>
             Welcome, {user?.data?.first_name || 'Guest'}!
           </Typography>
-          <Typography variant='body1' color='white'>
+          <Typography variant='body1' color={'white'}>
             Your gateway to seamless order management.
           </Typography>
           <OrderForm />
         </Box>
       </Paper>
+
+      {/* Action Buttons */}
     </Box>
   );
 };

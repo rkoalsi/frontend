@@ -1,9 +1,10 @@
-import { Box, Button, Typography, Stack } from '@mui/material';
+import { Box, Button, Stack } from '@mui/material';
 import axios from 'axios';
 import { useRouter } from 'next/router';
 import AuthContext from './Auth';
 import { useContext } from 'react';
 import { motion } from 'framer-motion';
+import { ShoppingCart, ShoppingCartCheckout } from '@mui/icons-material';
 
 const buttonVariants = {
   hover: {
@@ -64,13 +65,15 @@ const OrderManagement: React.FC = () => {
             <Button
               variant='contained'
               color='primary'
-              fullWidth
-              onClick={handleNewOrder}
+              startIcon={<ShoppingCart />}
               sx={{
-                padding: '12px 16px',
-                fontSize: '16px',
+                fontSize: '1.2rem',
+                padding: '12px 24px',
+                borderRadius: '8px',
                 fontWeight: 'bold',
               }}
+              fullWidth
+              onClick={handleNewOrder}
             >
               New Order
             </Button>
@@ -83,13 +86,15 @@ const OrderManagement: React.FC = () => {
             <Button
               variant='contained'
               color='secondary'
-              fullWidth
-              onClick={handlePastOrder}
+              startIcon={<ShoppingCartCheckout />}
               sx={{
-                padding: '12px 16px',
-                fontSize: '16px',
+                fontSize: '1.2rem',
+                padding: '12px 24px',
+                borderRadius: '8px',
                 fontWeight: 'bold',
               }}
+              fullWidth
+              onClick={handlePastOrder}
             >
               Past Orders
             </Button>
