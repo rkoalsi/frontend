@@ -116,12 +116,6 @@ const Products: React.FC<SearchBarProps> = ({
   }>({}); // State to indicate no more products per key
 
   // ------------------ Refs for Caching and Avoiding Duplicate Fetches ---------------------
-  const productCache = useRef<{
-    [key: string]: {
-      [page: number]: SearchResult[];
-    };
-  }>({});
-
   const isFetching = useRef<{
     [key: string]: boolean;
   }>({});
@@ -157,201 +151,167 @@ const Products: React.FC<SearchBarProps> = ({
     };
   }, [debouncedSuccess, debouncedWarn, debouncedInfo, debouncedError]);
 
-  // ------------------ Calculate Selling Price ---------------------
+  // Get selling price
   const getSellingPrice = useCallback(
     (product: SearchResult): number => {
-      let marginPercent = 40; // default 40%
+      let marginPercent = 40; // Default 40%
       if (specialMargins[product._id]) {
         marginPercent = parseInt(specialMargins[product._id].replace('%', ''));
       } else if (customer.cf_margin) {
         marginPercent = parseInt(customer.cf_margin.replace('%', ''));
       }
-
-      if (isNaN(marginPercent)) {
-        marginPercent = 40; // fallback
-      }
-
-      const margin = marginPercent / 100;
+      const margin = isNaN(marginPercent) ? 0.4 : marginPercent / 100;
       return parseFloat((product.rate - product.rate * margin).toFixed(2));
     },
-    [customer.cf_margin, specialMargins]
+    [specialMargins, customer]
   );
 
-  // ------------------ Fetch All Brands ---------------------
+  // Fetch all brands
   const fetchAllBrands = useCallback(async () => {
     try {
       setLoading(true);
-      const base = process.env.api_url;
-      const response = await axios.get(`${base}/products/brands`); // Endpoint that returns all available brands
-      const allBrands: string[] = response.data.brands || []; // Ensure an array is returned
-
-      if (allBrands.length > 0) {
-        setActiveBrand(allBrands[0]); // Set the first brand as default
-      }
-
-      // Initialize pagination state for all brands
-      const initialPaginationState: {
-        [key: string]: { page: number; hasMore: boolean };
-      } = allBrands.reduce((acc, brand) => {
-        acc[brand] = { page: 1, hasMore: true };
-        return acc;
-      }, {} as { [key: string]: { page: number; hasMore: boolean } });
-
-      setPaginationState(initialPaginationState);
-
-      // Initialize productsByBrandCategory with empty arrays
-      const initialProducts: { [key: string]: SearchResult[] } =
-        allBrands.reduce((acc, brand) => {
+      const response = await axios.get(
+        `${process.env.api_url}/products/brands`
+      );
+      const allBrands: string[] = response.data.brands || [];
+      setActiveBrand((prev) => prev || allBrands[0]); // Default to first brand if not set
+      setProductsByBrandCategory((prev) => {
+        const initialized = allBrands.reduce((acc, brand) => {
           acc[brand] = [];
           return acc;
         }, {} as { [key: string]: SearchResult[] });
-
-      setProductsByBrandCategory(initialProducts);
+        return { ...prev, ...initialized };
+      });
     } catch (error) {
-      console.error('Error fetching brands:', error);
       debouncedError('Failed to fetch brands.');
     } finally {
       setLoading(false);
     }
   }, [debouncedError]);
 
-  useEffect(() => {
-    fetchAllBrands(); // Fetch brands when the component mounts
-  }, [fetchAllBrands]);
-
-  // ------------------ Fetch Categories for a Brand ---------------------
+  // Fetch categories for a brand
   const fetchCategories = useCallback(
     async (brand: string) => {
       try {
-        const base = process.env.api_url;
-        const response = await axios.get(`${base}/products/categories`, {
-          params: { brand },
-        }); // Endpoint to fetch categories based on brand
-        const categories: string[] = response.data.categories || [];
-
+        const response = await axios.get(
+          `${process.env.api_url}/products/categories`,
+          {
+            params: { brand },
+          }
+        );
+        const categories = response.data.categories || [];
         setCategoriesByBrand((prev) => ({
           ...prev,
-          [brand]: categories.sort((a, b) => a.localeCompare(b)), // Sort categories alphabetically
+          [brand]: categories.sort(),
         }));
-
-        // Set the first category as active if available
-        if (categories.length > 0) {
-          setActiveCategory(categories[0]);
-        } else {
-          setActiveCategory('');
-        }
+        setActiveCategory((prev) => prev || categories[0] || ''); // Default to first category
       } catch (error) {
-        console.error('Error fetching categories:', error);
         debouncedError('Failed to fetch categories.');
       }
     },
     [debouncedError]
   );
 
-  // Fetch categories when activeBrand changes
-  useEffect(() => {
-    if (activeBrand) {
-      fetchCategories(activeBrand);
-    }
-  }, [activeBrand, fetchCategories]);
-
-  // ------------------ Fetch Products ---------------------
+  // Fetch products
   const fetchProducts = useCallback(
     async (
       key: string,
-      brand: string | undefined,
-      category: string | undefined,
-      search: string | undefined,
-      page: number
+      brand?: string,
+      category?: string,
+      search?: string,
+      page = 1
     ) => {
-      // Prevent duplicate fetches
       if (isFetching.current[key]) return;
+      const controller = new AbortController();
       isFetching.current[key] = true;
 
       try {
-        // Check cache first
-        if (productCache.current[key] && productCache.current[key][page]) {
-          setProductsByBrandCategory((prev) => ({
-            ...prev,
-            [key]:
-              page === 1
-                ? productCache.current[key][page]
-                : [...prev[key], ...productCache.current[key][page]],
-          }));
-          setPaginationState((prev) => ({
-            ...prev,
-            [key]: {
-              page,
-              hasMore: page < 100, // Assuming 100 pages max
-            },
-          }));
-          setNoMoreProducts((prev) => ({
-            ...prev,
-            [key]: page >= 100,
-          }));
-          return;
-        }
+        setLoadingMore(true);
+        const response = await axios.get(`${process.env.api_url}/products`, {
+          params: { brand, category, search, page, per_page: 75 },
+          signal: controller.signal,
+        });
 
-        const base = process.env.api_url;
-        const params: any = {
-          page,
-          per_page: PRODUCTS_PER_PAGE,
-        };
-
-        if (brand && category && !search) {
-          params.brand = brand;
-          params.category = category;
-        }
-
-        if (search) {
-          params.search = search;
-        }
-
-        const response = await axios.get(`${base}/products`, { params });
-
-        const newProducts: SearchResult[] = response.data.products || [];
-        const totalPages: number = response.data.total_pages || 1; // Adjust based on your API response
-
-        // No frontend sorting; rely on API ordering
-
-        // Update cache
-        if (!productCache.current[key]) {
-          productCache.current[key] = {};
-        }
-        productCache.current[key][page] = newProducts;
+        const newProducts = response.data.products || [];
+        const hasMore = newProducts.length === 75;
 
         setProductsByBrandCategory((prev) => ({
           ...prev,
-          [key]: page === 1 ? newProducts : [...prev[key], ...newProducts],
+          [key]:
+            page === 1 ? newProducts : [...(prev[key] || []), ...newProducts],
         }));
-
         setPaginationState((prev) => ({
           ...prev,
-          [key]: {
-            page,
-            hasMore: page < totalPages,
-          },
+          [key]: { page, hasMore },
         }));
-
-        setNoMoreProducts((prev) => ({
-          ...prev,
-          [key]: page >= totalPages,
-        }));
-
-        // **Update options if it's a search operation**
-        if (key === 'search') {
-          setOptions(newProducts);
+        if (!hasMore) setNoMoreProducts((prev) => ({ ...prev, [key]: true }));
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          debouncedError('Failed to fetch products.');
         }
-      } catch (error: any) {
-        console.error('Error fetching products:', error);
-        debouncedError('Failed to fetch products.');
       } finally {
         isFetching.current[key] = false;
         setLoadingMore(false);
       }
+
+      return () => controller.abort(); // Abort request on cleanup
     },
-    [PRODUCTS_PER_PAGE, debouncedError]
+    [debouncedError]
   );
+
+  // Reset pagination and fetch products for a category
+  const resetPaginationAndFetch = useCallback(
+    async (brand: string, category: string) => {
+      const key = `${brand}-${category}`;
+      setPaginationState((prev) => ({
+        ...prev,
+        [key]: { page: 1, hasMore: true },
+      }));
+      setProductsByBrandCategory((prev) => ({
+        ...prev,
+        [key]: [],
+      }));
+      fetchProducts(key, brand, category, undefined, 1);
+    },
+    [fetchProducts]
+  );
+
+  // Handle tab changes with debounce
+  const handleTabChange = useCallback(
+    debounce((newValue: string) => {
+      setActiveBrand(newValue); // Set the new active brand
+      const categories = categoriesByBrand[newValue] || []; // Retrieve categories for the selected brand
+
+      // Set the first category if it exists
+      const firstCategory = categories[0] || '';
+      setActiveCategory(firstCategory);
+
+      // Reset pagination and fetch products only if categories exist
+      if (firstCategory) {
+        resetPaginationAndFetch(newValue, firstCategory);
+      }
+    }, 300),
+    [categoriesByBrand, resetPaginationAndFetch]
+  );
+
+  const handleCategoryTabChange = useCallback(
+    debounce((newValue) => {
+      setActiveCategory(newValue);
+      resetPaginationAndFetch(activeBrand, newValue);
+    }, 300),
+    [activeBrand, resetPaginationAndFetch]
+  );
+
+  // Initialize brands and categories
+  useEffect(() => {
+    fetchAllBrands();
+  }, [fetchAllBrands]);
+
+  useEffect(() => {
+    if (activeBrand && !categoriesByBrand[activeBrand]) {
+      fetchCategories(activeBrand); // Fetch categories only if they aren't already cached
+    }
+  }, [activeBrand, categoriesByBrand, fetchCategories]);
 
   // ------------------ Handle Search ---------------------
   const handleSearch = useCallback(
@@ -547,32 +507,22 @@ const Products: React.FC<SearchBarProps> = ({
 
   // ------------------ Handle Scroll for Infinite Scrolling ---------------------
   const handleScroll = useCallback(() => {
-    const key =
-      searchTerm.trim() !== '' ? 'search' : `${activeBrand}-${activeCategory}`;
-
+    const key = `${activeBrand}-${activeCategory}`;
     if (
       window.innerHeight + window.scrollY >=
-        document.documentElement.scrollHeight - 500 && // Trigger near bottom
+        document.documentElement.scrollHeight - 500 &&
       !loadingMore &&
-      !noMoreProducts[key] &&
       paginationState[key]?.hasMore
     ) {
-      const nextPage = paginationState[key]?.page + 1 || 2;
-      const brand = searchTerm.trim() !== '' ? undefined : activeBrand;
-      const category = searchTerm.trim() !== '' ? undefined : activeCategory;
-      const search = searchTerm.trim() !== '' ? searchTerm : undefined;
-
-      setLoadingMore(true);
-      fetchProducts(key, brand, category, search, nextPage);
+      const nextPage = (paginationState[key]?.page || 1) + 1;
+      fetchProducts(key, activeBrand, activeCategory, undefined, nextPage);
     }
   }, [
     activeBrand,
     activeCategory,
     fetchProducts,
     loadingMore,
-    noMoreProducts,
     paginationState,
-    searchTerm,
   ]);
 
   useEffect(() => {
@@ -581,34 +531,14 @@ const Products: React.FC<SearchBarProps> = ({
   }, [handleScroll]);
 
   // ------------------ Reset Pagination on Brand or Category Tab Switch ---------------------
-  // ------------------ Reset Pagination on Brand or Category Tab Switch ---------------------
   useEffect(() => {
-    if (activeBrand && activeCategory && searchTerm.trim() === '') {
-      const key = `${activeBrand}-${activeCategory}`;
-
-      // Reset pagination state for the new brand-category
-      setPaginationState((prev) => ({
-        ...prev,
-        [key]: { page: 1, hasMore: true },
-      }));
-
-      // Reset productsByBrandCategory for the brand-category
-      setProductsByBrandCategory((prev) => ({
-        ...prev,
-        [key]: [],
-      }));
-
-      // Reset 'No more products' state for the key
-      setNoMoreProducts((prev) => ({
-        ...prev,
-        [key]: false,
-      }));
-
-      // Fetch the first page for the new brand-category
-      fetchProducts(key, activeBrand, activeCategory, undefined, 1);
+    if (activeBrand) {
+      resetPaginationAndFetch(
+        activeBrand,
+        categoriesByBrand[activeBrand]?.[0] || ''
+      );
     }
-  }, [activeBrand, activeCategory, fetchProducts, searchTerm]);
-
+  }, [activeBrand, categoriesByBrand, resetPaginationAndFetch]);
   // ------------------ Render Component ---------------------
   if (!customer) {
     return <Typography>This is content for Products</Typography>;
@@ -684,7 +614,7 @@ const Products: React.FC<SearchBarProps> = ({
                 option._id === value._id
           }
           onInputChange={handleInputChange}
-          onChange={(event, value) => handleAddProducts(value)}
+          // onChange={(event, value) => handleAddProducts(value)}
           value={query} // Controlled input
           loading={loading}
           renderInput={(params) => (
@@ -711,8 +641,8 @@ const Products: React.FC<SearchBarProps> = ({
         {/* Tabs for Brands */}
         {!searchTerm.trim() && (
           <Tabs
-            value={activeBrand}
-            onChange={(e, newValue) => setActiveBrand(newValue)}
+            value={activeBrand || Object.keys(productsByBrandCategory)[0] || ''} // Ensure a valid default value
+            onChange={(e, newValue) => handleTabChange(newValue)}
             variant='scrollable'
             scrollButtons='auto'
             sx={{
@@ -726,9 +656,7 @@ const Products: React.FC<SearchBarProps> = ({
             }}
           >
             {Object.keys(productsByBrandCategory)
-              .filter(
-                (brand) => brand !== 'search' && !brand.includes('-') // Ensure that the key is just the brand without category
-              )
+              .filter((brand) => brand !== 'search' && !brand.includes('-')) // Ensure valid brand keys
               .map((brand) => (
                 <Tab key={brand} label={brand} value={brand} />
               ))}
@@ -738,8 +666,8 @@ const Products: React.FC<SearchBarProps> = ({
         {/* Tabs for Categories (Sub Tabs) */}
         {!searchTerm.trim() && activeBrand && categories.length > 0 && (
           <Tabs
-            value={activeCategory}
-            onChange={(e, newValue) => setActiveCategory(newValue)}
+            value={activeCategory || categories[0] || ''} // Ensure a valid default value
+            onChange={(e, newValue) => handleCategoryTabChange(newValue)}
             variant='scrollable'
             scrollButtons='auto'
             sx={{
@@ -982,8 +910,9 @@ const Products: React.FC<SearchBarProps> = ({
                     <TableRow>
                       <TableCell colSpan={12} align='center'>
                         <Typography variant='body2' color='textSecondary'>
-                          No more products for this {activeBrand} -{' '}
-                          {activeCategory}.
+                          No more products for{' '}
+                          {searchTerm ? searchTerm : activeBrand}{' '}
+                          {searchTerm ? '' : `${activeCategory}.`}
                         </Typography>
                       </TableCell>
                     </TableRow>
