@@ -13,58 +13,84 @@ const theme = createTheme({
   cssVariables: true,
   palette: {
     primary: {
-      main: '#3A6073', // Darker primary for better contrast
-      contrastText: '#ffffff', // Ensure good contrast for text on primary
+      main: '#344054', // Dark slate gray for excellent contrast with the gradient background
+      contrastText: '#ffffff', // White text for readability
     },
     secondary: {
-      main: '#2B4864', // Slightly darker secondary
+      main: '#1E293B', // Slightly darker tone for accents and balance
       contrastText: '#ffffff',
     },
+
     error: {
       main: red.A400,
     },
     text: {
-      primary: '#1A1A1A', // Dark primary text
-      secondary: '#4A4A4A', // Medium gray for secondary text
-      disabled: '#7A7A7A', // Soft gray for disabled text
+      primary: '#1A1A1A', // High-contrast dark text
+      secondary: '#4A5568', // Neutral gray for secondary text
+      disabled: '#A0AEC0', // Light gray for disabled text
     },
     background: {
-      default: '#F5F7FA', // Light background
-      paper: '#ffffff', // Background for cards, dialogs, etc.
+      default: '#F7FAFC', // Light, professional background
+      paper: '#ffffff', // White background for cards and dialogs
     },
   },
   typography: {
     fontFamily: roboto.style.fontFamily,
     allVariants: {
-      color: '#1A1A1A', // Default text color for all variants
+      color: '#1A1A1A', // High-contrast default text color
+    },
+    h1: {
+      fontSize: '2rem',
+      fontWeight: 700,
+      color: '#344054', // Dark slate gray for main headings
+    },
+    h2: {
+      fontSize: '1.75rem',
+      fontWeight: 600,
+      color: '#1E293B', // Complementary color for subheadings
+    },
+    body1: {
+      fontSize: '1rem',
+      fontWeight: 400,
+      color: '#1A1A1A',
     },
   },
   components: {
-    MuiAutocomplete: {
+    MuiButton: {
       styleOverrides: {
-        inputRoot: {
-          color: '#1A1A1A', // Darker text in input fields
+        root: {
+          borderRadius: '8px', // Smooth button edges for a modern look
+          textTransform: 'none', // No uppercase for a polished appearance
         },
-        paper: {
-          backgroundColor: '#ffffff',
-          color: '#1A1A1A',
+        containedPrimary: {
+          backgroundColor: '#344054', // Dark slate gray for primary buttons
+          '&:hover': {
+            backgroundColor: '#2C3A48', // Slightly darker on hover
+          },
+        },
+        containedSecondary: {
+          backgroundColor: '#FF8A65', // Coral-orange for homepage-specific actions
+          '&:hover': {
+            backgroundColor: '#FF7043', // Deeper coral for hover effect
+          },
+        },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          background: 'linear-gradient(135deg, #344054, #1E293B)', // New gradient with darker tones for clarity
+          color: '#ffffff',
         },
       },
     },
     MuiStepLabel: {
       styleOverrides: {
         label: {
-          color: '#4A4A4A', // Darker text for inactive steps
+          color: '#4A5568', // Neutral gray for inactive steps
           '&.Mui-active': {
-            color: '#3A6073', // Primary color for active step
+            color: '#344054', // Use primary color for active steps
           },
-        },
-      },
-    },
-    MuiTypography: {
-      styleOverrides: {
-        root: {
-          color: '#1A1A1A', // Dark text globally
         },
       },
     },
