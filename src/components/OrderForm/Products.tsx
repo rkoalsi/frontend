@@ -810,32 +810,141 @@ const Products: React.FC<SearchBarProps> = ({
         </Box>
 
         {/* Product Table without Grouping */}
-        <TableContainer
-          component={Paper}
-          sx={{
-            mt: 4, // Increase margin-top for more spacing
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            overflowX: 'auto',
-            width: '100%', // Make the table container full width
-            padding: 2, // Add padding for spacing inside the container
-          }}
-        >
+        <TableContainer component={Paper}>
           <Table stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell>Image</TableCell>
-                <TableCell>Name</TableCell>
-                <TableCell>Sub Category</TableCell>
-                <TableCell>Series</TableCell>
-                <TableCell>SKU</TableCell>
-                <TableCell>Price</TableCell>
-                <TableCell>Stock</TableCell>
-                <TableCell>Margin</TableCell>
-                <TableCell>Selling Price</TableCell>
-                <TableCell>Quantity</TableCell>
-                <TableCell>Total</TableCell>
-                <TableCell>Action</TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky', // Makes the header sticky
+                    top: 0, // Sticks the header at the top
+                    zIndex: 1000, // Ensures it appears above other elements
+                    backgroundColor: 'background.paper', // Keeps the background solid
+                  }}
+                >
+                  Image
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '200px', // Increase width for readability
+                  }}
+                >
+                  Name
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '150px',
+                  }}
+                >
+                  Sub Category
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '125px',
+                  }}
+                >
+                  Series
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '80px',
+                  }}
+                >
+                  SKU
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '80px',
+                  }}
+                >
+                  Price
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '80px',
+                  }}
+                >
+                  Stock
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '80px',
+                  }}
+                >
+                  Margin
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '100px',
+                  }}
+                >
+                  Selling Price
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '100px',
+                  }}
+                >
+                  Quantity
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '100px',
+                  }}
+                >
+                  Total
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '100px',
+                  }}
+                >
+                  Action
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
