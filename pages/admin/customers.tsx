@@ -86,7 +86,7 @@ const Customers = () => {
         const response = await axios.get(
           `${baseApiUrl}/admin/products?brand=${
             selectedBrand || ''
-          }&limit=10000` // Use a large limit to fetch all products
+          }&limit=10000&active_products=true` // Use a large limit to fetch all products
         );
         const allProducts = response.data.products;
 
@@ -425,7 +425,7 @@ const Customers = () => {
       const response = await axios.get(
         `${baseApiUrl}/admin/products?search=${dialogSearchQuery}&page=${dialogPage}&limit=${dialogRowsPerPage}&brand=${
           selectedBrand || ''
-        }`
+        }&active_products=true`
       );
 
       const { products: prodList, total_count } = response.data;
