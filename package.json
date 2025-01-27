@@ -29,13 +29,15 @@
     "react-dom": "^19.0.0",
     "react-dropzone": "^14.3.5",
     "react-signature-canvas": "^1.0.7",
-    "react-toastify": "^11.0.3"
+    "react-toastify": "^11.0.3",
+    "react-window": "^1.8.11"
   },
   "devDependencies": {
     "@types/lodash.debounce": "^4.0.9",
     "@types/node": "latest",
     "@types/react": "^19.0.0",
     "@types/react-signature-canvas": "^1.0.6",
+    "@types/react-window": "^1.8.8",
     "eslint": "latest",
     "eslint-config-next": "^15.0.0",
     "typescript": "latest"

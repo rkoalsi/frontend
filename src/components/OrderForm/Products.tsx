@@ -1,11 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useMemo,
-  memo,
-  useCallback,
-} from 'react';
+import React, { useState, useEffect, memo, useCallback, useRef } from 'react';
 import axios from 'axios';
 import {
   TextField,
@@ -28,7 +21,6 @@ import {
   DialogContent,
   useMediaQuery,
   useTheme,
-  Snackbar,
   Badge,
   Drawer,
   Divider,
@@ -41,13 +33,14 @@ import {
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import debounce from 'lodash.debounce';
+import { toast } from 'react-toastify';
 
 // ------------------ Interface Definitions ---------------------
 interface SearchResult {
   id: number;
   name: string;
   brand: string;
-  _id: { $oid: string } | string;
+  _id: string;
   cf_sku_code?: string;
   item_tax_preferences?: { tax_percentage: number }[];
   quantity?: number;
@@ -55,17 +48,27 @@ interface SearchResult {
   stock: number;
   image_url?: string;
   new?: boolean;
+  sub_category?: string;
+  category?: string;
+  series?: string;
 }
 
 interface SearchBarProps {
   label: string;
   selectedProducts: SearchResult[];
   setSelectedProducts: React.Dispatch<React.SetStateAction<SearchResult[]>>;
-  customer: any; // Replace with appropriate type
-  order: any;
+  customer: {
+    cf_margin?: string;
+    cf_in_ex?: string;
+    // Add other customer properties as needed
+  };
+  order: {
+    status?: string;
+    // Add other order properties as needed
+  };
   specialMargins: { [key: string]: string };
   totals: any;
-  onCheckout: any;
+  onCheckout: () => void;
 }
 
 // ------------------ Products Component -------------------------
@@ -94,238 +97,404 @@ const Products: React.FC<SearchBarProps> = ({
   const [paginationState, setPaginationState] = useState<{
     [key: string]: { page: number; hasMore: boolean };
   }>({});
-  const [productsByBrand, setProductsByBrand] = useState<{
+  const [productsByBrandCategory, setProductsByBrandCategory] = useState<{
     [key: string]: SearchResult[];
   }>({});
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const PRODUCTS_PER_PAGE = 75; // Number of products per batch
   const [searchTerm, setSearchTerm] = useState<string>(''); // Current search term
-  const [activeTab, setActiveTab] = useState<string>(''); // Currently active brand tab
+  const [activeBrand, setActiveBrand] = useState<string>(''); // Currently active brand tab
+  const [activeCategory, setActiveCategory] = useState<string>(''); // Currently active category tab
+  const [categoriesByBrand, setCategoriesByBrand] = useState<{
+    [key: string]: string[];
+  }>({}); // Mapping of brands to their categories
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
-  const [snackbarMessage, setSnackbarMessage] = useState<string>('');
   const [cartDrawerOpen, setCartDrawerOpen] = useState<boolean>(false); // State for Cart Drawer
+  const [noMoreProducts, setNoMoreProducts] = useState<{
+    [key: string]: boolean;
+  }>({}); // State to indicate no more products per key
 
-  // ------------------ Ref for Selected Products ---------------------
-  const selectedProductsRef = useRef<SearchResult[]>(selectedProducts);
-  useEffect(() => {
-    selectedProductsRef.current = selectedProducts;
-  }, [selectedProducts]);
+  // ------------------ Refs for Caching and Avoiding Duplicate Fetches ---------------------
+  const isFetching = useRef<{
+    [key: string]: boolean;
+  }>({});
 
-  // ------------------ Snackbar Handlers ---------------------
-  const showSnackbar = useCallback((message: string) => {
-    setSnackbarMessage(message);
-    setSnackbarOpen(true);
-  }, []);
-
-  const handleSnackbarClose = useCallback(
-    (event?: React.SyntheticEvent, reason?: string) => {
-      if (reason === 'clickaway') {
-        return;
-      }
-      setSnackbarOpen(false);
-    },
+  // ------------------ Debounced Toast Functions ---------------------
+  const debouncedSuccess = useCallback(
+    debounce((msg: string) => toast.success(msg), 1000),
     []
   );
 
-  // ------------------ Calculate Selling Price ---------------------
+  const debouncedWarn = useCallback(
+    debounce((msg: string) => toast.warn(msg), 1000),
+    []
+  );
+
+  const debouncedInfo = useCallback(
+    debounce((msg: string) => toast.info(msg), 1000),
+    []
+  );
+
+  const debouncedError = useCallback(
+    debounce((msg: string) => toast.error(msg), 1000),
+    []
+  );
+
+  // ------------------ Cleanup Debounced Toasts on Unmount ---------------------
+  useEffect(() => {
+    return () => {
+      debouncedSuccess.cancel();
+      debouncedWarn.cancel();
+      debouncedInfo.cancel();
+      debouncedError.cancel();
+    };
+  }, [debouncedSuccess, debouncedWarn, debouncedInfo, debouncedError]);
+
+  const RowRenderer = ({
+    index,
+    style,
+    data,
+  }: {
+    index: number;
+    style: React.CSSProperties;
+    data: SearchResult[];
+  }) => {
+    const product = data[index];
+    const productId = product._id;
+    const selectedProduct = selectedProducts.find((p) => p._id === productId);
+    const sellingPrice = getSellingPrice(product);
+    const quantity =
+      selectedProduct?.quantity || temporaryQuantities[productId] || 1;
+    const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
+
+    return (
+      <TableRow style={style} key={productId}>
+        <TableCell>
+          <Badge
+            badgeContent={product.new ? 'New' : undefined}
+            color='secondary'
+            overlap='rectangular'
+            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            <img
+              src={product.image_url || '/placeholder.png'}
+              alt={product.name}
+              loading='lazy'
+              style={{
+                width: '100px',
+                height: '100px',
+                borderRadius: '4px',
+                objectFit: 'cover',
+                cursor: 'pointer',
+              }}
+              onClick={() =>
+                handleImageClick(product.image_url || '/placeholder.png')
+              }
+            />
+          </Badge>
+        </TableCell>
+        <TableCell>{product.name}</TableCell>
+        <TableCell>{product.sub_category || '-'}</TableCell>
+        <TableCell>{product.series || '-'}</TableCell>
+        <TableCell>{product.cf_sku_code || '-'}</TableCell>
+        <TableCell>₹{product.rate}</TableCell>
+        <TableCell>{product.stock}</TableCell>
+        <TableCell>
+          {specialMargins[productId]
+            ? specialMargins[productId]
+            : customer.cf_margin || '40%'}
+        </TableCell>
+        <TableCell>₹{sellingPrice}</TableCell>
+        <TableCell>
+          <TextField
+            type='number'
+            value={quantity}
+            disabled={
+              order?.status?.toLowerCase()?.includes('accepted') ||
+              order?.status?.toLowerCase()?.includes('declined')
+            }
+            onChange={(e) => {
+              const parsedValue = parseInt(e.target.value || '1');
+              const newQuantity = Math.max(
+                1,
+                Math.min(parsedValue, product.stock)
+              );
+              if (selectedProduct) {
+                handleQuantityChange(productId, newQuantity);
+              } else {
+                setTemporaryQuantities((prev) => ({
+                  ...prev,
+                  [productId]: newQuantity,
+                }));
+                debouncedInfo(
+                  `Set quantity to ${newQuantity}. Add product to cart to confirm.`
+                );
+              }
+            }}
+            inputProps={{ min: 1, max: product.stock, step: 1 }}
+            size='small'
+            sx={{ width: '80px' }}
+          />
+        </TableCell>
+        <TableCell>{selectedProduct ? `₹${itemTotal}` : '-'}</TableCell>
+        <TableCell>
+          <IconButton
+            color='primary'
+            onClick={() =>
+              selectedProducts.some((prod) => prod._id === productId)
+                ? handleRemoveProduct(productId)
+                : handleAddProducts(product)
+            }
+          >
+            {selectedProducts.some((prod) => prod._id === productId) ? (
+              <RemoveShoppingCart />
+            ) : (
+              <AddShoppingCart />
+            )}
+          </IconButton>
+        </TableCell>
+      </TableRow>
+    );
+  };
+  // Get selling price
   const getSellingPrice = useCallback(
     (product: SearchResult): number => {
-      let margin = 0.4; // default 40%
-      const productId =
-        typeof product._id === 'string' ? product._id : product._id.$oid;
-
-      if (specialMargins[productId]) {
-        margin = parseInt(specialMargins[productId].replace('%', '')) / 100;
-      } else {
-        // fallback to customer's margin (e.g. "40%")
-        margin = parseInt(customer?.cf_margin?.replace('%', '') || '40') / 100;
+      let marginPercent = 40; // Default 40%
+      if (specialMargins[product._id]) {
+        marginPercent = parseInt(specialMargins[product._id].replace('%', ''));
+      } else if (customer.cf_margin) {
+        marginPercent = parseInt(customer.cf_margin.replace('%', ''));
       }
-
+      const margin = isNaN(marginPercent) ? 0.4 : marginPercent / 100;
       return parseFloat((product.rate - product.rate * margin).toFixed(2));
     },
-    [customer, specialMargins]
+    [specialMargins, customer]
   );
 
-  // ------------------ Fetch All Brands ---------------------
+  // Fetch all brands
   const fetchAllBrands = useCallback(async () => {
     try {
-      const base = process.env.api_url;
-      const response = await axios.get(`${base}/products/brands`); // Endpoint that returns all available brands
-      const allBrands: string[] = response.data.brands || []; // Ensure an array is returned
-
-      // Initialize pagination state for all brands
-      const initialPaginationState = allBrands.reduce(
-        (acc: any, brand: string) => {
-          acc[brand] = { page: 1, hasMore: true }; // Start from page 1
+      setLoading(true);
+      const response = await axios.get(
+        `${process.env.api_url}/products/brands`
+      );
+      const allBrands: string[] = response.data.brands || [];
+      setActiveBrand((prev) => prev || allBrands[0]); // Default to first brand if not set
+      setProductsByBrandCategory((prev) => {
+        const initialized = allBrands.reduce((acc, brand) => {
+          acc[brand] = [];
           return acc;
-        },
-        {}
-      );
-
-      setPaginationState(initialPaginationState);
-      setProductsByBrand(
-        allBrands.reduce(
-          (acc: any, brand: string) => ({ ...acc, [brand]: [] }),
-          {}
-        )
-      );
-
-      // Set the first brand as the active tab
-      if (allBrands.length > 0) {
-        setActiveTab(allBrands[0]); // Set the first brand as default
-      }
+        }, {} as { [key: string]: SearchResult[] });
+        return { ...prev, ...initialized };
+      });
     } catch (error) {
-      console.error('Error fetching brands:', error);
+      debouncedError('Failed to fetch brands.');
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [debouncedError]);
 
-  useEffect(() => {
-    fetchAllBrands(); // Fetch brands when the component mounts
-  }, [fetchAllBrands]);
-
-  // ------------------ Fetch Products ---------------------
-  const fetchProducts = useCallback(
-    async (brand: string | undefined, page: number, search: string = '') => {
-      setLoadingMore(true);
+  // Fetch categories for a brand
+  const fetchCategories = useCallback(
+    async (brand: string) => {
       try {
-        const base = process.env.api_url;
-        const params: any = {
-          page,
-          per_page: PRODUCTS_PER_PAGE,
-        };
-
-        if (brand && !search) {
-          params.brand = brand;
-        }
-
-        if (search) {
-          params.search = search;
-        }
-
-        const response = await axios.get(`${base}/products`, { params });
-
-        const newProducts: SearchResult[] = response.data.products || [];
-        const totalPages: number = response.data.total_pages || 1; // Adjust based on your API response
-
-        if (search) {
-          // When searching, set productsByBrand['search'] to search results
-          setProductsByBrand((prev) => ({
-            ...prev,
-            ['search']:
-              page === 1 ? newProducts : [...prev['search'], ...newProducts],
-          }));
-        } else if (brand) {
-          // When not searching, append products to the active brand
-          setProductsByBrand((prev) => ({
-            ...prev,
-            [brand]:
-              page === 1 ? newProducts : [...prev[brand], ...newProducts],
-          }));
-        }
-
-        setPaginationState((prev) => ({
+        const response = await axios.get(
+          `${process.env.api_url}/products/categories`,
+          {
+            params: { brand },
+          }
+        );
+        const categories = response.data.categories || [];
+        setCategoriesByBrand((prev) => ({
           ...prev,
-          [brand || 'search']: {
-            page,
-            hasMore: page < totalPages,
-          },
+          [brand]: categories.sort(),
         }));
-
-        // **Removed Automatic Tab Switching to Prevent 'search' Tab**
-        // Previously, during search, the active tab was being set to the first product's brand,
-        // which might cause 'search' to be treated as a brand. This has been removed to prevent the 'search' tab from appearing.
-      } catch (error: any) {
-        console.error('Error fetching products:', error);
-        // Handle specific error for invalid page number
-        if (error.response && error.response.status === 400) {
-          console.warn(
-            `Invalid page number ${page} for brand ${brand}. Resetting to page 1.`
-          );
-          // Reset to page 1 and refetch
-          setPaginationState((prev) => ({
-            ...prev,
-            [brand || 'search']: { page: 1, hasMore: true },
-          }));
-          fetchProducts(brand, 1, search);
-        }
-      } finally {
-        setLoadingMore(false);
+        setActiveCategory((prev) => prev || categories[0] || ''); // Default to first category
+      } catch (error) {
+        debouncedError('Failed to fetch categories.');
       }
     },
-    [PRODUCTS_PER_PAGE]
+    [debouncedError]
   );
 
-  // ------------------ Debounced Fetch Products ---------------------
-  const debouncedFetchProducts = useMemo(
-    () => debounce(fetchProducts, 300),
+  // Fetch products
+  const fetchProducts = useCallback(
+    async (
+      key: string,
+      brand?: string,
+      category?: string,
+      search?: string,
+      page = 1
+    ) => {
+      if (isFetching.current[key]) return;
+      const controller = new AbortController();
+      isFetching.current[key] = true;
+
+      try {
+        setLoadingMore(true);
+        const response = await axios.get(`${process.env.api_url}/products`, {
+          params: { brand, category, search, page, per_page: 75 },
+          signal: controller.signal,
+        });
+
+        const newProducts = response.data.products || [];
+        const hasMore = newProducts.length === 75;
+
+        setProductsByBrandCategory((prev) => ({
+          ...prev,
+          [key]:
+            page === 1 ? newProducts : [...(prev[key] || []), ...newProducts],
+        }));
+        setPaginationState((prev) => ({
+          ...prev,
+          [key]: { page, hasMore },
+        }));
+        if (!hasMore) setNoMoreProducts((prev) => ({ ...prev, [key]: true }));
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          debouncedError('Failed to fetch products.');
+        }
+      } finally {
+        isFetching.current[key] = false;
+        setLoadingMore(false);
+      }
+
+      return () => controller.abort(); // Abort request on cleanup
+    },
+    [debouncedError]
+  );
+
+  // Reset pagination and fetch products for a category
+  const resetPaginationAndFetch = useCallback(
+    async (brand: string, category: string) => {
+      const key = `${brand}-${category}`;
+      setPaginationState((prev) => ({
+        ...prev,
+        [key]: { page: 1, hasMore: true },
+      }));
+      setProductsByBrandCategory((prev) => ({
+        ...prev,
+        [key]: [],
+      }));
+      fetchProducts(key, brand, category, undefined, 1);
+    },
     [fetchProducts]
   );
 
-  // ------------------ Handle Search ---------------------
-  const handleSearch = useMemo(
-    () =>
-      debounce(async (search: string) => {
-        if (search.trim() === '') {
-          // If search is cleared, reset to active tab's products
-          if (activeTab) {
-            setPaginationState((prev) => ({
-              ...prev,
-              [activeTab]: { page: 1, hasMore: true },
-            }));
-            await fetchProducts(activeTab, 1, '');
-          }
-          return;
-        }
+  // Handle tab changes with debounce
+  const handleTabChange = useCallback(
+    debounce((newValue: string) => {
+      setActiveBrand(newValue); // Set the new active brand
+      const categories = categoriesByBrand[newValue] || []; // Retrieve categories for the selected brand
 
-        // When searching, fetch all products matching the search term without brand
+      // Set the first category if it exists
+      const firstCategory = categories[0] || '';
+      setActiveCategory(firstCategory);
+
+      // Reset pagination and fetch products only if categories exist
+      if (firstCategory) {
+        resetPaginationAndFetch(newValue, firstCategory);
+      }
+    }, 300),
+    [categoriesByBrand, resetPaginationAndFetch]
+  );
+
+  const handleCategoryTabChange = useCallback(
+    debounce((newValue) => {
+      setActiveCategory(newValue);
+      resetPaginationAndFetch(activeBrand, newValue);
+    }, 300),
+    [activeBrand, resetPaginationAndFetch]
+  );
+
+  // Initialize brands and categories
+  useEffect(() => {
+    fetchAllBrands();
+  }, [fetchAllBrands]);
+
+  useEffect(() => {
+    if (activeBrand && !categoriesByBrand[activeBrand]) {
+      fetchCategories(activeBrand); // Fetch categories only if they aren't already cached
+    }
+  }, [activeBrand, categoriesByBrand, fetchCategories]);
+
+  // ------------------ Handle Search ---------------------
+  const handleSearch = useCallback(
+    debounce(async (search: string) => {
+      setSearchTerm(search);
+      const key =
+        search.trim() !== '' ? 'search' : `${activeBrand}-${activeCategory}`;
+
+      // Reset pagination and products if search term changes
+      if (search.trim() !== '') {
         setPaginationState((prev) => ({
           ...prev,
-          ['search']: { page: 1, hasMore: true },
+          [key]: { page: 1, hasMore: true },
         }));
+        setProductsByBrandCategory((prev) => ({
+          ...prev,
+          [key]: [],
+        }));
+        setNoMoreProducts((prev) => ({
+          ...prev,
+          [key]: false,
+        }));
+        await fetchProducts(key, undefined, undefined, search, 1);
+      } else {
+        setPaginationState((prev) => ({
+          ...prev,
+          [key]: { page: 1, hasMore: true },
+        }));
+        setProductsByBrandCategory((prev) => ({
+          ...prev,
+          [key]: [],
+        }));
+        setNoMoreProducts((prev) => ({
+          ...prev,
+          [key]: false,
+        }));
+        await fetchProducts(key, activeBrand, activeCategory, undefined, 1);
 
-        await fetchProducts(undefined, 1, search);
-      }, 500), // Debounce delay of 500ms
-    [activeTab, fetchProducts]
+        // **Reset options to all products when search is cleared**
+        setOptions(productsByBrandCategory[key] || []);
+      }
+    }, 500),
+    [activeBrand, activeCategory, fetchProducts, productsByBrandCategory]
   );
 
   // ------------------ Handle Input Change ---------------------
-  const handleInputChange = (event: any, value: string) => {
-    setQuery(value);
-    setSearchTerm(value);
-    handleSearch(value);
-  };
+  const handleInputChange = useCallback(
+    (event: any, value: string) => {
+      setQuery(value);
+      handleSearch(value);
+    },
+    [handleSearch]
+  );
 
   // ------------------ Handle Adding Products ---------------------
   const handleAddProducts = useCallback(
-    (event: any, values: any) => {
+    (values: any) => {
       if (!values) return;
-
-      if (typeof values === 'string') {
-        // Handle freeSolo input if necessary
-        // For example, you might want to add it as a new product or prompt the user
-        showSnackbar(`You entered: ${values}. Please select a valid product.`);
-        return;
-      }
 
       const isAlreadySelected = selectedProducts.some(
         (product) => product._id === values._id
       );
+      const productIdStr = values._id;
       const quantity =
-        temporaryQuantities[values._id as string] || values.quantity || 1;
+        temporaryQuantities[productIdStr] || values.quantity || 1;
 
       if (!isAlreadySelected) {
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
         const isShared = urlParams.has('shared');
-        const updatedProducts = [
-          ...selectedProductsRef.current,
+
+        const updatedProducts: SearchResult[] = [
+          ...selectedProducts,
           {
             ...values,
-            product_id: values._id,
-            margin: specialMargins[values._id]
-              ? specialMargins[values._id]
+            margin: specialMargins[productIdStr]
+              ? specialMargins[productIdStr]
               : customer.cf_margin || '40%',
             quantity,
             added_by: isShared ? 'customer' : 'sales_person',
@@ -333,61 +502,74 @@ const Products: React.FC<SearchBarProps> = ({
         ];
 
         setSelectedProducts(updatedProducts);
-        selectedProductsRef.current = updatedProducts;
-        showSnackbar(`Added ${values.name} (x${quantity}) to cart.`);
+        debouncedSuccess(`Added ${values.name} (x${quantity}) to cart.`);
 
         // Clear temporary quantity
         setTemporaryQuantities((prev) => {
           const updated = { ...prev };
-          delete updated[values._id as string];
+          delete updated[productIdStr];
           return updated;
         });
       } else {
-        showSnackbar(`${values.name} is already in the cart.`);
+        debouncedWarn(`${values.name} is already in the cart.`);
       }
 
       // Remove from the autocomplete list
       setOptions((prevOptions) =>
-        prevOptions.filter((option) => {
-          if (typeof option === 'string') return true; // Keep string inputs
-          return option._id !== values._id;
-        })
+        prevOptions.filter((option) => option._id !== values._id)
       );
     },
-    [selectedProducts, temporaryQuantities, showSnackbar, setSelectedProducts]
+    [
+      selectedProducts,
+      temporaryQuantities,
+      specialMargins,
+      customer.cf_margin,
+      debouncedSuccess,
+      debouncedWarn,
+      setSelectedProducts,
+    ]
   );
 
   // ------------------ Handle Removing Products ---------------------
   const handleRemoveProduct = useCallback(
     (id: string) => {
-      const removedProduct = selectedProductsRef.current.find(
+      const removedProduct = selectedProducts.find(
         (product) => product._id === id
       );
       if (!removedProduct) return;
 
       // Filter out the removed product
-      const updatedProducts = selectedProductsRef.current.filter(
+      const updatedProducts = selectedProducts.filter(
         (product) => product._id !== id
       );
 
       setSelectedProducts(updatedProducts);
-      selectedProductsRef.current = updatedProducts;
 
       // Put the removed product back into options
       setOptions((prevOptions) => [...prevOptions, removedProduct]);
-      showSnackbar(`Removed ${removedProduct.name} from cart`);
+      debouncedSuccess(`Removed ${removedProduct.name} from cart`);
     },
-    [showSnackbar, setSelectedProducts]
+    [selectedProducts, debouncedSuccess, setSelectedProducts]
   );
 
   // ------------------ Handle Quantity Change ---------------------
   const handleQuantityChange = useCallback(
     (id: string, newQuantity: number) => {
+      const productInCart = selectedProducts.find(
+        (product) => product._id === id
+      );
+      if (!productInCart) return;
+
+      const sanitizedQuantity = Math.max(
+        1,
+        Math.min(newQuantity, productInCart.stock)
+      );
+
       const updatedProducts = selectedProducts.map((product) => {
         if (product._id === id) {
           return {
             ...product,
-            quantity: Math.max(1, Math.min(newQuantity, product.stock)),
+            quantity: sanitizedQuantity,
           };
         }
         return product;
@@ -396,12 +578,12 @@ const Products: React.FC<SearchBarProps> = ({
       setSelectedProducts(updatedProducts);
       const updatedProduct = updatedProducts.find((p) => p._id === id);
       if (updatedProduct) {
-        showSnackbar(
+        debouncedSuccess(
           `Updated ${updatedProduct.name} to quantity ${updatedProduct.quantity}`
         );
       }
     },
-    [selectedProducts, setSelectedProducts, showSnackbar]
+    [selectedProducts, setSelectedProducts, debouncedSuccess]
   );
 
   // ------------------ Handle Clear Cart ---------------------
@@ -412,12 +594,12 @@ const Products: React.FC<SearchBarProps> = ({
 
       setSelectedProducts([]);
       setOptions([]);
-      showSnackbar('Cart cleared successfully.');
+      debouncedSuccess('Cart cleared successfully.');
     } catch (error) {
       console.error('Failed to clear the cart:', error);
-      showSnackbar('Failed to clear the cart.');
+      debouncedError('Failed to clear the cart.');
     }
-  }, [id, setSelectedProducts, showSnackbar]);
+  }, [id, setSelectedProducts, debouncedSuccess, debouncedError]);
 
   // ------------------ Handle Image Popup ---------------------
   const handleImageClick = useCallback((src: string) => {
@@ -431,62 +613,66 @@ const Products: React.FC<SearchBarProps> = ({
 
   // ------------------ Handle Scroll for Infinite Scrolling ---------------------
   const handleScroll = useCallback(() => {
+    const key = `${activeBrand}-${activeCategory}`;
     if (
-      window.innerHeight + document.documentElement.scrollTop >=
-        document.documentElement.offsetHeight - 500 && // Trigger near bottom
+      window.innerHeight + window.scrollY >=
+        document.documentElement.scrollHeight - 500 &&
       !loadingMore &&
-      ((searchTerm && paginationState['search']?.hasMore) ||
-        (!searchTerm && activeTab && paginationState[activeTab]?.hasMore))
+      paginationState[key]?.hasMore
     ) {
-      const nextPage = searchTerm
-        ? (paginationState['search']?.page || 1) + 1
-        : (paginationState[activeTab]?.page || 1) + 1;
-      const brand = searchTerm ? undefined : activeTab;
-      fetchProducts(brand, nextPage, searchTerm);
+      const nextPage = (paginationState[key]?.page || 1) + 1;
+      fetchProducts(key, activeBrand, activeCategory, undefined, nextPage);
     }
-  }, [activeTab, fetchProducts, loadingMore, paginationState, searchTerm]);
+  }, [
+    activeBrand,
+    activeCategory,
+    fetchProducts,
+    loadingMore,
+    paginationState,
+  ]);
 
   useEffect(() => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
 
-  // ------------------ Reset Pagination on Tab Switch ---------------------
+  // ------------------ Reset Pagination on Brand or Category Tab Switch ---------------------
   useEffect(() => {
-    if (activeTab && !searchTerm) {
-      handleSearch.cancel(); // Cancel any pending search requests
-
-      // Reset pagination state for the new active tab
-      setPaginationState((prev) => ({
-        ...prev,
-        [activeTab]: { page: 1, hasMore: true },
-      }));
-
-      // Fetch the first page for the new active tab
-      fetchProducts(activeTab, 1, '');
+    if (activeBrand) {
+      resetPaginationAndFetch(
+        activeBrand,
+        categoriesByBrand[activeBrand]?.[0] || ''
+      );
     }
-  }, [activeTab, fetchProducts, searchTerm, handleSearch]);
-  useEffect(() => {
-    return () => {
-      debouncedFetchProducts.cancel(); // Cancel debounced fetchProducts
-      handleSearch.cancel(); // Cancel debounced handleSearch
-    };
-  }, [debouncedFetchProducts, handleSearch]);
+  }, [activeBrand, categoriesByBrand, resetPaginationAndFetch]);
   // ------------------ Render Component ---------------------
   if (!customer) {
     return <Typography>This is content for Products</Typography>;
   }
 
+  // Extract categories for the active brand
+  const categories = categoriesByBrand[activeBrand] || [];
+
+  // Determine the key for productsByBrandCategory
+  const productsKey =
+    searchTerm.trim() !== ''
+      ? 'search'
+      : activeBrand && activeCategory
+      ? `${activeBrand}-${activeCategory}`
+      : 'all';
+
+  const displayedProducts = productsByBrandCategory[productsKey] || [];
+
   return (
     <Box
       sx={{
         display: 'flex',
-        flexDirection: { xs: 'column', md: 'row' },
-        gap: 2,
+        flexDirection: { xs: 'column', md: 'column' }, // Use column for full-width
+        gap: 3, // Increase gap for spacing
         width: '100%',
-        padding: 2,
-        maxWidth: '1200px',
-        margin: '0 auto',
+        padding: 3, // Increase padding
+        maxWidth: '100%', // Ensure full width on larger screens
+        margin: '0 auto', // Center horizontally
         position: 'relative',
       }}
     >
@@ -519,21 +705,22 @@ const Products: React.FC<SearchBarProps> = ({
         {/* Search Bar */}
         <Autocomplete
           freeSolo
-          options={options}
-          getOptionLabel={(option: any) =>
-            typeof option === 'string'
-              ? option
-              : option?.name
-              ? option.name
-              : 'Unknown Product'
+          options={options} // Updated options based on search or selection
+          getOptionLabel={(option: SearchResult | string) =>
+            typeof option === 'string' ? option : option.name
           }
-          isOptionEqualToValue={(option: any, value: any) =>
+          isOptionEqualToValue={(
+            option: SearchResult | string,
+            value: SearchResult | string
+          ) =>
             typeof option === 'string' && typeof value === 'string'
               ? option === value
-              : option._id === value._id
+              : typeof option !== 'string' &&
+                typeof value !== 'string' &&
+                option._id === value._id
           }
           onInputChange={handleInputChange}
-          onChange={(event, value) => handleAddProducts(event, value)}
+          // onChange={(event, value) => handleAddProducts(value)}
           value={query} // Controlled input
           loading={loading}
           renderInput={(params) => (
@@ -556,221 +743,423 @@ const Products: React.FC<SearchBarProps> = ({
             />
           )}
         />
-
-        {/* Tabs for Brands */}
-        {!searchTerm && (
-          <Tabs
-            value={activeTab}
-            onChange={(e, newValue) => setActiveTab(newValue)}
-            variant='scrollable'
-            scrollButtons='auto'
-            sx={{
-              mt: 2,
-              '.MuiTab-root': {
-                textTransform: 'none',
-                fontWeight: 'bold',
-                padding: '10px 20px',
-              },
-              '.Mui-selected': { color: 'primary.main' },
-            }}
-          >
-            {Object.keys(productsByBrand)
-              .filter((brand) => brand !== 'search') // Exclude 'search' from tabs
-              .map((brand) => (
-                <Tab key={brand} label={brand} value={brand} />
-              ))}
-          </Tabs>
-        )}
-
-        {/* Product Table */}
-        <TableContainer
-          component={Paper}
-          sx={{
-            mt: 2,
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            overflowX: 'auto',
-          }}
+        <Box
+          display={'flex'}
+          justifyContent={'flex-start'}
+          alignItems={'baseline'}
+          gap={'8px'}
         >
+          {/* <Typography variant='subtitle2'>Brands:</Typography> */}
+          {/* Tabs for Brands */}
+          {!searchTerm.trim() && (
+            <Tabs
+              value={
+                activeBrand || Object.keys(productsByBrandCategory)[0] || ''
+              } // Ensure a valid default value
+              onChange={(e, newValue) => handleTabChange(newValue)}
+              variant='scrollable'
+              scrollButtons='auto'
+              sx={{
+                mt: 2,
+                '.MuiTab-root': {
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  padding: '10px 20px',
+                },
+                '.Mui-selected': { color: 'primary.main' },
+              }}
+            >
+              {Object.keys(productsByBrandCategory)
+                .filter((brand) => brand !== 'search' && !brand.includes('-')) // Ensure valid brand keys
+                .map((brand) => (
+                  <Tab key={brand} label={brand} value={brand} />
+                ))}
+            </Tabs>
+          )}
+        </Box>
+        <Box
+          display={'flex'}
+          justifyContent={'flex-start'}
+          alignItems={'baseline'}
+          gap={'8px'}
+        >
+          {/* <Typography variant='subtitle2'>Categories</Typography> */}
+          {/* Tabs for Categories (Sub Tabs) */}
+          {!searchTerm.trim() && activeBrand && categories.length > 0 && (
+            <Tabs
+              value={activeCategory || categories[0] || ''} // Ensure a valid default value
+              onChange={(e, newValue) => handleCategoryTabChange(newValue)}
+              variant='scrollable'
+              scrollButtons='auto'
+              sx={{
+                mt: 2,
+                mb: 2,
+                '.MuiTab-root': {
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  padding: '8px 16px',
+                },
+                '.Mui-selected': { color: 'primary.main' },
+              }}
+            >
+              {categories.map((category) => (
+                <Tab key={category} label={category} value={category} />
+              ))}
+            </Tabs>
+          )}
+        </Box>
+
+        {/* Product Table without Grouping */}
+        <TableContainer component={Paper}>
           <Table stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell>Image</TableCell>
-                <TableCell>Name</TableCell>
-                <TableCell>Category</TableCell>
-                <TableCell>Sub Category</TableCell>
-                <TableCell>SKU</TableCell>
-                <TableCell>Price</TableCell>
-                <TableCell>Stock</TableCell>
-                <TableCell>Margin</TableCell>
-                <TableCell>Selling Price</TableCell>
-                <TableCell>Quantity</TableCell>
-                <TableCell>Total</TableCell>
-                <TableCell>Action</TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky', // Makes the header sticky
+                    top: 0, // Sticks the header at the top
+                    zIndex: 1000, // Ensures it appears above other elements
+                    backgroundColor: 'background.paper', // Keeps the background solid
+                  }}
+                >
+                  Image
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '200px', // Increase width for readability
+                  }}
+                >
+                  Name
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '150px',
+                  }}
+                >
+                  Sub Category
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '125px',
+                  }}
+                >
+                  Series
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '80px',
+                  }}
+                >
+                  SKU
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '80px',
+                  }}
+                >
+                  Price
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '80px',
+                  }}
+                >
+                  Stock
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '80px',
+                  }}
+                >
+                  Margin
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '100px',
+                  }}
+                >
+                  Selling Price
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '100px',
+                  }}
+                >
+                  Quantity
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '100px',
+                  }}
+                >
+                  Total
+                </TableCell>
+                <TableCell
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    minWidth: '100px',
+                  }}
+                >
+                  Action
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {(searchTerm
-                ? productsByBrand['search']
-                : productsByBrand[activeTab]
-              )?.map((product: any) => {
-                // Convert _id to a string if needed
-                const productId =
-                  typeof product._id === 'string'
-                    ? product._id
-                    : product._id.$oid;
+              {/* Display Products Without Grouping */}
+              {displayedProducts.length > 0 ? (
+                <>
+                  {displayedProducts.map((product: SearchResult) => {
+                    const productId = product._id;
 
-                // Decide margin from specialMargins if any
-                let marginPercent = specialMargins[productId]
-                  ? parseInt(specialMargins[productId].replace('%', ''))
-                  : parseInt((customer.cf_margin || '40%').replace('%', ''));
+                    const selectedProduct = selectedProducts.find(
+                      (p) => p._id === product._id
+                    );
 
-                if (isNaN(marginPercent)) {
-                  marginPercent = 40; // fallback
-                }
+                    // Calculate selling price
+                    const sellingPrice = getSellingPrice(product);
 
-                const margin = marginPercent / 100;
-                const selectedProduct = selectedProducts.find(
-                  (p) => p._id === product._id
-                );
+                    // If the product is in the cart, use its quantity; otherwise, use the temp or default
+                    const quantity =
+                      selectedProduct?.quantity ||
+                      temporaryQuantities[productId] ||
+                      1;
 
-                // Calculate selling price
-                const sellingPrice = getSellingPrice(product);
+                    // Item-level total
+                    const itemTotal = parseFloat(
+                      (sellingPrice * quantity).toFixed(2)
+                    );
 
-                // If the product is in the cart, use its quantity; otherwise, use the temp or default
-                const quantity =
-                  selectedProduct?.quantity ||
-                  temporaryQuantities[productId] ||
-                  1;
+                    // Determine if the current quantity exceeds stock
+                    const isQuantityExceedingStock = quantity > product.stock;
 
-                // Item-level total
-                const itemTotal = parseFloat(
-                  (sellingPrice * quantity).toFixed(2)
-                );
+                    return (
+                      <TableRow key={productId}>
+                        <TableCell>
+                          <Badge
+                            badgeContent={product.new ? 'New' : undefined}
+                            color='secondary'
+                            overlap='rectangular'
+                            anchorOrigin={{
+                              vertical: 'top',
+                              horizontal: 'right',
+                            }}
+                          >
+                            <img
+                              src={product.image_url || '/placeholder.png'}
+                              alt={product.name}
+                              loading='lazy'
+                              style={{
+                                width: '100px',
+                                height: '100px',
+                                borderRadius: '4px',
+                                objectFit: 'cover',
+                                cursor: 'pointer',
+                              }}
+                              onClick={() =>
+                                handleImageClick(
+                                  product.image_url || '/placeholder.png'
+                                )
+                              }
+                            />
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{product.name}</TableCell>
+                        <TableCell>{product.sub_category || '-'}</TableCell>
+                        <TableCell>{product.series || '-'}</TableCell>
+                        <TableCell>{product.cf_sku_code || '-'}</TableCell>
+                        <TableCell>₹{product.rate}</TableCell>
+                        <TableCell>{product.stock}</TableCell>
 
-                return (
-                  <TableRow key={productId}>
-                    <TableCell>
-                      <Badge
-                        badgeContent={product.new ? 'New' : undefined}
-                        color='secondary'
-                        overlap='rectangular'
-                        anchorOrigin={{
-                          vertical: 'top',
-                          horizontal: 'right',
-                        }}
-                      >
-                        <img
-                          src={product.image_url || '/placeholder.png'}
-                          alt={product.name}
-                          loading='lazy'
-                          style={{
-                            width: '140px',
-                            height: '140px',
-                            borderRadius: '4px',
-                            objectFit: 'cover',
-                            cursor: 'pointer',
-                          }}
-                          onClick={() =>
-                            handleImageClick(
-                              product.image_url || '/placeholder.png'
-                            )
-                          }
-                        />
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{product.name}</TableCell>
-                    <TableCell>{product.category || '-'}</TableCell>
-                    <TableCell>{product.sub_category || '-'}</TableCell>
-                    <TableCell>{product.cf_sku_code || '-'}</TableCell>
-                    <TableCell>₹{product.rate}</TableCell>
-                    <TableCell>{product.stock}</TableCell>
+                        {/* Margin (either from specialMargins or default) */}
+                        <TableCell>
+                          {specialMargins[productId]
+                            ? specialMargins[productId]
+                            : customer.cf_margin || '40%'}
+                        </TableCell>
 
-                    {/* Margin (either from specialMargins or default) */}
-                    <TableCell>
-                      {specialMargins[productId]
-                        ? specialMargins[productId]
-                        : customer.cf_margin || '40%'}
-                    </TableCell>
+                        {/* Selling Price */}
+                        <TableCell>₹{sellingPrice}</TableCell>
 
-                    {/* Selling Price */}
-                    <TableCell>₹{sellingPrice}</TableCell>
+                        {/* Quantity input */}
+                        <TableCell>
+                          <TextField
+                            type='number'
+                            value={quantity}
+                            disabled={
+                              order?.status
+                                ?.toLowerCase()
+                                ?.includes('accepted') ||
+                              order?.status?.toLowerCase()?.includes('declined')
+                            }
+                            onChange={(e) => {
+                              const inputValue = e.target.value;
+                              // Allow empty string for controlled input
+                              if (inputValue === '') {
+                                if (selectedProduct) {
+                                  // If in cart, set quantity to 1 temporarily
+                                  handleQuantityChange(productId, 1);
+                                } else {
+                                  // If not in cart, remove temporary quantity
+                                  setTemporaryQuantities((prev) => {
+                                    const updated = { ...prev };
+                                    delete updated[productId];
+                                    return updated;
+                                  });
+                                }
+                                return;
+                              }
 
-                    {/* Quantity input */}
-                    <TableCell>
-                      <TextField
-                        type='number'
-                        value={quantity}
-                        disabled={
-                          order?.status?.toLowerCase()?.includes('accepted') ||
-                          order?.status?.toLowerCase()?.includes('declined')
-                        }
-                        onChange={(e) => {
-                          const newQuantity = Math.max(
-                            1,
-                            parseInt(e.target.value) || 1
-                          );
-                          if (selectedProduct) {
-                            // If already in cart, update quantity
-                            handleQuantityChange(productId, newQuantity);
-                          } else {
-                            // If not in cart, just store temp
-                            setTemporaryQuantities((prev) => ({
-                              ...prev,
-                              [productId]: newQuantity,
-                            }));
-                            showSnackbar(
-                              `Set quantity to ${newQuantity}. Add product to cart to confirm.`
-                            );
-                          }
-                        }}
-                        inputProps={{
-                          min: 1,
-                          max: product.stock,
-                        }}
-                        size='small'
-                        sx={{ width: '80px' }}
-                      />
-                    </TableCell>
+                              const parsedValue = parseInt(inputValue);
+                              if (isNaN(parsedValue)) return;
 
-                    {/* Item total if in cart */}
-                    <TableCell>
-                      {selectedProduct ? `₹${itemTotal}` : '-'}
-                    </TableCell>
+                              // Enforce minimum and maximum
+                              let newQuantity = Math.max(1, parsedValue);
+                              if (newQuantity > product.stock) {
+                                newQuantity = product.stock;
+                                debouncedWarn(
+                                  `Maximum available stock for ${product.name} is ${product.stock}.`
+                                );
+                              }
 
-                    {/* Add or Remove button */}
-                    <TableCell>
-                      <IconButton
-                        color='primary'
-                        disabled={
-                          order?.status?.toLowerCase()?.includes('accepted') ||
-                          order?.status?.toLowerCase()?.includes('declined')
-                        }
-                        onClick={() =>
-                          selectedProducts.some(
-                            (prod) => prod._id === product._id
-                          )
-                            ? handleRemoveProduct(productId)
-                            : handleAddProducts(event, product)
-                        }
-                        sx={{
-                          textTransform: 'none',
-                          fontWeight: 'bold',
-                          borderRadius: '24px',
-                        }}
-                      >
-                        {selectedProducts.some(
-                          (prod) => prod._id === product._id
-                        ) ? (
-                          <RemoveShoppingCart />
-                        ) : (
-                          <AddShoppingCart />
-                        )}
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                              if (selectedProduct) {
+                                // If already in cart, update quantity
+                                handleQuantityChange(productId, newQuantity);
+                              } else {
+                                // If not in cart, just store temp
+                                setTemporaryQuantities((prev) => ({
+                                  ...prev,
+                                  [productId]: newQuantity,
+                                }));
+                                debouncedInfo(
+                                  `Set quantity to ${newQuantity}. Add product to cart to confirm.`
+                                );
+                              }
+                            }}
+                            inputProps={{
+                              min: 1,
+                              max: product.stock,
+                              step: 1,
+                            }}
+                            size='small'
+                            sx={{ width: '80px' }}
+                          />
+                          {isQuantityExceedingStock && (
+                            <Typography
+                              variant='caption'
+                              color='error'
+                              sx={{ display: 'block' }}
+                            >
+                              Exceeds stock!
+                            </Typography>
+                          )}
+                        </TableCell>
+
+                        {/* Item total if in cart */}
+                        <TableCell>
+                          {selectedProduct ? `₹${itemTotal}` : '-'}
+                        </TableCell>
+
+                        {/* Add or Remove button */}
+                        <TableCell>
+                          <IconButton
+                            color='primary'
+                            disabled={
+                              order?.status
+                                ?.toLowerCase()
+                                ?.includes('accepted') ||
+                              order?.status?.toLowerCase()?.includes('declined')
+                            }
+                            onClick={() =>
+                              selectedProducts.some(
+                                (prod) => prod._id === product._id
+                              )
+                                ? handleRemoveProduct(productId)
+                                : handleAddProducts(product)
+                            }
+                            sx={{
+                              textTransform: 'none',
+                              fontWeight: 'bold',
+                              borderRadius: '24px',
+                            }}
+                          >
+                            {selectedProducts.some(
+                              (prod) => prod._id === product._id
+                            ) ? (
+                              <RemoveShoppingCart />
+                            ) : (
+                              <AddShoppingCart />
+                            )}
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {/* Display 'No more products' message */}
+                  {!loadingMore && noMoreProducts[productsKey] && (
+                    <TableRow>
+                      <TableCell colSpan={12} align='center'>
+                        <Typography variant='body2' color='textSecondary'>
+                          No more products for{' '}
+                          {searchTerm ? searchTerm : activeBrand}{' '}
+                          {searchTerm ? '' : `${activeCategory}.`}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </>
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={12} align='center'>
+                    <Typography variant='body1'>
+                      {loading ? 'Loading products...' : 'No products found.'}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+
               {/* Loading Indicator for More Products */}
               {loadingMore && (
                 <TableRow>
@@ -857,14 +1246,11 @@ const Products: React.FC<SearchBarProps> = ({
             {selectedProducts.length === 0 ? (
               <Typography variant='body1'>Your cart is empty.</Typography>
             ) : (
-              selectedProducts.map((product: any) => {
-                const productId =
-                  typeof product._id === 'string'
-                    ? product._id
-                    : product._id.$oid;
+              selectedProducts.map((product: SearchResult) => {
+                const productId = product._id;
                 const sellingPrice = getSellingPrice(product);
                 const itemTotal = parseFloat(
-                  (sellingPrice * product?.quantity).toFixed(2)
+                  (sellingPrice * product.quantity!).toFixed(2)
                 );
 
                 return (
@@ -919,7 +1305,7 @@ const Products: React.FC<SearchBarProps> = ({
             <Typography variant='h6' sx={{ fontWeight: 'bold', mt: 1 }}>
               Total Amount: ₹{totals.totalAmount.toFixed(2)}
             </Typography>
-            {/* You can add buttons like 'Checkout' or 'Finalize Order' here */}
+            {/* Checkout Button */}
             <Button
               variant='contained'
               color='primary'
@@ -983,24 +1369,6 @@ const Products: React.FC<SearchBarProps> = ({
           />
         </DialogContent>
       </Dialog>
-
-      {/* Snackbar for Notifications */}
-      <Snackbar
-        open={snackbarOpen}
-        onClose={(e: any, r: any) => handleSnackbarClose(e, r)}
-        message={snackbarMessage}
-        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
-        action={
-          <IconButton
-            size='small'
-            aria-label='close'
-            color='inherit'
-            onClick={handleSnackbarClose}
-          >
-            <CloseIcon fontSize='small' />
-          </IconButton>
-        }
-      />
     </Box>
   );
 };
