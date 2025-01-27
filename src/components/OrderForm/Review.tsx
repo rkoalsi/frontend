@@ -181,14 +181,15 @@ const Review: React.FC<Props> = React.memo((props) => {
             )}
           </Box>
           <Typography variant='body1'>
-            <strong>Shop Name:</strong> {customer.contact_name}
+            <strong>Shop Name:</strong> {customer?.contact_name}
           </Typography>
           <Typography variant='body1'>
-            <strong>Contact Name:</strong> {customer.first_name}{' '}
-            {customer.last_name}
+            <strong>Contact Name:</strong> {customer?.first_name}{' '}
+            {customer?.last_name}
           </Typography>
           <Typography variant='body1'>
-            <strong>Phone:</strong> {customer.mobile || customer.phone || 'N/A'}
+            <strong>Phone:</strong>{' '}
+            {customer?.mobile || customer?.phone || 'N/A'}
           </Typography>
         </Paper>
 
@@ -324,7 +325,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                   // Determine margin
                   const marginPercent = specialMargins[productId]
                     ? parseInt(specialMargins[productId].replace('%', ''))
-                    : parseInt(customer.cf_margin.replace('%', '') || '40');
+                    : parseInt(customer?.cf_margin.replace('%', '') || '40');
                   const margin = marginPercent / 100;
 
                   // Calculate selling price
@@ -376,7 +377,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                       <TableCell>₹{product.rate}</TableCell>
                       <TableCell>
                         {specialMargins[productId] ||
-                          customer.cf_margin ||
+                          customer?.cf_margin ||
                           '40%'}
                       </TableCell>
                       <TableCell>₹{sellingPrice}</TableCell>
@@ -428,12 +429,12 @@ const Review: React.FC<Props> = React.memo((props) => {
                 <TableRow>
                   <TableCell colSpan={7}>
                     <strong>Total GST:</strong> ₹{totals.totalGST.toFixed(2)}{' '}
-                    <strong>({customer.cf_in_ex || 'Exclusive'})</strong>
+                    <strong>({customer?.cf_in_ex || 'Exclusive'})</strong>
                   </TableCell>
                   <TableCell colSpan={6}>
                     <strong>Total Amount:</strong> ₹
                     {totals.totalAmount.toFixed(2)}{' '}
-                    <strong>(GST {customer.cf_in_ex || 'Exclusive'})</strong>
+                    <strong>(GST {customer?.cf_in_ex || 'Exclusive'})</strong>
                   </TableCell>
                 </TableRow>
               </TableBody>

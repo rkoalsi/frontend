@@ -203,7 +203,7 @@ const Products: React.FC<SearchBarProps> = ({
         <TableCell>
           {specialMargins[productId]
             ? specialMargins[productId]
-            : customer.cf_margin || '40%'}
+            : customer?.cf_margin || '40%'}
         </TableCell>
         <TableCell>₹{sellingPrice}</TableCell>
         <TableCell>
@@ -263,8 +263,8 @@ const Products: React.FC<SearchBarProps> = ({
       let marginPercent = 40; // Default 40%
       if (specialMargins[product._id]) {
         marginPercent = parseInt(specialMargins[product._id].replace('%', ''));
-      } else if (customer.cf_margin) {
-        marginPercent = parseInt(customer.cf_margin.replace('%', ''));
+      } else if (customer?.cf_margin) {
+        marginPercent = parseInt(customer?.cf_margin.replace('%', ''));
       }
       const margin = isNaN(marginPercent) ? 0.4 : marginPercent / 100;
       return parseFloat((product.rate - product.rate * margin).toFixed(2));
@@ -495,7 +495,7 @@ const Products: React.FC<SearchBarProps> = ({
             ...values,
             margin: specialMargins[productIdStr]
               ? specialMargins[productIdStr]
-              : customer.cf_margin || '40%',
+              : customer?.cf_margin || '40%',
             quantity,
             added_by: isShared ? 'customer' : 'sales_person',
           },
@@ -523,7 +523,7 @@ const Products: React.FC<SearchBarProps> = ({
       selectedProducts,
       temporaryQuantities,
       specialMargins,
-      customer.cf_margin,
+      customer?.cf_margin,
       debouncedSuccess,
       debouncedWarn,
       setSelectedProducts,
@@ -1017,7 +1017,7 @@ const Products: React.FC<SearchBarProps> = ({
                         <TableCell>
                           {specialMargins[productId]
                             ? specialMargins[productId]
-                            : customer.cf_margin || '40%'}
+                            : customer?.cf_margin || '40%'}
                         </TableCell>
 
                         {/* Selling Price */}
