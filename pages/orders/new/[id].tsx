@@ -576,7 +576,9 @@ const NewOrder: React.FC = () => {
                   !shippingAddress ||
                   selectedProducts.length === 0 ||
                   !totals.totalAmount ||
-                  loading
+                  loading ||
+                  order?.status?.toLowerCase()?.includes('declined') ||
+                  order?.status?.toLowerCase()?.includes('accepted')
                 }
               >
                 {'Save As Draft'}
