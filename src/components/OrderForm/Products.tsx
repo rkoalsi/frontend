@@ -101,7 +101,6 @@ const Products: React.FC<SearchBarProps> = ({
     [key: string]: SearchResult[];
   }>({});
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
-  const PRODUCTS_PER_PAGE = 75; // Number of products per batch
   const [searchTerm, setSearchTerm] = useState<string>(''); // Current search term
   const [activeBrand, setActiveBrand] = useState<string>(''); // Currently active brand tab
   const [activeCategory, setActiveCategory] = useState<string>(''); // Currently active category tab
@@ -151,112 +150,6 @@ const Products: React.FC<SearchBarProps> = ({
     };
   }, [debouncedSuccess, debouncedWarn, debouncedInfo, debouncedError]);
 
-  const RowRenderer = ({
-    index,
-    style,
-    data,
-  }: {
-    index: number;
-    style: React.CSSProperties;
-    data: SearchResult[];
-  }) => {
-    const product = data[index];
-    const productId = product._id;
-    const selectedProduct = selectedProducts.find((p) => p._id === productId);
-    const sellingPrice = getSellingPrice(product);
-    const quantity =
-      selectedProduct?.quantity || temporaryQuantities[productId] || 1;
-    const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
-
-    return (
-      <TableRow style={style} key={productId}>
-        <TableCell>
-          <Badge
-            badgeContent={product.new ? 'New' : undefined}
-            color='secondary'
-            overlap='rectangular'
-            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-          >
-            <img
-              src={product.image_url || '/placeholder.png'}
-              alt={product.name}
-              loading='lazy'
-              style={{
-                width: '100px',
-                height: '100px',
-                borderRadius: '4px',
-                objectFit: 'cover',
-                cursor: 'pointer',
-              }}
-              onClick={() =>
-                handleImageClick(product.image_url || '/placeholder.png')
-              }
-            />
-          </Badge>
-        </TableCell>
-        <TableCell>{product.name}</TableCell>
-        <TableCell>{product.sub_category || '-'}</TableCell>
-        <TableCell>{product.series || '-'}</TableCell>
-        <TableCell>{product.cf_sku_code || '-'}</TableCell>
-        <TableCell>₹{product.rate}</TableCell>
-        <TableCell>{product.stock}</TableCell>
-        <TableCell>
-          {specialMargins[productId]
-            ? specialMargins[productId]
-            : customer?.cf_margin || '40%'}
-        </TableCell>
-        <TableCell>₹{sellingPrice}</TableCell>
-        <TableCell>
-          <TextField
-            type='number'
-            value={quantity}
-            disabled={
-              order?.status?.toLowerCase()?.includes('accepted') ||
-              order?.status?.toLowerCase()?.includes('declined')
-            }
-            onChange={(e) => {
-              const parsedValue = parseInt(e.target.value || '1');
-              const newQuantity = Math.max(
-                1,
-                Math.min(parsedValue, product.stock)
-              );
-              if (selectedProduct) {
-                handleQuantityChange(productId, newQuantity);
-              } else {
-                setTemporaryQuantities((prev) => ({
-                  ...prev,
-                  [productId]: newQuantity,
-                }));
-                debouncedInfo(
-                  `Set quantity to ${newQuantity}. Add product to cart to confirm.`
-                );
-              }
-            }}
-            inputProps={{ min: 1, max: product.stock, step: 1 }}
-            size='small'
-            sx={{ width: '80px' }}
-          />
-        </TableCell>
-        <TableCell>{selectedProduct ? `₹${itemTotal}` : '-'}</TableCell>
-        <TableCell>
-          <IconButton
-            color='primary'
-            onClick={() =>
-              selectedProducts.some((prod) => prod._id === productId)
-                ? handleRemoveProduct(productId)
-                : handleAddProducts(product)
-            }
-          >
-            {selectedProducts.some((prod) => prod._id === productId) ? (
-              <RemoveShoppingCart />
-            ) : (
-              <AddShoppingCart />
-            )}
-          </IconButton>
-        </TableCell>
-      </TableRow>
-    );
-  };
   // Get selling price
   const getSellingPrice = useCallback(
     (product: SearchResult): number => {
