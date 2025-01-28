@@ -146,10 +146,11 @@ const Layout = ({ children }: any) => {
         sx={{
           minHeight: isMobileOrTablet ? '100vh' : null,
           flexGrow: 1,
+          width: isMobileOrTablet ? '100%' : null,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          padding: isMobileOrTablet ? '16px' : '0px',
+          // padding: isMobileOrTablet ? '16px' : '0px',
         }}
       >
         {children}

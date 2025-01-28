@@ -1,3 +1,5 @@
+// Products.tsx
+
 import React, { useState, useEffect, memo, useCallback, useRef } from 'react';
 import axios from 'axios';
 import {
@@ -24,6 +26,10 @@ import {
   Badge,
   Drawer,
   Divider,
+  Card,
+  CardContent,
+  CardMedia,
+  Grid,
 } from '@mui/material';
 import {
   AddShoppingCart,
@@ -34,6 +40,7 @@ import {
 import { useRouter } from 'next/router';
 import debounce from 'lodash.debounce';
 import { toast } from 'react-toastify';
+import QuantitySelector from './QuantitySelector'; // Adjust the path as necessary
 
 // ------------------ Interface Definitions ---------------------
 interface SearchResult {
@@ -108,7 +115,7 @@ const Products: React.FC<SearchBarProps> = ({
     [key: string]: string[];
   }>({}); // Mapping of brands to their categories
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Detect mobile screen
   const [cartDrawerOpen, setCartDrawerOpen] = useState<boolean>(false); // State for Cart Drawer
   const [noMoreProducts, setNoMoreProducts] = useState<{
     [key: string]: boolean;
@@ -445,38 +452,90 @@ const Products: React.FC<SearchBarProps> = ({
     [selectedProducts, debouncedSuccess, setSelectedProducts]
   );
 
+  // Extract categories for the active brand
+  const categories = categoriesByBrand[activeBrand] || [];
+
+  // Determine the key for productsByBrandCategory
+  const productsKey =
+    searchTerm.trim() !== ''
+      ? 'search'
+      : activeBrand && activeCategory
+      ? `${activeBrand}-${activeCategory}`
+      : 'all';
+
+  const displayedProducts = productsByBrandCategory[productsKey] || [];
+
   // ------------------ Handle Quantity Change ---------------------
   const handleQuantityChange = useCallback(
     (id: string, newQuantity: number) => {
       const productInCart = selectedProducts.find(
         (product) => product._id === id
       );
-      if (!productInCart) return;
 
-      const sanitizedQuantity = Math.max(
-        1,
-        Math.min(newQuantity, productInCart.stock)
-      );
-
-      const updatedProducts = selectedProducts.map((product) => {
-        if (product._id === id) {
-          return {
-            ...product,
-            quantity: sanitizedQuantity,
-          };
-        }
-        return product;
-      });
-
-      setSelectedProducts(updatedProducts);
-      const updatedProduct = updatedProducts.find((p) => p._id === id);
-      if (updatedProduct) {
-        debouncedSuccess(
-          `Updated ${updatedProduct.name} to quantity ${updatedProduct.quantity}`
+      if (productInCart) {
+        // Update existing product's quantity
+        const sanitizedQuantity = Math.max(
+          1,
+          Math.min(newQuantity, productInCart.stock)
         );
+
+        const updatedProducts = selectedProducts.map((product) => {
+          if (product._id === id) {
+            return {
+              ...product,
+              quantity: sanitizedQuantity,
+            };
+          }
+          return product;
+        });
+
+        setSelectedProducts(updatedProducts);
+        const updatedProduct = updatedProducts.find((p) => p._id === id);
+        if (updatedProduct) {
+          debouncedSuccess(
+            `Updated ${updatedProduct.name} to quantity ${updatedProduct.quantity}`
+          );
+        }
+      } else {
+        // Add new product to cart with the specified quantity
+        // Find the product in displayedProducts
+        const product = displayedProducts.find((p) => p._id === id);
+        if (product) {
+          const sanitizedQuantity = Math.max(
+            1,
+            Math.min(newQuantity, product.stock)
+          );
+
+          const queryString = window.location.search;
+          const urlParams = new URLSearchParams(queryString);
+          const isShared = urlParams.has('shared');
+
+          const updatedProducts: any[] = [
+            ...selectedProducts,
+            {
+              ...product,
+              margin: specialMargins[id]
+                ? specialMargins[id]
+                : customer?.cf_margin || '40%',
+              quantity: sanitizedQuantity,
+              added_by: isShared ? 'customer' : 'sales_person',
+            },
+          ];
+
+          setSelectedProducts(updatedProducts);
+          debouncedSuccess(
+            `Added ${product.name} (x${sanitizedQuantity}) to cart.`
+          );
+        }
       }
     },
-    [selectedProducts, setSelectedProducts, debouncedSuccess]
+    [
+      selectedProducts,
+      specialMargins,
+      customer?.cf_margin,
+      debouncedSuccess,
+      displayedProducts,
+    ]
   );
 
   // ------------------ Handle Clear Cart ---------------------
@@ -538,23 +597,11 @@ const Products: React.FC<SearchBarProps> = ({
       );
     }
   }, [activeBrand, categoriesByBrand, resetPaginationAndFetch]);
+
   // ------------------ Render Component ---------------------
   if (!customer) {
     return <Typography>This is content for Products</Typography>;
   }
-
-  // Extract categories for the active brand
-  const categories = categoriesByBrand[activeBrand] || [];
-
-  // Determine the key for productsByBrandCategory
-  const productsKey =
-    searchTerm.trim() !== ''
-      ? 'search'
-      : activeBrand && activeCategory
-      ? `${activeBrand}-${activeCategory}`
-      : 'all';
-
-  const displayedProducts = productsByBrandCategory[productsKey] || [];
 
   return (
     <Box
@@ -702,172 +749,379 @@ const Products: React.FC<SearchBarProps> = ({
           )}
         </Box>
 
-        {/* Product Table without Grouping */}
-        <TableContainer component={Paper}>
-          <Table stickyHeader>
-            <TableHead>
-              <TableRow>
-                <TableCell
-                  sx={{
-                    position: 'sticky', // Makes the header sticky
-                    top: 0, // Sticks the header at the top
-                    zIndex: 1000, // Ensures it appears above other elements
-                    backgroundColor: 'background.paper', // Keeps the background solid
-                  }}
-                >
-                  Image
-                </TableCell>
-                <TableCell
-                  sx={{
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1000,
-                    backgroundColor: 'background.paper',
-                  }}
-                >
-                  Name
-                </TableCell>
-                <TableCell
-                  sx={{
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1000,
-                    backgroundColor: 'background.paper',
-                  }}
-                >
-                  Sub Category
-                </TableCell>
-                <TableCell
-                  sx={{
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1000,
-                    backgroundColor: 'background.paper',
-                  }}
-                >
-                  Series
-                </TableCell>
-                <TableCell
-                  sx={{
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1000,
-                    backgroundColor: 'background.paper',
-                    minWidth: '80px',
-                  }}
-                >
-                  SKU
-                </TableCell>
-                <TableCell
-                  sx={{
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1000,
-                    backgroundColor: 'background.paper',
-                    minWidth: '80px',
-                  }}
-                >
-                  Price
-                </TableCell>
-                <TableCell
-                  sx={{
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1000,
-                    backgroundColor: 'background.paper',
-                    minWidth: '80px',
-                  }}
-                >
-                  Stock
-                </TableCell>
-                <TableCell
-                  sx={{
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1000,
-                    backgroundColor: 'background.paper',
-                    minWidth: '80px',
-                  }}
-                >
-                  Margin
-                </TableCell>
-                <TableCell
-                  sx={{
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1000,
-                    backgroundColor: 'background.paper',
-                    minWidth: '100px',
-                  }}
-                >
-                  Selling Price
-                </TableCell>
-                <TableCell
-                  sx={{
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1000,
-                    backgroundColor: 'background.paper',
-                    minWidth: '100px',
-                  }}
-                >
-                  Quantity
-                </TableCell>
-                <TableCell
-                  sx={{
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1000,
-                    backgroundColor: 'background.paper',
-                    minWidth: '100px',
-                  }}
-                >
-                  Total
-                </TableCell>
-                <TableCell
-                  sx={{
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1000,
-                    backgroundColor: 'background.paper',
-                    minWidth: '100px',
-                  }}
-                >
-                  Action
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {/* Display Products Without Grouping */}
-              {displayedProducts.length > 0 ? (
-                <>
-                  {displayedProducts.map((product: SearchResult) => {
-                    const productId = product._id;
+        {/* Responsive Products Display */}
+        {!isMobile ? (
+          // Desktop/Table View
+          <TableContainer component={Paper}>
+            <Table stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell
+                    sx={{
+                      position: 'sticky', // Makes the header sticky
+                      top: 0, // Sticks the header at the top
+                      zIndex: 1000, // Ensures it appears above other elements
+                      backgroundColor: 'background.paper', // Keeps the background solid
+                    }}
+                  >
+                    Image
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1000,
+                      backgroundColor: 'background.paper',
+                    }}
+                  >
+                    Name
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1000,
+                      backgroundColor: 'background.paper',
+                    }}
+                  >
+                    Sub Category
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1000,
+                      backgroundColor: 'background.paper',
+                    }}
+                  >
+                    Series
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1000,
+                      backgroundColor: 'background.paper',
+                      minWidth: '80px',
+                    }}
+                  >
+                    SKU
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1000,
+                      backgroundColor: 'background.paper',
+                      minWidth: '80px',
+                    }}
+                  >
+                    Price
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1000,
+                      backgroundColor: 'background.paper',
+                      minWidth: '80px',
+                    }}
+                  >
+                    Stock
+                  </TableCell>
 
-                    const selectedProduct = selectedProducts.find(
-                      (p) => p._id === product._id
-                    );
+                  {/* Margin Column */}
+                  <TableCell
+                    sx={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1000,
+                      backgroundColor: 'background.paper',
+                      minWidth: '80px',
+                    }}
+                  >
+                    Margin
+                  </TableCell>
 
-                    // Calculate selling price
-                    const sellingPrice = getSellingPrice(product);
+                  {/* Selling Price Column */}
+                  <TableCell
+                    sx={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1000,
+                      backgroundColor: 'background.paper',
+                      minWidth: '100px',
+                    }}
+                  >
+                    Selling Price
+                  </TableCell>
 
-                    // If the product is in the cart, use its quantity; otherwise, use the temp or default
-                    const quantity =
-                      selectedProduct?.quantity ||
-                      temporaryQuantities[productId] ||
-                      1;
+                  {/* Quantity Column */}
+                  <TableCell
+                    sx={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1000,
+                      backgroundColor: 'background.paper',
+                      minWidth: '100px',
+                    }}
+                  >
+                    Quantity
+                  </TableCell>
 
-                    // Item-level total
-                    const itemTotal = parseFloat(
-                      (sellingPrice * quantity).toFixed(2)
-                    );
+                  {/* Total Column */}
+                  <TableCell
+                    sx={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1000,
+                      backgroundColor: 'background.paper',
+                      minWidth: '100px',
+                    }}
+                  >
+                    Total
+                  </TableCell>
 
-                    // Determine if the current quantity exceeds stock
-                    const isQuantityExceedingStock = quantity > product.stock;
+                  {/* Action Column */}
+                  <TableCell
+                    sx={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1000,
+                      backgroundColor: 'background.paper',
+                      minWidth: '100px',
+                    }}
+                  >
+                    Action
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {/* Display Products Without Grouping */}
+                {displayedProducts.length > 0 ? (
+                  <>
+                    {displayedProducts.map((product: SearchResult) => {
+                      const productId = product._id;
 
-                    return (
-                      <TableRow key={productId}>
-                        <TableCell>
+                      const selectedProduct = selectedProducts.find(
+                        (p) => p._id === product._id
+                      );
+
+                      // Calculate selling price
+                      const sellingPrice = getSellingPrice(product);
+
+                      // If the product is in the cart, use its quantity; otherwise, use the temp or default
+                      const quantity =
+                        selectedProduct?.quantity ||
+                        temporaryQuantities[productId] ||
+                        1;
+
+                      // Item-level total
+                      const itemTotal = parseFloat(
+                        (sellingPrice * quantity).toFixed(2)
+                      );
+
+                      // Determine if the current quantity exceeds stock
+                      const isQuantityExceedingStock = quantity > product.stock;
+
+                      return (
+                        <TableRow key={productId}>
+                          <TableCell>
+                            <Badge
+                              badgeContent={product.new ? 'New' : undefined}
+                              color='secondary'
+                              overlap='rectangular'
+                              anchorOrigin={{
+                                vertical: 'top',
+                                horizontal: 'right',
+                              }}
+                            >
+                              <img
+                                src={product.image_url || '/placeholder.png'}
+                                alt={product.name}
+                                loading='lazy'
+                                style={{
+                                  width: '100px',
+                                  height: '100px',
+                                  borderRadius: '4px',
+                                  objectFit: 'cover',
+                                  cursor: 'pointer',
+                                }}
+                                onClick={() =>
+                                  handleImageClick(
+                                    product.image_url || '/placeholder.png'
+                                  )
+                                }
+                              />
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{product.name}</TableCell>
+                          <TableCell>{product.sub_category || '-'}</TableCell>
+                          <TableCell>{product.series || '-'}</TableCell>
+                          <TableCell>{product.cf_sku_code || '-'}</TableCell>
+                          <TableCell>₹{product.rate}</TableCell>
+                          <TableCell>{product.stock}</TableCell>
+
+                          {/* Margin (either from specialMargins or default) */}
+                          <TableCell>
+                            {specialMargins[productId]
+                              ? specialMargins[productId]
+                              : customer?.cf_margin || '40%'}
+                          </TableCell>
+
+                          {/* Selling Price */}
+                          <TableCell>₹{sellingPrice}</TableCell>
+
+                          {/* Quantity Selector */}
+                          <TableCell>
+                            <QuantitySelector
+                              quantity={quantity}
+                              max={product.stock}
+                              onChange={(newQuantity) =>
+                                handleQuantityChange(productId, newQuantity)
+                              }
+                              disabled={
+                                order?.status
+                                  ?.toLowerCase()
+                                  ?.includes('accepted') ||
+                                order?.status
+                                  ?.toLowerCase()
+                                  ?.includes('declined')
+                              }
+                            />
+                            {isQuantityExceedingStock && (
+                              <Typography
+                                variant='caption'
+                                color='error'
+                                sx={{ display: 'block' }}
+                              >
+                                Exceeds stock!
+                              </Typography>
+                            )}
+                          </TableCell>
+
+                          {/* Item total if in cart */}
+                          <TableCell>
+                            {selectedProduct ? `₹${itemTotal}` : '-'}
+                          </TableCell>
+
+                          {/* Add or Remove button */}
+                          <TableCell>
+                            <IconButton
+                              color='primary'
+                              disabled={
+                                order?.status
+                                  ?.toLowerCase()
+                                  ?.includes('accepted') ||
+                                order?.status
+                                  ?.toLowerCase()
+                                  ?.includes('declined')
+                              }
+                              onClick={() =>
+                                selectedProducts.some(
+                                  (prod) => prod._id === product._id
+                                )
+                                  ? handleRemoveProduct(productId)
+                                  : handleAddProducts(product)
+                              }
+                              sx={{
+                                textTransform: 'none',
+                                fontWeight: 'bold',
+                                borderRadius: '24px',
+                              }}
+                            >
+                              {selectedProducts.some(
+                                (prod) => prod._id === product._id
+                              ) ? (
+                                <RemoveShoppingCart />
+                              ) : (
+                                <AddShoppingCart />
+                              )}
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {/* Display 'No more products' message */}
+                    {!loadingMore && noMoreProducts[productsKey] && (
+                      <TableRow>
+                        <TableCell colSpan={12} align='center'>
+                          <Typography variant='body2' color='textSecondary'>
+                            No more products for{' '}
+                            {searchTerm ? searchTerm : activeBrand}{' '}
+                            {searchTerm ? '' : `${activeCategory}.`}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={12} align='center'>
+                      <Typography variant='body1'>
+                        {loading ? 'Loading products...' : 'No products found.'}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {/* Loading Indicator for More Products */}
+                {loadingMore && (
+                  <TableRow>
+                    <TableCell colSpan={12} align='center'>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          padding: 2,
+                        }}
+                      >
+                        <CircularProgress color='primary' />
+                        <Typography variant='body2' sx={{ mt: 1 }}>
+                          Loading more products...
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        ) : (
+          // Mobile/Card View
+          <Box>
+            {displayedProducts.length > 0 ? (
+              <Grid container spacing={2}>
+                {displayedProducts.map((product: SearchResult) => {
+                  const productId = product._id;
+
+                  const selectedProduct = selectedProducts.find(
+                    (p) => p._id === product._id
+                  );
+
+                  // Calculate selling price
+                  const sellingPrice = getSellingPrice(product);
+
+                  // If the product is in the cart, use its quantity; otherwise, use the temp or default
+                  const quantity =
+                    selectedProduct?.quantity ||
+                    temporaryQuantities[productId] ||
+                    1;
+
+                  // Item-level total
+                  const itemTotal = parseFloat(
+                    (sellingPrice * quantity).toFixed(2)
+                  );
+
+                  // Determine if the current quantity exceeds stock
+                  const isQuantityExceedingStock = quantity > product.stock;
+
+                  return (
+                    <Grid item xs={12} key={productId}>
+                      <Card sx={{ width: '100%' }}>
+                        {/* Image Section */}
+                        <Box>
                           <Badge
                             badgeContent={product.new ? 'New' : undefined}
                             color='secondary'
@@ -877,14 +1131,12 @@ const Products: React.FC<SearchBarProps> = ({
                               horizontal: 'right',
                             }}
                           >
-                            <img
-                              src={product.image_url || '/placeholder.png'}
+                            <CardMedia
+                              component='img'
+                              image={product.image_url || '/placeholder.png'}
                               alt={product.name}
-                              loading='lazy'
-                              style={{
-                                width: '100px',
-                                height: '100px',
-                                borderRadius: '4px',
+                              sx={{
+                                width: '100%',
                                 objectFit: 'cover',
                                 cursor: 'pointer',
                               }}
@@ -895,184 +1147,158 @@ const Products: React.FC<SearchBarProps> = ({
                               }
                             />
                           </Badge>
-                        </TableCell>
-                        <TableCell>{product.name}</TableCell>
-                        <TableCell>{product.sub_category || '-'}</TableCell>
-                        <TableCell>{product.series || '-'}</TableCell>
-                        <TableCell>{product.cf_sku_code || '-'}</TableCell>
-                        <TableCell>₹{product.rate}</TableCell>
-                        <TableCell>{product.stock}</TableCell>
+                        </Box>
+                        {/* Details Section */}
+                        <CardContent>
+                          <Typography variant='h6' gutterBottom>
+                            {product.name}
+                          </Typography>
+                          <Typography variant='body1' color='textSecondary'>
+                            Sub Category: {product.sub_category || '-'}
+                          </Typography>
+                          <Typography variant='body1' color='textSecondary'>
+                            Series: {product.series || '-'}
+                          </Typography>
+                          <Typography variant='body1' color='textSecondary'>
+                            SKU: {product.cf_sku_code || '-'}
+                          </Typography>
+                          <Typography variant='body1' color='textSecondary'>
+                            Price: ₹{product.rate}
+                          </Typography>
+                          <Typography variant='body1' color='textSecondary'>
+                            Stock: {product.stock}
+                          </Typography>
+                          <Typography variant='body1' color='textSecondary'>
+                            Margin:{' '}
+                            {specialMargins[productId]
+                              ? specialMargins[productId]
+                              : customer?.cf_margin || '40%'}
+                          </Typography>
+                          <Typography variant='body1' color='textSecondary'>
+                            Selling Price: ₹{sellingPrice}
+                          </Typography>
 
-                        {/* Margin (either from specialMargins or default) */}
-                        <TableCell>
-                          {specialMargins[productId]
-                            ? specialMargins[productId]
-                            : customer?.cf_margin || '40%'}
-                        </TableCell>
-
-                        {/* Selling Price */}
-                        <TableCell>₹{sellingPrice}</TableCell>
-
-                        {/* Quantity input */}
-                        <TableCell>
-                          <TextField
-                            type='number'
-                            value={quantity}
-                            disabled={
-                              order?.status
-                                ?.toLowerCase()
-                                ?.includes('accepted') ||
-                              order?.status?.toLowerCase()?.includes('declined')
-                            }
-                            onChange={(e) => {
-                              const inputValue = e.target.value;
-                              // Allow empty string for controlled input
-                              if (inputValue === '') {
-                                if (selectedProduct) {
-                                  // If in cart, set quantity to 1 temporarily
-                                  handleQuantityChange(productId, 1);
-                                } else {
-                                  // If not in cart, remove temporary quantity
-                                  setTemporaryQuantities((prev) => {
-                                    const updated = { ...prev };
-                                    delete updated[productId];
-                                    return updated;
-                                  });
-                                }
-                                return;
+                          {/* Quantity Selector */}
+                          <Box mt={1}>
+                            <QuantitySelector
+                              quantity={quantity}
+                              max={product.stock}
+                              onChange={(newQuantity) =>
+                                handleQuantityChange(productId, newQuantity)
                               }
-
-                              const parsedValue = parseInt(inputValue);
-                              if (isNaN(parsedValue)) return;
-
-                              // Enforce minimum and maximum
-                              let newQuantity = Math.max(1, parsedValue);
-                              if (newQuantity > product.stock) {
-                                newQuantity = product.stock;
-                                debouncedWarn(
-                                  `Maximum available stock for ${product.name} is ${product.stock}.`
-                                );
+                              disabled={
+                                order?.status
+                                  ?.toLowerCase()
+                                  ?.includes('accepted') ||
+                                order?.status
+                                  ?.toLowerCase()
+                                  ?.includes('declined')
                               }
+                            />
+                            {isQuantityExceedingStock && (
+                              <Typography variant='caption' color='error'>
+                                Exceeds stock!
+                              </Typography>
+                            )}
+                          </Box>
 
-                              if (selectedProduct) {
-                                // If already in cart, update quantity
-                                handleQuantityChange(productId, newQuantity);
-                              } else {
-                                // If not in cart, just store temp
-                                setTemporaryQuantities((prev) => ({
-                                  ...prev,
-                                  [productId]: newQuantity,
-                                }));
-                                debouncedInfo(
-                                  `Set quantity to ${newQuantity}. Add product to cart to confirm.`
-                                );
-                              }
-                            }}
-                            inputProps={{
-                              min: 1,
-                              max: product.stock,
-                              step: 1,
-                            }}
-                            size='small'
-                            sx={{ width: '80px' }}
-                          />
-                          {isQuantityExceedingStock && (
-                            <Typography
-                              variant='caption'
-                              color='error'
-                              sx={{ display: 'block' }}
-                            >
-                              Exceeds stock!
+                          {/* Item Total */}
+                          {selectedProduct && (
+                            <Typography variant='body2' mt={1}>
+                              Total: ₹{itemTotal}
                             </Typography>
                           )}
-                        </TableCell>
 
-                        {/* Item total if in cart */}
-                        <TableCell>
-                          {selectedProduct ? `₹${itemTotal}` : '-'}
-                        </TableCell>
-
-                        {/* Add or Remove button */}
-                        <TableCell>
-                          <IconButton
-                            color='primary'
-                            disabled={
-                              order?.status
-                                ?.toLowerCase()
-                                ?.includes('accepted') ||
-                              order?.status?.toLowerCase()?.includes('declined')
-                            }
-                            onClick={() =>
-                              selectedProducts.some(
+                          {/* Action Button */}
+                          <Box mt={1}>
+                            <Button
+                              variant='outlined'
+                              color={
+                                selectedProducts.some(
+                                  (prod) => prod._id === product._id
+                                )
+                                  ? 'error'
+                                  : 'primary'
+                              }
+                              startIcon={
+                                selectedProducts.some(
+                                  (prod) => prod._id === product._id
+                                ) ? (
+                                  <RemoveShoppingCart />
+                                ) : (
+                                  <AddShoppingCart />
+                                )
+                              }
+                              onClick={() =>
+                                selectedProducts.some(
+                                  (prod) => prod._id === product._id
+                                )
+                                  ? handleRemoveProduct(productId)
+                                  : handleAddProducts(product)
+                              }
+                              disabled={
+                                order?.status
+                                  ?.toLowerCase()
+                                  ?.includes('accepted') ||
+                                order?.status
+                                  ?.toLowerCase()
+                                  ?.includes('declined')
+                              }
+                              fullWidth
+                            >
+                              {selectedProducts.some(
                                 (prod) => prod._id === product._id
                               )
-                                ? handleRemoveProduct(productId)
-                                : handleAddProducts(product)
-                            }
-                            sx={{
-                              textTransform: 'none',
-                              fontWeight: 'bold',
-                              borderRadius: '24px',
-                            }}
-                          >
-                            {selectedProducts.some(
-                              (prod) => prod._id === product._id
-                            ) ? (
-                              <RemoveShoppingCart />
-                            ) : (
-                              <AddShoppingCart />
-                            )}
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {/* Display 'No more products' message */}
-                  {!loadingMore && noMoreProducts[productsKey] && (
-                    <TableRow>
-                      <TableCell colSpan={12} align='center'>
-                        <Typography variant='body2' color='textSecondary'>
-                          No more products for{' '}
-                          {searchTerm ? searchTerm : activeBrand}{' '}
-                          {searchTerm ? '' : `${activeCategory}.`}
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </>
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={12} align='center'>
-                    <Typography variant='body1'>
-                      {loading ? 'Loading products...' : 'No products found.'}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              )}
+                                ? 'Remove from Cart'
+                                : 'Add to Cart'}
+                            </Button>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            ) : (
+              <Box mt={2}>
+                <Typography variant='body1' align='center'>
+                  {loading ? 'Loading products...' : 'No products found.'}
+                </Typography>
+              </Box>
+            )}
 
-              {/* Loading Indicator for More Products */}
-              {loadingMore && (
-                <TableRow>
-                  <TableCell colSpan={12} align='center'>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        padding: 2,
-                      }}
-                    >
-                      <CircularProgress color='primary' />
-                      <Typography variant='body2' sx={{ mt: 1 }}>
-                        Loading more products...
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+            {/* Loading Indicator for More Products */}
+            {loadingMore && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  padding: 2,
+                }}
+              >
+                <CircularProgress color='primary' />
+                <Typography variant='body2' sx={{ mt: 1 }}>
+                  Loading more products...
+                </Typography>
+              </Box>
+            )}
+
+            {/* Display 'No more products' message */}
+            {!loadingMore && noMoreProducts[productsKey] && (
+              <Box mt={2}>
+                <Typography
+                  variant='body2'
+                  color='textSecondary'
+                  align='center'
+                >
+                  No more products for {searchTerm ? searchTerm : activeBrand}{' '}
+                  {searchTerm ? '' : `${activeCategory}.`}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        )}
       </Box>
 
       {/* Cart Icon */}
@@ -1081,8 +1307,8 @@ const Products: React.FC<SearchBarProps> = ({
         onClick={() => setCartDrawerOpen(true)}
         sx={{
           position: 'fixed',
-          bottom: theme.spacing(4),
-          right: theme.spacing(4),
+          bottom: isMobile ? theme.spacing(10) : theme.spacing(4),
+          right: isMobile ? theme.spacing(2) : theme.spacing(4),
           backgroundColor: 'background.paper',
           boxShadow: 3,
           '&:hover': {

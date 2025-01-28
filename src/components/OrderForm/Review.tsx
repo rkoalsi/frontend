@@ -19,10 +19,16 @@ import {
   Dialog,
   DialogContent,
   IconButton,
+  Grid,
+  Badge,
+  CardMedia,
 } from '@mui/material';
 import { Close, Edit } from '@mui/icons-material';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import QuantitySelector from './QuantitySelector'; // Adjust the path as necessary
 
 interface Props {
   customer: any;
@@ -53,6 +59,9 @@ const Review: React.FC<Props> = React.memo((props) => {
     isShared,
     order,
   } = props;
+
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
@@ -260,186 +269,410 @@ const Review: React.FC<Props> = React.memo((props) => {
             <Typography variant='h6' fontWeight='bold' gutterBottom>
               Products
             </Typography>
-            <Edit onClick={() => setActiveStep(3)} className='no-pdf' />
+            {!isShared && (
+              <Edit onClick={() => setActiveStep(3)} className='no-pdf' />
+            )}
           </Box>
 
-          <TableContainer component={Paper} sx={{ overflowX: 'auto', mt: 2 }}>
-            <Table stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <TableCell>
-                    <strong>S No.</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Image</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Brand</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Product Code</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Name</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Category</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Sub Category</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>GST</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>MRP</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Margin</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Selling Price</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Stock</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Quantity</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Total</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Actions</strong>
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {products.map((product, index) => {
-                  const isActive = product.status === 'active';
-                  const productId =
-                    typeof product._id === 'string'
-                      ? product._id
-                      : product._id?.$oid;
+          {/* Responsive Products Display */}
+          {!isMobile ? (
+            // Desktop/Table View
+            <TableContainer component={Paper} sx={{ overflowX: 'auto', mt: 2 }}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>
+                      <strong>S No.</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Image</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Brand</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Product Code</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Name</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Category</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Sub Category</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>GST</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>MRP</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Margin</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Selling Price</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Stock</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Quantity</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Total</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Actions</strong>
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {/* Display Products Without Grouping */}
+                  {products.length > 0 ? (
+                    <>
+                      {products.map((product, index) => {
+                        const isActive = product.status === 'active';
+                        const productId =
+                          typeof product._id === 'string'
+                            ? product._id
+                            : product._id?.$oid;
 
-                  // Determine margin
-                  const marginPercent = specialMargins[productId]
-                    ? parseInt(specialMargins[productId].replace('%', ''))
-                    : parseInt(customer?.cf_margin?.replace('%', '') || '40');
-                  const margin = marginPercent / 100;
+                        // Determine margin
+                        const marginPercent = specialMargins[productId]
+                          ? parseInt(specialMargins[productId].replace('%', ''))
+                          : parseInt(
+                              customer?.cf_margin?.replace('%', '') || '40'
+                            );
+                        const margin = marginPercent / 100;
 
-                  // Calculate selling price
-                  const sellingPrice = parseFloat(
-                    (product.rate - product.rate * margin).toFixed(2)
-                  );
+                        // Calculate selling price
+                        const sellingPrice = parseFloat(
+                          (product.rate - product.rate * margin).toFixed(2)
+                        );
 
-                  // Calculate item total
-                  const quantity = product.quantity || 1;
-                  const itemTotal = (quantity * sellingPrice).toFixed(2);
+                        // Calculate item total
+                        const quantity = product.quantity || 1;
+                        const itemTotal = (quantity * sellingPrice).toFixed(2);
 
-                  return (
-                    <TableRow
-                      key={productId || index}
-                      sx={{
-                        backgroundColor: !isActive ? '#f0f0f0' : 'inherit',
-                        opacity: !isActive ? 0.7 : 1,
-                      }}
-                    >
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>
-                        <img
-                          src={product.image_url || '/placeholder.png'}
-                          alt={product.name}
-                          style={{
-                            width: '80px',
-                            height: '80px',
-                            borderRadius: '4px',
-                            objectFit: 'cover',
-                            cursor: 'pointer',
-                          }}
-                          onClick={() =>
-                            handleImageClick(
-                              product.image_url || '/placeholder.png'
-                            )
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>{product.brand}</TableCell>
-                      <TableCell>{product.cf_sku_code}</TableCell>
-                      <TableCell>{product.name}</TableCell>
-                      <TableCell>{product.category}</TableCell>
-                      <TableCell>{product.sub_category}</TableCell>
-                      <TableCell>
-                        {product?.item_tax_preferences?.[0]?.tax_percentage ||
-                          'N/A'}
-                        %
-                      </TableCell>
-                      <TableCell>₹{product.rate}</TableCell>
-                      <TableCell>
-                        {specialMargins[productId] ||
-                          customer?.cf_margin ||
-                          '40%'}
-                      </TableCell>
-                      <TableCell>₹{sellingPrice}</TableCell>
-                      <TableCell>{product.stock}</TableCell>
-                      <TableCell>
-                        <TextField
-                          type='number'
-                          value={product.quantity || 1}
-                          onChange={(e) =>
-                            handleQuantityChange(
-                              productId,
-                              parseInt(e.target.value) || 1
-                            )
-                          }
-                          inputProps={{ min: 1, max: product.stock }}
-                          size='small'
-                          sx={{ width: '70px' }}
-                          disabled={
-                            !isActive ||
-                            order?.status
-                              ?.toLowerCase()
-                              ?.includes('accepted') ||
-                            order?.status?.toLowerCase()?.includes('declined')
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>₹{itemTotal}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant='outlined'
-                          color='error'
-                          size='small'
-                          disabled={
-                            order?.status
-                              ?.toLowerCase()
-                              ?.includes('accepted') ||
-                            order?.status?.toLowerCase()?.includes('declined')
-                          }
-                          onClick={() => handleRemoveProduct(productId)}
-                        >
-                          Remove
-                        </Button>
+                        return (
+                          <TableRow
+                            key={productId || index}
+                            sx={{
+                              backgroundColor: !isActive
+                                ? '#f0f0f0'
+                                : 'inherit',
+                              opacity: !isActive ? 0.7 : 1,
+                            }}
+                          >
+                            <TableCell>{index + 1}</TableCell>
+                            <TableCell>
+                              <Badge
+                                badgeContent={product.new ? 'New' : undefined}
+                                color='secondary'
+                                overlap='rectangular'
+                                anchorOrigin={{
+                                  vertical: 'top',
+                                  horizontal: 'right',
+                                }}
+                              >
+                                <img
+                                  src={product.image_url || '/placeholder.png'}
+                                  alt={product.name}
+                                  style={{
+                                    width: '80px',
+                                    height: '80px',
+                                    borderRadius: '4px',
+                                    objectFit: 'cover',
+                                    cursor: 'pointer',
+                                  }}
+                                  onClick={() =>
+                                    handleImageClick(
+                                      product.image_url || '/placeholder.png'
+                                    )
+                                  }
+                                />
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{product.brand}</TableCell>
+                            <TableCell>{product.cf_sku_code}</TableCell>
+                            <TableCell>{product.name}</TableCell>
+                            <TableCell>{product.category}</TableCell>
+                            <TableCell>{product.sub_category}</TableCell>
+                            <TableCell>
+                              {product?.item_tax_preferences?.[0]
+                                ?.tax_percentage || 'N/A'}
+                              %
+                            </TableCell>
+                            <TableCell>₹{product.rate}</TableCell>
+                            <TableCell>
+                              {specialMargins[productId] ||
+                                customer?.cf_margin ||
+                                '40%'}
+                            </TableCell>
+                            <TableCell>₹{sellingPrice}</TableCell>
+                            <TableCell>{product.stock}</TableCell>
+                            <TableCell>
+                              <TextField
+                                type='number'
+                                value={product.quantity || 1}
+                                onChange={(e) =>
+                                  handleQuantityChange(
+                                    productId,
+                                    parseInt(e.target.value) || 1
+                                  )
+                                }
+                                inputProps={{ min: 1, max: product.stock }}
+                                size='small'
+                                sx={{ width: '70px' }}
+                                disabled={
+                                  !isActive ||
+                                  order?.status
+                                    ?.toLowerCase()
+                                    ?.includes('accepted') ||
+                                  order?.status
+                                    ?.toLowerCase()
+                                    ?.includes('declined')
+                                }
+                              />
+                            </TableCell>
+                            <TableCell>₹{itemTotal}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant='outlined'
+                                color='error'
+                                size='small'
+                                disabled={
+                                  order?.status
+                                    ?.toLowerCase()
+                                    ?.includes('accepted') ||
+                                  order?.status
+                                    ?.toLowerCase()
+                                    ?.includes('declined')
+                                }
+                                onClick={() => handleRemoveProduct(productId)}
+                              >
+                                Remove
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+
+                      {/* Totals Row */}
+                      <TableRow>
+                        <TableCell colSpan={7}>
+                          <strong>Total GST:</strong> ₹
+                          {totals.totalGST.toFixed(2)}{' '}
+                          <strong>({customer?.cf_in_ex || 'Exclusive'})</strong>
+                        </TableCell>
+                        <TableCell colSpan={8}>
+                          <strong>Total Amount:</strong> ₹
+                          {totals.totalAmount.toFixed(2)}{' '}
+                          <strong>
+                            (GST {customer?.cf_in_ex || 'Exclusive'})
+                          </strong>
+                        </TableCell>
+                      </TableRow>
+                    </>
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={15} align='center'>
+                        <Typography variant='body1'>
+                          {products.length > 0
+                            ? 'Loading products...'
+                            : 'No products found.'}
+                        </Typography>
                       </TableCell>
                     </TableRow>
-                  );
-                })}
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            // Mobile/Card View
+            <Box>
+              {products.length > 0 ? (
+                <Grid container spacing={2}>
+                  {products.map((product, index) => {
+                    const isActive = product.status === 'active';
+                    const productId =
+                      typeof product._id === 'string'
+                        ? product._id
+                        : product._id?.$oid;
 
-                {/* Totals Row */}
-                <TableRow>
-                  <TableCell colSpan={7}>
+                    // Determine margin
+                    const marginPercent = specialMargins[productId]
+                      ? parseInt(specialMargins[productId].replace('%', ''))
+                      : parseInt(customer?.cf_margin?.replace('%', '') || '40');
+                    const margin = marginPercent / 100;
+
+                    // Calculate selling price
+                    const sellingPrice = parseFloat(
+                      (product.rate - product.rate * margin).toFixed(2)
+                    );
+
+                    // Calculate item total
+                    const quantity = product.quantity || 1;
+                    const itemTotal = (quantity * sellingPrice).toFixed(2);
+
+                    return (
+                      <Grid item xs={12} key={productId}>
+                        <Card sx={{ width: '100%' }}>
+                          {/* Image Section */}
+                          <Box>
+                            <Badge
+                              badgeContent={product.new ? 'New' : undefined}
+                              color='secondary'
+                              overlap='rectangular'
+                              anchorOrigin={{
+                                vertical: 'top',
+                                horizontal: 'right',
+                              }}
+                            >
+                              <CardMedia
+                                component='img'
+                                image={product.image_url || '/placeholder.png'}
+                                alt={product.name}
+                                sx={{
+                                  width: '100%',
+                                  height: '200px',
+                                  objectFit: 'cover',
+                                  cursor: 'pointer',
+                                }}
+                                onClick={() =>
+                                  handleImageClick(
+                                    product.image_url || '/placeholder.png'
+                                  )
+                                }
+                              />
+                            </Badge>
+                          </Box>
+                          {/* Details Section */}
+                          <CardContent>
+                            <Box
+                              display='flex'
+                              justifyContent='space-between'
+                              alignItems='center'
+                            >
+                              <Typography variant='h6' gutterBottom>
+                                {product.name}
+                              </Typography>
+                            </Box>
+                            <Typography variant='body2' color='textSecondary'>
+                              <strong>Sub Category:</strong>{' '}
+                              {product.sub_category || '-'}
+                            </Typography>
+                            <Typography variant='body2' color='textSecondary'>
+                              <strong>Series:</strong> {product.series || '-'}
+                            </Typography>
+                            <Typography variant='body2' color='textSecondary'>
+                              <strong>SKU:</strong> {product.cf_sku_code || '-'}
+                            </Typography>
+                            <Typography variant='body2' color='textSecondary'>
+                              <strong>Price:</strong> ₹{product.rate}
+                            </Typography>
+                            <Typography variant='body2' color='textSecondary'>
+                              <strong>Stock:</strong> {product.stock}
+                            </Typography>
+                            <Typography variant='body2' color='textSecondary'>
+                              <strong>Margin:</strong>{' '}
+                              {specialMargins[productId] ||
+                                customer?.cf_margin ||
+                                '40%'}
+                            </Typography>
+                            <Typography variant='body2' color='textSecondary'>
+                              <strong>Selling Price:</strong> ₹{sellingPrice}
+                            </Typography>
+
+                            {/* Quantity Selector */}
+                            <Box mt={1}>
+                              <QuantitySelector
+                                quantity={quantity}
+                                max={product.stock}
+                                onChange={(newQuantity) =>
+                                  handleQuantityChange(productId, newQuantity)
+                                }
+                                disabled={
+                                  !isActive ||
+                                  order?.status
+                                    ?.toLowerCase()
+                                    ?.includes('accepted') ||
+                                  order?.status
+                                    ?.toLowerCase()
+                                    ?.includes('declined')
+                                }
+                              />
+                              {quantity > product.stock && (
+                                <Typography variant='caption' color='error'>
+                                  Exceeds stock!
+                                </Typography>
+                              )}
+                            </Box>
+
+                            {/* Item Total */}
+                            {isActive && (
+                              <Typography variant='body2' mt={1}>
+                                <strong>Total:</strong> ₹{itemTotal}
+                              </Typography>
+                            )}
+
+                            {/* Action Button */}
+                            <Box mt={1}>
+                              <Button
+                                variant='outlined'
+                                color='error'
+                                size='small'
+                                disabled={
+                                  order?.status
+                                    ?.toLowerCase()
+                                    ?.includes('accepted') ||
+                                  order?.status
+                                    ?.toLowerCase()
+                                    ?.includes('declined')
+                                }
+                                onClick={() => handleRemoveProduct(productId)}
+                                fullWidth
+                              >
+                                Remove
+                              </Button>
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              ) : (
+                <Box mt={2}>
+                  <Typography variant='body1' align='center'>
+                    {products.length > 0
+                      ? 'Loading products...'
+                      : 'No products found.'}
+                  </Typography>
+                </Box>
+              )}
+
+              {/* Totals Section */}
+              <Box mt={2}>
+                <Paper elevation={3} sx={{ p: 2, borderRadius: 2 }}>
+                  <Typography variant='h6' gutterBottom>
+                    Totals
+                  </Typography>
+                  <Typography variant='body1'>
                     <strong>Total GST:</strong> ₹{totals.totalGST.toFixed(2)}{' '}
                     <strong>({customer?.cf_in_ex || 'Exclusive'})</strong>
-                  </TableCell>
-                  <TableCell colSpan={6}>
+                  </Typography>
+                  <Typography variant='body1'>
                     <strong>Total Amount:</strong> ₹
                     {totals.totalAmount.toFixed(2)}{' '}
                     <strong>(GST {customer?.cf_in_ex || 'Exclusive'})</strong>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </TableContainer>
+                  </Typography>
+                </Paper>
+              </Box>
+            </Box>
+          )}
         </Paper>
 
         {/* Image Popup */}

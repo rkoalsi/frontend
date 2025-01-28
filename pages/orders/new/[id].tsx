@@ -484,7 +484,7 @@ const NewOrder: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        padding: isMobile ? '16px' : '8px',
+        padding: isMobile ? '0px' : '8px',
       }}
     >
       {/* Header */}
@@ -555,96 +555,155 @@ const NewOrder: React.FC = () => {
             </Box>
 
             {/* Navigation Buttons */}
+
             <Box
               sx={{
                 display: 'flex',
-                justifyContent: 'space-between',
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: isMobile ? 'center' : 'space-between',
+                alignItems: isMobile ? 'stretch' : 'center',
                 marginTop: '24px',
                 paddingTop: '16px',
                 borderTop: '1px solid #e0e0e0',
+                gap: 2, // spacing between buttons
               }}
             >
-              <Button
-                variant='outlined'
-                color='secondary'
-                disabled={isShared && activeStep === 3}
-                onClick={() => {
-                  activeStep === 0
-                    ? router.push('/')
-                    : handleStepClick(activeStep - 1);
+              {/* Left Side Buttons */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  gap: 2,
+                  width: isMobile ? '100%' : 'auto',
                 }}
               >
-                {activeStep === 0 ? 'Cancel' : 'Previous'}
-              </Button>
-              {!isShared &&
-                customer !== null &&
-                billingAddress !== null &&
-                shippingAddress !== null && (
-                  <Button variant='contained' onClick={generateSharedLink}>
-                    Generate Shared Link
-                  </Button>
-                )}
-              {activeStep === steps.length - 1 && !isShared && (
                 <Button
-                  variant='contained'
-                  color={'secondary'}
-                  onClick={() => handleEnd()}
-                  disabled={
-                    !customer ||
-                    !billingAddress ||
-                    !shippingAddress ||
-                    selectedProducts.length === 0 ||
-                    !totals.totalAmount ||
-                    loading ||
-                    order?.status?.toLowerCase()?.includes('declined') ||
-                    order?.status?.toLowerCase()?.includes('accepted')
-                  }
+                  variant='outlined'
+                  color='secondary'
+                  onClick={() => {
+                    activeStep === 0
+                      ? router.push('/')
+                      : handleStepClick(activeStep - 1);
+                  }}
+                  disabled={isShared && activeStep === 3}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 'bold',
+                    borderRadius: '24px',
+                    width: isMobile ? '100%' : 'auto',
+                  }}
                 >
-                  {'Save As Draft'}
+                  {activeStep === 0 ? 'Cancel' : 'Previous'}
                 </Button>
-              )}
-              {activeStep === steps.length - 1 && (
-                <Button
-                  variant='contained'
-                  color={'error'}
-                  onClick={() => handleEnd('declined')}
-                  disabled={
-                    !customer ||
-                    !billingAddress ||
-                    !shippingAddress ||
-                    selectedProducts.length === 0 ||
-                    !totals.totalAmount ||
-                    loading ||
-                    order?.status?.toLowerCase()?.includes('declined') ||
-                    order?.status?.toLowerCase()?.includes('accepted')
-                  }
-                >
-                  {'Decline'}
-                </Button>
-              )}
-              <Button
-                variant='contained'
-                color='primary'
-                onClick={() =>
-                  activeStep === steps.length - 1
-                    ? handleEnd('accepted')
-                    : handleNext()
-                }
-                disabled={
-                  activeStep === steps.length - 1
-                    ? !customer ||
+                {!isShared &&
+                  customer !== null &&
+                  billingAddress !== null &&
+                  shippingAddress !== null && (
+                    <Button
+                      variant='outlined'
+                      color='info'
+                      onClick={generateSharedLink}
+                      sx={{
+                        textTransform: 'none',
+                        fontWeight: 'bold',
+                        borderRadius: '24px',
+                        width: isMobile ? '100%' : 'auto',
+                      }}
+                    >
+                      Generate Shared Link
+                    </Button>
+                  )}
+              </Box>
+
+              {/* Right Side Buttons */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  gap: 2,
+                  width: isMobile ? '100%' : 'auto',
+                }}
+              >
+                {activeStep === steps.length - 1 && !isShared && (
+                  <Button
+                    variant='contained'
+                    color={'secondary'}
+                    onClick={() => handleEnd()}
+                    disabled={
+                      !customer ||
                       !billingAddress ||
                       !shippingAddress ||
                       selectedProducts.length === 0 ||
                       !totals.totalAmount ||
                       loading ||
-                      order?.status?.toLowerCase()?.includes('accepted') ||
-                      order?.status?.toLowerCase()?.includes('declined')
-                    : false
-                }
-              >
-                {activeStep === steps.length - 1 ? 'Accept' : 'Next'}
-              </Button>
+                      order?.status?.toLowerCase()?.includes('declined') ||
+                      order?.status?.toLowerCase()?.includes('accepted')
+                    }
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 'bold',
+                      borderRadius: '24px',
+                      width: isMobile ? '100%' : 'auto',
+                    }}
+                  >
+                    {'Save As Draft'}
+                  </Button>
+                )}
+                {activeStep === steps.length - 1 && (
+                  <Button
+                    variant='contained'
+                    color={'error'}
+                    onClick={() => handleEnd('declined')}
+                    disabled={
+                      !customer ||
+                      !billingAddress ||
+                      !shippingAddress ||
+                      selectedProducts.length === 0 ||
+                      !totals.totalAmount ||
+                      loading ||
+                      order?.status?.toLowerCase()?.includes('declined') ||
+                      order?.status?.toLowerCase()?.includes('accepted')
+                    }
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 'bold',
+                      borderRadius: '24px',
+                      width: isMobile ? '100%' : 'auto',
+                    }}
+                  >
+                    {'Decline'}
+                  </Button>
+                )}
+                <Button
+                  variant='contained'
+                  color='primary'
+                  onClick={() =>
+                    activeStep === steps.length - 1
+                      ? handleEnd('accepted')
+                      : handleNext()
+                  }
+                  disabled={
+                    activeStep === steps.length - 1
+                      ? !customer ||
+                        !billingAddress ||
+                        !shippingAddress ||
+                        selectedProducts.length === 0 ||
+                        !totals.totalAmount ||
+                        loading ||
+                        order?.status?.toLowerCase()?.includes('accepted') ||
+                        order?.status?.toLowerCase()?.includes('declined')
+                      : false
+                  }
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 'bold',
+                    borderRadius: '24px',
+                    width: isMobile ? '100%' : 'auto',
+                  }}
+                >
+                  {activeStep === steps.length - 1 ? 'Accept' : 'Next'}
+                </Button>
+              </Box>
             </Box>
           </CardContent>
         </Card>
