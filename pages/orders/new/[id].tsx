@@ -540,7 +540,7 @@ const NewOrder: React.FC = () => {
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
           }}
         >
-          <CardContent sx={{ padding: '24px' }}>
+          <CardContent sx={{ padding: isMobile ? '12px' : '24px' }}>
             {/* Stepper */}
 
             <Stepper activeStep={activeStep} alternativeLabel>

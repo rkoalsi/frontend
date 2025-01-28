@@ -30,6 +30,10 @@ import {
   CardContent,
   CardMedia,
   Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   AddShoppingCart,
@@ -691,30 +695,52 @@ const Products: React.FC<SearchBarProps> = ({
         >
           {/* <Typography variant='subtitle2'>Brands:</Typography> */}
           {/* Tabs for Brands */}
-          {!searchTerm.trim() && (
-            <Tabs
-              value={
-                activeBrand || Object.keys(productsByBrandCategory)[0] || ''
-              } // Ensure a valid default value
-              onChange={(e, newValue) => handleTabChange(newValue)}
-              variant='scrollable'
-              scrollButtons='auto'
-              sx={{
-                mt: 2,
-                '.MuiTab-root': {
-                  textTransform: 'none',
-                  fontWeight: 'bold',
-                  padding: '10px 20px',
-                },
-                '.Mui-selected': { color: 'primary.main' },
-              }}
-            >
-              {Object.keys(productsByBrandCategory)
-                .filter((brand) => brand !== 'search' && !brand.includes('-')) // Ensure valid brand keys
-                .map((brand) => (
-                  <Tab key={brand} label={brand} value={brand} />
-                ))}
-            </Tabs>
+          {isMobile ? (
+            // Mobile View: Categories Dropdown
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel id='brand-select-label'>Brand</InputLabel>
+              <Select
+                labelId='brand-select-label'
+                id='brand-select'
+                value={activeBrand}
+                label='Brand'
+                onChange={(e) => handleTabChange(e.target.value)}
+              >
+                {Object.keys(productsByBrandCategory)
+                  .filter((brand) => brand !== 'search' && !brand.includes('-')) // Ensure valid brand keys
+                  .map((brand: any) => (
+                    <MenuItem key={brand} value={brand}>
+                      {brand}
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
+          ) : (
+            !searchTerm.trim() && (
+              <Tabs
+                value={
+                  activeBrand || Object.keys(productsByBrandCategory)[0] || ''
+                } // Ensure a valid default value
+                onChange={(e, newValue) => handleTabChange(newValue)}
+                variant='scrollable'
+                scrollButtons='auto'
+                sx={{
+                  mt: 2,
+                  '.MuiTab-root': {
+                    textTransform: 'none',
+                    fontWeight: 'bold',
+                    padding: '10px 20px',
+                  },
+                  '.Mui-selected': { color: 'primary.main' },
+                }}
+              >
+                {Object.keys(productsByBrandCategory)
+                  .filter((brand) => brand !== 'search' && !brand.includes('-')) // Ensure valid brand keys
+                  .map((brand) => (
+                    <Tab key={brand} label={brand} value={brand} />
+                  ))}
+              </Tabs>
+            )
           )}
         </Box>
         <Box
@@ -725,27 +751,49 @@ const Products: React.FC<SearchBarProps> = ({
         >
           {/* <Typography variant='subtitle2'>Categories</Typography> */}
           {/* Tabs for Categories (Sub Tabs) */}
-          {!searchTerm.trim() && activeBrand && categories.length > 0 && (
-            <Tabs
-              value={activeCategory || categories[0] || ''} // Ensure a valid default value
-              onChange={(e, newValue) => handleCategoryTabChange(newValue)}
-              variant='scrollable'
-              scrollButtons='auto'
-              sx={{
-                mt: 2,
-                mb: 2,
-                '.MuiTab-root': {
-                  textTransform: 'none',
-                  fontWeight: 'bold',
-                  padding: '8px 16px',
-                },
-                '.Mui-selected': { color: 'primary.main' },
-              }}
-            >
-              {categories.map((category) => (
-                <Tab key={category} label={category} value={category} />
-              ))}
-            </Tabs>
+          {isMobile ? (
+            // Mobile View: Categories Dropdown
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel id='category-select-label'>Category</InputLabel>
+              <Select
+                labelId='category-select-label'
+                id='category-select'
+                value={activeCategory}
+                label='Category'
+                onChange={(e) => handleCategoryTabChange(e.target.value)}
+              >
+                {categories.map((category) => (
+                  <MenuItem key={category} value={category}>
+                    {category}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ) : (
+            !searchTerm.trim() &&
+            activeBrand &&
+            categories.length > 0 && (
+              <Tabs
+                value={activeCategory || categories[0] || ''} // Ensure a valid default value
+                onChange={(e, newValue) => handleCategoryTabChange(newValue)}
+                variant='scrollable'
+                scrollButtons='auto'
+                sx={{
+                  mt: 2,
+                  mb: 2,
+                  '.MuiTab-root': {
+                    textTransform: 'none',
+                    fontWeight: 'bold',
+                    padding: '8px 16px',
+                  },
+                  '.Mui-selected': { color: 'primary.main' },
+                }}
+              >
+                {categories.map((category) => (
+                  <Tab key={category} label={category} value={category} />
+                ))}
+              </Tabs>
+            )
           )}
         </Box>
 
