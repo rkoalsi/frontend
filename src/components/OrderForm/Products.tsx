@@ -1151,10 +1151,10 @@ const Products: React.FC<SearchBarProps> = ({
                   const sellingPrice = getSellingPrice(product);
 
                   // If the product is in the cart, use its quantity; otherwise, use the temp or default
-                  const quantity =
+                  const quantity: any =
                     selectedProduct?.quantity ||
                     temporaryQuantities[productId] ||
-                    1;
+                    '';
 
                   // Item-level total
                   const itemTotal = parseFloat(
