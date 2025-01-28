@@ -306,6 +306,103 @@ const Orders = () => {
                   </Typography>
                 </Box>
 
+                <Box sx={{ marginBottom: 3 }}>
+                  <Typography>
+                    <strong>Billing Address</strong>
+                  </Typography>
+                  <Typography>
+                    <strong>Attention:</strong>{' '}
+                    {selectedOrder?.billing_address?.attention
+                      ? selectedOrder?.billing_address?.attention
+                      : ''}
+                  </Typography>
+                  <Typography>
+                    <strong>Address:</strong>{' '}
+                    {selectedOrder?.billing_address?.address
+                      ? selectedOrder?.billing_address?.address
+                      : ''}
+                  </Typography>
+                  <Typography>
+                    <strong>Street:</strong>{' '}
+                    {selectedOrder?.billing_address?.street2
+                      ? selectedOrder?.billing_address?.street2
+                      : ''}
+                  </Typography>
+                  <Typography>
+                    <strong>City:</strong>{' '}
+                    {selectedOrder?.billing_address?.city
+                      ? selectedOrder?.billing_address?.city
+                      : ''}
+                  </Typography>
+
+                  <Typography>
+                    <strong>State:</strong>{' '}
+                    {selectedOrder?.billing_address?.state
+                      ? selectedOrder?.billing_address?.state
+                      : ''}
+                  </Typography>
+                  <Typography>
+                    <strong>Zip:</strong>{' '}
+                    {selectedOrder?.billing_address?.zip
+                      ? selectedOrder?.billing_address?.zip
+                      : ''}
+                  </Typography>
+                  <Typography>
+                    <strong>Phone:</strong>{' '}
+                    {selectedOrder?.billing_address?.phone
+                      ? selectedOrder?.billing_address?.phone
+                      : ''}
+                  </Typography>
+                </Box>
+                <Box sx={{ marginBottom: 3 }}>
+                  <Typography>
+                    <strong>Shipping Address</strong>
+                  </Typography>
+                  <Typography>
+                    <strong>Attention:</strong>{' '}
+                    {selectedOrder?.shipping_address?.attention
+                      ? selectedOrder?.shipping_address?.attention
+                      : ''}
+                  </Typography>
+                  <Typography>
+                    <strong>Address:</strong>{' '}
+                    {selectedOrder?.shipping_address?.address
+                      ? selectedOrder?.shipping_address?.address
+                      : ''}
+                  </Typography>
+                  <Typography>
+                    <strong>Street:</strong>{' '}
+                    {selectedOrder?.shipping_address?.street2
+                      ? selectedOrder?.shipping_address?.street2
+                      : ''}
+                  </Typography>
+                  <Typography>
+                    <strong>City:</strong>{' '}
+                    {selectedOrder?.shipping_address?.city
+                      ? selectedOrder?.shipping_address?.city
+                      : ''}
+                  </Typography>
+
+                  <Typography>
+                    <strong>State:</strong>{' '}
+                    {selectedOrder?.shipping_address?.state
+                      ? selectedOrder?.shipping_address?.state
+                      : ''}
+                  </Typography>
+                  <Typography>
+                    <strong>Zip:</strong>{' '}
+                    {selectedOrder?.shipping_address?.zip
+                      ? selectedOrder?.shipping_address?.zip
+                      : ''}
+                  </Typography>
+                  <Typography>
+                    <strong>Phone:</strong>{' '}
+                    {selectedOrder?.shipping_address?.phone
+                      ? selectedOrder?.shipping_address?.phone
+                      : ''}
+                  </Typography>
+                </Box>
+
                 {/* Products Section */}
                 <Typography
                   variant='h6'
