@@ -148,7 +148,7 @@ const Review: React.FC<Props> = React.memo((props) => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: 3, flex: 1 }}>
       {/* Header */}
       <Box
         display='flex'
@@ -263,7 +263,7 @@ const Review: React.FC<Props> = React.memo((props) => {
             <Edit onClick={() => setActiveStep(3)} className='no-pdf' />
           </Box>
 
-          <TableContainer component={Paper} sx={{ overflowY: 'auto', mt: 2 }}>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto', mt: 2 }}>
             <Table stickyHeader>
               <TableHead>
                 <TableRow>

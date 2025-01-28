@@ -723,7 +723,6 @@ const Products: React.FC<SearchBarProps> = ({
                     top: 0,
                     zIndex: 1000,
                     backgroundColor: 'background.paper',
-                    minWidth: '200px', // Increase width for readability
                   }}
                 >
                   Name
@@ -734,7 +733,6 @@ const Products: React.FC<SearchBarProps> = ({
                     top: 0,
                     zIndex: 1000,
                     backgroundColor: 'background.paper',
-                    minWidth: '150px',
                   }}
                 >
                   Sub Category
@@ -745,7 +743,6 @@ const Products: React.FC<SearchBarProps> = ({
                     top: 0,
                     zIndex: 1000,
                     backgroundColor: 'background.paper',
-                    minWidth: '125px',
                   }}
                 >
                   Series
