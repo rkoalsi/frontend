@@ -1,38 +1,41 @@
-import { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import {
   TextField,
   Button,
   Box,
   Typography,
+  Paper,
   useTheme,
   useMediaQuery,
-  Paper,
 } from '@mui/material';
-import AuthContext from '../src/components/Auth';
-import { useRouter } from 'next/router';
+import axios from 'axios';
 
-const LoginPage = () => {
-  const { login }: any = useContext(AuthContext);
+const ForgotPassword = () => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const router = useRouter();
+
   const handleSubmit = async (event: any) => {
     event.preventDefault();
     try {
-      if (email && password) {
-        await login(email, password);
-      }
+      const response = await axios.post(
+        `${process.env.api_url}/users/forgot_password`,
+        {
+          email,
+        }
+      );
+      setMessage(response.data.message);
     } catch (error) {
-      console.log(error);
+      console.error(error);
+      setMessage('An error occurred. Please try again.');
     }
   };
 
   return (
     <Box
       sx={{
-        minHeight: isMobile ? '85vh' : null,
+        minHeight: isMobile ? '85vh' : '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -43,6 +46,7 @@ const LoginPage = () => {
         elevation={3}
         sx={{
           width: '100%',
+          maxWidth: 400,
           padding: isMobile ? 3 : 4,
           borderRadius: '12px',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
@@ -50,15 +54,15 @@ const LoginPage = () => {
       >
         {/* Header Section */}
         <Box sx={{ textAlign: 'center', mb: 3 }}>
-          <Typography variant='h4' fontWeight='bold' color='primary'>
-            Sales Login
+          <Typography variant='h5' fontWeight='bold' color='primary'>
+            Forgot Password
           </Typography>
           <Typography variant='body2' color='textSecondary'>
-            Please enter your credentials to continue.
+            Enter your email to receive a password reset link.
           </Typography>
         </Box>
 
-        {/* Login Form */}
+        {/* Form */}
         <Box
           component='form'
           onSubmit={handleSubmit}
@@ -74,18 +78,8 @@ const LoginPage = () => {
             variant='outlined'
             size='medium'
           />
-          <TextField
-            label='Password'
-            type='password'
-            fullWidth
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            variant='outlined'
-            size='medium'
-          />
 
-          {/* Login Button */}
+          {/* Submit Button */}
           <Button
             type='submit'
             variant='contained'
@@ -98,27 +92,23 @@ const LoginPage = () => {
               padding: '10px',
             }}
           >
-            Login
+            Send Reset Link
           </Button>
-          <Button
-            type='submit'
-            variant='outlined'
-            color='primary'
-            size='large'
-            fullWidth
-            onClick={() => router.push('/forgot_password')}
-            sx={{
-              textTransform: 'none',
-              fontSize: '1rem',
-              padding: '10px',
-            }}
-          >
-            Forgot Password?
-          </Button>
+
+          {/* Message */}
+          {message && (
+            <Typography
+              variant='body2'
+              color={message.includes('sent') ? 'success.main' : 'error'}
+              sx={{ mt: 2 }}
+            >
+              {message}
+            </Typography>
+          )}
         </Box>
       </Paper>
     </Box>
   );
 };
 
-export default LoginPage;
+export default ForgotPassword;

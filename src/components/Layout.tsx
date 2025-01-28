@@ -1,3 +1,5 @@
+// components/Layout.jsx
+
 import { useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Auth from './Auth';
@@ -22,23 +24,31 @@ const Layout = ({ children }: any) => {
   const { shared } = router.query;
 
   // Store the initial route for shared links
-  const [originalPath, setOriginalPath] = useState<string | null>(null);
+  const [originalPath, setOriginalPath] = useState(null);
+
+  // Define public paths
+  const publicPaths = ['/login', '/forgot_password', '/reset_password'];
 
   useEffect(() => {
     if (router.isReady) {
       setIsRouterReady(true);
 
       if (shared === 'true' && !originalPath) {
-        setOriginalPath(router.asPath); // Save the original path on the first render
+        setOriginalPath(router.asPath as any); // Save the original path on the first render
       }
     }
-  }, [router.isReady, shared, originalPath]);
+  }, [router.isReady, shared, originalPath, router.asPath]);
 
   useEffect(() => {
-    // Prevent navigation for shared link users
+    // Prevent navigation for shared link users except public paths
     if (shared === 'true' && originalPath) {
-      const handleRouteChange = (url: string) => {
-        if (url !== originalPath && !url.startsWith('/login')) {
+      const handleRouteChange = (url: any) => {
+        const path = url.split('?')[0]; // Remove query parameters
+        if (
+          path !== originalPath &&
+          !publicPaths.includes(path) && // Allow navigation to public paths
+          !url.startsWith('/login') // Extra safety
+        ) {
           router.replace(originalPath); // Redirect back to the original path
         }
       };
@@ -48,18 +58,17 @@ const Layout = ({ children }: any) => {
         router.events.off('routeChangeStart', handleRouteChange);
       };
     }
-  }, [shared, originalPath, router]);
+  }, [shared, originalPath, router, publicPaths]);
 
   useEffect(() => {
     if (!isRouterReady) return;
 
-    const publicPaths = ['/login'];
     const pathIsPublic = publicPaths.includes(router.pathname);
 
     if (!loading && !user && !shared && !pathIsPublic) {
       router.replace('/login'); // Use replace to prevent adding to history stack
     }
-  }, [user, loading, shared, isRouterReady, router]);
+  }, [user, loading, shared, isRouterReady, router, publicPaths]);
 
   if (!isRouterReady || (loading && !user)) {
     return (
@@ -77,7 +86,7 @@ const Layout = ({ children }: any) => {
     ); // Show a loading screen while waiting for the router or authentication
   }
 
-  if (!user && !shared && router.pathname !== '/login') {
+  if (!user && !shared && !publicPaths.includes(router.pathname)) {
     return null; // Redirect is handled in useEffect
   }
 
