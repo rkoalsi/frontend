@@ -1,3 +1,5 @@
+// Products.tsx
+
 import React, { useState, useEffect, memo, useCallback, useRef } from 'react';
 import axios from 'axios';
 import {
@@ -34,6 +36,7 @@ import {
 import { useRouter } from 'next/router';
 import debounce from 'lodash.debounce';
 import { toast } from 'react-toastify';
+import QuantitySelector from './QuantitySelector'; // Adjust the path as necessary
 
 // ------------------ Interface Definitions ---------------------
 interface SearchResult {
@@ -444,39 +447,89 @@ const Products: React.FC<SearchBarProps> = ({
     },
     [selectedProducts, debouncedSuccess, setSelectedProducts]
   );
+  // Extract categories for the active brand
+  const categories = categoriesByBrand[activeBrand] || [];
 
+  // Determine the key for productsByBrandCategory
+  const productsKey =
+    searchTerm.trim() !== ''
+      ? 'search'
+      : activeBrand && activeCategory
+      ? `${activeBrand}-${activeCategory}`
+      : 'all';
+
+  const displayedProducts = productsByBrandCategory[productsKey] || [];
   // ------------------ Handle Quantity Change ---------------------
   const handleQuantityChange = useCallback(
     (id: string, newQuantity: number) => {
       const productInCart = selectedProducts.find(
         (product) => product._id === id
       );
-      if (!productInCart) return;
 
-      const sanitizedQuantity = Math.max(
-        1,
-        Math.min(newQuantity, productInCart.stock)
-      );
-
-      const updatedProducts = selectedProducts.map((product) => {
-        if (product._id === id) {
-          return {
-            ...product,
-            quantity: sanitizedQuantity,
-          };
-        }
-        return product;
-      });
-
-      setSelectedProducts(updatedProducts);
-      const updatedProduct = updatedProducts.find((p) => p._id === id);
-      if (updatedProduct) {
-        debouncedSuccess(
-          `Updated ${updatedProduct.name} to quantity ${updatedProduct.quantity}`
+      if (productInCart) {
+        // Update existing product's quantity
+        const sanitizedQuantity = Math.max(
+          1,
+          Math.min(newQuantity, productInCart.stock)
         );
+
+        const updatedProducts = selectedProducts.map((product) => {
+          if (product._id === id) {
+            return {
+              ...product,
+              quantity: sanitizedQuantity,
+            };
+          }
+          return product;
+        });
+
+        setSelectedProducts(updatedProducts);
+        const updatedProduct = updatedProducts.find((p) => p._id === id);
+        if (updatedProduct) {
+          debouncedSuccess(
+            `Updated ${updatedProduct.name} to quantity ${updatedProduct.quantity}`
+          );
+        }
+      } else {
+        // Add new product to cart with the specified quantity
+        // Find the product in displayedProducts
+        const product = displayedProducts.find((p) => p._id === id);
+        if (product) {
+          const sanitizedQuantity = Math.max(
+            1,
+            Math.min(newQuantity, product.stock)
+          );
+
+          const queryString = window.location.search;
+          const urlParams = new URLSearchParams(queryString);
+          const isShared = urlParams.has('shared');
+
+          const updatedProducts: any[] = [
+            ...selectedProducts,
+            {
+              ...product,
+              margin: specialMargins[id]
+                ? specialMargins[id]
+                : customer?.cf_margin || '40%',
+              quantity: sanitizedQuantity,
+              added_by: isShared ? 'customer' : 'sales_person',
+            },
+          ];
+
+          setSelectedProducts(updatedProducts);
+          debouncedSuccess(
+            `Added ${product.name} (x${sanitizedQuantity}) to cart.`
+          );
+        }
       }
     },
-    [selectedProducts, setSelectedProducts, debouncedSuccess]
+    [
+      selectedProducts,
+      specialMargins,
+      customer?.cf_margin,
+      debouncedSuccess,
+      displayedProducts,
+    ]
   );
 
   // ------------------ Handle Clear Cart ---------------------
@@ -538,23 +591,11 @@ const Products: React.FC<SearchBarProps> = ({
       );
     }
   }, [activeBrand, categoriesByBrand, resetPaginationAndFetch]);
+
   // ------------------ Render Component ---------------------
   if (!customer) {
     return <Typography>This is content for Products</Typography>;
   }
-
-  // Extract categories for the active brand
-  const categories = categoriesByBrand[activeBrand] || [];
-
-  // Determine the key for productsByBrandCategory
-  const productsKey =
-    searchTerm.trim() !== ''
-      ? 'search'
-      : activeBrand && activeCategory
-      ? `${activeBrand}-${activeCategory}`
-      : 'all';
-
-  const displayedProducts = productsByBrandCategory[productsKey] || [];
 
   return (
     <Box
@@ -780,6 +821,8 @@ const Products: React.FC<SearchBarProps> = ({
                 >
                   Stock
                 </TableCell>
+
+                {/* Margin Column */}
                 <TableCell
                   sx={{
                     position: 'sticky',
@@ -791,6 +834,8 @@ const Products: React.FC<SearchBarProps> = ({
                 >
                   Margin
                 </TableCell>
+
+                {/* Selling Price Column */}
                 <TableCell
                   sx={{
                     position: 'sticky',
@@ -802,6 +847,8 @@ const Products: React.FC<SearchBarProps> = ({
                 >
                   Selling Price
                 </TableCell>
+
+                {/* Quantity Column */}
                 <TableCell
                   sx={{
                     position: 'sticky',
@@ -813,6 +860,8 @@ const Products: React.FC<SearchBarProps> = ({
                 >
                   Quantity
                 </TableCell>
+
+                {/* Total Column */}
                 <TableCell
                   sx={{
                     position: 'sticky',
@@ -824,6 +873,8 @@ const Products: React.FC<SearchBarProps> = ({
                 >
                   Total
                 </TableCell>
+
+                {/* Action Column */}
                 <TableCell
                   sx={{
                     position: 'sticky',
@@ -913,68 +964,20 @@ const Products: React.FC<SearchBarProps> = ({
                         {/* Selling Price */}
                         <TableCell>₹{sellingPrice}</TableCell>
 
-                        {/* Quantity input */}
+                        {/* Quantity Selector */}
                         <TableCell>
-                          <TextField
-                            type='number'
-                            value={quantity}
+                          <QuantitySelector
+                            quantity={quantity}
+                            max={product.stock}
+                            onChange={(newQuantity) =>
+                              handleQuantityChange(productId, newQuantity)
+                            }
                             disabled={
                               order?.status
                                 ?.toLowerCase()
                                 ?.includes('accepted') ||
                               order?.status?.toLowerCase()?.includes('declined')
                             }
-                            onChange={(e) => {
-                              const inputValue = e.target.value;
-                              // Allow empty string for controlled input
-                              if (inputValue === '') {
-                                if (selectedProduct) {
-                                  // If in cart, set quantity to 1 temporarily
-                                  handleQuantityChange(productId, 1);
-                                } else {
-                                  // If not in cart, remove temporary quantity
-                                  setTemporaryQuantities((prev) => {
-                                    const updated = { ...prev };
-                                    delete updated[productId];
-                                    return updated;
-                                  });
-                                }
-                                return;
-                              }
-
-                              const parsedValue = parseInt(inputValue);
-                              if (isNaN(parsedValue)) return;
-
-                              // Enforce minimum and maximum
-                              let newQuantity = Math.max(1, parsedValue);
-                              if (newQuantity > product.stock) {
-                                newQuantity = product.stock;
-                                debouncedWarn(
-                                  `Maximum available stock for ${product.name} is ${product.stock}.`
-                                );
-                              }
-
-                              if (selectedProduct) {
-                                // If already in cart, update quantity
-                                handleQuantityChange(productId, newQuantity);
-                              } else {
-                                // If not in cart, just store temp
-                                setTemporaryQuantities((prev) => ({
-                                  ...prev,
-                                  [productId]: newQuantity,
-                                }));
-                                debouncedInfo(
-                                  `Set quantity to ${newQuantity}. Add product to cart to confirm.`
-                                );
-                              }
-                            }}
-                            inputProps={{
-                              min: 1,
-                              max: product.stock,
-                              step: 1,
-                            }}
-                            size='small'
-                            sx={{ width: '80px' }}
                           />
                           {isQuantityExceedingStock && (
                             <Typography
