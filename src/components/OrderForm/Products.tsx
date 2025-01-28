@@ -614,7 +614,7 @@ const Products: React.FC<SearchBarProps> = ({
         flexDirection: { xs: 'column', md: 'column' }, // Use column for full-width
         gap: 3, // Increase gap for spacing
         width: '100%',
-        padding: 3, // Increase padding
+        padding: 1.5, // Increase padding
         maxWidth: '100%', // Ensure full width on larger screens
         margin: '0 auto', // Center horizontally
         position: 'relative',
@@ -959,10 +959,10 @@ const Products: React.FC<SearchBarProps> = ({
                       const sellingPrice = getSellingPrice(product);
 
                       // If the product is in the cart, use its quantity; otherwise, use the temp or default
-                      const quantity =
+                      const quantity: any =
                         selectedProduct?.quantity ||
                         temporaryQuantities[productId] ||
-                        1;
+                        '';
 
                       // Item-level total
                       const itemTotal = parseFloat(
@@ -1143,7 +1143,6 @@ const Products: React.FC<SearchBarProps> = ({
               <Grid container spacing={2}>
                 {displayedProducts.map((product: SearchResult) => {
                   const productId = product._id;
-
                   const selectedProduct = selectedProducts.find(
                     (p) => p._id === product._id
                   );
@@ -1167,67 +1166,190 @@ const Products: React.FC<SearchBarProps> = ({
 
                   return (
                     <Grid item xs={12} key={productId}>
-                      <Card sx={{ width: '100%' }}>
-                        {/* Image Section */}
-                        <Box>
-                          <Badge
-                            badgeContent={product.new ? 'New' : undefined}
-                            color='secondary'
-                            overlap='rectangular'
-                            anchorOrigin={{
-                              vertical: 'top',
-                              horizontal: 'right',
-                            }}
-                          >
-                            <CardMedia
-                              component='img'
-                              image={product.image_url || '/placeholder.png'}
-                              alt={product.name}
-                              sx={{
-                                width: '100%',
-                                objectFit: 'cover',
-                                cursor: 'pointer',
+                      <Card
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          borderRadius: 2,
+                          boxShadow: 3,
+                          overflow: 'hidden',
+                          position: 'relative',
+                          backgroundColor: 'background.paper',
+                        }}
+                      >
+                        {/* "New" Badge & Image Section */}
+                        <Box sx={{ position: 'relative' }}>
+                          {product.new && (
+                            <Badge
+                              badgeContent='New'
+                              color='secondary'
+                              overlap='rectangular'
+                              anchorOrigin={{
+                                vertical: 'top',
+                                horizontal: 'right',
                               }}
-                              onClick={() =>
-                                handleImageClick(
-                                  product.image_url || '/placeholder.png'
-                                )
-                              }
+                              sx={{
+                                position: 'absolute',
+                                top: 0,
+                                right: 0,
+                                zIndex: 10,
+                                '& .MuiBadge-badge': {
+                                  fontSize: '0.7rem',
+                                  fontWeight: 'bold',
+                                  borderRadius: 1,
+                                },
+                              }}
                             />
-                          </Badge>
+                          )}
+                          <CardMedia
+                            component='img'
+                            image={product.image_url || '/placeholder.png'}
+                            alt={product.name}
+                            sx={{
+                              width: '100%',
+                              objectFit: 'cover',
+                              cursor: 'pointer',
+                              transition: 'transform 0.3s ease-in-out',
+                              '&:hover': {
+                                transform: 'scale(1.03)',
+                              },
+                            }}
+                            onClick={() =>
+                              handleImageClick(
+                                product.image_url || '/placeholder.png'
+                              )
+                            }
+                          />
                         </Box>
+
                         {/* Details Section */}
-                        <CardContent>
-                          <Typography variant='h6' gutterBottom>
+                        <CardContent sx={{ p: 2 }}>
+                          <Typography
+                            variant='h6'
+                            sx={{ fontWeight: 'bold', mb: 1 }}
+                          >
                             {product.name}
                           </Typography>
-                          <Typography variant='body1' color='textSecondary'>
-                            Sub Category: {product.sub_category || '-'}
-                          </Typography>
-                          <Typography variant='body1' color='textSecondary'>
-                            Series: {product.series || '-'}
-                          </Typography>
-                          <Typography variant='body1' color='textSecondary'>
-                            SKU: {product.cf_sku_code || '-'}
-                          </Typography>
-                          <Typography variant='body1' color='textSecondary'>
-                            Price: ₹{product.rate}
-                          </Typography>
-                          <Typography variant='body1' color='textSecondary'>
-                            Stock: {product.stock}
-                          </Typography>
-                          <Typography variant='body1' color='textSecondary'>
-                            Margin:{' '}
-                            {specialMargins[productId]
-                              ? specialMargins[productId]
-                              : customer?.cf_margin || '40%'}
-                          </Typography>
-                          <Typography variant='body1' color='textSecondary'>
-                            Selling Price: ₹{sellingPrice}
-                          </Typography>
 
-                          {/* Quantity Selector */}
-                          <Box mt={1}>
+                          <Box
+                            sx={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(2, auto)',
+                              columnGap: 1,
+                              rowGap: 0.5,
+                              mb: 1,
+                            }}
+                          >
+                            <Typography
+                              variant='body2'
+                              color='text.secondary'
+                              sx={{ fontWeight: 500 }}
+                            >
+                              Sub Category
+                            </Typography>
+                            <Typography variant='body2'>
+                              {product.sub_category || '-'}
+                            </Typography>
+
+                            <Typography
+                              variant='body2'
+                              color='text.secondary'
+                              sx={{ fontWeight: 500 }}
+                            >
+                              Series
+                            </Typography>
+                            <Typography variant='body2'>
+                              {product.series || '-'}
+                            </Typography>
+
+                            <Typography
+                              variant='body2'
+                              color='text.secondary'
+                              sx={{ fontWeight: 500 }}
+                            >
+                              SKU
+                            </Typography>
+                            <Typography variant='body2'>
+                              {product.cf_sku_code || '-'}
+                            </Typography>
+
+                            <Typography
+                              variant='body2'
+                              color='text.secondary'
+                              sx={{ fontWeight: 500 }}
+                            >
+                              Price
+                            </Typography>
+                            <Typography variant='body2'>
+                              ₹{product.rate}
+                            </Typography>
+
+                            <Typography
+                              variant='body2'
+                              color='text.secondary'
+                              sx={{ fontWeight: 500 }}
+                            >
+                              Stock
+                            </Typography>
+                            <Typography variant='body2'>
+                              {product.stock}
+                            </Typography>
+
+                            <Typography
+                              variant='body2'
+                              color='text.secondary'
+                              sx={{ fontWeight: 500 }}
+                            >
+                              Margin
+                            </Typography>
+                            <Typography variant='body2'>
+                              {specialMargins[productId]
+                                ? specialMargins[productId]
+                                : customer?.cf_margin || '40%'}
+                            </Typography>
+
+                            <Typography
+                              variant='body2'
+                              color='text.secondary'
+                              sx={{ fontWeight: 500 }}
+                            >
+                              Selling Price
+                            </Typography>
+                            <Typography variant='body2'>
+                              ₹{sellingPrice}
+                            </Typography>
+                            {selectedProduct && (
+                              <>
+                                <Typography
+                                  variant='body2'
+                                  color='text.secondary'
+                                  sx={{ fontWeight: 800 }}
+                                >
+                                  Item Total
+                                </Typography>
+                                <Typography variant='body2' fontWeight={'bold'}>
+                                  ₹{itemTotal}
+                                </Typography>
+                              </>
+                            )}
+                          </Box>
+
+                          {/* Quantity Selector & Item Total */}
+                          <Box
+                            sx={{
+                              mt: 2,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                            }}
+                          >
+                            {selectedProduct && (
+                              <Typography
+                                variant='body1'
+                                sx={{ fontWeight: 500 }}
+                              ></Typography>
+                            )}
                             <QuantitySelector
                               quantity={quantity}
                               max={product.stock}
@@ -1243,24 +1365,17 @@ const Products: React.FC<SearchBarProps> = ({
                                   ?.includes('declined')
                               }
                             />
-                            {isQuantityExceedingStock && (
-                              <Typography variant='caption' color='error'>
-                                Exceeds stock!
-                              </Typography>
-                            )}
                           </Box>
-
-                          {/* Item Total */}
-                          {selectedProduct && (
-                            <Typography variant='body2' mt={1}>
-                              Total: ₹{itemTotal}
+                          {isQuantityExceedingStock && (
+                            <Typography variant='caption' color='error'>
+                              Exceeds stock!
                             </Typography>
                           )}
 
                           {/* Action Button */}
-                          <Box mt={1}>
+                          <Box mt={2}>
                             <Button
-                              variant='outlined'
+                              variant='contained'
                               color={
                                 selectedProducts.some(
                                   (prod) => prod._id === product._id
@@ -1293,6 +1408,11 @@ const Products: React.FC<SearchBarProps> = ({
                                   ?.includes('declined')
                               }
                               fullWidth
+                              sx={{
+                                textTransform: 'none',
+                                borderRadius: 2,
+                                fontWeight: 'bold',
+                              }}
                             >
                               {selectedProducts.some(
                                 (prod) => prod._id === product._id

@@ -85,7 +85,6 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
         inputProps={{
           inputMode: 'numeric',
           pattern: '[0-9]*',
-          min: 1,
           max: max,
           style: { textAlign: 'center', width: '60px' },
           'aria-label': 'Quantity',
