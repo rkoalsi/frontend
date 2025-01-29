@@ -118,15 +118,23 @@ export default function CheckList({
                     <Box component='span' sx={{ fontWeight: 'bold' }}>
                       {value.attention}
                     </Box>
-                    <Box>{value.city}</Box>
+                    <Box>
+                      {value.address} {value.street2}
+                    </Box>
                     <Box>{value.state}</Box>
-                    <Box>{value.address}</Box>
+                    <Box>{value.city}</Box>
                     <Box>{value.zip}</Box>
                   </>
                 }
                 primaryTypographyProps={{
                   component: 'div',
                   fontSize: '0.875rem',
+                  noWrap: false, // This allows text to wrap
+                  sx: {
+                    whiteSpace: 'normal',
+                    overflow: 'visible',
+                    textOverflow: 'inherit',
+                  },
                 }}
               />
             </ListItemButton>
