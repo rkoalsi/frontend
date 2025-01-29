@@ -86,7 +86,7 @@ const Customers = () => {
         const response = await axios.get(
           `${baseApiUrl}/admin/products?brand=${
             selectedBrand || ''
-          }&limit=10000&active_products=true` // Use a large limit to fetch all products
+          }&limit=10000&status=active` // Use a large limit to fetch all products
         );
         const allProducts = response.data.products;
 
@@ -425,7 +425,7 @@ const Customers = () => {
       const response = await axios.get(
         `${baseApiUrl}/admin/products?search=${dialogSearchQuery}&page=${dialogPage}&limit=${dialogRowsPerPage}&brand=${
           selectedBrand || ''
-        }&active_products=true`
+        }&status=active`
       );
 
       const { products: prodList, total_count } = response.data;
@@ -852,7 +852,7 @@ const Customers = () => {
             {/* Pagination + "Go to page" */}
             <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
               <TablePagination
-                rowsPerPageOptions={[5, 10, 25]}
+                rowsPerPageOptions={[25, 50, 100, 200]}
                 component='div'
                 count={totalCount}
                 rowsPerPage={rowsPerPage}
@@ -1208,7 +1208,7 @@ const Customers = () => {
               {/* Pagination */}
               <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
                 <TablePagination
-                  rowsPerPageOptions={[5, 10, 25]}
+                  rowsPerPageOptions={[25, 50, 100, 200]}
                   component='div'
                   count={dialogTotalCount}
                   rowsPerPage={dialogRowsPerPage}

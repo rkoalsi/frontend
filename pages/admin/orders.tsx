@@ -200,7 +200,7 @@ const Orders = () => {
                 {/* Pagination + "Go to page" */}
                 <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
                   <TablePagination
-                    rowsPerPageOptions={[5, 10, 25]}
+                    rowsPerPageOptions={[25, 50, 100, 200]}
                     component='div'
                     // totalCount from server
                     count={totalCount}

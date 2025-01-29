@@ -19,10 +19,16 @@ import {
   DialogContent,
   DialogActions,
   Grid,
+  Drawer,
+  Checkbox,
+  FormControlLabel,
+  RadioGroup,
+  Radio,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useDropzone } from 'react-dropzone';
+import { Filter, FilterAlt } from '@mui/icons-material';
 
 const Products = () => {
   const [products, setProducts] = useState<any[]>([]);
@@ -44,13 +50,21 @@ const Products = () => {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [updating, setUpdating] = useState(false);
-
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterStock, setFilterStock] = useState<string>('');
+  const [filterNewArrivals, setFilterNewArrivals] = useState<boolean>(false);
+  const [openFilterModal, setOpenFilterModal] = useState(false);
   // NEW: State for editable fields
   const [editableFields, setEditableFields] = useState({
     category: '',
     sub_category: '',
     series: '',
   });
+  const applyFilters = () => {
+    setPage(0); // reset page
+    setOpenFilterModal(false);
+    getData(); // fetch with new filters
+  };
 
   // Debounce the search input to prevent excessive API calls
   useEffect(() => {
@@ -67,7 +81,6 @@ const Products = () => {
   const getData = async () => {
     setLoading(true);
     try {
-      // Build the query parameters
       const params: any = {
         page,
         limit: rowsPerPage,
@@ -76,10 +89,20 @@ const Products = () => {
         params.search = debouncedSearchQuery.trim();
       }
 
+      // Add filters if chosen
+      if (filterStatus) {
+        params.status = filterStatus; // e.g. 'active' or 'inactive'
+      }
+      if (filterStock) {
+        params.stock = filterStock; // e.g. 'zero' or 'gt_zero'
+      }
+      if (filterNewArrivals) {
+        params.new_arrivals = true;
+      }
+
       const response = await axios.get(`${baseApiUrl}/admin/products`, {
         params,
       });
-
       setProducts(response.data.products);
       setTotalCount(response.data.total_count);
     } catch (error) {
@@ -89,7 +112,6 @@ const Products = () => {
       setLoading(false);
     }
   };
-
   // Fetch data whenever page, rowsPerPage, or debouncedSearchQuery changes
   useEffect(() => {
     getData();
@@ -348,9 +370,17 @@ const Products = () => {
           backgroundColor: 'white',
         }}
       >
-        <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
-          All Products
-        </Typography>
+        <Box
+          display={'flex'}
+          flexDirection={'row'}
+          justifyContent={'space-between'}
+          alignItems={'center'}
+        >
+          <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
+            All Products
+          </Typography>
+          <FilterAlt onClick={() => setOpenFilterModal(true)} />
+        </Box>
         <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
           A comprehensive list of all products in your inventory.
         </Typography>
@@ -454,7 +484,7 @@ const Products = () => {
             {/* Table Pagination */}
             <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
               <TablePagination
-                rowsPerPageOptions={[5, 10, 25]}
+                rowsPerPageOptions={[25, 50, 100, 200]}
                 component='div'
                 count={totalCount}
                 rowsPerPage={rowsPerPage}
@@ -487,7 +517,75 @@ const Products = () => {
           </>
         )}
       </Paper>
+      <Drawer
+        anchor='right'
+        open={openFilterModal}
+        onClose={() => setOpenFilterModal(false)}
+        sx={{
+          '& .MuiDrawer-paper': {
+            width: 300,
+            padding: 3,
+          },
+        }}
+      >
+        <Typography variant='h6' gutterBottom>
+          Filter Products
+        </Typography>
 
+        {/* Status Filter */}
+        <Typography variant='subtitle2'>Status</Typography>
+        <RadioGroup
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+        >
+          <FormControlLabel value='' control={<Radio />} label='All' />
+          <FormControlLabel value='active' control={<Radio />} label='Active' />
+          <FormControlLabel
+            value='inactive'
+            control={<Radio />}
+            label='Inactive'
+          />
+        </RadioGroup>
+
+        {/* Stock Filter */}
+        <Typography variant='subtitle2'>Stock</Typography>
+        <RadioGroup
+          value={filterStock}
+          onChange={(e: any) => setFilterStock(e.target.value)}
+        >
+          <FormControlLabel value='' control={<Radio />} label='All' />
+          <FormControlLabel
+            value='zero'
+            control={<Radio />}
+            label='Zero Stock'
+          />
+          <FormControlLabel
+            value='gt_zero'
+            control={<Radio />}
+            label='> 0 Stock'
+          />
+        </RadioGroup>
+
+        {/* New Arrivals */}
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={filterNewArrivals}
+              onChange={(e) => {
+                setFilterNewArrivals(e.target.checked);
+                setFilterStatus('');
+              }}
+            />
+          }
+          label='New Arrivals Only'
+        />
+
+        <Box sx={{ mt: 3 }}>
+          <Button variant='contained' onClick={applyFilters}>
+            Apply
+          </Button>
+        </Box>
+      </Drawer>
       {/* Edit Product Modal */}
       <Dialog
         open={openEditModal}
