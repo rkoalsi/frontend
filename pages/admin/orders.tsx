@@ -162,7 +162,11 @@ const Orders = () => {
                           <TableCell>
                             {new Date(order.created_at).toLocaleString()}
                           </TableCell>
-                          <TableCell>{order._id}</TableCell>
+                          <TableCell>
+                            {order?.estimate_created
+                              ? order?.estimate_number
+                              : order._id}
+                          </TableCell>
                           <TableCell>{order.customer_name}</TableCell>
                           <TableCell>{capitalize(order.status)}</TableCell>
                           <TableCell>
