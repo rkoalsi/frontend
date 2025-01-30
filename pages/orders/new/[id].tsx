@@ -94,8 +94,7 @@ const NewOrder: React.FC = () => {
 
         // 1) Check if there's a special margin for this product
         let margin = 0.4; // default 40%
-        const productId =
-          typeof product._id === 'string' ? product._id : product._id.$oid;
+        const productId = product._id;
 
         if (specialMargins[productId]) {
           margin = parseInt(specialMargins[productId].replace('%', '')) / 100;
@@ -317,9 +316,9 @@ const NewOrder: React.FC = () => {
             setCustomer(value);
             setBillingAddress(null);
             setShippingAddress(null);
-            if (value?._id?.$oid) {
+            if (value?._id) {
               await axios.put(`${process.env.api_url}/orders/${id}`, {
-                customer_id: value._id.$oid,
+                customer_id: value._id,
               });
             }
           }}

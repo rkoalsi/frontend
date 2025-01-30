@@ -32,7 +32,7 @@ const PastOrders = () => {
     try {
       setLoading(true);
       const resp = await axios.get(
-        `${process.env.api_url}/orders?created_by=${user?.data?._id?.$oid}`
+        `${process.env.api_url}/orders?created_by=${user?.data?._id}`
       );
       const { data = [] } = resp;
       setOrders(data);
@@ -52,9 +52,7 @@ const PastOrders = () => {
 
   const clearEmptyOrders = async () => {
     try {
-      await axios.delete(
-        `${process.env.api_url}/orders/${user?.data?._id?.$oid}`
-      );
+      await axios.delete(`${process.env.api_url}/orders/${user?.data?._id}`);
       toast.success(`Empty Orders Deleted Successfully`);
       await getData();
     } catch (error) {

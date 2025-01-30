@@ -33,9 +33,10 @@ import { Filter, FilterAlt } from '@mui/icons-material';
 const Products = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [totalPageCount, setTotalPageCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
   const [page, setPage] = useState(0); // 0-based page
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -105,6 +106,7 @@ const Products = () => {
       });
       setProducts(response.data.products);
       setTotalCount(response.data.total_count);
+      setTotalPageCount(response.data.total_pages);
     } catch (error) {
       console.error(error);
       toast.error('Error Fetching Products');
@@ -482,37 +484,66 @@ const Products = () => {
             </TableContainer>
 
             {/* Table Pagination */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-              <TablePagination
-                rowsPerPageOptions={[25, 50, 100, 200]}
-                component='div'
-                count={totalCount}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={handleChangePage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-              />
-
-              {/* --- NEW Skip Page UI --- */}
-              <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
-                <TextField
-                  label='Go to page'
-                  type='number'
-                  variant='outlined'
-                  size='small'
-                  sx={{ width: 100, mr: 1 }}
-                  // Show skipPage if typed, otherwise show the real page+1
-                  value={skipPage !== '' ? skipPage : page + 1}
-                  onChange={(e) => setSkipPage(e.target.value)}
-                  inputProps={{
-                    min: 1,
-                    max: Math.ceil(totalCount / rowsPerPage),
-                  }}
+            <Box
+              display={'flex'}
+              flexDirection={'row'}
+              alignItems={'end'}
+              justifyContent={'space-between'}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  mt: 2,
+                  gap: '8px',
+                }}
+              >
+                <TablePagination
+                  rowsPerPageOptions={[25, 50, 100, 200]}
+                  component='div'
+                  // totalCount from server
+                  count={totalCount}
+                  rowsPerPage={rowsPerPage}
+                  page={page}
+                  onPageChange={handleChangePage}
+                  onRowsPerPageChange={handleChangeRowsPerPage}
                 />
-                <Button variant='contained' onClick={handleSkipPage}>
-                  Go
-                </Button>
+
+                {/* "Go to page" UI */}
+                <Box
+                  sx={{
+                    ml: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  <TextField
+                    label='Go to page'
+                    type='number'
+                    variant='outlined'
+                    size='small'
+                    sx={{ width: 100, mr: 1 }}
+                    // If user typed something, show that; otherwise, current page + 1
+                    value={skipPage !== '' ? skipPage : page + 1}
+                    onChange={(e) =>
+                      parseInt(e.target.value) <= totalPageCount
+                        ? setSkipPage(e.target.value)
+                        : toast.error('Invalid Page Number')
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSkipPage();
+                      }
+                    }}
+                  />
+                  <Button variant='contained' onClick={handleSkipPage}>
+                    Go
+                  </Button>
+                </Box>
               </Box>
+              <Typography variant='subtitle1'>
+                Total Pages: {totalPageCount}
+              </Typography>
             </Box>
           </>
         )}

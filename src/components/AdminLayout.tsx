@@ -24,6 +24,7 @@ import {
   Receipt as OrdersIcon,
   PeopleAlt as SalesPeopleIcon,
   Settings,
+  Payment,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -38,6 +39,7 @@ const menuItems = [
     icon: <SalesPeopleIcon />,
     path: '/admin/sales_people',
   },
+  { text: 'Payments Due', icon: <Payment />, path: '/admin/payments_due' },
   // { text: 'Settings', icon: <Settings />, path: '/admin/settings' },
 ];
 

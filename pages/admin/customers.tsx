@@ -36,11 +36,12 @@ const Customers = () => {
   // --------------------- Main Table States ---------------------
   const [customers, setCustomers] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [totalPageCount, setTotalPageCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   // Pagination states for main table
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [page, setPage] = useState(0);
 
   // "Skip to page" input for main table
   const [skipPage, setSkipPage] = useState('');
@@ -194,12 +195,14 @@ const Customers = () => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `${baseApiUrl}/admin/customers?name=${searchQuery}&page=${page}&limit=${rowsPerPage}`
+        `${baseApiUrl}/admin/customers?name=${searchQuery}&page=${
+          page + 1
+        }&limit=${rowsPerPage}`
       );
-      const { customers, total_count } = response.data;
+      const { customers, total_count, total_pages } = response.data;
       setCustomers(customers);
-      console.log(customers);
       setTotalCount(total_count);
+      setTotalPageCount(total_pages);
     } catch (error) {
       console.error(error);
       toast.error('Error Fetching Customers');
@@ -210,6 +213,7 @@ const Customers = () => {
 
   // On mount & whenever page, rowsPerPage, or searchQuery changes, fetch again
   useEffect(() => {
+    console.log(page);
     getData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, page, rowsPerPage]);
@@ -243,12 +247,14 @@ const Customers = () => {
 
   // Handle "Go to page" for main table
   const handleSkipPage = () => {
+    console.log(skipPage);
     const requestedPage = parseInt(skipPage, 10);
+    console.log(requestedPage);
     if (isNaN(requestedPage) || requestedPage < 1) {
       toast.error('Invalid page number');
       return;
     }
-    setPage(requestedPage - 1);
+    setPage(parseInt(skipPage) - 1);
     setSkipPage('');
   };
 
@@ -850,37 +856,66 @@ const Customers = () => {
             </TableContainer>
 
             {/* Pagination + "Go to page" */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-              <TablePagination
-                rowsPerPageOptions={[25, 50, 100, 200]}
-                component='div'
-                count={totalCount}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={handleChangePage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-              />
-
-              {/* "Go to page" field + button */}
-              <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
-                <TextField
-                  label='Go to page'
-                  type='number'
-                  variant='outlined'
-                  size='small'
-                  sx={{ width: 100, mr: 1 }}
-                  value={skipPage !== '' ? skipPage : page + 1}
-                  onChange={(e) => setSkipPage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSkipPage();
-                    }
-                  }}
+            <Box
+              display={'flex'}
+              flexDirection={'row'}
+              alignItems={'end'}
+              justifyContent={'space-between'}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  mt: 2,
+                  gap: '8px',
+                }}
+              >
+                <TablePagination
+                  rowsPerPageOptions={[25, 50, 100, 200]}
+                  component='div'
+                  // totalCount from server
+                  count={totalCount}
+                  rowsPerPage={rowsPerPage}
+                  page={page}
+                  onPageChange={handleChangePage}
+                  onRowsPerPageChange={handleChangeRowsPerPage}
                 />
-                <Button variant='contained' onClick={handleSkipPage}>
-                  Go
-                </Button>
+
+                {/* "Go to page" UI */}
+                <Box
+                  sx={{
+                    ml: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  <TextField
+                    label='Go to page'
+                    type='number'
+                    variant='outlined'
+                    size='small'
+                    sx={{ width: 100, mr: 1 }}
+                    // If user typed something, show that; otherwise, current page + 1
+                    value={skipPage !== '' ? skipPage : page + 1}
+                    onChange={(e) =>
+                      parseInt(e.target.value) <= totalPageCount
+                        ? setSkipPage(e.target.value)
+                        : toast.error('Invalid Page Number')
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSkipPage();
+                      }
+                    }}
+                  />
+                  <Button variant='contained' onClick={handleSkipPage}>
+                    Go
+                  </Button>
+                </Box>
               </Box>
+              <Typography variant='subtitle1'>
+                Total Pages: {totalPageCount}
+              </Typography>
             </Box>
           </>
         )}
@@ -1206,39 +1241,66 @@ const Customers = () => {
               </TableContainer>
 
               {/* Pagination */}
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-                <TablePagination
-                  rowsPerPageOptions={[25, 50, 100, 200]}
-                  component='div'
-                  count={dialogTotalCount}
-                  rowsPerPage={dialogRowsPerPage}
-                  page={dialogPage}
-                  onPageChange={handleDialogChangePage}
-                  onRowsPerPageChange={handleDialogChangeRowsPerPage}
-                />
-
-                {/* "Go to page" field + button */}
-                <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
-                  <TextField
-                    label='Go to page'
-                    type='number'
-                    variant='outlined'
-                    size='small'
-                    sx={{ width: 100, mr: 1 }}
-                    value={
-                      dialogSkipPage !== '' ? dialogSkipPage : dialogPage + 1
-                    }
-                    onChange={(e) => setDialogSkipPage(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleDialogSkipPage();
-                      }
-                    }}
+              <Box
+                display={'flex'}
+                flexDirection={'row'}
+                alignItems={'end'}
+                justifyContent={'space-between'}
+              >
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    mt: 2,
+                    gap: '8px',
+                  }}
+                >
+                  <TablePagination
+                    rowsPerPageOptions={[25, 50, 100, 200]}
+                    component='div'
+                    // totalCount from server
+                    count={totalCount}
+                    rowsPerPage={rowsPerPage}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
                   />
-                  <Button variant='contained' onClick={handleDialogSkipPage}>
-                    Go
-                  </Button>
+
+                  {/* "Go to page" UI */}
+                  <Box
+                    sx={{
+                      ml: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <TextField
+                      label='Go to page'
+                      type='number'
+                      variant='outlined'
+                      size='small'
+                      sx={{ width: 100, mr: 1 }}
+                      // If user typed something, show that; otherwise, current page + 1
+                      value={skipPage !== '' ? skipPage : page + 1}
+                      onChange={(e) =>
+                        parseInt(e.target.value) <= totalPageCount
+                          ? setSkipPage(e.target.value)
+                          : toast.error('Invalid Page Number')
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSkipPage();
+                        }
+                      }}
+                    />
+                    <Button variant='contained' onClick={handleSkipPage}>
+                      Go
+                    </Button>
+                  </Box>
                 </Box>
+                <Typography variant='subtitle1'>
+                  Total Pages: {totalPageCount}
+                </Typography>
               </Box>
             </>
           )}
