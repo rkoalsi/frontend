@@ -1189,13 +1189,14 @@ const Products: React.FC<SearchBarProps> = ({
                               }}
                               sx={{
                                 position: 'absolute',
-                                top: 0,
-                                right: 0,
+                                top: 16, // Add some spacing from the top
+                                right: 20, // Add some spacing from the right
                                 zIndex: 10,
                                 '& .MuiBadge-badge': {
-                                  fontSize: '0.7rem',
+                                  fontSize: '0.7rem', // Smaller font size for mobile
                                   fontWeight: 'bold',
                                   borderRadius: 1,
+                                  padding: '4px 6px', // Adequate padding
                                 },
                               }}
                             />
