@@ -107,8 +107,7 @@ const Review: React.FC<Props> = React.memo((props) => {
   const handleQuantityChange = useCallback(
     (id: string, newQuantity: number) => {
       const updatedProducts = products.map((product) => {
-        const pid =
-          typeof product._id === 'string' ? product._id : product._id?.$oid;
+        const pid = product._id;
 
         if (pid === id) {
           return {
@@ -129,8 +128,7 @@ const Review: React.FC<Props> = React.memo((props) => {
   const handleRemoveProduct = useCallback(
     (id: string) => {
       const updatedProducts = products.filter((product) => {
-        const pid =
-          typeof product._id === 'string' ? product._id : product._id?.$oid;
+        const pid = product._id;
         return pid !== id;
       });
 
@@ -156,8 +154,7 @@ const Review: React.FC<Props> = React.memo((props) => {
 
   // Helper function to calculate selling price and item total
   const calculatePrices = (product: any) => {
-    const productId =
-      typeof product._id === 'string' ? product._id : product._id?.$oid;
+    const productId = product._id;
 
     // Determine margin
     const marginPercent = specialMargins[productId]
@@ -319,10 +316,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                 {products.length > 0 ? (
                   products.map((product, index) => {
                     const isActive = product.status === 'active';
-                    const productId =
-                      typeof product._id === 'string'
-                        ? product._id
-                        : product._id?.$oid;
+                    const productId = product._id;
 
                     const { sellingPrice, itemTotal, marginPercent } =
                       calculatePrices(product);
@@ -536,11 +530,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                 <Grid container spacing={2}>
                   {products.map((product, index) => {
                     const isActive = product.status === 'active';
-                    const productId =
-                      typeof product._id === 'string'
-                        ? product._id
-                        : product._id?.$oid;
-
+                    const productId = product._id;
                     const { sellingPrice, itemTotal, marginPercent } =
                       calculatePrices(product);
 

@@ -1,10 +1,14 @@
-import { Box, Button, Stack } from '@mui/material';
+import { Box, Button, Stack, useMediaQuery, useTheme } from '@mui/material';
 import axios from 'axios';
 import { useRouter } from 'next/router';
 import AuthContext from './Auth';
 import { useContext } from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingCart, ShoppingCartCheckout } from '@mui/icons-material';
+import {
+  Payment,
+  ShoppingCart,
+  ShoppingCartCheckout,
+} from '@mui/icons-material';
 
 const buttonVariants = {
   hover: {
@@ -25,11 +29,12 @@ const buttonVariants = {
 const OrderManagement: React.FC = () => {
   const router = useRouter();
   const { user }: any = useContext(AuthContext);
-
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const handleNewOrder = async () => {
     try {
       const resp = await axios.post(`${process.env.api_url}/orders/`, {
-        created_by: user?.data?._id?.$oid,
+        created_by: user?.data?._id,
         status: 'draft',
       });
       const { data = {} } = resp;
@@ -44,6 +49,10 @@ const OrderManagement: React.FC = () => {
     router.push('/orders/past');
   };
 
+  const handlePaymentsDue = () => {
+    router.push('/orders/past/payment_due');
+  };
+
   return (
     <Box
       display='flex'
@@ -56,7 +65,7 @@ const OrderManagement: React.FC = () => {
           textAlign: 'center',
         }}
       >
-        <Stack direction='row' spacing={4}>
+        <Stack direction={isMobile ? 'column' : 'row'} spacing={4}>
           <motion.div
             variants={buttonVariants}
             whileHover='hover'
@@ -97,6 +106,27 @@ const OrderManagement: React.FC = () => {
               onClick={handlePastOrder}
             >
               Past Orders
+            </Button>
+          </motion.div>
+          <motion.div
+            variants={buttonVariants}
+            whileHover='hover'
+            whileTap='tap'
+          >
+            <Button
+              variant='contained'
+              color='success'
+              startIcon={<Payment />}
+              sx={{
+                fontSize: '1.2rem',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontWeight: 'bold',
+              }}
+              fullWidth
+              onClick={handlePaymentsDue}
+            >
+              Payments Due
             </Button>
           </motion.div>
         </Stack>

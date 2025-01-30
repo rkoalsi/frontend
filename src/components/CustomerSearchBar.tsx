@@ -25,7 +25,7 @@ import {
 import AuthContext from './Auth';
 
 interface SearchResult {
-  _id: { $oid: string };
+  _id: string;
   contact_name: string;
 }
 
@@ -179,9 +179,10 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
         freeSolo
         options={options}
         getOptionLabel={(option: any) => option?.contact_name || 'Unknown Name'}
-        isOptionEqualToValue={(option: SearchResult, value: SearchResult) =>
-          option._id.$oid === value._id.$oid
-        }
+        isOptionEqualToValue={(option: SearchResult, value: SearchResult) => {
+          console.log(option._id);
+          return option._id === value._id;
+        }}
         value={selectedOption || null}
         onInputChange={(event, value) => {
           setQuery(value);

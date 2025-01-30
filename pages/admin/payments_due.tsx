@@ -15,58 +15,50 @@ import {
   capitalize,
   TablePagination,
   TextField,
-  Checkbox,
 } from '@mui/material';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
 
-const Orders = () => {
+const PaymentsDue = () => {
   const router = useRouter();
-  // Orders data
-  const [orders, setOrders] = useState([]);
-
-  // Pagination states
+  const [data, setData] = useState([]);
   const [page, setPage] = useState(0); // 0-based current page
   const [rowsPerPage, setRowsPerPage] = useState(25);
-  const [totalCount, setTotalCount] = useState(0); // total number of orders from backend
-  const [totalPagesCount, setTotalPageCount] = useState(0); // total number of orders from backend
-
-  // "Go to page" input
+  const [totalCount, setTotalCount] = useState(0); // total number of data from backend
+  const [totalPagesCount, setTotalPagesCount] = useState(0); // total number of data from backend
   const [skipPage, setSkipPage] = useState('');
-
-  // Loading and selected order
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Fetch orders from the server
-  const fetchOrders = async () => {
+  // Fetch data from the server
+  const fetchData = async () => {
     setLoading(true);
     try {
       const baseApiUrl = process.env.api_url;
       // Pass page & limit for server-side pagination
       const response = await axios.get(
-        `${baseApiUrl}/admin/orders?page=${page}&limit=${rowsPerPage}`
+        `${baseApiUrl}/admin/payments_due?page=${page}&limit=${rowsPerPage}`
       );
 
-      // The backend returns { orders, total_count }
-      const { orders, total_count, total_pages } = response.data;
+      // The backend returns { data, total_count }
+      const { invoices, total_count, total_pages } = response.data;
 
-      setOrders(orders);
+      setData(invoices);
       setTotalCount(total_count);
-      setTotalPageCount(total_pages);
+      setTotalPagesCount(total_pages);
     } catch (error) {
       console.error(error);
-      toast.error('Error fetching orders.');
+      toast.error('Error fetching data.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Re-fetch orders whenever page or rowsPerPage changes
+  // Re-fetch data whenever page or rowsPerPage changes
   useEffect(() => {
-    fetchOrders();
+    fetchData();
   }, [page, rowsPerPage]);
 
   // MUI Pagination: next/previous
@@ -105,18 +97,7 @@ const Orders = () => {
     setDrawerOpen(false);
     setSelectedOrder(null);
   };
-  const getColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'invoiced':
-        return 'green';
-      case 'declined':
-        return 'red';
-      case 'accepted':
-        return 'green';
-      default:
-        return 'black';
-    }
-  };
+
   return (
     <Box sx={{ padding: 3 }}>
       <Paper
@@ -135,10 +116,10 @@ const Orders = () => {
             fontWeight: 'bold',
           }}
         >
-          All Orders
+          All Payments Due
         </Typography>
         <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
-          View and manage all orders below.
+          View and manage all due payments below.
         </Typography>
 
         {loading ? (
@@ -154,72 +135,77 @@ const Orders = () => {
           </Box>
         ) : (
           <>
-            {orders.length > 0 ? (
+            {data.length > 0 ? (
               <>
-                {/* Orders Table */}
+                {/* data Table */}
                 <TableContainer component={Paper}>
                   <Table>
                     <TableHead>
                       <TableRow>
                         <TableCell>Created At</TableCell>
-                        <TableCell>Estimate Created</TableCell>
-                        <TableCell>Order ID</TableCell>
+                        <TableCell>Due Date</TableCell>
+                        <TableCell>Invoice Number</TableCell>
                         <TableCell>Customer Name</TableCell>
                         <TableCell>Status</TableCell>
+                        <TableCell>Sales Person</TableCell>
                         <TableCell>Created By</TableCell>
                         <TableCell>Total Amount</TableCell>
+                        <TableCell>Balance</TableCell>
                         <TableCell>Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {orders.map((order: any) => (
-                        <TableRow key={order._id}>
-                          <TableCell>
-                            {new Date(order.created_at).toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            <Checkbox
-                              disabled
-                              checked={order?.estimate_created}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {order?.estimate_created
-                              ? order?.estimate_number
-                              : order._id.slice(0, 6)}
-                          </TableCell>
-                          <TableCell>{order.customer_name}</TableCell>
-                          <TableCell style={{ color: getColor(order.status) }}>
-                            {capitalize(order.status)}
-                          </TableCell>
-                          <TableCell>
-                            {order.created_by_info?.name || 'Unknown'}
-                          </TableCell>
-                          <TableCell>₹{order.total_amount || 0}</TableCell>
-                          <TableCell>
-                            <Box
-                              display={'flex'}
-                              flexDirection={'row'}
-                              gap={'8px'}
-                            >
-                              <Button
-                                variant='outlined'
-                                onClick={() => handleViewDetails(order)}
+                      {data.map((invoice: any) => {
+                        const {
+                          _id = '',
+                          created_at = new Date(),
+                          due_date = new Date(),
+                          invoice_number = '',
+                          customer_name = '',
+                          status = '',
+                          cf_sales_person = '',
+                          salesperson_name = '',
+                          created_by_name = '',
+                          total = 0,
+                          balance = 0,
+                        } = invoice;
+                        const invoiceDueDate = new Date(due_date);
+                        invoiceDueDate.setHours(0, 0, 0, 0);
+
+                        return (
+                          <TableRow key={_id}>
+                            <TableCell>
+                              {new Date(created_at).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              {invoiceDueDate.toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>{invoice_number}</TableCell>
+                            <TableCell>{customer_name}</TableCell>
+                            <TableCell>{capitalize(status)}</TableCell>
+                            <TableCell>
+                              {cf_sales_person || salesperson_name || '-'}
+                            </TableCell>
+                            <TableCell>{created_by_name}</TableCell>
+                            <TableCell>₹{total || 0}</TableCell>
+                            <TableCell>₹{balance || 0}</TableCell>
+                            <TableCell>
+                              <Box
+                                display={'flex'}
+                                flexDirection={'row'}
+                                gap={'8px'}
                               >
-                                View Details
-                              </Button>
-                              <Button
-                                variant='contained'
-                                onClick={() =>
-                                  router.push(`/orders/new/${order._id}`)
-                                }
-                              >
-                                Edit Order
-                              </Button>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                                <Button
+                                  variant='outlined'
+                                  onClick={() => handleViewDetails(invoice)}
+                                >
+                                  View Details
+                                </Button>
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </TableContainer>
@@ -269,7 +255,7 @@ const Orders = () => {
                         onChange={(e) =>
                           parseInt(e.target.value) <= totalPagesCount
                             ? setSkipPage(e.target.value)
-                            : toast.error('Invalid Page Number')
+                            : toast.error('Page is out of index')
                         }
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
@@ -294,7 +280,7 @@ const Orders = () => {
                 alignItems={'center'}
               >
                 <Typography variant='h5' fontWeight={'bold'}>
-                  No Orders Created
+                  No data Created
                 </Typography>
               </Box>
             )}
@@ -332,14 +318,8 @@ const Orders = () => {
                   <Typography>
                     <strong>Order ID:</strong> {selectedOrder._id}
                   </Typography>
-                  {selectedOrder?.estimate_created && (
-                    <Typography>
-                      <strong>Estimate Number:</strong>{' '}
-                      {selectedOrder?.estimate_number}
-                    </Typography>
-                  )}
                   <Typography>
-                    <strong>Status:</strong>
+                    <strong>Status:</strong>{' '}
                     {selectedOrder.status
                       ? capitalize(selectedOrder.status)
                       : ''}
@@ -492,7 +472,6 @@ const Orders = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {console.log(selectedOrder)}
                       {selectedOrder.products?.map((product: any) => (
                         <TableRow key={product.product_id}>
                           <TableCell>
@@ -520,6 +499,21 @@ const Orders = () => {
                     </TableBody>
                   </Table>
                 </TableContainer>
+                <Box
+                  display={'flex'}
+                  justifyContent={'center'}
+                  alignItems={'center'}
+                  marginTop={'16px'}
+                >
+                  <Button
+                    variant='contained'
+                    onClick={() =>
+                      router.push(`/data/new/${selectedOrder._id}`)
+                    }
+                  >
+                    Edit Order
+                  </Button>
+                </Box>
               </>
             )}
           </Box>
@@ -529,4 +523,4 @@ const Orders = () => {
   );
 };
 
-export default Orders;
+export default PaymentsDue;
