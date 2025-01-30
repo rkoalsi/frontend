@@ -467,11 +467,7 @@ const NewOrder: React.FC = () => {
   };
 
   useEffect(() => {
-    if (
-      isShared &&
-      (order?.status?.toLowerCase()?.includes('declined') ||
-        order?.status?.toLowerCase()?.includes('accepted'))
-    ) {
+    if (isShared && !order?.status?.toLowerCase()?.includes('draft')) {
       toast.success(`Thank you for your order`);
       router.push('/login');
     }
@@ -635,8 +631,7 @@ const NewOrder: React.FC = () => {
                       selectedProducts.length === 0 ||
                       !totals.totalAmount ||
                       loading ||
-                      order?.status?.toLowerCase()?.includes('declined') ||
-                      order?.status?.toLowerCase()?.includes('accepted')
+                      !order?.status?.toLowerCase()?.includes('draft')
                     }
                     sx={{
                       textTransform: 'none',
@@ -660,8 +655,7 @@ const NewOrder: React.FC = () => {
                       selectedProducts.length === 0 ||
                       !totals.totalAmount ||
                       loading ||
-                      order?.status?.toLowerCase()?.includes('declined') ||
-                      order?.status?.toLowerCase()?.includes('accepted')
+                      !order?.status?.toLowerCase()?.includes('draft')
                     }
                     sx={{
                       textTransform: 'none',
@@ -689,8 +683,7 @@ const NewOrder: React.FC = () => {
                         selectedProducts.length === 0 ||
                         !totals.totalAmount ||
                         loading ||
-                        order?.status?.toLowerCase()?.includes('accepted') ||
-                        order?.status?.toLowerCase()?.includes('declined')
+                        !order?.status?.toLowerCase()?.includes('draft')
                       : false
                   }
                   sx={{

@@ -633,8 +633,7 @@ const Products: React.FC<SearchBarProps> = ({
             onClick={handleClearCart}
             disabled={
               selectedProducts.length === 0 ||
-              order?.status?.toLowerCase()?.includes('accepted') ||
-              order?.status?.toLowerCase()?.includes('declined')
+              !order?.status?.toLowerCase()?.includes('draft')
             }
             sx={{
               textTransform: 'none',
@@ -1604,8 +1603,7 @@ const Products: React.FC<SearchBarProps> = ({
               }}
               disabled={
                 selectedProducts.length === 0 ||
-                order?.status?.toLowerCase()?.includes('accepted') ||
-                order?.status?.toLowerCase()?.includes('declined')
+                !order?.status?.toLowerCase()?.includes('draft')
               }
             >
               Checkout
