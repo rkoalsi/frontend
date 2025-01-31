@@ -316,7 +316,8 @@ const PaymentsDue = () => {
                 {/* Order Info */}
                 <Box sx={{ marginBottom: 3 }}>
                   <Typography>
-                    <strong>Order ID:</strong> {selectedOrder._id}
+                    <strong>Invoice Number:</strong>{' '}
+                    {selectedOrder.invoice_number}
                   </Typography>
                   <Typography>
                     <strong>Status:</strong>{' '}
@@ -326,120 +327,22 @@ const PaymentsDue = () => {
                   </Typography>
                   <Typography>
                     <strong>Created By:</strong>{' '}
-                    {selectedOrder.created_by_info?.name || 'Unknown'}
+                    {selectedOrder.created_by_name || 'Unknown'}
                   </Typography>
                   <Typography>
                     <strong>Total Amount:</strong> ₹
-                    {selectedOrder.total_amount?.toFixed(2) || '0.00'}
+                    {selectedOrder.total || '0.00'}
                   </Typography>
                   <Typography>
-                    <strong>Total GST:</strong> ₹
-                    {selectedOrder.total_gst?.toFixed(2) || '0.00'}
+                    <strong>Balance:</strong> ₹{selectedOrder.balance || '0.00'}
                   </Typography>
                   <Typography>
                     <strong>Created At:</strong>{' '}
-                    {new Date(selectedOrder.created_at).toLocaleString()}
+                    {new Date(selectedOrder.created_at).toLocaleDateString()}
                   </Typography>
                   <Typography>
-                    <strong>Updated At:</strong>{' '}
-                    {new Date(selectedOrder.updated_at).toLocaleString()}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ marginBottom: 3 }}>
-                  <Typography>
-                    <strong>Billing Address</strong>
-                  </Typography>
-                  <Typography>
-                    <strong>Attention:</strong>{' '}
-                    {selectedOrder?.billing_address?.attention
-                      ? selectedOrder?.billing_address?.attention
-                      : ''}
-                  </Typography>
-                  <Typography>
-                    <strong>Address:</strong>{' '}
-                    {selectedOrder?.billing_address?.address
-                      ? selectedOrder?.billing_address?.address
-                      : ''}
-                  </Typography>
-                  <Typography>
-                    <strong>Street:</strong>{' '}
-                    {selectedOrder?.billing_address?.street2
-                      ? selectedOrder?.billing_address?.street2
-                      : ''}
-                  </Typography>
-                  <Typography>
-                    <strong>City:</strong>{' '}
-                    {selectedOrder?.billing_address?.city
-                      ? selectedOrder?.billing_address?.city
-                      : ''}
-                  </Typography>
-
-                  <Typography>
-                    <strong>State:</strong>{' '}
-                    {selectedOrder?.billing_address?.state
-                      ? selectedOrder?.billing_address?.state
-                      : ''}
-                  </Typography>
-                  <Typography>
-                    <strong>Zip:</strong>{' '}
-                    {selectedOrder?.billing_address?.zip
-                      ? selectedOrder?.billing_address?.zip
-                      : ''}
-                  </Typography>
-                  <Typography>
-                    <strong>Phone:</strong>{' '}
-                    {selectedOrder?.billing_address?.phone
-                      ? selectedOrder?.billing_address?.phone
-                      : ''}
-                  </Typography>
-                </Box>
-                <Box sx={{ marginBottom: 3 }}>
-                  <Typography>
-                    <strong>Shipping Address</strong>
-                  </Typography>
-                  <Typography>
-                    <strong>Attention:</strong>{' '}
-                    {selectedOrder?.shipping_address?.attention
-                      ? selectedOrder?.shipping_address?.attention
-                      : ''}
-                  </Typography>
-                  <Typography>
-                    <strong>Address:</strong>{' '}
-                    {selectedOrder?.shipping_address?.address
-                      ? selectedOrder?.shipping_address?.address
-                      : ''}
-                  </Typography>
-                  <Typography>
-                    <strong>Street:</strong>{' '}
-                    {selectedOrder?.shipping_address?.street2
-                      ? selectedOrder?.shipping_address?.street2
-                      : ''}
-                  </Typography>
-                  <Typography>
-                    <strong>City:</strong>{' '}
-                    {selectedOrder?.shipping_address?.city
-                      ? selectedOrder?.shipping_address?.city
-                      : ''}
-                  </Typography>
-
-                  <Typography>
-                    <strong>State:</strong>{' '}
-                    {selectedOrder?.shipping_address?.state
-                      ? selectedOrder?.shipping_address?.state
-                      : ''}
-                  </Typography>
-                  <Typography>
-                    <strong>Zip:</strong>{' '}
-                    {selectedOrder?.shipping_address?.zip
-                      ? selectedOrder?.shipping_address?.zip
-                      : ''}
-                  </Typography>
-                  <Typography>
-                    <strong>Phone:</strong>{' '}
-                    {selectedOrder?.shipping_address?.phone
-                      ? selectedOrder?.shipping_address?.phone
-                      : ''}
+                    <strong>Due Date:</strong>{' '}
+                    {new Date(selectedOrder.due_date).toLocaleDateString()}
                   </Typography>
                 </Box>
 
@@ -464,56 +367,22 @@ const PaymentsDue = () => {
                   <Table size='small'>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Image</TableCell>
                         <TableCell>Product Name</TableCell>
                         <TableCell>Qty</TableCell>
                         <TableCell>Price</TableCell>
-                        <TableCell>Added By</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {selectedOrder.products?.map((product: any) => (
-                        <TableRow key={product.product_id}>
-                          <TableCell>
-                            <img
-                              src={product.image_url || '/placeholder.png'}
-                              alt={product.name}
-                              style={{
-                                width: '50px',
-                                height: '50px',
-                                borderRadius: '4px',
-                                objectFit: 'cover',
-                              }}
-                            />
-                          </TableCell>
+                      {selectedOrder.line_items?.map((product: any) => (
+                        <TableRow key={product.item_id}>
                           <TableCell>{product.name}</TableCell>
                           <TableCell>{product.quantity}</TableCell>
-                          <TableCell>₹{product.price?.toFixed(2)}</TableCell>
-                          <TableCell>
-                            {capitalize(
-                              product?.added_by?.split('_')?.join(' ')
-                            )}
-                          </TableCell>
+                          <TableCell>₹{product.rate}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </TableContainer>
-                <Box
-                  display={'flex'}
-                  justifyContent={'center'}
-                  alignItems={'center'}
-                  marginTop={'16px'}
-                >
-                  <Button
-                    variant='contained'
-                    onClick={() =>
-                      router.push(`/data/new/${selectedOrder._id}`)
-                    }
-                  >
-                    Edit Order
-                  </Button>
-                </Box>
               </>
             )}
           </Box>
