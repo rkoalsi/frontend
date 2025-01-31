@@ -210,6 +210,9 @@ const Orders = () => {
                               </Button>
                               <Button
                                 variant='contained'
+                                disabled={
+                                  !order.status.toLowerCase().includes('draft')
+                                }
                                 onClick={() =>
                                   router.push(`/orders/new/${order._id}`)
                                 }
