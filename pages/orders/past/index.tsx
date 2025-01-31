@@ -175,7 +175,8 @@ const PastOrders = () => {
                               order?.status.toLowerCase() === 'draft' ||
                               order?.status.toLowerCase() === 'sent'
                                 ? 'default'
-                                : order?.status.toLowerCase() === 'accepted'
+                                : order?.status.toLowerCase() === 'accepted' ||
+                                  order?.status.toLowerCase() === 'invoiced'
                                 ? 'success'
                                 : 'error'
                             }
