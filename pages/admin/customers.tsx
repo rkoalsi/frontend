@@ -25,9 +25,11 @@ import {
   DialogActions,
   Checkbox,
   InputAdornment,
+  FormControlLabel,
 } from '@mui/material';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { FilterAlt } from '@mui/icons-material';
 
 // Utility function to capitalize strings
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -76,7 +78,30 @@ const Customers = () => {
   const [selectedBrand, setSelectedBrand] = useState<string>('');
   // Add new state for the "Select All" functionality
   const [allSelected, setAllSelected] = useState(false);
+  const [openFilterDrawer, setOpenFilterDrawer] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterSalesPerson, setFilterSalesPerson] = useState<string>('');
+  const [filterType, setFilterType] = useState<string>('');
+  const [filterUnassigned, setFilterUnassigned] = useState<boolean>(false);
 
+  // Sales People List (Assuming it's fetched from an API)
+  const [salesPeople, setSalesPeople] = useState<string[]>([]);
+
+  // Fetch Sales People on component mount
+  useEffect(() => {
+    const fetchSalesPeople = async () => {
+      try {
+        const baseApiUrl = process.env.api_url;
+        const response = await axios.get(`${baseApiUrl}/admin/sales-people`);
+        setSalesPeople(response.data.sales_people);
+      } catch (error) {
+        console.error(error);
+        toast.error('Error fetching sales people.');
+      }
+    };
+
+    fetchSalesPeople();
+  }, []);
   // Handle "Select All" toggle
   const handleSelectAll = async (isChecked: boolean) => {
     setAllSelected(isChecked);
@@ -194,12 +219,26 @@ const Customers = () => {
   const getData = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(
-        `${baseApiUrl}/admin/customers?name=${searchQuery}&page=${
-          page + 1
-        }&limit=${rowsPerPage}`
-      );
+      const baseApiUrl = process.env.api_url;
+
+      // Build query parameters based on filters
+      const params: any = {
+        page: page + 1, // API is 1-based
+        limit: rowsPerPage,
+      };
+
+      if (filterStatus) params.status = filterStatus;
+      if (filterSalesPerson) params.sales_person = filterSalesPerson;
+      if (filterType) params.gst_type = filterType;
+      if (filterUnassigned) params.unassigned = filterUnassigned;
+
+      if (searchQuery) params.name = searchQuery;
+
+      const response = await axios.get(`${baseApiUrl}/admin/customers`, {
+        params,
+      });
       const { customers, total_count, total_pages } = response.data;
+
       setCustomers(customers);
       setTotalCount(total_count);
       setTotalPageCount(total_pages);
@@ -216,7 +255,15 @@ const Customers = () => {
     console.log(page);
     getData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, page, rowsPerPage]);
+  }, [
+    filterStatus,
+    filterSalesPerson,
+    filterType,
+    filterUnassigned,
+    page,
+    rowsPerPage,
+    searchQuery,
+  ]);
 
   const handleBrandChange = (event: React.ChangeEvent<{ value: unknown }>) => {
     setSelectedBrand(event.target.value as string);
@@ -772,9 +819,17 @@ const Customers = () => {
           backgroundColor: 'white',
         }}
       >
-        <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
-          All Customers
-        </Typography>
+        <Box
+          display={'flex'}
+          flexDirection={'row'}
+          justifyContent={'space-between'}
+          alignItems={'center'}
+        >
+          <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
+            All Orders
+          </Typography>
+          <FilterAlt onClick={() => setOpenFilterDrawer(true)} />
+        </Box>
         <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
           A comprehensive list of all customers.
         </Typography>
@@ -919,6 +974,119 @@ const Customers = () => {
             </Box>
           </>
         )}
+        <Drawer
+          anchor='right'
+          open={openFilterDrawer}
+          onClose={() => setOpenFilterDrawer(false)}
+          sx={{
+            '& .MuiDrawer-paper': {
+              width: 300,
+              padding: 3,
+            },
+          }}
+        >
+          <Box>
+            <Typography variant='h6' gutterBottom>
+              Filter Customers
+            </Typography>
+
+            {/* Status Filter */}
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel id='status-filter-label'>Status</InputLabel>
+              <Select
+                labelId='status-filter-label'
+                id='status-filter'
+                value={filterStatus}
+                label='Status'
+                onChange={(e) => setFilterStatus(e.target.value as string)}
+              >
+                <MenuItem value=''>All</MenuItem>
+                <MenuItem value='active'>Active</MenuItem>
+                <MenuItem value='inactive'>Inactive</MenuItem>
+              </Select>
+            </FormControl>
+
+            {/* Sales Person Filter */}
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel id='sales-person-filter-label'>
+                Sales Person
+              </InputLabel>
+              <Select
+                labelId='sales-person-filter-label'
+                id='sales-person-filter'
+                value={filterSalesPerson}
+                disabled={filterUnassigned}
+                label='Sales Person'
+                onChange={(e) => setFilterSalesPerson(e.target.value as string)}
+              >
+                <MenuItem value=''>All</MenuItem>
+                {salesPeople.map((person) => (
+                  <MenuItem key={person} value={person}>
+                    {person}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Unassigned Customers Filter */}
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={filterUnassigned}
+                  onChange={(e) => {
+                    setFilterUnassigned(e.target.checked);
+                    setFilterSalesPerson('');
+                  }}
+                />
+              }
+              label='Unassigned Customers'
+              sx={{ mt: 2 }}
+            />
+
+            {/* Type Filter */}
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel id='type-filter-label'>Type</InputLabel>
+              <Select
+                labelId='type-filter-label'
+                id='type-filter'
+                value={filterType}
+                label='Type'
+                onChange={(e) => setFilterType(e.target.value as string)}
+              >
+                <MenuItem value=''>All</MenuItem>
+                <MenuItem value='exclusive'>Exclusive</MenuItem>
+                <MenuItem value='inclusive'>Inclusive</MenuItem>
+              </Select>
+            </FormControl>
+
+            {/* Apply and Reset Filters Buttons */}
+            <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
+              <Button
+                variant='contained'
+                fullWidth
+                onClick={() => {
+                  setPage(0); // Reset to first page
+                  setOpenFilterDrawer(false);
+                  getData(); // Fetch data with new filters
+                }}
+              >
+                Apply Filters
+              </Button>
+              <Button
+                variant='outlined'
+                fullWidth
+                onClick={() => {
+                  setFilterStatus('');
+                  setFilterSalesPerson('');
+                  setFilterType('');
+                  setFilterUnassigned(false);
+                }}
+              >
+                Reset Filters
+              </Button>
+            </Box>
+          </Box>
+        </Drawer>
 
         {/* Drawer for Customer Details */}
         <Drawer
