@@ -175,7 +175,7 @@ const Review: React.FC<Props> = React.memo((props) => {
   };
 
   return (
-    <Box sx={{ p: 3, flex: 1 }}>
+    <Box sx={{ p: isMobile ? 0 : 3, flex: 1 }}>
       {/* Header */}
       <Box
         display='flex'
@@ -294,7 +294,7 @@ const Review: React.FC<Props> = React.memo((props) => {
           <Box
             display='flex'
             alignItems='center'
-            justifyContent='space-between'
+            justifyContent={'space-between'}
           >
             <Typography variant='h6' fontWeight='bold' gutterBottom>
               Products
@@ -536,7 +536,15 @@ const Review: React.FC<Props> = React.memo((props) => {
 
                     return (
                       <Grid item xs={12} key={productId}>
-                        <Card sx={{ width: '100%' }}>
+                        <Card
+                          sx={{
+                            width: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
                           {/* Image Section */}
                           <Box>
                             <Badge

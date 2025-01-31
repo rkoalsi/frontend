@@ -467,11 +467,19 @@ const NewOrder: React.FC = () => {
   };
 
   useEffect(() => {
-    if (isShared && !order?.status?.toLowerCase()?.includes('draft')) {
-      toast.success(`Thank you for your order`);
-      router.push('/login');
+    if (isShared && order) {
+      // Ensure that status exists and is a string
+      const status =
+        typeof order.status === 'string'
+          ? order.status.trim().toLowerCase()
+          : '';
+
+      if (status !== 'draft') {
+        toast.success('Thank you for your order');
+        router.push('/login');
+      }
     }
-  }, [isShared, order, router]);
+  }, [order, isShared, router]);
 
   return (
     <Box

@@ -1344,12 +1344,6 @@ const Products: React.FC<SearchBarProps> = ({
                               justifyContent: 'space-between',
                             }}
                           >
-                            {selectedProduct && (
-                              <Typography
-                                variant='body1'
-                                sx={{ fontWeight: 500 }}
-                              ></Typography>
-                            )}
                             <QuantitySelector
                               quantity={quantity}
                               max={product.stock}
@@ -1500,116 +1494,177 @@ const Products: React.FC<SearchBarProps> = ({
         anchor='right'
         open={cartDrawerOpen}
         onClose={() => setCartDrawerOpen(false)}
-      >
-        <Box
-          sx={{
-            width: isMobile ? '100%' : 350,
-            padding: 2,
+        ModalProps={{
+          keepMounted: true, // Better open performance on mobile
+        }}
+        PaperProps={{
+          sx: {
+            width: isMobile ? '100%' : 450,
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
+          },
+        }}
+      >
+        {/* Header */}
+        <Box
+          sx={{
+            padding: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: `1px solid ${theme.palette.divider}`,
           }}
         >
-          <Box
-            display='flex'
-            justifyContent='space-between'
-            alignItems='center'
-            mb={2}
-          >
-            <Typography variant='h6' sx={{ fontWeight: 'bold' }}>
-              Cart
-            </Typography>
-            <IconButton onClick={() => setCartDrawerOpen(false)}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
-          <Divider />
+          <Typography variant='h6' sx={{ fontWeight: 'bold' }}>
+            Cart
+          </Typography>
+          <IconButton onClick={() => setCartDrawerOpen(false)}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-          {/* List of Selected Products */}
-          <Box sx={{ flex: 1, overflowY: 'auto', mt: 2 }}>
-            {selectedProducts.length === 0 ? (
-              <Typography variant='body1'>Your cart is empty.</Typography>
-            ) : (
-              selectedProducts.map((product: SearchResult) => {
+        {/* Product List */}
+        <Box
+          sx={{
+            flex: 1,
+            overflowY: 'auto',
+          }}
+        >
+          {selectedProducts.length === 0 ? (
+            <Typography variant='body1' align='center' sx={{ mt: 4 }}>
+              Your cart is empty.
+            </Typography>
+          ) : (
+            <Grid
+              container
+              paddingLeft={2}
+              paddingRight={2}
+              sx={{
+                gap: '16px',
+              }}
+            >
+              {selectedProducts.map((product: any) => {
                 const productId = product._id;
                 const sellingPrice = getSellingPrice(product);
                 const itemTotal = parseFloat(
-                  (sellingPrice * product.quantity!).toFixed(2)
+                  (sellingPrice * product.quantity).toFixed(2)
                 );
+                const quantity =
+                  product.quantity || temporaryQuantities[productId] || '';
+
+                const isDisabled =
+                  order?.status?.toLowerCase()?.includes('accepted') ||
+                  order?.status?.toLowerCase()?.includes('declined');
 
                 return (
-                  <Box
+                  <Grid
+                    item
+                    xs={12}
                     key={productId}
-                    display='flex'
-                    justifyContent='space-between'
-                    alignItems='center'
-                    mb={2}
+                    sx={{
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderRadius: 2,
+                      padding: 2,
+                      boxShadow: 1,
+                      backgroundColor: theme.palette.background.paper,
+                    }}
                   >
-                    <Box>
-                      <Typography variant='body1' sx={{ fontWeight: 'bold' }}>
-                        {product.name}
-                      </Typography>
-                      <Typography variant='body2'>
-                        Quantity: {product.quantity}
-                      </Typography>
-                      <Typography variant='body2'>
-                        Price: ₹{sellingPrice}
-                      </Typography>
-                    </Box>
-                    <Box
-                      display='flex'
-                      flexDirection='column'
-                      alignItems='flex-end'
-                    >
-                      <Typography variant='body1' sx={{ fontWeight: 'bold' }}>
-                        ₹{itemTotal}
-                      </Typography>
-                      <IconButton
-                        size='small'
-                        color='error'
-                        onClick={() => handleRemoveProduct(productId)}
+                    <Grid container spacing={2} alignItems='center'>
+                      {/* Product Details */}
+                      <Grid item xs={12} sm={8}>
+                        <Typography
+                          variant='subtitle1'
+                          sx={{ fontWeight: 'bold' }}
+                        >
+                          {product.name}
+                        </Typography>
+                        <Box sx={{ mt: 1 }}>
+                          <QuantitySelector
+                            quantity={quantity}
+                            max={product.stock}
+                            onChange={(newQuantity) =>
+                              handleQuantityChange(productId, newQuantity)
+                            }
+                            disabled={isDisabled}
+                          />
+                        </Box>
+                        <Typography
+                          variant='body2'
+                          color='text.secondary'
+                          sx={{ mt: 1 }}
+                        >
+                          Price: ₹{sellingPrice.toFixed(2)}
+                        </Typography>
+                      </Grid>
+
+                      {/* Item Total and Remove Button */}
+                      <Grid
+                        item
+                        xs={12}
+                        sm={4}
+                        container
+                        direction={isMobile ? 'row' : 'column'}
+                        justifyContent={isMobile ? 'space-between' : 'flex-end'}
+                        alignItems={isMobile ? 'center' : 'flex-end'}
+                        sx={{ mt: isMobile ? 0 : 1 }}
                       >
-                        <RemoveShoppingCart />
-                      </IconButton>
-                    </Box>
-                  </Box>
+                        <Typography
+                          variant='subtitle1'
+                          sx={{ fontWeight: 'bold', mb: isMobile ? 0 : 1 }}
+                        >
+                          ₹{itemTotal.toFixed(2)}
+                        </Typography>
+                        <IconButton
+                          size='small'
+                          color='error'
+                          onClick={() => handleRemoveProduct(productId)}
+                          aria-label={`Remove ${product.name} from cart`}
+                        >
+                          <RemoveShoppingCart />
+                        </IconButton>
+                      </Grid>
+                    </Grid>
+                  </Grid>
                 );
-              })
-            )}
-          </Box>
+              })}
+            </Grid>
+          )}
+        </Box>
 
-          <Divider />
+        <Divider />
 
-          {/* Cart Totals */}
-          <Box sx={{ mt: 2 }}>
-            <Typography variant='subtitle1' sx={{ fontWeight: 'bold' }}>
-              Total GST ({customer?.cf_in_ex || 'Exclusive'}): ₹
-              {totals.totalGST.toFixed(2)}
-            </Typography>
-            <Typography variant='h6' sx={{ fontWeight: 'bold', mt: 1 }}>
-              Total Amount: ₹{totals.totalAmount.toFixed(2)}
-            </Typography>
-            {/* Checkout Button */}
-            <Button
-              variant='contained'
-              color='primary'
-              fullWidth
-              sx={{ mt: 2 }}
-              onClick={() => {
-                // Implement checkout or finalize order logic here
-                setCartDrawerOpen(false);
-                onCheckout();
-                // For example, navigate to review step or perform an action
-                // router.push('/checkout'); // Example
-              }}
-              disabled={
-                selectedProducts.length === 0 ||
-                !order?.status?.toLowerCase()?.includes('draft')
-              }
-            >
-              Checkout
-            </Button>
-          </Box>
+        {/* Cart Totals and Checkout */}
+        <Box sx={{ padding: 2 }}>
+          {selectedProducts.length > 0 && (
+            <>
+              <Box sx={{ mb: 1 }}>
+                <Typography variant='subtitle1' sx={{ fontWeight: 'bold' }}>
+                  Total GST ({customer?.cf_in_ex || 'Exclusive'}): ₹
+                  {totals.totalGST.toFixed(2)}
+                </Typography>
+                <Typography variant='h6' sx={{ fontWeight: 'bold', mt: 1 }}>
+                  Total Amount: ₹{totals.totalAmount.toFixed(2)}
+                </Typography>
+              </Box>
+              <Button
+                variant='contained'
+                color='primary'
+                fullWidth
+                sx={{ mt: 2 }}
+                onClick={() => {
+                  setCartDrawerOpen(false);
+                  onCheckout();
+                }}
+                disabled={
+                  selectedProducts.length === 0 ||
+                  !order?.status?.toLowerCase()?.includes('draft')
+                }
+              >
+                Checkout
+              </Button>
+            </>
+          )}
         </Box>
       </Drawer>
 
