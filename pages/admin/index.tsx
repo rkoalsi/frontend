@@ -1,35 +1,64 @@
-import { useContext, useEffect, useState } from 'react';
+// pages/admin/dashboard.tsx
+import { JSX, useContext, useEffect, useState } from 'react';
 import {
   Typography,
   Paper,
   Box,
-  Card,
-  CardContent,
   Grid,
-  Divider,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import AuthContext from '../../src/components/Auth';
 import axios from 'axios';
-import { useRouter } from 'next/router';
+import {
+  ShoppingCartOutlined,
+  StorefrontOutlined,
+  PeopleOutlined,
+  PersonOutlineOutlined,
+} from '@mui/icons-material';
+import StatCard from '../../src/components/admin/StatCard';
+
+// Define TypeScript interfaces for better type safety
+interface Stats {
+  active_stock_products: number;
+  active_products: number;
+  inactive_products: number;
+  total_products: number;
+  out_of_stock_products: number;
+  assigned_customers: number;
+  unassigned_customers: number;
+  active_customers: number;
+  inactive_customers: number;
+  active_sales_people: number;
+  inactive_sales_people: number;
+  total_sales_people: number;
+  orders_draft: number;
+  orders_accepted: number;
+  orders_declined: number;
+  orders_invoiced: number;
+  recent_orders: number;
+}
+
+interface SubStat {
+  label: string;
+  value: number;
+  color: string;
+}
+
+interface CardProps {
+  label: string;
+  route: string;
+  value?: number;
+  subStats?: SubStat[];
+  icon?: JSX.Element;
+}
 
 const AdminDashboard = () => {
-  const router = useRouter();
   const { user }: any = useContext(AuthContext);
 
-  // State to store stats from server
-  const [stats, setStats] = useState<any>({
-    active_stock_products: 0,
-    active_products: 0,
-    inactive_products: 0,
-    total_products: 0,
-    out_of_stock_products: 0,
-    active_customers: 0,
-    active_sales_people: 0,
-    orders_draft: 0,
-    orders_sent: 0,
-    orders_accepted: 0,
-    orders_declined: 0,
-  });
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch stats on mount
   useEffect(() => {
@@ -40,52 +69,125 @@ const AdminDashboard = () => {
     try {
       const { data } = await axios.get(`${process.env.api_url}/admin/stats`);
       setStats(data);
-    } catch (error) {
-      console.error('Error fetching stats:', error);
+    } catch (err: any) {
+      console.error('Error fetching stats:', err);
+      setError('Failed to load statistics. Please try again later.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Updated cards array with sub-stats for Products and Orders
-  const cards = [
-    {
-      label: 'Active Customers',
-      value: stats.active_customers,
-      route: 'customers',
-    },
-    {
-      label: 'Active Sales People',
-      value: stats.active_sales_people,
-      route: 'sales_people',
-    },
-    {
-      label: 'Products',
-      route: 'products',
-      subStats: [
-        { label: 'Active Stock Products', value: stats.active_stock_products },
-        { label: 'Active Products', value: stats.active_products },
-        { label: 'Inactive Products', value: stats.inactive_products },
-        { label: 'Total Products', value: stats.total_products },
-      ],
-    },
-    {
-      label: 'Orders',
-      route: 'orders',
-      subStats: [
-        { label: 'Draft', value: stats.orders_draft },
-        { label: 'Sent', value: stats.orders_sent },
-        { label: 'Accepted', value: stats.orders_accepted },
-        { label: 'Declined', value: stats.orders_declined },
-      ],
-    },
-  ];
+  // Define the cards with icons
+  const cards: CardProps[] = stats
+    ? [
+        {
+          label: 'Orders',
+          route: 'orders',
+          subStats: [
+            {
+              label: 'Orders in the last 24 hours',
+              value: stats.recent_orders,
+              color: 'success',
+            },
+            { label: 'Draft', value: stats.orders_draft, color: 'info' },
+            {
+              label: 'Accepted',
+              value: stats.orders_accepted,
+              color: 'success',
+            },
+            {
+              label: 'Declined',
+              value: stats.orders_declined,
+              color: 'error',
+            },
+            {
+              label: 'Invoiced',
+              value: stats.orders_invoiced,
+              color: 'success',
+            },
+          ],
+          icon: <ShoppingCartOutlined color='primary' />,
+        },
+        {
+          label: 'Products',
+          route: 'products',
+          subStats: [
+            {
+              label: 'Active Stock',
+              value: stats.active_stock_products,
+              color: 'success',
+            },
+            { label: 'Active', value: stats.active_products, color: 'success' },
+            {
+              label: 'Inactive',
+              value: stats.inactive_products,
+              color: 'error',
+            },
+            {
+              label: 'Out of Stock',
+              value: stats.out_of_stock_products,
+              color: 'error',
+            },
+            { label: 'Total', value: stats.total_products, color: 'info' },
+          ],
+          icon: <StorefrontOutlined color='primary' />,
+        },
+        {
+          label: 'Customers',
+          route: 'customers',
+          subStats: [
+            {
+              label: 'Assigned',
+              value: stats.assigned_customers,
+              color: 'success',
+            },
+            {
+              label: 'Unassigned',
+              value: stats.unassigned_customers,
+              color: 'error',
+            },
+            {
+              label: 'Active',
+              value: stats.active_customers,
+              color: 'success',
+            },
+            {
+              label: 'Inactive',
+              value: stats.inactive_customers,
+              color: 'error',
+            },
+          ],
+          icon: <PeopleOutlined color='primary' />,
+        },
+        {
+          label: 'Sales People',
+          route: 'sales_people',
+          subStats: [
+            {
+              label: 'Active',
+              value: stats.active_sales_people,
+              color: 'success',
+            },
+            {
+              label: 'Inactive',
+              value: stats.inactive_sales_people,
+              color: 'error',
+            },
+            { label: 'Total', value: stats.total_sales_people, color: 'info' },
+          ],
+          icon: <PersonOutlineOutlined color='primary' />,
+        },
+      ]
+    : [];
 
   return (
     <Paper
       elevation={3}
       sx={{
-        padding: 4,
+        padding: { xs: 2, md: 4 },
         borderRadius: 4,
-        backgroundColor: 'white',
+        backgroundColor: 'background.paper',
+        minHeight: '80vh',
       }}
     >
       <Typography
@@ -95,114 +197,33 @@ const AdminDashboard = () => {
       >
         Welcome, {user?.data?.first_name || 'User'}
       </Typography>
-      <Typography variant='body1' sx={{ color: '#6B7280' }}>
+      <Typography variant='body1' sx={{ color: 'text.secondary' }}>
         This is your central hub to manage users, view analytics, and update
         settings.
       </Typography>
 
-      <Box mt={3}>
-        {/* Card Grid */}
-        <Grid container spacing={2} justifyContent={'center'}>
-          {cards.map((card, idx) => {
-            const isWideCard =
-              card.label === 'Orders' || card.label === 'Products';
-            return (
+      <Box mt={4}>
+        {loading ? (
+          <Box display='flex' justifyContent='center' mt={10}>
+            <CircularProgress />
+          </Box>
+        ) : error ? (
+          <Alert severity='error'>{error}</Alert>
+        ) : (
+          <Grid container spacing={3}>
+            {cards.map((card, idx) => (
               <Grid
                 item
                 xs={12}
-                sm={isWideCard ? 8 : 6}
-                md={isWideCard ? 8 : 4}
+                sm={card.subStats && card.subStats.length > 2 ? 6 : 3}
+                md={card.subStats && card.subStats.length > 2 ? 6 : 3}
                 key={idx}
               >
-                <Card
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-                    '&:hover': {
-                      boxShadow: '0 4px 15px rgba(0, 0, 0, 0.15)',
-                      transform: 'translateY(-3px)',
-                    },
-                    transition: 'all 0.3s ease',
-                  }}
-                  onClick={() => router.push(`/admin/${card.route}`)}
-                >
-                  <CardContent>
-                    {card.subStats ? (
-                      <>
-                        <Typography
-                          variant='h6'
-                          color='textSecondary'
-                          gutterBottom
-                          sx={{ fontWeight: 'bold', color: '#3f51b5', mb: 1 }}
-                        >
-                          {card.label}
-                        </Typography>
-
-                        <Divider sx={{ mb: 1 }} />
-
-                        {/* Display each sub-stat in a grid */}
-                        <Grid container spacing={1}>
-                          {card.subStats.map((sub, subIdx) => (
-                            <Grid item xs={6} key={subIdx}>
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  alignItems: 'center',
-                                }}
-                              >
-                                <Typography
-                                  variant='body2'
-                                  color='textSecondary'
-                                  sx={{ fontWeight: 'medium' }}
-                                >
-                                  {sub.label}
-                                </Typography>
-                                <Typography
-                                  variant='h5'
-                                  sx={{
-                                    fontWeight: 'bold',
-                                    color: '#2e7d32',
-                                    mt: 0.5,
-                                  }}
-                                >
-                                  {sub.value}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      </>
-                    ) : (
-                      // Single-value layout for smaller cards
-                      <>
-                        <Typography
-                          variant='h6'
-                          color='textSecondary'
-                          gutterBottom
-                          sx={{ fontWeight: 'bold', color: '#3f51b5' }}
-                        >
-                          {card.label}
-                        </Typography>
-                        <Typography
-                          variant='h4'
-                          sx={{
-                            fontWeight: 'bold',
-                            color: '#2e7d32',
-                          }}
-                        >
-                          {card.value}
-                        </Typography>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
+                <StatCard {...card} />
               </Grid>
-            );
-          })}
-        </Grid>
+            ))}
+          </Grid>
+        )}
       </Box>
     </Paper>
   );
