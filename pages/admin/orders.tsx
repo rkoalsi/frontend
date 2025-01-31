@@ -16,10 +16,18 @@ import {
   TablePagination,
   TextField,
   Checkbox,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
 } from '@mui/material';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
+import { FilterAlt } from '@mui/icons-material';
 
 const Orders = () => {
   const router = useRouter();
@@ -39,18 +47,74 @@ const Orders = () => {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [openFilterModal, setOpenFilterModal] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterSalesPerson, setFilterSalesPerson] = useState<string>('');
+  const [filterEstimatesCreated, setFilterEstimatesCreated] =
+    useState<boolean>(false);
+  const [salesPeople, setSalesPeople] = useState<string[]>([
+    'SP1',
+    'SP2',
+    'SP3',
+    'SP4',
+    'SP5',
+    'SP6',
+    'SP7',
+    'SP8',
+    'SP9',
+    'SP10',
+    'SP11',
+    'SP12',
+    'SP13',
+    'SP14',
+    'SP15',
+    'SP16',
+    'SP17',
+    'SP18',
+    'SP19',
+    'SP20',
+    'SP21',
+  ]);
+  useEffect(() => {
+    const fetchSalesPeople = async () => {
+      try {
+        const baseApiUrl = process.env.api_url;
+        const response = await axios.get(`${baseApiUrl}/admin/sales-people`);
+        setSalesPeople(response.data.sales_people);
+      } catch (error) {
+        console.error(error);
+        toast.error('Error fetching sales people.');
+      }
+    };
 
+    fetchSalesPeople();
+  }, []);
+  const applyFilters = () => {
+    setPage(0); // reset page
+    setOpenFilterModal(false);
+    fetchOrders(); // fetch with new filters
+  };
   // Fetch orders from the server
   const fetchOrders = async () => {
     setLoading(true);
     try {
       const baseApiUrl = process.env.api_url;
-      // Pass page & limit for server-side pagination
-      const response = await axios.get(
-        `${baseApiUrl}/admin/orders?page=${page}&limit=${rowsPerPage}`
-      );
+      // Build query parameters based on filters
+      const params: any = {
+        page,
+        limit: rowsPerPage,
+      };
 
-      // The backend returns { orders, total_count }
+      if (filterStatus) params.status = filterStatus;
+      if (filterSalesPerson) params.sales_person = filterSalesPerson;
+      if (filterEstimatesCreated)
+        params.estimate_created = filterEstimatesCreated;
+
+      const response = await axios.get(`${baseApiUrl}/admin/orders`, {
+        params,
+      });
+
+      // The backend returns { orders, total_count, total_pages }
       const { orders, total_count, total_pages } = response.data;
 
       setOrders(orders);
@@ -127,20 +191,20 @@ const Orders = () => {
           backgroundColor: 'white',
         }}
       >
-        <Typography
-          variant='h4'
-          gutterBottom
-          sx={{
-            fontFamily: 'Roboto, sans-serif',
-            fontWeight: 'bold',
-          }}
+        <Box
+          display={'flex'}
+          flexDirection={'row'}
+          justifyContent={'space-between'}
+          alignItems={'center'}
         >
-          All Orders
-        </Typography>
+          <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
+            All Orders
+          </Typography>
+          <FilterAlt onClick={() => setOpenFilterModal(true)} />
+        </Box>
         <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
           View and manage all orders below.
         </Typography>
-
         {loading ? (
           <Box
             sx={{
@@ -297,13 +361,12 @@ const Orders = () => {
                 alignItems={'center'}
               >
                 <Typography variant='h5' fontWeight={'bold'}>
-                  No Orders Created
+                  No Orders
                 </Typography>
               </Box>
             )}
           </>
         )}
-
         {/* Drawer for Order Details */}
         <Drawer
           anchor='right'
@@ -525,6 +588,97 @@ const Orders = () => {
                 </TableContainer>
               </>
             )}
+          </Box>
+        </Drawer>
+        <Drawer
+          anchor='right'
+          open={openFilterModal}
+          onClose={() => setOpenFilterModal(false)}
+          sx={{
+            '& .MuiDrawer-paper': {
+              width: 300,
+              padding: 3,
+            },
+          }}
+        >
+          <Box>
+            <Typography variant='h6' gutterBottom>
+              Filter Orders
+            </Typography>
+
+            {/* Status Filter */}
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel id='status-filter-label'>Status</InputLabel>
+              <Select
+                labelId='status-filter-label'
+                id='status-filter'
+                value={filterStatus}
+                label='Status'
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <MenuItem value=''>All</MenuItem>
+                <MenuItem value='draft'>Draft</MenuItem>
+                <MenuItem value='sent'>Sent</MenuItem>
+                <MenuItem value='declined'>Declined</MenuItem>
+                <MenuItem value='accepted'>Accepted</MenuItem>
+                <MenuItem value='invoiced'>Invoiced</MenuItem>
+              </Select>
+            </FormControl>
+
+            {/* Sales Person Filter */}
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel id='sales-person-filter-label'>
+                Sales Person
+              </InputLabel>
+              <Select
+                labelId='sales-person-filter-label'
+                id='sales-person-filter'
+                value={filterSalesPerson}
+                label='Sales Person'
+                onChange={(e) => setFilterSalesPerson(e.target.value)}
+              >
+                <MenuItem value=''>All</MenuItem>
+                {salesPeople.map((person) => (
+                  <MenuItem key={person} value={person}>
+                    {person}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Estimates Created Filter */}
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={filterEstimatesCreated}
+                  onChange={(e) => setFilterEstimatesCreated(e.target.checked)}
+                />
+              }
+              label='Estimates Created'
+              sx={{ mt: 2 }}
+            />
+
+            {/* Apply Filters Button */}
+            <Box sx={{ mt: 3 }}>
+              <Button variant='contained' fullWidth onClick={applyFilters}>
+                Apply Filters
+              </Button>
+            </Box>
+
+            {/* Reset Filters Button */}
+            <Box sx={{ mt: 2 }}>
+              <Button
+                variant='outlined'
+                fullWidth
+                onClick={() => {
+                  setFilterStatus('');
+                  setFilterSalesPerson('');
+                  setFilterEstimatesCreated(false);
+                }}
+              >
+                Reset Filters
+              </Button>
+            </Box>
           </Box>
         </Drawer>
       </Paper>
