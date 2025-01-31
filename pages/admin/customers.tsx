@@ -69,7 +69,7 @@ const Customers = () => {
   const [dialogProducts, setDialogProducts] = useState<any[]>([]); // Current page products
   const [dialogTotalCount, setDialogTotalCount] = useState(0);
   const [dialogPage, setDialogPage] = useState(0);
-  const [dialogRowsPerPage, setDialogRowsPerPage] = useState(5);
+  const [dialogRowsPerPage, setDialogRowsPerPage] = useState(25);
   const [dialogSkipPage, setDialogSkipPage] = useState('');
   const [dialogSearchQuery, setDialogSearchQuery] = useState('');
   const [brands, setBrands] = useState<string[]>([]);
@@ -412,7 +412,7 @@ const Customers = () => {
   const handleOpenAddDialog = () => {
     setAddDialogOpen(true);
     setDialogPage(0);
-    setDialogRowsPerPage(5);
+    setDialogRowsPerPage(25);
     setDialogSkipPage('');
     setDialogSearchQuery('');
   };
@@ -1259,48 +1259,16 @@ const Customers = () => {
                     rowsPerPageOptions={[25, 50, 100, 200]}
                     component='div'
                     // totalCount from server
-                    count={totalCount}
-                    rowsPerPage={rowsPerPage}
-                    page={page}
-                    onPageChange={handleChangePage}
-                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    count={dialogTotalCount}
+                    rowsPerPage={dialogRowsPerPage}
+                    page={dialogPage}
+                    onPageChange={handleDialogChangePage}
+                    onRowsPerPageChange={handleDialogChangeRowsPerPage}
                   />
-
-                  {/* "Go to page" UI */}
-                  <Box
-                    sx={{
-                      ml: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <TextField
-                      label='Go to page'
-                      type='number'
-                      variant='outlined'
-                      size='small'
-                      sx={{ width: 100, mr: 1 }}
-                      // If user typed something, show that; otherwise, current page + 1
-                      value={skipPage !== '' ? skipPage : page + 1}
-                      onChange={(e) =>
-                        parseInt(e.target.value) <= totalPageCount
-                          ? setSkipPage(e.target.value)
-                          : toast.error('Invalid Page Number')
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleSkipPage();
-                        }
-                      }}
-                    />
-                    <Button variant='contained' onClick={handleSkipPage}>
-                      Go
-                    </Button>
-                  </Box>
                 </Box>
-                <Typography variant='subtitle1'>
+                {/* <Typography variant='subtitle1'>
                   Total Pages: {totalPageCount}
-                </Typography>
+                </Typography> */}
               </Box>
             </>
           )}
