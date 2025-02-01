@@ -1,13 +1,22 @@
 import * as React from 'react';
-import Box from '@mui/material/Box';
-import List from '@mui/material/List';
-import ListItemButton from '@mui/material/ListItemButton';
-import ListItemText from '@mui/material/ListItemText';
-import { Checkbox, ListItemIcon, TextField, Typography } from '@mui/material';
+import {
+  Box,
+  List,
+  ListItemButton,
+  ListItemText,
+  Checkbox,
+  ListItemIcon,
+  TextField,
+  Typography,
+  Card,
+  CardContent,
+  useTheme,
+  useMediaQuery,
+} from '@mui/material';
 
 interface CheckListProps {
   values: any[];
-  selectedValue: any; // To pre-select an item from state
+  selectedValue: any; // Preselected item from state
   setSelectedValue: (value: any) => void;
 }
 
@@ -20,12 +29,15 @@ export default function CheckList({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [filteredValues, setFilteredValues] = React.useState(values);
 
+  // Theme-based breakpoint for mobile detection
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   /**
    * Filter values based on search query
    */
   React.useEffect(() => {
     const lowerCaseQuery = searchQuery.toLowerCase();
-
     setFilteredValues(
       values.filter((value: any) =>
         ['address', 'state', 'zip', 'city', 'attention'].some((key) =>
@@ -36,7 +48,7 @@ export default function CheckList({
   }, [searchQuery, values]);
 
   /**
-   * Handle List Item Click
+   * Handle List Item/Card Click
    */
   const handleListItemClick = (
     event: React.MouseEvent<HTMLDivElement, MouseEvent>,
@@ -68,6 +80,7 @@ export default function CheckList({
       setSelectedIndex(null); // Reset selection if no values
       setSelectedValue(null);
     }
+    // Only run when filteredValues changes or the external selectedValue changes
   }, [filteredValues, selectedValue, setSelectedValue]);
 
   return (
@@ -84,67 +97,111 @@ export default function CheckList({
         sx={{ mb: 2 }}
       />
 
-      {/* Address List */}
-      <List component='nav' aria-label='address list'>
-        {filteredValues.length > 0 ? (
+      {/*
+        If you want a single scroll on mobile, remove or adjust 
+        any maxHeight/overflow from the parent container.
+      */}
+
+      {filteredValues.length > 0 ? (
+        // We conditionally render cards on mobile, list items on desktop
+        isMobile ? (
+          /* ----------- Mobile Card Layout ----------- */
           filteredValues.map((value: any, index: number) => (
-            <ListItemButton
+            <Card
               key={value.address}
+              variant='outlined'
               onClick={(event) => handleListItemClick(event, index)}
-              selected={selectedIndex === index}
               sx={{
-                '&.Mui-selected': {
-                  backgroundColor: 'grey.200',
-                },
-                '&.Mui-selected:hover': {
-                  backgroundColor: 'grey.300',
-                },
-                padding: '12px',
-                borderRadius: '8px',
-                mb: 1,
+                mb: 2,
+                cursor: 'pointer',
+                border:
+                  selectedIndex === index
+                    ? '2px solid #1976d2'
+                    : '1px solid #ddd',
               }}
             >
-              <ListItemIcon>
-                <Checkbox
-                  edge='start'
-                  checked={selectedIndex === index}
-                  disableRipple
-                  inputProps={{ 'aria-labelledby': value.zip }}
-                />
-              </ListItemIcon>
-              <ListItemText
-                primary={
-                  <>
-                    <Box component='span' sx={{ fontWeight: 'bold' }}>
-                      {value.attention}
-                    </Box>
-                    <Box>
-                      {value.address} {value.street2}
-                    </Box>
-                    <Box>{value.state}</Box>
-                    <Box>{value.city}</Box>
-                    <Box>{value.zip}</Box>
-                  </>
-                }
-                primaryTypographyProps={{
-                  component: 'div',
-                  fontSize: '0.875rem',
-                  noWrap: false, // This allows text to wrap
-                  sx: {
-                    whiteSpace: 'normal',
-                    overflow: 'visible',
-                    textOverflow: 'inherit',
-                  },
-                }}
-              />
-            </ListItemButton>
+              <CardContent>
+                {/* Checkbox + Title */}
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Checkbox
+                    edge='start'
+                    checked={selectedIndex === index}
+                    disableRipple
+                  />
+                  <Typography variant='subtitle1' fontWeight='bold'>
+                    {value.attention}
+                  </Typography>
+                </Box>
+                <Typography variant='body2'>
+                  {value.address} {value.street2}
+                </Typography>
+                <Typography variant='body2'>{value.city}</Typography>
+                <Typography variant='body2'>{value.state}</Typography>
+                <Typography variant='body2'>{value.zip}</Typography>
+              </CardContent>
+            </Card>
           ))
         ) : (
-          <Typography fontWeight='bold'>
-            Could not find any match for {searchQuery} in Addresses
-          </Typography>
-        )}
-      </List>
+          /* ----------- Desktop List Layout ----------- */
+          <List component='nav' aria-label='address list'>
+            {filteredValues.map((value: any, index: number) => (
+              <ListItemButton
+                key={value.address}
+                onClick={(event) => handleListItemClick(event, index)}
+                selected={selectedIndex === index}
+                sx={{
+                  '&.Mui-selected': {
+                    backgroundColor: 'grey.200',
+                  },
+                  '&.Mui-selected:hover': {
+                    backgroundColor: 'grey.300',
+                  },
+                  padding: '12px',
+                  borderRadius: '8px',
+                  mb: 1,
+                }}
+              >
+                <ListItemIcon>
+                  <Checkbox
+                    edge='start'
+                    checked={selectedIndex === index}
+                    disableRipple
+                  />
+                </ListItemIcon>
+                <ListItemText
+                  primary={
+                    <>
+                      <Box component='span' sx={{ fontWeight: 'bold' }}>
+                        {value.attention}
+                      </Box>
+                      <Box>
+                        {value.address} {value.street2}
+                      </Box>
+                      <Box>{value.city}</Box>
+                      <Box>{value.state}</Box>
+                      <Box>{value.zip}</Box>
+                    </>
+                  }
+                  primaryTypographyProps={{
+                    component: 'div',
+                    fontSize: '0.875rem',
+                    noWrap: false,
+                    sx: {
+                      whiteSpace: 'normal',
+                      overflow: 'visible',
+                      textOverflow: 'inherit',
+                    },
+                  }}
+                />
+              </ListItemButton>
+            ))}
+          </List>
+        )
+      ) : (
+        <Typography fontWeight='bold'>
+          Could not find any match for {searchQuery} in Addresses
+        </Typography>
+      )}
     </Box>
   );
 }

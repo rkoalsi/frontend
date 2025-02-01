@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Button, TextField, Grid, Paper } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Button,
+  TextField,
+  Grid,
+  Paper,
+  useTheme,
+  useMediaQuery,
+} from '@mui/material';
 import CheckList from '../CheckList';
 import axios from 'axios';
 
@@ -37,7 +46,8 @@ function Address(props: Props) {
     country_code: '',
     phone: '',
   });
-
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   useEffect(() => {
     if (customer && customer.addresses.length > 0 && !address) {
       setAddress(customer.addresses[0]); // Auto-select the first address if none selected
@@ -223,7 +233,7 @@ function Address(props: Props) {
           </Box>
           <Box
             sx={{
-              maxHeight: '380px',
+              maxHeight: isMobile ? null : '380px',
               overflowY: 'auto',
               padding: '8px',
               borderRadius: '8px',

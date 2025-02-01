@@ -245,7 +245,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                 </Typography>
                 {!isShared && (
                   <Edit
-                    onClick={() => setActiveStep(2)}
+                    onClick={() => setActiveStep(1)}
                     className='no-pdf'
                     sx={{ cursor: 'pointer' }}
                   />
@@ -271,7 +271,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                 </Typography>
                 {!isShared && (
                   <Edit
-                    onClick={() => setActiveStep(1)}
+                    onClick={() => setActiveStep(2)}
                     className='no-pdf'
                     sx={{ cursor: 'pointer' }}
                   />
