@@ -10,6 +10,8 @@ import {
   ListItem,
   ListItemText,
   IconButton,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { useRouter } from 'next/router';
 import axios from 'axios';
@@ -22,7 +24,8 @@ const OrderDetails = () => {
   const [error, setError] = useState('');
   const router = useRouter();
   const { id } = router.query;
-
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   /**
    * Fetch order details from the API
    */
@@ -51,7 +54,13 @@ const OrderDetails = () => {
    */
   if (loading) {
     return (
-      <Box sx={{ padding: 3, maxWidth: '600px', margin: '0 auto' }}>
+      <Box
+        sx={{
+          padding: isMobile ? 0 : 3,
+          maxWidth: isMobile ? '100%' : '600px',
+          margin: '0 auto',
+        }}
+      >
         <Skeleton variant='rectangular' height={40} sx={{ mb: 2 }} />
         <Skeleton variant='rectangular' height={200} sx={{ mb: 2 }} />
         <Skeleton variant='rectangular' height={40} />
@@ -94,7 +103,13 @@ const OrderDetails = () => {
   }
 
   return (
-    <Box sx={{ padding: 3, maxWidth: '600px', margin: '0 auto' }}>
+    <Box
+      sx={{
+        padding: isMobile ? 0 : 3,
+        maxWidth: isMobile ? '100%' : '600px',
+        margin: isMobile ? '16px 0 0 0' : '0 auto',
+      }}
+    >
       <Paper
         elevation={3}
         sx={{
@@ -151,7 +166,12 @@ const OrderDetails = () => {
         <Typography variant='h6' fontWeight='bold' gutterBottom>
           Ordered Items
         </Typography>
-        <List sx={{ maxHeight: '300px', overflowY: 'auto' }}>
+        <List
+          sx={{
+            maxHeight: isMobile ? 'none' : '300px',
+            overflowY: isMobile ? 'visible' : 'auto',
+          }}
+        >
           {orderData.products?.map((item: any, index: number) => (
             <ListItem key={index} sx={{ padding: '8px 0' }}>
               <ListItemText
@@ -169,6 +189,7 @@ const OrderDetails = () => {
             </ListItem>
           ))}
         </List>
+
         {orderData.products?.length === 0 && (
           <Typography variant='body2' color='textSecondary'>
             No products found in this order.

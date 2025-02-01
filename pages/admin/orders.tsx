@@ -175,6 +175,8 @@ const Orders = () => {
         return 'green';
       case 'declined':
         return 'red';
+      case 'deleted':
+        return 'red';
       case 'accepted':
         return 'green';
       default:
