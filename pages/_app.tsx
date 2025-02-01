@@ -24,7 +24,7 @@ export default function MyApp(props: AppProps) {
         </Head>
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          <ToastContainer position='top-right' autoClose={3000} />
+          <ToastContainer position='top-left' autoClose={1000} />
           {isAdminRoute ? (
             <AdminLayout>
               <Component {...pageProps} />

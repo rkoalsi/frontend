@@ -274,7 +274,7 @@ const Customers = () => {
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
-    setPage(1);
+    setPage(0);
   };
 
   // Handle page change for main table
@@ -826,7 +826,7 @@ const Customers = () => {
           alignItems={'center'}
         >
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
-            All Orders
+            All Customers
           </Typography>
           <FilterAlt onClick={() => setOpenFilterDrawer(true)} />
         </Box>
