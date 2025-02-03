@@ -216,7 +216,7 @@ const PastOrders = () => {
                         Order #
                         {order.estimate_created
                           ? order.estimate_number
-                          : order._id.slice(0, 6)}
+                          : order._id.slice(-6)}
                       </Typography>
                       <Typography variant='body2' color='black'>
                         Customer: {order.customer_name}

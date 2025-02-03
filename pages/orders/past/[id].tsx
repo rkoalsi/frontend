@@ -125,7 +125,7 @@ const OrderDetails = () => {
             Order
             {orderData?.estimate_created
               ? ` ${orderData?.estimate_number}`
-              : ` ${orderData._id.slice(0, 6)}`}
+              : ` ${orderData._id.slice(-6)}`}
           </Typography>
           <IconButton
             onClick={() => router.push(`/orders/new/${orderData._id || id}`)}

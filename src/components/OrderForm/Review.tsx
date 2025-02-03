@@ -22,11 +22,11 @@ import {
   AccordionDetails,
 } from '@mui/material';
 import { Close, Edit, ExpandMore } from '@mui/icons-material';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import QuantitySelector from './QuantitySelector'; // Adjust the path as necessary
+import { toast } from 'react-toastify';
+import axios from 'axios';
 
 interface Props {
   customer: any;
@@ -66,42 +66,48 @@ const Review: React.FC<Props> = React.memo((props) => {
 
   // PDF Download Ref & Logic
   const componentRef = useRef<HTMLDivElement>(null);
+  const downloadAsPDF = async () => {
+    try {
+      const resp = await axios.get(
+        `${process.env.api_url}/orders/download_pdf/${order._id}`,
+        {
+          responseType: 'blob', // Receive the response as binary data
+        }
+      );
 
-  const downloadAsPDF = useCallback(async () => {
-    if (componentRef.current) {
-      // Temporarily hide edit icons
-      const editIcons = componentRef.current.querySelectorAll('.no-pdf');
-      editIcons.forEach((icon) => {
-        (icon as HTMLElement).style.display = 'none';
-      });
+      // Check if the blob is an actual PDF or an error message
+      if (resp.data.type !== 'application/pdf') {
+        // Convert to text to read the error response
+        toast.error('Draft Estimate Not Created');
+        return;
+      }
 
-      const canvas = await html2canvas(componentRef.current, {
-        scale: 2, // Higher scale for better quality
-        useCORS: true, // Ensures cross-origin images are included
-      });
+      // Extract filename from headers or set default
+      const contentDisposition = resp.headers['content-disposition'];
+      let fileName = `${order.estimate_number}.pdf`;
 
-      // Restore edit icons visibility
-      editIcons.forEach((icon) => {
-        (icon as HTMLElement).style.display = '';
-      });
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match && match[1]) {
+          fileName = match[1];
+        }
+      }
 
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'px',
-        format: 'a4', // Use standard A4 size
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      const imgWidth = pdfWidth - 40; // Add 20px margin on each side
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      pdf.addImage(imgData, 'PNG', 20, 20, imgWidth, imgHeight);
-      pdf.save('Order_Review.pdf');
+      // Create and trigger download
+      const blob = new Blob([resp.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error downloading PDF:', error);
+      toast.error(error.message || 'Failed to download PDF');
     }
-  }, []);
+  };
 
   // Quantity Change Handler
   const handleQuantityChange = useCallback(
@@ -186,9 +192,18 @@ const Review: React.FC<Props> = React.memo((props) => {
         <Typography variant='h6' sx={{ mb: 1 }}>
           Review
         </Typography>
-        <Button variant='contained' color='primary' onClick={downloadAsPDF}>
-          Download as PDF
-        </Button>
+        {!isShared && (
+          <Button
+            variant='contained'
+            color='primary'
+            onClick={downloadAsPDF}
+            disabled={!order?.estimate_created}
+          >
+            {!order?.estimate_created
+              ? 'Save Estimate As Draft Before Downloading'
+              : 'Download as PDF'}
+          </Button>
+        )}
       </Box>
 
       {/* PDF Content */}
@@ -346,6 +361,10 @@ const Review: React.FC<Props> = React.memo((props) => {
                                 component='img'
                                 image={product.image_url || '/placeholder.png'}
                                 alt={product.name}
+                                onError={(e) =>
+                                  (e.currentTarget.src = '/placeholder.png')
+                                }
+                                // crossOrigin='anonymous'
                                 sx={{
                                   width: 100,
                                   height: 100,

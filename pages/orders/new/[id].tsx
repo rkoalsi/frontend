@@ -157,52 +157,67 @@ const NewOrder: React.FC = () => {
     }
   }, [selectedProducts, totals, id]);
 
+  // Helper function that validates and collects data based on the active step
+  const validateAndCollectData = (step: number) => {
+    let message = '';
+    let body: any = {};
+
+    switch (step) {
+      case 0:
+        if (!customer) {
+          message = 'Customer is missing.\nPlease select a customer.';
+        } else {
+          body = { customer_id: customer?._id };
+        }
+        break;
+      case 1:
+        if (!billingAddress) {
+          message =
+            'Billing address is missing.\nPlease select or add a billing address.';
+        } else {
+          body = { billing_address: billingAddress };
+        }
+        break;
+      case 2:
+        if (!shippingAddress) {
+          message =
+            'Shipping address is missing.\nPlease select or add a shipping address.';
+        } else {
+          body = { shipping_address: shippingAddress };
+        }
+        break;
+      case 3:
+        if (selectedProducts.length === 0) {
+          message = 'Cannot proceed as no products are selected.';
+        }
+        // For step 3 (Products), you might not need additional data collection
+        break;
+      default:
+        break;
+    }
+
+    return { message, body };
+  };
+
   const handleNext = async () => {
     try {
-      let body = {};
-      let message = '';
-
-      const validateStepData = () => {
-        switch (activeStep) {
-          case 0:
-            if (!customer)
-              message = 'Customer is missing.\nPlease Select Customer';
-            body = { customer_id: customer?._id };
-            break;
-          case 1:
-            if (!billingAddress)
-              message =
-                'Billing address is missing.\nPlease Select Billing address or Add if it does not exist';
-            body = { billing_address: billingAddress };
-            break;
-          case 2:
-            if (!shippingAddress)
-              message =
-                'Shipping address is missing.\nPlease Select Shipping address or Add if it does not exist';
-            body = { shipping_address: shippingAddress };
-            break;
-          default:
-            break;
-        }
-      };
-
-      validateStepData();
-
+      const { message, body } = validateAndCollectData(activeStep);
       if (message) {
         setError({ message, status: 'error' });
         handleClick();
         return;
       }
 
-      // Move to the next step after API call
+      // If validation passes, update the order with the collected data
       await axios.put(`${process.env.api_url}/orders/${id}`, body);
+
+      // Move to the next step (ensuring you don't exceed available steps)
       setActiveStep((prev) => Math.min(prev + 1, steps.length - 1));
     } catch (error) {
       console.error('Error updating order:', error);
     }
   };
-
-  const handleEnd = async (status = 'draft') => {
+  const handleEnd = async (status = 'draft', notify_sp = false) => {
     setLoading(true);
     const base = `${process.env.api_url}`;
     try {
@@ -212,20 +227,14 @@ const NewOrder: React.FC = () => {
       });
       if (resp.status === 200) {
         await getOrder();
-        if (resp.data.message.toLowerCase().includes('created')) {
-          setError({
-            message: isShared ? 'Thank you for your Order' : resp.data.message,
-            status: resp.data.status,
-          });
-          handleClick(); // Trigger the toast before navigation
-
-          if (!isShared) {
-            await router.push(`/orders/past/${id}`); // Navigate to the orders page
-          }
+        if (resp.data.status == 'success') {
+          toast.success(resp.data.message);
         } else {
-          setError({ message: resp.data.message, status: resp.data.status });
-          handleClick(); // Show toast for other statuses
+          toast.error(resp.data.message);
         }
+      }
+      if (notify_sp) {
+        await axios.post(`${base}/orders/notify`, { order_id: id });
       }
     } catch (error) {
       console.log(error);
@@ -314,11 +323,22 @@ const NewOrder: React.FC = () => {
           label={'Select Customer'}
           onChange={async (value: any) => {
             setCustomer(value);
-            setBillingAddress(null);
-            setShippingAddress(null);
-            if (value?._id) {
+            if (value?.addresses && value.addresses.length > 0) {
+              const defaultAddress = value.addresses[0];
+              setBillingAddress(defaultAddress);
+              setShippingAddress(defaultAddress);
+              // Update the order in the database with customer and default addresses
               await axios.put(`${process.env.api_url}/orders/${id}`, {
                 customer_id: value._id,
+                billing_address: defaultAddress,
+                shipping_address: defaultAddress,
+              });
+            } else {
+              // No addresses available, clear the states and update only the customer
+              setBillingAddress(null);
+              setShippingAddress(null);
+              await axios.put(`${process.env.api_url}/orders/${id}`, {
+                customer_id: value?._id,
               });
             }
           }}
@@ -409,52 +429,24 @@ const NewOrder: React.FC = () => {
         handleClick();
         return;
       }
-      // Allow navigation between steps 3 and 4
       setActiveStep(index);
       return;
     }
 
-    // For authenticated users, handle navigation normally
     if (index < activeStep) {
       setActiveStep(index);
       return;
     }
 
-    // Check if the current step is completed before moving to the next one
-    const validateStepData = () => {
-      switch (activeStep) {
-        case 0:
-          if (!customer) return 'Cannot proceed as Customer is missing.';
-          break;
-        case 1:
-          if (!billingAddress)
-            return 'Cannot proceed as Billing address is missing.';
-          break;
-        case 2:
-          if (!shippingAddress)
-            return 'Cannot proceed as Shipping address is missing.';
-          break;
-        case 3:
-          if (selectedProducts.length === 0)
-            return 'Cannot proceed as no products are selected.';
-          break;
-        default:
-          break;
-      }
-      return '';
-    };
-
-    const message = validateStepData();
+    // Validate current step before allowing navigation
+    const { message } = validateAndCollectData(activeStep);
     if (message) {
-      setError({ message, status: 'error' });
-      handleClick();
-      return; // Prevent switching to the next step if validation fails
+      toast.error(message);
+      return; // Prevent switching steps if validation fails
     }
 
-    // If validation passes, allow the step to change
     setActiveStep(index);
   };
-
   const handleClick = () => {
     setOpen(true);
   };
@@ -475,7 +467,9 @@ const NewOrder: React.FC = () => {
           : '';
 
       if (status !== 'draft') {
-        toast.success('Thank you for your order');
+        toast.error(`You can not view this order as it's status is not draft`, {
+          autoClose: 5000,
+        });
         router.push('/login');
       }
     }
@@ -517,6 +511,11 @@ const NewOrder: React.FC = () => {
           <Typography variant='h5' fontWeight='bold' color='black'>
             Order Status: ({order?.status})
           </Typography>
+          {order?.estimate_created && (
+            <Typography variant='h5' fontWeight='bold' color='black'>
+              Estimate Number: ({order?.estimate_number})
+            </Typography>
+          )}
           {!order?.estimate_created && (
             <Typography variant='body1' fontWeight={'bold'} color='black'>
               Complete each step to finalize your order.
@@ -627,11 +626,13 @@ const NewOrder: React.FC = () => {
                   width: isMobile ? '100%' : 'auto',
                 }}
               >
-                {activeStep === steps.length - 1 && !isShared && (
+                {activeStep === steps.length - 1 && (
                   <Button
                     variant='contained'
                     color={'secondary'}
-                    onClick={() => handleEnd()}
+                    onClick={() =>
+                      isShared ? handleEnd('draft', true) : handleEnd()
+                    }
                     disabled={
                       !customer ||
                       !billingAddress ||
@@ -639,7 +640,10 @@ const NewOrder: React.FC = () => {
                       selectedProducts.length === 0 ||
                       !totals.totalAmount ||
                       loading ||
-                      !order?.status?.toLowerCase()?.includes('draft')
+                      (!isShared &&
+                        !['deleted', 'draft'].includes(
+                          order?.status?.toLowerCase()
+                        ))
                     }
                     sx={{
                       textTransform: 'none',
@@ -651,7 +655,7 @@ const NewOrder: React.FC = () => {
                     {'Save As Draft'}
                   </Button>
                 )}
-                {activeStep === steps.length - 1 && (
+                {activeStep === steps.length - 1 && !isShared && (
                   <Button
                     variant='contained'
                     color={'error'}
@@ -675,34 +679,44 @@ const NewOrder: React.FC = () => {
                     {'Decline'}
                   </Button>
                 )}
-                <Button
-                  variant='contained'
-                  color='primary'
-                  onClick={() =>
-                    activeStep === steps.length - 1
-                      ? handleEnd('accepted')
-                      : handleNext()
-                  }
-                  disabled={
-                    activeStep === steps.length - 1
-                      ? !customer ||
-                        !billingAddress ||
-                        !shippingAddress ||
-                        selectedProducts.length === 0 ||
-                        !totals.totalAmount ||
-                        loading ||
-                        !order?.status?.toLowerCase()?.includes('draft')
-                      : false
-                  }
-                  sx={{
-                    textTransform: 'none',
-                    fontWeight: 'bold',
-                    borderRadius: '24px',
-                    width: isMobile ? '100%' : 'auto',
-                  }}
-                >
-                  {activeStep === steps.length - 1 ? 'Accept' : 'Next'}
-                </Button>
+                {!isShared && activeStep === steps.length - 1 ? (
+                  <Button
+                    variant='contained'
+                    color='primary'
+                    onClick={() => handleEnd('accepted')}
+                    disabled={
+                      !customer ||
+                      !billingAddress ||
+                      !shippingAddress ||
+                      selectedProducts.length === 0 ||
+                      !totals.totalAmount ||
+                      loading ||
+                      !order?.status?.toLowerCase()?.includes('draft')
+                    }
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 'bold',
+                      borderRadius: '24px',
+                      width: isMobile ? '100%' : 'auto',
+                    }}
+                  >
+                    Accept
+                  </Button>
+                ) : activeStep < steps.length - 1 ? (
+                  <Button
+                    variant='contained'
+                    color='primary'
+                    onClick={handleNext}
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 'bold',
+                      borderRadius: '24px',
+                      width: isMobile ? '100%' : 'auto',
+                    }}
+                  >
+                    Next
+                  </Button>
+                ) : null}
               </Box>
             </Box>
           </CardContent>
