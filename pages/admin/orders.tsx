@@ -23,11 +23,12 @@ import {
   FormControl,
   InputLabel,
   Select,
+  IconButton,
 } from '@mui/material';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
-import { FilterAlt } from '@mui/icons-material';
+import { Delete, Edit, FilterAlt, Visibility } from '@mui/icons-material';
 
 const Orders = () => {
   const router = useRouter();
@@ -45,6 +46,7 @@ const Orders = () => {
 
   // Loading and selected order
   const [loading, setLoading] = useState(true);
+  const [orderLoading, setOrderLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [openFilterModal, setOpenFilterModal] = useState(false);
@@ -131,7 +133,7 @@ const Orders = () => {
   // Re-fetch orders whenever page or rowsPerPage changes
   useEffect(() => {
     fetchOrders();
-  }, [page, rowsPerPage]);
+  }, [page, rowsPerPage, !orderLoading]);
 
   // MUI Pagination: next/previous
   const handleChangePage = (event: any, newPage: number) => {
@@ -181,6 +183,43 @@ const Orders = () => {
         return 'green';
       default:
         return 'black';
+    }
+  };
+  const handleDelete = async (order: any) => {
+    const base = `${process.env.api_url}`;
+    setOrderLoading(true);
+    try {
+      const resp = await axios.delete(`${base}/orders/${order._id}`);
+      console.log(resp.data);
+      if (resp.status === 200) {
+        toast.success('Order Deleted Successfully');
+      }
+    } catch (error: any) {
+      toast.error(error.response.data.detail || 'Error Deleting Order');
+    } finally {
+      setOrderLoading(false);
+    }
+  };
+  const handleEnd = async (order: any, status = 'draft') => {
+    const base = `${process.env.api_url}`;
+    setOrderLoading(true);
+    try {
+      const resp = await axios.post(`${base}/orders/finalise`, {
+        order_id: order._id,
+        status,
+      });
+      console.log(resp.data);
+      if (resp.status === 200) {
+        if (resp.data.status == 'success') {
+          toast.success(resp.data.message);
+        } else {
+          toast.error(resp.data.message);
+        }
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setOrderLoading(false);
     }
   };
   return (
@@ -252,7 +291,7 @@ const Orders = () => {
                           <TableCell>
                             {order?.estimate_created
                               ? order?.estimate_number
-                              : order._id.slice(0, 6)}
+                              : order._id.slice(-6)}
                           </TableCell>
                           <TableCell>{order.customer_name}</TableCell>
                           <TableCell style={{ color: getColor(order.status) }}>
@@ -270,21 +309,76 @@ const Orders = () => {
                             >
                               <Button
                                 variant='outlined'
-                                onClick={() => handleViewDetails(order)}
+                                color={'warning'}
+                                disabled={
+                                  (order?.status?.toLowerCase() === 'draft'
+                                    ? !!order?.estimate_created
+                                    : !['deleted', 'sent'].includes(
+                                        order?.status?.toLowerCase()
+                                      )) || !order?.total_amount
+                                }
+                                onClick={() => handleEnd(order)}
                               >
-                                View Details
+                                Save As Draft
                               </Button>
                               <Button
-                                variant='contained'
+                                variant='outlined'
+                                color={'success'}
                                 disabled={
-                                  !order.status.toLowerCase().includes('draft')
+                                  !order?.estimate_created ||
+                                  ['deleted'].includes(
+                                    order?.status?.toLowerCase()
+                                  ) ||
+                                  !['draft', 'sent', 'declined'].includes(
+                                    order?.status?.toLowerCase()
+                                  )
                                 }
+                                onClick={() => handleEnd(order, 'accepted')}
+                              >
+                                Accept
+                              </Button>
+                              <Button
+                                variant='outlined'
+                                color={'error'}
+                                onClick={() => handleEnd(order, 'declined')}
+                                disabled={
+                                  !order?.estimate_created ||
+                                  ['deleted'].includes(
+                                    order?.status?.toLowerCase()
+                                  ) ||
+                                  !['draft', 'sent', 'accepted'].includes(
+                                    order?.status?.toLowerCase()
+                                  )
+                                }
+                              >
+                                Decline
+                              </Button>
+                              <IconButton
+                                color={'error'}
+                                disabled={
+                                  ['deleted'].includes(
+                                    order?.status?.toLowerCase()
+                                  ) || order?.estimate_created
+                                }
+                                onClick={() => handleDelete(order)}
+                              >
+                                <Delete />
+                              </IconButton>
+                              <IconButton
                                 onClick={() =>
                                   router.push(`/orders/new/${order._id}`)
                                 }
+                                disabled={['invoiced'].includes(
+                                  order?.status?.toLowerCase()
+                                )}
                               >
-                                Edit Order
-                              </Button>
+                                <Edit />
+                              </IconButton>
+                              <IconButton
+                                onClick={() => handleViewDetails(order)}
+                              >
+                                <Visibility />
+                              </IconButton>
                             </Box>
                           </TableCell>
                         </TableRow>
