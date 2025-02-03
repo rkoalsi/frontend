@@ -64,7 +64,7 @@ export default function CheckList({
   React.useEffect(() => {
     if (filteredValues.length > 0) {
       const preselectedIndex = filteredValues.findIndex(
-        (item: any) => item.address === selectedValue?.address
+        (item: any) => item.address_id === selectedValue?.address_id
       );
 
       if (preselectedIndex !== -1) {

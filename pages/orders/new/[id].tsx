@@ -198,6 +198,25 @@ const NewOrder: React.FC = () => {
 
     return { message, body };
   };
+  useEffect(() => {
+    const updateAddress = async () => {
+      try {
+        // Depending on the step, update the correct address field
+        const body = {
+          billing_address: billingAddress,
+          shipping_address: shippingAddress,
+        };
+        await axios.put(`${process.env.api_url}/orders/${id}`, body);
+      } catch (error) {
+        console.error('Error updating address:', error);
+      }
+    };
+
+    // Only update if either address is set (you might add more conditions as needed)
+    if (billingAddress || shippingAddress) {
+      updateAddress();
+    }
+  }, [billingAddress, shippingAddress, id]);
 
   const handleNext = async () => {
     try {
@@ -312,9 +331,11 @@ const NewOrder: React.FC = () => {
   useEffect(() => {
     if (id) getOrder();
   }, [id, getOrder]);
+
   const handleCheckout = () => {
     setActiveStep(activeStep + 1);
   };
+
   const steps: StepContent[] = [
     {
       name: 'Select Customer',
