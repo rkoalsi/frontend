@@ -162,9 +162,9 @@ const PastOrders = () => {
         </Select>
       </FormControl>
 
-      <Button variant='contained' color='error' onClick={clearEmptyOrders}>
+      {/* <Button variant='contained' color='error' onClick={clearEmptyOrders}>
         Clear Empty Orders
-      </Button>
+      </Button> */}
 
       {/* Loading State */}
       {loading ? (
