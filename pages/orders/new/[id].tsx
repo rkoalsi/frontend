@@ -20,9 +20,8 @@ import {
   Alert,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import CustomerSearchBar from '../../../src/components/CustomerSearchBar';
+import CustomerSearchBar from '../../../src/components/OrderForm/CustomerSearchBar';
 import Address from '../../../src/components/OrderForm/SelectAddress';
-import CompanyForm from '../../../src/components/OrderForm/CustomerForm';
 import Products from '../../../src/components/OrderForm/Products';
 import Review from '../../../src/components/OrderForm/Review';
 import { useRouter } from 'next/router';
