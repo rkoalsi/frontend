@@ -242,7 +242,14 @@ function Address(props: Props) {
           >
             {customer && customer.addresses && customer.addresses.length > 0 ? (
               <CheckList
-                values={customer.addresses}
+                values={Array.from(
+                  new Map(
+                    customer.addresses.map((addr: any) => [
+                      addr.address_id,
+                      addr,
+                    ])
+                  ).values()
+                )}
                 selectedValue={selectedAddress}
                 setSelectedValue={setAddress}
               />
