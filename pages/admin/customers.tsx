@@ -27,9 +27,9 @@ import {
   InputAdornment,
   FormControlLabel,
 } from '@mui/material';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 import { FilterAlt } from '@mui/icons-material';
+import axiosInstance from '../../src/util/axios';
 
 // Utility function to capitalize strings
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -91,8 +91,7 @@ const Customers = () => {
   useEffect(() => {
     const fetchSalesPeople = async () => {
       try {
-        const baseApiUrl = process.env.api_url;
-        const response = await axios.get(`${baseApiUrl}/admin/sales-people`);
+        const response = await axiosInstance.get(`/admin/sales-people`);
         setSalesPeople(response.data.sales_people);
       } catch (error) {
         console.error(error);
@@ -109,8 +108,8 @@ const Customers = () => {
     if (isChecked) {
       try {
         // Fetch all products for the selected brand
-        const response = await axios.get(
-          `${baseApiUrl}/admin/products?brand=${
+        const response = await axiosInstance.get(
+          `/admin/products?brand=${
             selectedBrand || ''
           }&limit=10000&status=active` // Use a large limit to fetch all products
         );
@@ -196,7 +195,7 @@ const Customers = () => {
     if (addDialogOpen) {
       (async () => {
         try {
-          const response = await axios.get(`${baseApiUrl}/admin/brands`);
+          const response = await axiosInstance.get(`/admin/brands`);
           setBrands(response.data.brands || []);
         } catch (error) {
           console.error(error);
@@ -213,14 +212,10 @@ const Customers = () => {
     {}
   );
 
-  const baseApiUrl = process.env.api_url;
-
   // --------------------- Fetch All Customers (Main Table) ---------------------
   const getData = async () => {
     setLoading(true);
     try {
-      const baseApiUrl = process.env.api_url;
-
       // Build query parameters based on filters
       const params: any = {
         page: page + 1, // API is 1-based
@@ -234,7 +229,7 @@ const Customers = () => {
 
       if (searchQuery) params.name = searchQuery;
 
-      const response = await axios.get(`${baseApiUrl}/admin/customers`, {
+      const response = await axiosInstance.get(`/admin/customers`, {
         params,
       });
       const { customers, total_count, total_pages } = response.data;
@@ -327,7 +322,7 @@ const Customers = () => {
         status: cust.status === 'active' ? 'inactive' : 'active',
       };
 
-      await axios.put(`${baseApiUrl}/customers/${cust._id}`, updatedFields);
+      await axiosInstance.put(`/customers/${cust._id}`, updatedFields);
 
       // Update local customer list
       setCustomers((prev: any[]) =>
@@ -362,8 +357,8 @@ const Customers = () => {
         cf_in_ex: editInEx,
       };
 
-      await axios.put(
-        `${baseApiUrl}/customers/${selectedCustomer._id}`,
+      await axiosInstance.put(
+        `/customers/${selectedCustomer._id}`,
         updatedFields
       );
 
@@ -389,8 +384,8 @@ const Customers = () => {
   const getSpecialMargins = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(
-        `${baseApiUrl}/admin/customer/special_margins/${selectedCustomer._id}`
+      const response = await axiosInstance.get(
+        `/admin/customer/special_margins/${selectedCustomer._id}`
       );
       const { products = [] } = response.data;
       setSpecialMarginProducts(products);
@@ -424,8 +419,8 @@ const Customers = () => {
   const handleDeleteSpecialMargin = async (prod: any) => {
     if (!selectedCustomer?._id) return;
     try {
-      await axios.delete(
-        `${baseApiUrl}/admin/customer/special_margins/${selectedCustomer._id}/${prod._id}`
+      await axiosInstance.delete(
+        `/admin/customer/special_margins/${selectedCustomer._id}/${prod._id}`
       );
       setSpecialMarginProducts((prev) =>
         prev.filter((p) => p._id !== prod._id)
@@ -475,8 +470,8 @@ const Customers = () => {
     setDialogLoading(true);
     try {
       // Fetch paginated products based on search and pagination
-      const response = await axios.get(
-        `${baseApiUrl}/admin/products?search=${dialogSearchQuery}&page=${dialogPage}&limit=${dialogRowsPerPage}&brand=${
+      const response = await axiosInstance.get(
+        `/admin/products?search=${dialogSearchQuery}&page=${dialogPage}&limit=${dialogRowsPerPage}&brand=${
           selectedBrand || ''
         }&status=active`
       );
@@ -575,8 +570,8 @@ const Customers = () => {
 
       if (specialMarginEntry) {
         // Delete the special margin entry
-        await axios.delete(
-          `${baseApiUrl}/admin/customer/special_margins/${selectedCustomer._id}/${specialMarginEntry._id}`
+        await axiosInstance.delete(
+          `/admin/customer/special_margins/${selectedCustomer._id}/${specialMarginEntry._id}`
         );
 
         // Remove from specialMarginProducts
@@ -766,8 +761,8 @@ const Customers = () => {
     // Send each chunk to the backend
     try {
       for (const chunk of chunks) {
-        await axios.post(
-          `${baseApiUrl}/admin/customer/special_margins/bulk/${selectedCustomer._id}`,
+        await axiosInstance.post(
+          `/admin/customer/special_margins/bulk/${selectedCustomer._id}`,
           chunk
         );
       }
@@ -789,8 +784,8 @@ const Customers = () => {
     if (!selectedCustomer?._id) return;
 
     try {
-      await axios.delete(
-        `${baseApiUrl}/admin/customer/special_margins/${selectedCustomer._id}/bulk`
+      await axiosInstance.delete(
+        `/admin/customer/special_margins/${selectedCustomer._id}/bulk`
       ); // Assuming you have a bulk delete API
       setSpecialMarginProducts([]);
       toast.success('All special margins deleted successfully.');

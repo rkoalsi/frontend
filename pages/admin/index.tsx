@@ -9,7 +9,6 @@ import {
   Alert,
 } from '@mui/material';
 import AuthContext from '../../src/components/Auth';
-import axios from 'axios';
 import {
   ShoppingCartOutlined,
   StorefrontOutlined,
@@ -17,6 +16,7 @@ import {
   PersonOutlineOutlined,
 } from '@mui/icons-material';
 import StatCard from '../../src/components/admin/StatCard';
+import axiosInstance from '../../src/util/axios';
 
 // Define TypeScript interfaces for better type safety
 interface Stats {
@@ -64,10 +64,9 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchStats();
   }, []);
-
   const fetchStats = async () => {
     try {
-      const { data } = await axios.get(`${process.env.api_url}/admin/stats`);
+      const { data } = await axiosInstance.get(`/admin/stats`);
       setStats(data);
     } catch (err: any) {
       console.error('Error fetching stats:', err);

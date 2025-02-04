@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -14,7 +14,7 @@ import { useTheme } from '@mui/material/styles';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import AuthContext from '../../../../src/components/Auth';
-import { toast } from 'react-toastify';
+import axiosInstance from '../../../../src/util/axios';
 
 const PaymentDue = () => {
   const [loading, setLoading] = useState(false);
@@ -32,7 +32,7 @@ const PaymentDue = () => {
       setLoading(true);
       let resp;
       if (user.data.role.includes('admin')) {
-        resp = await axios.get(`${process.env.api_url}/admin/payments_due`);
+        resp = await axiosInstance.get(`/admin/payments_due`);
       } else {
         resp = await axios.get(
           `${process.env.api_url}/invoices?created_by=${user?.data?._id}`
