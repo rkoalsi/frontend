@@ -884,7 +884,6 @@ const Products: React.FC<SearchBarProps> = ({
                       top: 0,
                       zIndex: 1000,
                       backgroundColor: 'background.paper',
-                      minWidth: '80px',
                     }}
                   >
                     Margin
@@ -897,7 +896,7 @@ const Products: React.FC<SearchBarProps> = ({
                       top: 0,
                       zIndex: 1000,
                       backgroundColor: 'background.paper',
-                      minWidth: '100px',
+                      minWidth: '112px',
                     }}
                   >
                     Selling Price
@@ -908,9 +907,9 @@ const Products: React.FC<SearchBarProps> = ({
                     sx={{
                       position: 'sticky',
                       top: 0,
+                      textAlign: 'center',
                       zIndex: 1000,
                       backgroundColor: 'background.paper',
-                      minWidth: '100px',
                     }}
                   >
                     Quantity
@@ -923,7 +922,6 @@ const Products: React.FC<SearchBarProps> = ({
                       top: 0,
                       zIndex: 1000,
                       backgroundColor: 'background.paper',
-                      minWidth: '100px',
                     }}
                   >
                     Total
@@ -936,7 +934,6 @@ const Products: React.FC<SearchBarProps> = ({
                       top: 0,
                       zIndex: 1000,
                       backgroundColor: 'background.paper',
-                      minWidth: '100px',
                     }}
                   >
                     Action
@@ -1006,7 +1003,14 @@ const Products: React.FC<SearchBarProps> = ({
                           <TableCell>{product.sub_category || '-'}</TableCell>
                           <TableCell>{product.series || '-'}</TableCell>
                           <TableCell>{product.cf_sku_code || '-'}</TableCell>
-                          <TableCell>₹{product.rate}</TableCell>
+                          <TableCell
+                            sx={{
+                              whiteSpace: 'normal',
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            ₹{product.rate}
+                          </TableCell>
                           <TableCell>{product.stock}</TableCell>
 
                           {/* Margin (either from specialMargins or default) */}
@@ -1020,7 +1024,7 @@ const Products: React.FC<SearchBarProps> = ({
                           <TableCell>₹{sellingPrice}</TableCell>
 
                           {/* Quantity Selector */}
-                          <TableCell>
+                          <TableCell style={{ padding: '0px' }}>
                             <QuantitySelector
                               quantity={quantity}
                               max={product.stock}
@@ -1140,286 +1144,292 @@ const Products: React.FC<SearchBarProps> = ({
           <Box>
             {displayedProducts.length > 0 ? (
               <Grid container spacing={2}>
-                {displayedProducts.map((product: SearchResult) => {
-                  const productId = product._id;
-                  const selectedProduct = selectedProducts.find(
-                    (p) => p._id === product._id
-                  );
+                {displayedProducts.map(
+                  (product: SearchResult, index: number) => {
+                    const productId = product._id;
+                    const selectedProduct = selectedProducts.find(
+                      (p) => p._id === product._id
+                    );
 
-                  // Calculate selling price
-                  const sellingPrice = getSellingPrice(product);
+                    // Calculate selling price
+                    const sellingPrice = getSellingPrice(product);
 
-                  // If the product is in the cart, use its quantity; otherwise, use the temp or default
-                  const quantity: any =
-                    selectedProduct?.quantity ||
-                    temporaryQuantities[productId] ||
-                    '';
+                    // If the product is in the cart, use its quantity; otherwise, use the temp or default
+                    const quantity: any =
+                      selectedProduct?.quantity ||
+                      temporaryQuantities[productId] ||
+                      '';
 
-                  // Item-level total
-                  const itemTotal = parseFloat(
-                    (sellingPrice * quantity).toFixed(2)
-                  );
+                    // Item-level total
+                    const itemTotal = parseFloat(
+                      (sellingPrice * quantity).toFixed(2)
+                    );
 
-                  // Determine if the current quantity exceeds stock
-                  const isQuantityExceedingStock = quantity > product.stock;
+                    // Determine if the current quantity exceeds stock
+                    const isQuantityExceedingStock = quantity > product.stock;
 
-                  return (
-                    <Grid item xs={12} key={productId}>
-                      <Card
-                        sx={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          borderRadius: 2,
-                          boxShadow: 3,
-                          overflow: 'hidden',
-                          position: 'relative',
-                          backgroundColor: 'background.paper',
-                        }}
-                      >
-                        {/* "New" Badge & Image Section */}
-                        <Box sx={{ position: 'relative' }}>
-                          {product.new && (
-                            <Badge
-                              badgeContent='New'
-                              color='secondary'
-                              overlap='rectangular'
-                              anchorOrigin={{
-                                vertical: 'top',
-                                horizontal: 'right',
-                              }}
+                    return (
+                      <Grid item xs={12} key={productId}>
+                        <Card
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            borderRadius: 2,
+                            boxShadow: 3,
+                            overflow: 'hidden',
+                            position: 'relative',
+                            backgroundColor: 'background.paper',
+                            marginTop: index == 0 ? '16px' : null,
+                          }}
+                        >
+                          {/* "New" Badge & Image Section */}
+                          <Box sx={{ position: 'relative' }}>
+                            {product.new && (
+                              <Badge
+                                badgeContent='New'
+                                color='secondary'
+                                overlap='rectangular'
+                                anchorOrigin={{
+                                  vertical: 'top',
+                                  horizontal: 'right',
+                                }}
+                                sx={{
+                                  position: 'absolute',
+                                  top: 16, // Add some spacing from the top
+                                  right: 20, // Add some spacing from the right
+                                  zIndex: 10,
+                                  '& .MuiBadge-badge': {
+                                    fontSize: '0.7rem', // Smaller font size for mobile
+                                    fontWeight: 'bold',
+                                    borderRadius: 1,
+                                    padding: '4px 6px', // Adequate padding
+                                  },
+                                }}
+                              />
+                            )}
+                            <CardMedia
+                              component='img'
+                              image={product.image_url || '/placeholder.png'}
+                              alt={product.name}
                               sx={{
-                                position: 'absolute',
-                                top: 16, // Add some spacing from the top
-                                right: 20, // Add some spacing from the right
-                                zIndex: 10,
-                                '& .MuiBadge-badge': {
-                                  fontSize: '0.7rem', // Smaller font size for mobile
-                                  fontWeight: 'bold',
-                                  borderRadius: 1,
-                                  padding: '4px 6px', // Adequate padding
+                                width: '100%',
+                                objectFit: 'cover',
+                                cursor: 'pointer',
+                                transition: 'transform 0.3s ease-in-out',
+                                '&:hover': {
+                                  transform: 'scale(1.03)',
                                 },
                               }}
-                            />
-                          )}
-                          <CardMedia
-                            component='img'
-                            image={product.image_url || '/placeholder.png'}
-                            alt={product.name}
-                            sx={{
-                              width: '100%',
-                              objectFit: 'cover',
-                              cursor: 'pointer',
-                              transition: 'transform 0.3s ease-in-out',
-                              '&:hover': {
-                                transform: 'scale(1.03)',
-                              },
-                            }}
-                            onClick={() =>
-                              handleImageClick(
-                                product.image_url || '/placeholder.png'
-                              )
-                            }
-                          />
-                        </Box>
-
-                        {/* Details Section */}
-                        <CardContent sx={{ p: 2 }}>
-                          <Typography
-                            variant='h6'
-                            sx={{ fontWeight: 'bold', mb: 1 }}
-                          >
-                            {product.name}
-                          </Typography>
-
-                          <Box
-                            sx={{
-                              display: 'grid',
-                              gridTemplateColumns: 'repeat(2, auto)',
-                              columnGap: 1,
-                              rowGap: 0.5,
-                              mb: 1,
-                            }}
-                          >
-                            <Typography
-                              variant='body2'
-                              color='text.secondary'
-                              sx={{ fontWeight: 500 }}
-                            >
-                              Sub Category
-                            </Typography>
-                            <Typography variant='body2'>
-                              {product.sub_category || '-'}
-                            </Typography>
-
-                            <Typography
-                              variant='body2'
-                              color='text.secondary'
-                              sx={{ fontWeight: 500 }}
-                            >
-                              Series
-                            </Typography>
-                            <Typography variant='body2'>
-                              {product.series || '-'}
-                            </Typography>
-
-                            <Typography
-                              variant='body2'
-                              color='text.secondary'
-                              sx={{ fontWeight: 500 }}
-                            >
-                              SKU
-                            </Typography>
-                            <Typography variant='body2'>
-                              {product.cf_sku_code || '-'}
-                            </Typography>
-
-                            <Typography
-                              variant='body2'
-                              color='text.secondary'
-                              sx={{ fontWeight: 500 }}
-                            >
-                              Price
-                            </Typography>
-                            <Typography variant='body2'>
-                              ₹{product.rate}
-                            </Typography>
-
-                            <Typography
-                              variant='body2'
-                              color='text.secondary'
-                              sx={{ fontWeight: 500 }}
-                            >
-                              Stock
-                            </Typography>
-                            <Typography variant='body2'>
-                              {product.stock}
-                            </Typography>
-
-                            <Typography
-                              variant='body2'
-                              color='text.secondary'
-                              sx={{ fontWeight: 500 }}
-                            >
-                              Margin
-                            </Typography>
-                            <Typography variant='body2'>
-                              {specialMargins[productId]
-                                ? specialMargins[productId]
-                                : customer?.cf_margin || '40%'}
-                            </Typography>
-
-                            <Typography
-                              variant='body2'
-                              color='text.secondary'
-                              sx={{ fontWeight: 500 }}
-                            >
-                              Selling Price
-                            </Typography>
-                            <Typography variant='body2'>
-                              ₹{sellingPrice}
-                            </Typography>
-                            {selectedProduct && (
-                              <>
-                                <Typography
-                                  variant='body2'
-                                  color='text.secondary'
-                                  sx={{ fontWeight: 800 }}
-                                >
-                                  Item Total
-                                </Typography>
-                                <Typography variant='body2' fontWeight={'bold'}>
-                                  ₹{itemTotal}
-                                </Typography>
-                              </>
-                            )}
-                          </Box>
-
-                          {/* Quantity Selector & Item Total */}
-                          <Box
-                            sx={{
-                              mt: 2,
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                            }}
-                          >
-                            <QuantitySelector
-                              quantity={quantity}
-                              max={product.stock}
-                              onChange={(newQuantity) =>
-                                handleQuantityChange(productId, newQuantity)
-                              }
-                              disabled={
-                                order?.status
-                                  ?.toLowerCase()
-                                  ?.includes('accepted') ||
-                                order?.status
-                                  ?.toLowerCase()
-                                  ?.includes('declined')
-                              }
-                            />
-                          </Box>
-                          {isQuantityExceedingStock && (
-                            <Typography variant='caption' color='error'>
-                              Exceeds stock!
-                            </Typography>
-                          )}
-
-                          {/* Action Button */}
-                          <Box mt={2}>
-                            <Button
-                              variant='contained'
-                              color={
-                                selectedProducts.some(
-                                  (prod) => prod._id === product._id
-                                )
-                                  ? 'error'
-                                  : 'primary'
-                              }
-                              startIcon={
-                                selectedProducts.some(
-                                  (prod) => prod._id === product._id
-                                ) ? (
-                                  <RemoveShoppingCart />
-                                ) : (
-                                  <AddShoppingCart />
-                                )
-                              }
                               onClick={() =>
-                                selectedProducts.some(
-                                  (prod) => prod._id === product._id
+                                handleImageClick(
+                                  product.image_url || '/placeholder.png'
                                 )
-                                  ? handleRemoveProduct(productId)
-                                  : handleAddProducts(product)
                               }
-                              disabled={
-                                order?.status
-                                  ?.toLowerCase()
-                                  ?.includes('accepted') ||
-                                order?.status
-                                  ?.toLowerCase()
-                                  ?.includes('declined')
-                              }
-                              fullWidth
+                            />
+                          </Box>
+
+                          {/* Details Section */}
+                          <CardContent sx={{ p: 2 }}>
+                            <Typography
+                              variant='h6'
+                              sx={{ fontWeight: 'bold', mb: 1 }}
+                            >
+                              {product.name}
+                            </Typography>
+
+                            <Box
                               sx={{
-                                textTransform: 'none',
-                                borderRadius: 2,
-                                fontWeight: 'bold',
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(2, auto)',
+                                columnGap: 1,
+                                rowGap: 0.5,
+                                mb: 1,
                               }}
                             >
-                              {selectedProducts.some(
-                                (prod) => prod._id === product._id
-                              )
-                                ? 'Remove from Cart'
-                                : 'Add to Cart'}
-                            </Button>
-                          </Box>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  );
-                })}
+                              <Typography
+                                variant='body2'
+                                color='text.secondary'
+                                sx={{ fontWeight: 500 }}
+                              >
+                                Sub Category
+                              </Typography>
+                              <Typography variant='body2'>
+                                {product.sub_category || '-'}
+                              </Typography>
+
+                              <Typography
+                                variant='body2'
+                                color='text.secondary'
+                                sx={{ fontWeight: 500 }}
+                              >
+                                Series
+                              </Typography>
+                              <Typography variant='body2'>
+                                {product.series || '-'}
+                              </Typography>
+
+                              <Typography
+                                variant='body2'
+                                color='text.secondary'
+                                sx={{ fontWeight: 500 }}
+                              >
+                                SKU
+                              </Typography>
+                              <Typography variant='body2'>
+                                {product.cf_sku_code || '-'}
+                              </Typography>
+
+                              <Typography
+                                variant='body2'
+                                color='text.secondary'
+                                sx={{ fontWeight: 500 }}
+                              >
+                                Price
+                              </Typography>
+                              <Typography variant='body2'>
+                                ₹{product.rate}
+                              </Typography>
+
+                              <Typography
+                                variant='body2'
+                                color='text.secondary'
+                                sx={{ fontWeight: 500 }}
+                              >
+                                Stock
+                              </Typography>
+                              <Typography variant='body2'>
+                                {product.stock}
+                              </Typography>
+
+                              <Typography
+                                variant='body2'
+                                color='text.secondary'
+                                sx={{ fontWeight: 500 }}
+                              >
+                                Margin
+                              </Typography>
+                              <Typography variant='body2'>
+                                {specialMargins[productId]
+                                  ? specialMargins[productId]
+                                  : customer?.cf_margin || '40%'}
+                              </Typography>
+
+                              <Typography
+                                variant='body2'
+                                color='text.secondary'
+                                sx={{ fontWeight: 500 }}
+                              >
+                                Selling Price
+                              </Typography>
+                              <Typography variant='body2'>
+                                ₹{sellingPrice}
+                              </Typography>
+                              {selectedProduct && (
+                                <>
+                                  <Typography
+                                    variant='body2'
+                                    color='text.secondary'
+                                    sx={{ fontWeight: 800 }}
+                                  >
+                                    Item Total
+                                  </Typography>
+                                  <Typography
+                                    variant='body2'
+                                    fontWeight={'bold'}
+                                  >
+                                    ₹{itemTotal}
+                                  </Typography>
+                                </>
+                              )}
+                            </Box>
+
+                            {/* Quantity Selector & Item Total */}
+                            <Box
+                              sx={{
+                                mt: 2,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                              }}
+                            >
+                              <QuantitySelector
+                                quantity={quantity}
+                                max={product.stock}
+                                onChange={(newQuantity) =>
+                                  handleQuantityChange(productId, newQuantity)
+                                }
+                                disabled={
+                                  order?.status
+                                    ?.toLowerCase()
+                                    ?.includes('accepted') ||
+                                  order?.status
+                                    ?.toLowerCase()
+                                    ?.includes('declined')
+                                }
+                              />
+                            </Box>
+                            {isQuantityExceedingStock && (
+                              <Typography variant='caption' color='error'>
+                                Exceeds stock!
+                              </Typography>
+                            )}
+
+                            {/* Action Button */}
+                            <Box mt={2}>
+                              <Button
+                                variant='contained'
+                                color={
+                                  selectedProducts.some(
+                                    (prod) => prod._id === product._id
+                                  )
+                                    ? 'error'
+                                    : 'primary'
+                                }
+                                startIcon={
+                                  selectedProducts.some(
+                                    (prod) => prod._id === product._id
+                                  ) ? (
+                                    <RemoveShoppingCart />
+                                  ) : (
+                                    <AddShoppingCart />
+                                  )
+                                }
+                                onClick={() =>
+                                  selectedProducts.some(
+                                    (prod) => prod._id === product._id
+                                  )
+                                    ? handleRemoveProduct(productId)
+                                    : handleAddProducts(product)
+                                }
+                                disabled={
+                                  order?.status
+                                    ?.toLowerCase()
+                                    ?.includes('accepted') ||
+                                  order?.status
+                                    ?.toLowerCase()
+                                    ?.includes('declined')
+                                }
+                                fullWidth
+                                sx={{
+                                  textTransform: 'none',
+                                  borderRadius: 2,
+                                  fontWeight: 'bold',
+                                }}
+                              >
+                                {selectedProducts.some(
+                                  (prod) => prod._id === product._id
+                                )
+                                  ? 'Remove from Cart'
+                                  : 'Add to Cart'}
+                              </Button>
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    );
+                  }
+                )}
               </Grid>
             ) : (
               <Box mt={2}>
