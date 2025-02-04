@@ -66,7 +66,7 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   }, []);
 
   return (
-    <Box display='flex' alignItems='center' justifyContent={'center'}>
+    <Box display='flex' alignItems='center' justifyContent={'center'} p={0}>
       <IconButton
         onClick={handleDecrease}
         disabled={disabled || quantity <= 1}
