@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Typography,
   List,
@@ -31,10 +31,10 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { green, red } from '@mui/material/colors';
+import axiosInstance from '../../src/util/axios';
 
 const SalesPeople = () => {
   const [salesPeople, setSalesPeople]: any = useState([]);
@@ -66,7 +66,7 @@ const SalesPeople = () => {
   // Fetch all salespeople on mount
   const fetchSalesPeople = useCallback(async () => {
     try {
-      const response = await axios.get(`${baseApiUrl}/admin/salespeople`);
+      const response = await axiosInstance.get(`/admin/salespeople`);
       setSalesPeople(response.data.users);
     } catch (error) {
       console.error(error);
@@ -84,8 +84,8 @@ const SalesPeople = () => {
   const refetchSelectedPerson = useCallback(
     async (personId: any) => {
       try {
-        const { data } = await axios.get(
-          `${baseApiUrl}/admin/salespeople/${personId}`
+        const { data } = await axiosInstance.get(
+          `/admin/salespeople/${personId}`
         );
         const updatedSalesPerson = data.sales_person || data;
         setSelectedPerson(updatedSalesPerson);
@@ -108,8 +108,8 @@ const SalesPeople = () => {
     async (person: any) => {
       try {
         setLoading(true);
-        const { data } = await axios.get(
-          `${baseApiUrl}/admin/salespeople/${person._id}`
+        const { data } = await axiosInstance.get(
+          `/admin/salespeople/${person._id}`
         );
         const updatedSalesPerson = data.sales_person || data;
         setSelectedPerson(updatedSalesPerson);
@@ -133,8 +133,8 @@ const SalesPeople = () => {
   // Handle creating a new salesperson
   const handleCreateSalesPerson = useCallback(async () => {
     try {
-      const response = await axios.post(
-        `${baseApiUrl}/admin/salespeople`,
+      const response = await axiosInstance.post(
+        `/admin/salespeople`,
         newSalesPerson
       );
       setSalesPeople((prev: any) => [...prev, response.data]);
@@ -176,7 +176,7 @@ const SalesPeople = () => {
     async (person: any) => {
       const newStatus = person.status === 'active' ? 'inactive' : 'active';
       try {
-        await axios.put(`${baseApiUrl}/admin/salespeople/${person._id}`, {
+        await axiosInstance.put(`/admin/salespeople/${person._id}`, {
           status: newStatus,
         });
         setSalesPeople((prev: any) =>
@@ -277,7 +277,7 @@ const SalesPeople = () => {
           },
         ];
 
-        await axios.put(`${baseApiUrl}/admin/customers/bulk-update`, {
+        await axiosInstance.put(`/admin/customers/bulk-update`, {
           updates,
         });
 
@@ -297,7 +297,7 @@ const SalesPeople = () => {
 
     setCustomerLoading(true);
     try {
-      const response = await axios.get(`${baseApiUrl}/customers/salesperson`, {
+      const response = await axiosInstance.get(`/customers/salesperson`, {
         params: {
           code: selectedPerson.code,
           page,
@@ -342,7 +342,7 @@ const SalesPeople = () => {
     try {
       await Promise.all(
         selectedCustomers.map((customerId: any) =>
-          axios.put(`${baseApiUrl}/customers/${customerId}`, {
+          axiosInstance.put(`/customers/${customerId}`, {
             cf_sales_person: selectedPerson.code.trim(),
           })
         )
@@ -367,7 +367,7 @@ const SalesPeople = () => {
         _id: c._id,
         cf_sales_person: c.cf_sales_person,
       }));
-      await axios.put(`${baseApiUrl}/admin/customers/bulk-update`, { updates });
+      await axiosInstance.put(`/admin/customers/bulk-update`, { updates });
 
       toast.success('All customers updated successfully.');
       await refetchSelectedPerson(selectedPerson._id);

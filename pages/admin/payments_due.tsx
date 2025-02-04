@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Typography,
   Box,
@@ -16,9 +16,9 @@ import {
   TablePagination,
   TextField,
 } from '@mui/material';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
+import axiosInstance from '../../src/util/axios';
 
 const PaymentsDue = () => {
   const router = useRouter();
@@ -36,10 +36,9 @@ const PaymentsDue = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const baseApiUrl = process.env.api_url;
       // Pass page & limit for server-side pagination
-      const response = await axios.get(
-        `${baseApiUrl}/admin/payments_due?page=${page}&limit=${rowsPerPage}`
+      const response = await axiosInstance.get(
+        `/admin/payments_due?page=${page}&limit=${rowsPerPage}`
       );
 
       // The backend returns { data, total_count }

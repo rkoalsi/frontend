@@ -25,10 +25,10 @@ import {
   Select,
   IconButton,
 } from '@mui/material';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
 import { Delete, Edit, FilterAlt, Visibility } from '@mui/icons-material';
+import axiosInstance from '../../src/util/axios';
 
 const Orders = () => {
   const router = useRouter();
@@ -80,8 +80,7 @@ const Orders = () => {
   useEffect(() => {
     const fetchSalesPeople = async () => {
       try {
-        const baseApiUrl = process.env.api_url;
-        const response = await axios.get(`${baseApiUrl}/admin/sales-people`);
+        const response = await axiosInstance.get(`/admin/sales-people`);
         setSalesPeople(response.data.sales_people);
       } catch (error) {
         console.error(error);
@@ -100,7 +99,6 @@ const Orders = () => {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const baseApiUrl = process.env.api_url;
       // Build query parameters based on filters
       const params: any = {
         page,
@@ -112,7 +110,7 @@ const Orders = () => {
       if (filterEstimatesCreated)
         params.estimate_created = filterEstimatesCreated;
 
-      const response = await axios.get(`${baseApiUrl}/admin/orders`, {
+      const response = await axiosInstance.get(`/admin/orders`, {
         params,
       });
 
@@ -186,10 +184,9 @@ const Orders = () => {
     }
   };
   const handleDelete = async (order: any) => {
-    const base = `${process.env.api_url}`;
     setOrderLoading(true);
     try {
-      const resp = await axios.delete(`${base}/orders/${order._id}`);
+      const resp = await axiosInstance.delete(`/orders/${order._id}`);
       console.log(resp.data);
       if (resp.status === 200) {
         toast.success('Order Deleted Successfully');
@@ -204,7 +201,7 @@ const Orders = () => {
     const base = `${process.env.api_url}`;
     setOrderLoading(true);
     try {
-      const resp = await axios.post(`${base}/orders/finalise`, {
+      const resp = await axiosInstance.post(`${base}/orders/finalise`, {
         order_id: order._id,
         status,
       });

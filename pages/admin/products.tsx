@@ -26,9 +26,9 @@ import {
   Radio,
 } from '@mui/material';
 import { toast } from 'react-toastify';
-import axios from 'axios';
 import { useDropzone } from 'react-dropzone';
-import { Filter, FilterAlt } from '@mui/icons-material';
+import { FilterAlt } from '@mui/icons-material';
+import axiosInstance from '../../src/util/axios';
 
 const Products = () => {
   const [products, setProducts] = useState<any[]>([]);
@@ -44,8 +44,6 @@ const Products = () => {
 
   // NEW: For skip-page functionality
   const [skipPage, setSkipPage] = useState(''); // we'll store a string and convert on "Go"
-
-  const baseApiUrl = process.env.api_url;
 
   // State for Edit Modal
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -101,7 +99,7 @@ const Products = () => {
         params.new_arrivals = true;
       }
 
-      const response = await axios.get(`${baseApiUrl}/admin/products`, {
+      const response = await axiosInstance.get(`/admin/products`, {
         params,
       });
       setProducts(response.data.products);
@@ -170,7 +168,7 @@ const Products = () => {
         status: product.status === 'active' ? 'inactive' : 'active',
       };
 
-      await axios.put(`${baseApiUrl}/products/${product._id}`, updatedFields);
+      await axiosInstance.put(`/products/${product._id}`, updatedFields);
       setProducts((prev: any[]) =>
         prev.map((p) =>
           p._id === product._id ? { ...p, ...updatedFields } : p
@@ -221,8 +219,8 @@ const Products = () => {
 
     try {
       setUpdating(true);
-      const response = await axios.post(
-        `${baseApiUrl}/admin/upload-image`,
+      const response = await axiosInstance.post(
+        `/admin/upload-image`,
         formData,
         {
           headers: {
@@ -234,7 +232,7 @@ const Products = () => {
       const newImageUrl = response.data.image_url;
 
       // Update the product's image_url in the backend
-      await axios.put(`${baseApiUrl}/products/${selectedProduct._id}`, {
+      await axiosInstance.put(`/products/${selectedProduct._id}`, {
         image_url: newImageUrl,
       });
 
@@ -296,8 +294,8 @@ const Products = () => {
       };
 
       // Send update request to the backend
-      await axios.put(
-        `${baseApiUrl}/products/${selectedProduct._id}`,
+      await axiosInstance.put(
+        `/products/${selectedProduct._id}`,
         updatedFields
       );
 
