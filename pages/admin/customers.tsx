@@ -30,6 +30,7 @@ import {
 import { toast } from 'react-toastify';
 import { FilterAlt } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
+import useDebounce from '../../src/util/useDebounce';
 
 // Utility function to capitalize strings
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -86,7 +87,8 @@ const Customers = () => {
 
   // Sales People List (Assuming it's fetched from an API)
   const [salesPeople, setSalesPeople] = useState<string[]>([]);
-
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+  const debouncedDialogSearchQuery = useDebounce(dialogSearchQuery, 500);
   // Fetch Sales People on component mount
   useEffect(() => {
     const fetchSalesPeople = async () => {
@@ -257,7 +259,7 @@ const Customers = () => {
     filterUnassigned,
     page,
     rowsPerPage,
-    searchQuery,
+    debouncedSearchQuery,
   ]);
 
   const handleBrandChange = (event: React.ChangeEvent<{ value: unknown }>) => {
@@ -549,7 +551,7 @@ const Customers = () => {
     addDialogOpen,
     dialogPage,
     dialogRowsPerPage,
-    dialogSearchQuery,
+    debouncedDialogSearchQuery,
     selectedBrand,
   ]);
 
