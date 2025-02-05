@@ -261,9 +261,10 @@ const Customers = () => {
   ]);
 
   const handleBrandChange = (event: React.ChangeEvent<{ value: unknown }>) => {
-    setSelectedBrand(event.target.value as string);
+    const newBrand = event.target.value as string;
+    setSelectedBrand(newBrand);
     setDialogPage(0); // Reset to first page when changing the brand
-    fetchDialogProducts();
+    fetchDialogProducts(newBrand);
   };
   // Handle client-side search for main table
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -466,16 +467,14 @@ const Customers = () => {
   };
 
   // --------------------- Fetch Products for Dialog (Paginated) ---------------------
-  const fetchDialogProducts = async () => {
+  const fetchDialogProducts = async (brand?: string) => {
     setDialogLoading(true);
     try {
       // Fetch paginated products based on search and pagination
+      const effectiveBrand = brand || selectedBrand;
       const response = await axiosInstance.get(
-        `/admin/products?search=${dialogSearchQuery}&page=${dialogPage}&limit=${dialogRowsPerPage}&brand=${
-          selectedBrand || ''
-        }&status=active`
+        `/admin/products?search=${dialogSearchQuery}&page=${dialogPage}&limit=${dialogRowsPerPage}&brand=${effectiveBrand}&status=active`
       );
-
       const { products: prodList, total_count } = response.data;
       setDialogTotalCount(total_count);
 
