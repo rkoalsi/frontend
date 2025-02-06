@@ -17,11 +17,9 @@ import {
   TextField,
 } from '@mui/material';
 import { toast } from 'react-toastify';
-import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
 
 const PaymentsDue = () => {
-  const router = useRouter();
   const [data, setData] = useState([]);
   const [page, setPage] = useState(0); // 0-based current page
   const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -144,6 +142,7 @@ const PaymentsDue = () => {
                         <TableCell>Created At</TableCell>
                         <TableCell>Due Date</TableCell>
                         <TableCell>Invoice Number</TableCell>
+                        <TableCell>Overdue By</TableCell>
                         <TableCell>Customer Name</TableCell>
                         <TableCell>Status</TableCell>
                         <TableCell>Sales Person</TableCell>
@@ -167,6 +166,7 @@ const PaymentsDue = () => {
                           created_by_name = '',
                           total = 0,
                           balance = 0,
+                          overdue_by_days = 0,
                         } = invoice;
                         const invoiceDueDate = new Date(due_date);
                         invoiceDueDate.setHours(0, 0, 0, 0);
@@ -180,6 +180,11 @@ const PaymentsDue = () => {
                               {invoiceDueDate.toLocaleDateString()}
                             </TableCell>
                             <TableCell>{invoice_number}</TableCell>
+                            <TableCell>
+                              {parseInt(overdue_by_days) === 1
+                                ? `${overdue_by_days} day`
+                                : `${overdue_by_days} days`}
+                            </TableCell>
                             <TableCell>{customer_name}</TableCell>
                             <TableCell>{capitalize(status)}</TableCell>
                             <TableCell>
