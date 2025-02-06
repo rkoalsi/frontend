@@ -104,6 +104,7 @@ const PaymentDue = () => {
                   status,
                   total,
                   balance,
+                  overdue_by_days,
                 } = invoice;
 
                 // Determine whether the invoice is past due
@@ -158,6 +159,14 @@ const PaymentDue = () => {
                         </Typography>
                         <Typography variant='body2' color='text.secondary'>
                           Date: {new Date(created_at).toLocaleDateString()}
+                        </Typography>
+
+                        <Typography
+                          variant='body2'
+                          sx={{ color: 'rebeccapurple' }}
+                        >
+                          Overdue by: {overdue_by_days}{' '}
+                          {parseInt(overdue_by_days) === 1 ? 'day' : 'days'}
                         </Typography>
 
                         <Typography

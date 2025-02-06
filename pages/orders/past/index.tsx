@@ -213,7 +213,7 @@ const PastOrders = () => {
                       }}
                     >
                       <Typography variant='h6' fontWeight='bold' color='black'>
-                        Order #
+                        {order.estimate_created ? null : 'Order #'}
                         {order.estimate_created
                           ? order.estimate_number
                           : order._id.slice(-6)}
