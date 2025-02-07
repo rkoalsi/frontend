@@ -46,6 +46,7 @@ const NewOrder: React.FC = () => {
 
   // States
   const [customer, setCustomer] = useState<any>(null);
+  const [referenceNumber, setReferenceNumber] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
   const [order, setOrder] = useState<any>(null);
   const [billingAddress, setBillingAddress] = useState<any>(null);
@@ -169,6 +170,9 @@ const NewOrder: React.FC = () => {
           } else {
             body = { customer_id: customer?._id };
           }
+          if (referenceNumber !== '') {
+            body['reference_number'] = referenceNumber;
+          }
           break;
         case 1:
           if (!billingAddress) {
@@ -194,9 +198,16 @@ const NewOrder: React.FC = () => {
         default:
           break;
       }
+      console.log(body);
       return { message, body };
     },
-    [customer, billingAddress, shippingAddress, selectedProducts]
+    [
+      customer,
+      billingAddress,
+      shippingAddress,
+      selectedProducts,
+      referenceNumber,
+    ]
   );
 
   // ------------------ Update Addresses ---------------------
@@ -227,6 +238,7 @@ const NewOrder: React.FC = () => {
           `/customers/${resp.data.customer_id}`
         );
         setCustomer(customerResponse.data.customer);
+        setReferenceNumber(resp.data?.reference_number);
       }
       if (resp.data.billing_address) {
         setBillingAddress(resp.data.billing_address);
@@ -316,7 +328,7 @@ const NewOrder: React.FC = () => {
 
   // ------------------ Handle Step Click (with validations) ---------------------
   const handleStepClick = useCallback(
-    (index: number) => {
+    async (index: number) => {
       if (isShared) {
         if (index < 3 || index > 4) {
           setError({
@@ -337,18 +349,29 @@ const NewOrder: React.FC = () => {
         setActiveStep(index);
         return;
       }
+
       if (index < activeStep) {
+        // Allow backwards navigation without an update
         setActiveStep(index);
         return;
       }
-      const { message } = validateAndCollectData(activeStep);
+
+      // For forward navigation, perform the update like handleNext
+      const { message, body } = validateAndCollectData(activeStep);
       if (message) {
         toast.error(message);
         return;
       }
-      setActiveStep(index);
+
+      try {
+        await api.put(`/orders/${id}`, body);
+        setActiveStep(index);
+      } catch (error) {
+        console.error('Error updating order:', error);
+        toast.error('Failed to update order. Please try again.');
+      }
     },
-    [activeStep, isShared, selectedProducts, validateAndCollectData]
+    [activeStep, isShared, selectedProducts, validateAndCollectData, id]
   );
 
   const handleClose = useCallback((reason: any) => {
@@ -379,6 +402,9 @@ const NewOrder: React.FC = () => {
         name: 'Select Customer',
         component: isShared ? null : (
           <CustomerSearchBar
+            disabled={['declined', 'accepted'].includes(
+              order?.status?.toLowerCase()
+            )}
             label='Select Customer'
             onChange={async (value: any) => {
               setCustomer(value);
@@ -401,6 +427,12 @@ const NewOrder: React.FC = () => {
             }}
             value={customer}
             initialValue={customer}
+            onChangeReference={async (
+              e: React.ChangeEvent<HTMLInputElement>
+            ) => {
+              setReferenceNumber(e.target.value);
+            }}
+            reference={referenceNumber}
           />
         ),
       },
@@ -461,6 +493,7 @@ const NewOrder: React.FC = () => {
             specialMargins={specialMargins}
             isShared={isShared}
             order={order}
+            referenceNumber={referenceNumber}
           />
         ),
       },
@@ -475,6 +508,7 @@ const NewOrder: React.FC = () => {
     specialMargins,
     order,
     id,
+    referenceNumber,
   ]);
 
   return (
