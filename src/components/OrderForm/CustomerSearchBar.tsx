@@ -1,25 +1,32 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
-import { TextField, Autocomplete, CircularProgress } from '@mui/material';
+import { TextField, Autocomplete, CircularProgress, Box } from '@mui/material';
 import AuthContext from '../Auth';
 
 interface SearchResult {
   _id: string;
   contact_name: string;
+  cf_sales_person: string;
+  salesperson_name: string;
 }
 
 interface SearchBarProps {
   label: string;
   onChange: (value: SearchResult | null) => void;
-  value?: SearchResult | null;
+  value: any;
+  disabled: boolean;
   initialValue?: SearchResult | null;
+  onChangeReference: (value: any | null) => void;
+  reference: any;
 }
 
 const CustomerSearchBar: React.FC<SearchBarProps> = ({
   label = 'Search',
   onChange,
-  value,
+  disabled,
   initialValue,
+  onChangeReference,
+  reference,
 }) => {
   const { user }: any = useContext(AuthContext);
   const [query, setQuery] = useState('');
@@ -61,8 +68,9 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
   };
 
   return (
-    <>
+    <Box display={'flex'} flexDirection={'column'} width={'100%'} gap={'16px'}>
       <Autocomplete
+        disabled={disabled}
         freeSolo
         options={options}
         getOptionLabel={(option: any) => option?.contact_name || 'Unknown Name'}
@@ -95,7 +103,17 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
           />
         )}
       />
-    </>
+      {selectedOption &&
+        (selectedOption?.cf_sales_person?.includes('Company customers') ||
+          selectedOption?.salesperson_name?.includes('Company customers')) && (
+          <TextField
+            disabled={disabled}
+            label='Reference Number'
+            onChange={onChangeReference}
+            value={reference || ''}
+          />
+        )}
+    </Box>
   );
 };
 
