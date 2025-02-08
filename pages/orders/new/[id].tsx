@@ -19,6 +19,7 @@ import {
   useMediaQuery,
   Snackbar,
   Alert,
+  IconButton,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import CustomerSearchBar from '../../../src/components/OrderForm/CustomerSearchBar';
@@ -28,6 +29,7 @@ import Review from '../../../src/components/OrderForm/Review';
 import { useRouter } from 'next/router';
 import axios, { CancelTokenSource } from 'axios';
 import { toast } from 'react-toastify';
+import { ContentCopy } from '@mui/icons-material';
 
 // Create an Axios instance to avoid repeating the base URL
 const api = axios.create({
@@ -510,7 +512,23 @@ const NewOrder: React.FC = () => {
     id,
     referenceNumber,
   ]);
-
+  const handleCopyEstimate = () => {
+    if (order?.estimate_number) {
+      navigator.clipboard.writeText(order.estimate_number);
+    }
+  };
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'draft':
+        return '#FFA500'; // orange
+      case 'accepted':
+        return '#2ecc71'; // green
+      case 'declined':
+        return '#e74c3c'; // red
+      default:
+        return 'black';
+    }
+  };
   return (
     <Box
       sx={{
@@ -527,7 +545,8 @@ const NewOrder: React.FC = () => {
           width: 'max-content',
           maxWidth: isMobile ? '400px' : '100%',
           padding: '16px',
-          marginBottom: '24px',
+          marginTop: '16px',
+          marginBottom: isMobile ? '16px' : '24px',
           textAlign: 'center',
           borderRadius: '8px',
           alignSelf: 'center',
@@ -535,22 +554,59 @@ const NewOrder: React.FC = () => {
       >
         <Box
           display='flex'
-          justifyContent='center'
           flexDirection='column'
+          alignItems='center'
           gap='8px'
         >
-          <Typography variant='h4' fontWeight='bold' color='black'>
+          <Typography
+            variant={isMobile ? 'h5' : 'h4'}
+            fontWeight='bold'
+            color='black'
+          >
             {order?.estimate_created ? 'Update ' : 'Create '}
             {order?.estimate_created ? 'Existing ' : 'New '}Order
           </Typography>
-          <Typography variant='h5' fontWeight='bold' color='black'>
-            Order Status: ({order?.status})
-          </Typography>
-          {order?.estimate_created && (
-            <Typography variant='h5' fontWeight='bold' color='black'>
-              Estimate Number: ({order?.estimate_number})
+
+          {/* Order Status line in one row */}
+          <Box display='flex' alignItems='center' justifyContent='center'>
+            <Typography
+              variant={isMobile ? 'h6' : 'h5'}
+              fontWeight='bold'
+              color='black'
+            >
+              Order Status:
             </Typography>
+            <Typography
+              variant={isMobile ? 'h6' : 'h5'}
+              fontWeight='bold'
+              sx={{ ml: 1 }}
+              color={getStatusColor(order?.status)}
+            >
+              {order?.status}
+            </Typography>
+          </Box>
+
+          {/* Estimate Number row with copy-to-clipboard */}
+          {order?.estimate_created && (
+            <Box display='flex' alignItems='center' justifyContent='center'>
+              <Typography
+                variant={isMobile ? 'body1' : 'h5'}
+                fontWeight='bold'
+                color='black'
+              >
+                Estimate Number: {order?.estimate_number}
+              </Typography>
+              <IconButton
+                size='small'
+                onClick={handleCopyEstimate}
+                sx={{ ml: 1 }}
+              >
+                <ContentCopy fontSize='small' />
+              </IconButton>
+            </Box>
           )}
+
+          {/* Message when no estimate is created */}
           {!order?.estimate_created && (
             <Typography variant='body1' fontWeight='bold' color='black'>
               Complete each step to finalize your order.
@@ -558,7 +614,6 @@ const NewOrder: React.FC = () => {
           )}
         </Box>
       </Paper>
-
       {/* Main content */}
       <Box
         sx={{

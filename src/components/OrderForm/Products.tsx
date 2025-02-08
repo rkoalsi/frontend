@@ -638,8 +638,13 @@ const Products: React.FC<SearchBarProps> = ({
       {/* Left Section: Products */}
       <Box sx={{ flex: 3 }}>
         {/* Header with Clear Cart Button */}
-        <Box display='flex' justifyContent='space-between' alignItems='center'>
-          <Typography variant='h5' sx={{ mb: 1, fontWeight: 'bold' }}>
+        <Box
+          display='flex'
+          justifyContent='space-between'
+          alignItems='center'
+          sx={{ mb: 2 }}
+        >
+          <Typography variant='h5' sx={{ fontWeight: 'bold' }}>
             Add Products
           </Typography>
           <Button
