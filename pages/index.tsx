@@ -197,7 +197,7 @@ const Home = () => {
                     fullWidth
                     onClick={handleCatelogues}
                   >
-                    Catelogues
+                    Catalogues
                   </Button>
                 </motion.div>
               </Stack>
