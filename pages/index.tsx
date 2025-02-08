@@ -44,6 +44,10 @@ const Home = () => {
     router.push('/orders/past/payment_due');
   };
 
+  const handleCatelogues = () => {
+    router.push('/catalogues');
+  };
+
   const buttonVariants = {
     hover: {
       scale: 1.05,
@@ -173,6 +177,27 @@ const Home = () => {
                     onClick={handlePaymentsDue}
                   >
                     Payments Due
+                  </Button>
+                </motion.div>
+                <motion.div
+                  variants={buttonVariants}
+                  whileHover='hover'
+                  whileTap='tap'
+                >
+                  <Button
+                    variant='contained'
+                    color='info'
+                    startIcon={<Payment />}
+                    sx={{
+                      fontSize: '1.2rem',
+                      padding: '12px 24px',
+                      borderRadius: '8px',
+                      fontWeight: 'bold',
+                    }}
+                    fullWidth
+                    onClick={handleCatelogues}
+                  >
+                    Catelogues
                   </Button>
                 </motion.div>
               </Stack>
