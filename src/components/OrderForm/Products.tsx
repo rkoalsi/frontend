@@ -177,17 +177,32 @@ const Products: React.FC<SearchBarProps> = ({
   );
 
   // Fetch all brands
+  // Inside Products.tsx
+
+  // At the top among your state variables, add:
+  const [brandList, setBrandList] = useState<{ brand: string; url: string }[]>(
+    []
+  );
+
+  // Then update fetchAllBrands:
   const fetchAllBrands = useCallback(async () => {
     try {
       setLoading(true);
       const response = await axios.get(
         `${process.env.api_url}/products/brands`
       );
-      const allBrands: string[] = response.data.brands || [];
-      setActiveBrand((prev) => prev || allBrands[0]); // Default to first brand if not set
+      // API returns an array of objects: { brand, url }
+      const allBrands: { brand: string; url: string }[] =
+        response.data.brands || [];
+      setBrandList(allBrands);
+      // Set activeBrand to the first brand's name (if available)
+      setActiveBrand(
+        (prev) => prev || (allBrands[0] ? allBrands[0].brand : '')
+      );
+      // Initialize productsByBrandCategory using each brand's name as the key
       setProductsByBrandCategory((prev) => {
-        const initialized = allBrands.reduce((acc, brand) => {
-          acc[brand] = [];
+        const initialized = allBrands.reduce((acc, brandObj) => {
+          acc[brandObj.brand] = [];
           return acc;
         }, {} as { [key: string]: SearchResult[] });
         return { ...prev, ...initialized };
@@ -695,7 +710,7 @@ const Products: React.FC<SearchBarProps> = ({
           {/* <Typography variant='subtitle2'>Brands:</Typography> */}
           {/* Tabs for Brands */}
           {isMobile ? (
-            // Mobile View: Categories Dropdown
+            // Mobile View: Brand Dropdown with image
             <FormControl fullWidth sx={{ mt: 2 }}>
               <InputLabel id='brand-select-label'>Brand</InputLabel>
               <Select
@@ -705,21 +720,25 @@ const Products: React.FC<SearchBarProps> = ({
                 label='Brand'
                 onChange={(e) => handleTabChange(e.target.value)}
               >
-                {Object.keys(productsByBrandCategory)
-                  .filter((brand) => brand !== 'search' && !brand.includes('-')) // Ensure valid brand keys
-                  .map((brand: any) => (
-                    <MenuItem key={brand} value={brand}>
-                      {brand}
-                    </MenuItem>
-                  ))}
+                {brandList.map((b) => (
+                  <MenuItem key={b.brand} value={b.brand}>
+                    <Box display='flex' alignItems='center'>
+                      {/* <img
+                        src={b.url}
+                        alt={b.brand}
+                        style={{ width: 200, height: 40, marginRight: 8 }}
+                      /> */}
+                      {b.brand}
+                    </Box>
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
           ) : (
+            // Desktop View: Tabs with brand image
             !searchTerm.trim() && (
               <Tabs
-                value={
-                  activeBrand || Object.keys(productsByBrandCategory)[0] || ''
-                } // Ensure a valid default value
+                value={activeBrand || (brandList[0] ? brandList[0].brand : '')}
                 onChange={(e, newValue) => handleTabChange(newValue)}
                 variant='scrollable'
                 scrollButtons='auto'
@@ -733,11 +752,22 @@ const Products: React.FC<SearchBarProps> = ({
                   '.Mui-selected': { color: 'primary.main' },
                 }}
               >
-                {Object.keys(productsByBrandCategory)
-                  .filter((brand) => brand !== 'search' && !brand.includes('-')) // Ensure valid brand keys
-                  .map((brand) => (
-                    <Tab key={brand} label={brand} value={brand} />
-                  ))}
+                {brandList.map((b) => (
+                  <Tab
+                    key={b.brand}
+                    value={b.brand}
+                    label={
+                      <Box display='flex' alignItems='center'>
+                        {/* <img
+                          src={b.url}
+                          alt={b.brand}
+                          style={{ width: 200, height: 40, marginRight: 8 }}
+                        /> */}
+                        {b.brand}
+                      </Box>
+                    }
+                  />
+                ))}
               </Tabs>
             )
           )}
