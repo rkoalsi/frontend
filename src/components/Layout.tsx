@@ -13,6 +13,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
+import { motion } from 'framer-motion';
 
 const Layout = ({ children }: any) => {
   const { user = {}, loading, logout }: any = useContext(Auth);
@@ -69,6 +70,21 @@ const Layout = ({ children }: any) => {
       router.replace('/login'); // Use replace to prevent adding to history stack
     }
   }, [user, loading, shared, isRouterReady, router, publicPaths]);
+  const buttonVariants = {
+    hover: {
+      scale: 1.05,
+      boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.2)',
+      transition: {
+        duration: 0.3,
+      },
+    },
+    tap: {
+      scale: 0.95,
+      transition: {
+        duration: 0.2,
+      },
+    },
+  };
 
   if (!isRouterReady || (loading && !user)) {
     return (
@@ -103,38 +119,51 @@ const Layout = ({ children }: any) => {
       <AppBar position='sticky' sx={{ backgroundColor: '#2C3E50' }}>
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Typography
-            variant='h6'
+            lineHeight={1.2}
+            variant='body1'
             fontWeight='bold'
             sx={{ cursor: 'pointer', color: 'white' }}
             onClick={() => {
               if (!shared) router.push('/');
             }}
           >
-            Order Management
+            Pupscribe Order Form
           </Typography>
           <Box display={'flex'} flexDirection={'row'} gap={'16px'}>
             {user &&
               user.data &&
               user.data.role.includes('admin') &&
               !router.pathname.includes('admin') && (
-                <Button
-                  variant='contained'
-                  color='primary'
-                  onClick={() => router.push('/admin')}
-                  sx={{ textTransform: 'none' }}
+                <motion.div
+                  variants={buttonVariants}
+                  whileHover='hover'
+                  whileTap='tap'
                 >
-                  Admin Dashboard
-                </Button>
+                  <Button
+                    variant='contained'
+                    color='primary'
+                    onClick={() => router.push('/admin')}
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Admin
+                  </Button>
+                </motion.div>
               )}
             {user && (
-              <Button
-                variant='contained'
-                color='error'
-                onClick={logout}
-                sx={{ textTransform: 'none' }}
+              <motion.div
+                variants={buttonVariants}
+                whileHover='hover'
+                whileTap='tap'
               >
-                Logout
-              </Button>
+                <Button
+                  variant='contained'
+                  color='error'
+                  onClick={logout}
+                  sx={{ textTransform: 'none' }}
+                >
+                  Logout
+                </Button>
+              </motion.div>
             )}
           </Box>
         </Toolbar>

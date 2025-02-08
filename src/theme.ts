@@ -8,19 +8,18 @@ export const roboto = Roboto({
   display: 'swap',
 });
 
-// Create a theme instance.
+// Create a theme instance with improved button colors using gradients.
 const theme = createTheme({
   cssVariables: true,
   palette: {
     primary: {
-      main: '#344054', // Dark slate gray for excellent contrast with the gradient background
-      contrastText: '#ffffff', // White text for readability
-    },
-    secondary: {
-      main: '#1E293B', // Slightly darker tone for accents and balance
+      main: '#344054', // Dark slate gray
       contrastText: '#ffffff',
     },
-
+    secondary: {
+      main: '#1E293B', // Slightly darker tone for accents
+      contrastText: '#ffffff',
+    },
     error: {
       main: red.A400,
     },
@@ -63,15 +62,31 @@ const theme = createTheme({
           textTransform: 'none', // No uppercase for a polished appearance
         },
         containedPrimary: {
-          backgroundColor: '#344054', // Dark slate gray for primary buttons
+          // Use a gradient that matches the AppBar background
+          backgroundImage: 'linear-gradient(135deg, #344054, #1E293B)',
           '&:hover': {
-            backgroundColor: '#2C3A48', // Slightly darker on hover
+            backgroundImage: 'linear-gradient(135deg, #2C3A48, #172235)',
           },
         },
         containedSecondary: {
-          backgroundColor: '#FF8A65', // Coral-orange for homepage-specific actions
+          // A warm gradient for secondary actions
+          backgroundImage: 'linear-gradient(135deg, #FF8A65, #FF7043)',
           '&:hover': {
-            backgroundColor: '#FF7043', // Deeper coral for hover effect
+            backgroundImage: 'linear-gradient(135deg, #FF7043, #FF5733)',
+          },
+        },
+        containedSuccess: {
+          // A fresh green gradient for success actions
+          backgroundImage: 'linear-gradient(135deg, #2ecc71, #27ae60)',
+          '&:hover': {
+            backgroundImage: 'linear-gradient(135deg, #27ae60, #1e8449)',
+          },
+        },
+        containedInfo: {
+          // A cool blue gradient for informational actions
+          backgroundImage: 'linear-gradient(135deg, #3498db, #2980b9)',
+          '&:hover': {
+            backgroundImage: 'linear-gradient(135deg, #2980b9, #2471a3)',
           },
         },
       },
@@ -79,7 +94,7 @@ const theme = createTheme({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          background: 'linear-gradient(135deg, #344054, #1E293B)', // New gradient with darker tones for clarity
+          background: 'linear-gradient(135deg, #344054, #1E293B)', // Gradient for the AppBar
           color: '#ffffff',
         },
       },
