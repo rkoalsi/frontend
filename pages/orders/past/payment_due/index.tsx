@@ -15,6 +15,7 @@ import { useRouter } from 'next/router';
 import axios from 'axios';
 import AuthContext from '../../../../src/components/Auth';
 import axiosInstance from '../../../../src/util/axios';
+import { toast } from 'react-toastify';
 
 const PaymentDue = () => {
   const [loading, setLoading] = useState(false);
@@ -59,7 +60,29 @@ const PaymentDue = () => {
     getData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
+  const handleDownloadCSV = async () => {
+    try {
+      let url = '/admin/payments_due/download_csv';
+      console.log(user);
+      url += `?sales_person=${encodeURIComponent(
+        user?.data?.role?.includes('admin') ? '' : user?.data?.code
+      )}`;
+      const response = await axiosInstance.get(url, {
+        responseType: 'blob', // important for binary responses
+      });
+      // Create a URL for the blob and simulate a link click to download
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', 'payments_due.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error downloading CSV');
+    }
+  };
   return (
     <Box
       display='flex'
@@ -76,7 +99,9 @@ const PaymentDue = () => {
       <Typography variant='h4' fontWeight='bold' sx={{ mb: 2, color: 'white' }}>
         Payments Due
       </Typography>
-
+      <Button variant='contained' color='primary' onClick={handleDownloadCSV}>
+        Download CSV
+      </Button>
       {/* Loading State */}
       {loading ? (
         <Box sx={{ width: '100%', maxWidth: '1200px', mt: 4 }}>

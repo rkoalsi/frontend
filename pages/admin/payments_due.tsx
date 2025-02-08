@@ -15,6 +15,10 @@ import {
   capitalize,
   TablePagination,
   TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -29,15 +33,17 @@ const PaymentsDue = () => {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-
+  const [salesPeople, setSalesPeople] = useState([]);
+  const [appliedSalesPersonFilter, setAppliedSalesPersonFilter] = useState('');
   // Fetch data from the server
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Pass page & limit for server-side pagination
-      const response = await axiosInstance.get(
-        `/admin/payments_due?page=${page}&limit=${rowsPerPage}`
-      );
+      let url = `/admin/payments_due?page=${page}&limit=${rowsPerPage}`;
+      if (appliedSalesPersonFilter) {
+        url += `&sales_person=${encodeURIComponent(appliedSalesPersonFilter)}`;
+      }
+      const response = await axiosInstance.get(url);
 
       // The backend returns { data, total_count }
       const { invoices, total_count, total_pages } = response.data;
@@ -52,11 +58,23 @@ const PaymentsDue = () => {
       setLoading(false);
     }
   };
+  useEffect(() => {
+    const fetchSalesPeople = async () => {
+      try {
+        const response = await axiosInstance.get(`/admin/sales-people`);
+        setSalesPeople(response.data.sales_people);
+      } catch (error) {
+        console.error(error);
+        toast.error('Error fetching sales people.');
+      }
+    };
 
+    fetchSalesPeople();
+  }, []);
   // Re-fetch data whenever page or rowsPerPage changes
   useEffect(() => {
     fetchData();
-  }, [page, rowsPerPage]);
+  }, [page, rowsPerPage, appliedSalesPersonFilter]);
 
   // MUI Pagination: next/previous
   const handleChangePage = (event: any, newPage: number) => {
@@ -95,6 +113,33 @@ const PaymentsDue = () => {
     setSelectedOrder(null);
   };
 
+  // Handler to download CSV of all payments due
+  const handleDownloadCSV = async () => {
+    try {
+      let url = '/admin/payments_due/download_csv';
+      if (appliedSalesPersonFilter) {
+        url += `?sales_person=${encodeURIComponent(appliedSalesPersonFilter)}`;
+      }
+      const response = await axiosInstance.get(url, {
+        responseType: 'blob', // important for binary responses
+      });
+      // Create a URL for the blob and simulate a link click to download
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', 'payments_due.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error downloading CSV');
+    }
+  };
+  // Handler to apply the sales person filter
+  const handleApplyFilter = (value: string) => {
+    setAppliedSalesPersonFilter(value);
+  };
   return (
     <Box sx={{ padding: 3 }}>
       <Paper
@@ -105,19 +150,50 @@ const PaymentsDue = () => {
           backgroundColor: 'white',
         }}
       >
-        <Typography
-          variant='h4'
-          gutterBottom
-          sx={{
-            fontFamily: 'Roboto, sans-serif',
-            fontWeight: 'bold',
-          }}
+        <Box
+          display='flex'
+          justifyContent='space-between'
+          alignItems='center'
+          mb={2}
         >
-          All Payments Due
-        </Typography>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
-          View and manage all due payments below.
-        </Typography>
+          <Typography
+            variant='h4'
+            gutterBottom
+            sx={{
+              fontFamily: 'Roboto, sans-serif',
+              fontWeight: 'bold',
+            }}
+          >
+            All Payments Due
+          </Typography>
+          <Box display='flex' width={'30%'} gap={2}>
+            <FormControl fullWidth sx={{ mt: 2, width: '100%' }}>
+              <InputLabel id='sales-person-filter-label'>
+                Sales Person
+              </InputLabel>
+              <Select
+                labelId='sales-person-filter-label'
+                id='sales-person-filter'
+                value={appliedSalesPersonFilter}
+                // disabled={filterUnassigned}
+                label='Sales Person'
+                onChange={(e) => {
+                  handleApplyFilter(e.target.value);
+                }}
+              >
+                <MenuItem value=''>All</MenuItem>
+                {salesPeople.map((person) => (
+                  <MenuItem key={person} value={person}>
+                    {person}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button variant='contained' onClick={handleDownloadCSV}>
+              Download CSV
+            </Button>
+          </Box>
+        </Box>
 
         {loading ? (
           <Box

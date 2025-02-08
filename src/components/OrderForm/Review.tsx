@@ -42,6 +42,7 @@ interface Props {
   setActiveStep: (step: number) => void;
   isShared: boolean;
   order: any;
+  referenceNumber: any;
 }
 
 const Review: React.FC<Props> = React.memo((props) => {
@@ -56,6 +57,7 @@ const Review: React.FC<Props> = React.memo((props) => {
     setActiveStep,
     isShared,
     order,
+    referenceNumber,
   } = props;
 
   const theme = useTheme();
@@ -237,6 +239,11 @@ const Review: React.FC<Props> = React.memo((props) => {
             <strong>Phone:</strong>{' '}
             {customer?.mobile || customer?.phone || 'N/A'}
           </Typography>
+          {referenceNumber && (
+            <Typography variant='body1'>
+              <strong>Reference Number:</strong> {referenceNumber || 'N/A'}
+            </Typography>
+          )}
         </Paper>
 
         <Divider sx={{ my: 2 }} />
