@@ -130,7 +130,7 @@ const Catalogues = () => {
         toast.success('Catalogue updated successfully');
       } else {
         // Add new catalogue (assuming you have a POST route defined)
-        await axiosInstance.post(`/catalogues`, formData);
+        await axiosInstance.post(`/admin/catalogues`, formData);
         toast.success('Catalogue added successfully');
       }
       fetchCatalogues();
