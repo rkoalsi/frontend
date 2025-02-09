@@ -25,6 +25,7 @@ import {
   PeopleAlt as SalesPeopleIcon,
   Settings,
   Payment,
+  LibraryBooks,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -40,6 +41,7 @@ const menuItems = [
     path: '/admin/sales_people',
   },
   { text: 'Payments Due', icon: <Payment />, path: '/admin/payments_due' },
+  { text: 'Catalogues', icon: <LibraryBooks />, path: '/admin/catalogues' },
   // { text: 'Settings', icon: <Settings />, path: '/admin/settings' },
 ];
 

@@ -12,6 +12,7 @@ import AuthContext from '../src/components/Auth';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import {
+  LibraryBooks,
   Payment,
   ShoppingCart,
   ShoppingCartCheckout,
@@ -187,7 +188,7 @@ const Home = () => {
                   <Button
                     variant='contained'
                     color='info'
-                    startIcon={<Payment />}
+                    startIcon={<LibraryBooks />}
                     sx={{
                       fontSize: '1.2rem',
                       padding: '12px 24px',
