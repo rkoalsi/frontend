@@ -1,4 +1,4 @@
-import { Box } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import { Button } from '@mui/material';
 import { LibraryBooks } from '@mui/icons-material';
@@ -10,25 +10,7 @@ interface Props {}
 
 function Catalogue(props: Props) {
   const {} = props;
-  const [brands, setBrands] = useState([
-    {
-      brand: 'FOFOS X Barkbutler',
-      url: `https://d3bkzibc2zbgda.cloudfront.net/catalogues/fofos.pdf`,
-    },
-    {
-      brand: 'Truelove',
-      url: `https://d3bkzibc2zbgda.cloudfront.net/catalogues/truelove.pdf`,
-    },
-    {
-      brand: 'Joyser',
-      url: `https://d3bkzibc2zbgda.cloudfront.net/catalogues/joyser.pdf`,
-    },
-    {
-      brand: 'Petfest',
-      url: `https://d3bkzibc2zbgda.cloudfront.net/catalogues/petfest.pdf`,
-    },
-    // { brand: 'Zippy Paws', url: `https://d3bkzibc2zbgda.cloudfront.net/catalogues/zippy_paws.pdf`  },
-  ]);
+  const [brands, setBrands] = useState([]);
   const buttonVariants = {
     hover: {
       scale: 1.05,
@@ -46,8 +28,9 @@ function Catalogue(props: Props) {
   };
   const getData = async () => {
     try {
-      const resp = await axios.get(`${process.env.api_url}/products/brands`);
-      // setBrands(resp?.data?.brands);
+      const resp = await axios.get(`${process.env.api_url}/catalogues`);
+      console.log(resp.data);
+      setBrands(resp?.data);
     } catch (error: any) {
       console.log(error);
       toast.error(error);
@@ -71,11 +54,14 @@ function Catalogue(props: Props) {
         color: 'white',
       }}
     >
+      <Typography variant='h3' fontWeight={'bold'} color={'white'}>
+        View Catalogues
+      </Typography>
       {brands.map((b: any, index: number) => (
         <motion.div variants={buttonVariants} whileHover='hover' whileTap='tap'>
           <Button
             variant='contained'
-            color={index % 2 == 0 ? 'primary' : 'secondary'}
+            color={'primary'}
             sx={{
               fontSize: '1.2rem',
               padding: '12px 24px',
@@ -83,9 +69,9 @@ function Catalogue(props: Props) {
               fontWeight: 'bold',
             }}
             fullWidth
-            onClick={() => handleDownload(b.url)}
+            onClick={() => handleDownload(b.image_url)}
           >
-            {b.brand} Catalogue
+            {b.name} Catalogue
           </Button>
         </motion.div>
       ))}

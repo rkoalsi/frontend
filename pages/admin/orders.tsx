@@ -497,6 +497,12 @@ const Orders = () => {
                       {selectedOrder?.estimate_number}
                     </Typography>
                   )}
+                  {selectedOrder?.reference_number && (
+                    <Typography>
+                      <strong>Reference Number:</strong>{' '}
+                      {selectedOrder?.reference_number}
+                    </Typography>
+                  )}
                   <Typography>
                     <strong>Status:</strong>
                     {selectedOrder.status
