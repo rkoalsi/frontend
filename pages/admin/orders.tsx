@@ -54,6 +54,8 @@ const Orders = () => {
   const [filterSalesPerson, setFilterSalesPerson] = useState<string>('');
   const [filterEstimatesCreated, setFilterEstimatesCreated] =
     useState<boolean>(false);
+  const [filterEstimatesGreaterThanZero, setFilterEstimatesGreaterThanZero] =
+    useState<boolean>(false);
   const [salesPeople, setSalesPeople] = useState<string[]>([
     'SP1',
     'SP2',
@@ -109,7 +111,7 @@ const Orders = () => {
       if (filterSalesPerson) params.sales_person = filterSalesPerson;
       if (filterEstimatesCreated)
         params.estimate_created = filterEstimatesCreated;
-
+      if (filterEstimatesGreaterThanZero) params.amount = true;
       const response = await axiosInstance.get(`/admin/orders`, {
         params,
       });
@@ -754,6 +756,19 @@ const Orders = () => {
                 />
               }
               label='Estimates Created'
+              sx={{ mt: 2 }}
+            />
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={filterEstimatesGreaterThanZero}
+                  onChange={(e) =>
+                    setFilterEstimatesGreaterThanZero(e.target.checked)
+                  }
+                />
+              }
+              label='Amount > 0'
               sx={{ mt: 2 }}
             />
 
