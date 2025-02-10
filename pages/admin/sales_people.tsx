@@ -538,7 +538,7 @@ const SalesPeople = () => {
                     </TableCell>
                     <TableCell>
                       <Button
-                        variant='outlined'
+                        variant='contained'
                         onClick={() => handleViewDetails(person)}
                       >
                         Edit
@@ -630,7 +630,7 @@ const SalesPeople = () => {
                   sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}
                 >
                   <Button
-                    variant='outlined'
+                    variant='contained'
                     color='secondary'
                     onClick={handleCloseDrawer}
                     size='small'
