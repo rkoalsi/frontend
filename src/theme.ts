@@ -8,7 +8,6 @@ export const roboto = Roboto({
   display: 'swap',
 });
 
-// Create a theme instance with improved button colors using gradients.
 const theme = createTheme({
   cssVariables: true,
   palette: {
@@ -26,7 +25,7 @@ const theme = createTheme({
     text: {
       primary: '#1A1A1A', // High-contrast dark text
       secondary: '#4A5568', // Neutral gray for secondary text
-      disabled: '#A0AEC0', // Light gray for disabled text (not used on buttons here)
+      disabled: '#A0AEC0', // Light gray for disabled text
     },
     background: {
       default: '#F7FAFC', // Light, professional background
@@ -41,12 +40,12 @@ const theme = createTheme({
     h1: {
       fontSize: '2rem',
       fontWeight: 700,
-      color: '#344054', // Dark slate gray for main headings
+      color: '#344054',
     },
     h2: {
       fontSize: '1.75rem',
       fontWeight: 600,
-      color: '#1E293B', // Complementary color for subheadings
+      color: '#1E293B',
     },
     body1: {
       fontSize: '1rem',
@@ -58,22 +57,20 @@ const theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: '8px', // Smooth button edges for a modern look
+          borderRadius: '8px', // Smooth button edges
           textTransform: 'none', // No uppercase for a polished appearance
-          // Keep text white when disabled (overriding any opacity changes)
           '&.Mui-disabled': {
-            color: '#ffffff',
-            // Avoid lowering overall opacity on the entire button,
-            // so the text remains crisp white.
+            // This applies to all buttons, so if needed, you can adjust here too.
+            cursor: 'default',
           },
         },
+        // Overrides for contained buttons remain unchanged.
         containedPrimary: {
           backgroundImage: 'linear-gradient(135deg, #344054, #1E293B)',
           '&:hover': {
             backgroundImage: 'linear-gradient(135deg, #2C3A48, #172235)',
           },
           '&.Mui-disabled': {
-            // Use a desaturated gray gradient to indicate a disabled state.
             backgroundImage: 'linear-gradient(135deg, #6c757d, #5a6268)',
             cursor: 'default',
           },
@@ -109,6 +106,47 @@ const theme = createTheme({
           },
         },
       },
+      // Define variants for outlined buttons for both primary and secondary
+      variants: [
+        {
+          props: { variant: 'outlined', color: 'primary' },
+          style: {
+            color: '#344054', // Matches primary main
+            backgroundImage: 'linear-gradient(135deg, #344054, #1E293B)',
+            '&:hover': {
+              backgroundImage: 'linear-gradient(135deg, #2C3A48, #172235)',
+            },
+            '&.Mui-disabled': {
+              backgroundImage: 'linear-gradient(135deg, #6c757d, #5a6268)',
+              color: '#344054', // Force text color to primary
+              opacity: 1, // Ensure full opacity for text visibility
+              cursor: 'default',
+              WebkitTextFillColor: '#344054', // Ensures text is visible in Webkit browsers
+              WebkitBackgroundClip: 'initial',
+              backgroundClip: 'initial',
+            },
+          },
+        },
+        {
+          props: { variant: 'outlined', color: 'secondary' },
+          style: {
+            color: '#1E293B', // Matches secondary main
+            backgroundImage: 'linear-gradient(135deg, #FF8A65, #FF7043)', // Same gradient as containedSecondary
+            '&:hover': {
+              backgroundImage: 'linear-gradient(135deg, #FF7043, #FF5733)',
+            },
+            '&.Mui-disabled': {
+              backgroundImage: 'linear-gradient(135deg, #6c757d, #5a6268)',
+              color: '#1E293B', // Force text color to secondary
+              opacity: 1, // Ensure full opacity for text visibility
+              cursor: 'default',
+              WebkitTextFillColor: '#1E293B',
+              WebkitBackgroundClip: 'initial',
+              backgroundClip: 'initial',
+            },
+          },
+        },
+      ],
     },
     MuiAppBar: {
       styleOverrides: {
@@ -123,7 +161,7 @@ const theme = createTheme({
         label: {
           color: '#4A5568', // Neutral gray for inactive steps
           '&.Mui-active': {
-            color: '#344054', // Use primary color for active steps
+            color: '#344054', // Primary color for active steps
           },
         },
       },
