@@ -648,8 +648,8 @@ const Products: React.FC<SearchBarProps> = ({
             Add Products
           </Typography>
           <Button
-            variant='outlined'
-            color='secondary'
+            variant='contained'
+            color='primary'
             onClick={handleClearCart}
             disabled={
               selectedProducts.length === 0 ||

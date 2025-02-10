@@ -26,7 +26,7 @@ const theme = createTheme({
     text: {
       primary: '#1A1A1A', // High-contrast dark text
       secondary: '#4A5568', // Neutral gray for secondary text
-      disabled: '#A0AEC0', // Light gray for disabled text
+      disabled: '#A0AEC0', // Light gray for disabled text (not used on buttons here)
     },
     background: {
       default: '#F7FAFC', // Light, professional background
@@ -60,33 +60,52 @@ const theme = createTheme({
         root: {
           borderRadius: '8px', // Smooth button edges for a modern look
           textTransform: 'none', // No uppercase for a polished appearance
+          // Keep text white when disabled (overriding any opacity changes)
+          '&.Mui-disabled': {
+            color: '#ffffff',
+            // Avoid lowering overall opacity on the entire button,
+            // so the text remains crisp white.
+          },
         },
         containedPrimary: {
-          // Use a gradient that matches the AppBar background
           backgroundImage: 'linear-gradient(135deg, #344054, #1E293B)',
           '&:hover': {
             backgroundImage: 'linear-gradient(135deg, #2C3A48, #172235)',
           },
+          '&.Mui-disabled': {
+            // Use a desaturated gray gradient to indicate a disabled state.
+            backgroundImage: 'linear-gradient(135deg, #6c757d, #5a6268)',
+            cursor: 'default',
+          },
         },
         containedSecondary: {
-          // A warm gradient for secondary actions
           backgroundImage: 'linear-gradient(135deg, #FF8A65, #FF7043)',
           '&:hover': {
             backgroundImage: 'linear-gradient(135deg, #FF7043, #FF5733)',
           },
+          '&.Mui-disabled': {
+            backgroundImage: 'linear-gradient(135deg, #6c757d, #5a6268)',
+            cursor: 'default',
+          },
         },
         containedSuccess: {
-          // A fresh green gradient for success actions
           backgroundImage: 'linear-gradient(135deg, #2ecc71, #27ae60)',
           '&:hover': {
             backgroundImage: 'linear-gradient(135deg, #27ae60, #1e8449)',
           },
+          '&.Mui-disabled': {
+            backgroundImage: 'linear-gradient(135deg, #6c757d, #5a6268)',
+            cursor: 'default',
+          },
         },
         containedInfo: {
-          // A cool blue gradient for informational actions
           backgroundImage: 'linear-gradient(135deg, #3498db, #2980b9)',
           '&:hover': {
             backgroundImage: 'linear-gradient(135deg, #2980b9, #2471a3)',
+          },
+          '&.Mui-disabled': {
+            backgroundImage: 'linear-gradient(135deg, #6c757d, #5a6268)',
+            cursor: 'default',
           },
         },
       },
