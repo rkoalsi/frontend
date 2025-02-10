@@ -1069,7 +1069,7 @@ const Customers = () => {
                 Apply Filters
               </Button>
               <Button
-                variant='outlined'
+                variant='contained'
                 fullWidth
                 onClick={() => {
                   setFilterStatus('');
