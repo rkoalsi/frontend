@@ -34,8 +34,10 @@ jobs:
       - name: Deploy to Production Server
         uses: appleboy/ssh-action@v0.1.7
         with:
-          host: ${{ secrets.STAGING_SERVER_HOST }}
-          username: ${{ secrets.STAGING_SERVER_USER }}
-          key: ${{ secrets.STAGING_SERVER_SSH_KEY }}
+          host: ${{ secrets.PRODUCTION_SERVER_HOST }}
+          username: ${{ secrets.PRODUCTION_SERVER_USER }}
+          key: ${{ secrets.PRODUCTION_SERVER_SSH_KEY }}
           script: |
+            cd /home/ubuntu
+            # The deploy.sh script uses the -f flag to deploy backend only.
             ./new-deploy.sh -f
