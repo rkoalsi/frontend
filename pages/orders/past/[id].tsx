@@ -78,8 +78,8 @@ const OrderDetails = () => {
           {error || 'No order details available.'}
         </Typography>
         <Button
-          variant='contained'
-          color='secondary'
+          variant='outlined'
+          color='primary'
           sx={{ mt: 2 }}
           onClick={() => router.push('/orders/past')}
         >
@@ -161,7 +161,44 @@ const OrderDetails = () => {
           of GST ₹{orderData?.total_gst || '0'})
         </Typography>
         <Divider sx={{ my: 2 }} />
-
+        <Typography variant='h5' sx={{ mb: 2 }}>
+          <strong>Shipping Address:</strong>
+        </Typography>
+        <Typography variant='body1' sx={{ mb: 1 }}>
+          {orderData.shipping_address.attention}
+        </Typography>
+        <Typography variant='body1' sx={{ mb: 1 }}>
+          {orderData.shipping_address.address}
+        </Typography>
+        <Typography variant='body1' sx={{ mb: 1 }}>
+          {orderData.shipping_address.city}
+        </Typography>
+        <Typography variant='body1' sx={{ mb: 1 }}>
+          {orderData.shipping_address.state}
+        </Typography>
+        <Typography variant='body1' sx={{ mb: 1 }}>
+          {orderData.shipping_address.zip}
+        </Typography>
+        <Divider sx={{ my: 2 }} />
+        <Typography variant='h5' sx={{ mb: 2 }}>
+          <strong>Billing Address:</strong>
+        </Typography>
+        <Typography variant='body1' sx={{ mb: 1 }}>
+          {orderData.billing_address.attention}
+        </Typography>
+        <Typography variant='body1' sx={{ mb: 1 }}>
+          {orderData.billing_address.address}
+        </Typography>
+        <Typography variant='body1' sx={{ mb: 1 }}>
+          {orderData.billing_address.city}
+        </Typography>
+        <Typography variant='body1' sx={{ mb: 1 }}>
+          {orderData.billing_address.state}
+        </Typography>
+        <Typography variant='body1' sx={{ mb: 1 }}>
+          {orderData.billing_address.zip}
+        </Typography>
+        <Divider sx={{ my: 2 }} />
         {/* Product List */}
         <Typography variant='h6' fontWeight='bold' gutterBottom>
           Ordered Items
@@ -200,7 +237,7 @@ const OrderDetails = () => {
         {/* Footer Navigation */}
         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2 }}>
           <Button
-            variant='outlined'
+            variant='contained'
             color='primary'
             onClick={() => router.push('/orders/past')}
           >

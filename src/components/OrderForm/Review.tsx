@@ -200,6 +200,7 @@ const Review: React.FC<Props> = React.memo((props) => {
             color='primary'
             onClick={downloadAsPDF}
             disabled={!order?.estimate_created}
+            sx={{ color: 'primary.contrastText' }}
           >
             {!order?.estimate_created
               ? 'Save Estimate As Draft Before Downloading'
