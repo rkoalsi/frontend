@@ -23,8 +23,8 @@ function Catalogue(props: Props) {
   useEffect(() => {
     getData();
   }, []);
-  const handleDownload = async (url: string) => {
-    window.location.href = url;
+  const handleOpenCatalogue = async (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
   return (
     <Box
@@ -44,7 +44,7 @@ function Catalogue(props: Props) {
       {brands.map((b: any, index: number) => (
         <CustomButton
           color={'primary'}
-          onClick={() => handleDownload(b.image_url)}
+          onClick={() => handleOpenCatalogue(b.image_url)}
           text={`${b.name} Catalogue`}
         />
       ))}
