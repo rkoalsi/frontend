@@ -17,6 +17,7 @@ import {
   ShoppingCart,
   ShoppingCartCheckout,
 } from '@mui/icons-material';
+import CustomButton from '../src/components/common/Button';
 import axios from 'axios';
 const Home = () => {
   const router = useRouter();
@@ -47,22 +48,6 @@ const Home = () => {
 
   const handleCatelogues = () => {
     router.push('/catalogues');
-  };
-
-  const buttonVariants = {
-    hover: {
-      scale: 1.05,
-      boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.2)',
-      transition: {
-        duration: 0.3,
-      },
-    },
-    tap: {
-      scale: 0.95,
-      transition: {
-        duration: 0.2,
-      },
-    },
   };
 
   return (
@@ -117,90 +102,34 @@ const Home = () => {
               }}
             >
               <Stack direction={isMobile ? 'column' : 'row'} spacing={4}>
-                <motion.div
-                  variants={buttonVariants}
-                  whileHover='hover'
-                  whileTap='tap'
-                >
-                  <Button
-                    variant='contained'
-                    color='primary'
-                    startIcon={<ShoppingCart />}
-                    sx={{
-                      fontSize: '1.2rem',
-                      padding: '12px 24px',
-                      borderRadius: '8px',
-                      fontWeight: 'bold',
-                    }}
-                    fullWidth
-                    onClick={handleNewOrder}
-                  >
-                    New Order
-                  </Button>
-                </motion.div>
-                <motion.div
-                  variants={buttonVariants}
-                  whileHover='hover'
-                  whileTap='tap'
-                >
-                  <Button
-                    variant='contained'
-                    color='secondary'
-                    startIcon={<ShoppingCartCheckout />}
-                    sx={{
-                      fontSize: '1.2rem',
-                      padding: '12px 24px',
-                      borderRadius: '8px',
-                      fontWeight: 'bold',
-                    }}
-                    fullWidth
-                    onClick={handlePastOrder}
-                  >
-                    Past Orders
-                  </Button>
-                </motion.div>
-                <motion.div
-                  variants={buttonVariants}
-                  whileHover='hover'
-                  whileTap='tap'
-                >
-                  <Button
-                    variant='contained'
-                    color='success'
-                    startIcon={<Payment />}
-                    sx={{
-                      fontSize: '1.2rem',
-                      padding: '12px 24px',
-                      borderRadius: '8px',
-                      fontWeight: 'bold',
-                    }}
-                    fullWidth
-                    onClick={handlePaymentsDue}
-                  >
-                    Payments Due
-                  </Button>
-                </motion.div>
-                <motion.div
-                  variants={buttonVariants}
-                  whileHover='hover'
-                  whileTap='tap'
-                >
-                  <Button
-                    variant='contained'
-                    color='info'
-                    startIcon={<LibraryBooks />}
-                    sx={{
-                      fontSize: '1.2rem',
-                      padding: '12px 24px',
-                      borderRadius: '8px',
-                      fontWeight: 'bold',
-                    }}
-                    fullWidth
-                    onClick={handleCatelogues}
-                  >
-                    Catalogues
-                  </Button>
-                </motion.div>
+                <CustomButton
+                  large
+                  icon={<ShoppingCart />}
+                  text={'New Order'}
+                  color={'primary'}
+                  onClick={handleNewOrder}
+                />
+                <CustomButton
+                  large
+                  icon={<ShoppingCartCheckout />}
+                  text={'Past Orders'}
+                  color={'secondary'}
+                  onClick={handlePastOrder}
+                />
+                <CustomButton
+                  large
+                  icon={<Payment />}
+                  color={'success'}
+                  text={'Payments Due'}
+                  onClick={handlePaymentsDue}
+                />
+                <CustomButton
+                  large
+                  icon={<LibraryBooks />}
+                  color={'info'}
+                  text={'Catalogues'}
+                  onClick={handleCatelogues}
+                />
               </Stack>
             </Box>
           </Box>

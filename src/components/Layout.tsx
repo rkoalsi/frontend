@@ -9,12 +9,10 @@ import {
   AppBar,
   Toolbar,
   Typography,
-  Button,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { motion } from 'framer-motion';
-
+import CustomButton from '../components/common/Button';
 const Layout = ({ children }: any) => {
   const { user = {}, loading, logout }: any = useContext(Auth);
   const router = useRouter();
@@ -70,21 +68,6 @@ const Layout = ({ children }: any) => {
       router.replace('/login'); // Use replace to prevent adding to history stack
     }
   }, [user, loading, shared, isRouterReady, router, publicPaths]);
-  const buttonVariants = {
-    hover: {
-      scale: 1.05,
-      boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.2)',
-      transition: {
-        duration: 0.3,
-      },
-    },
-    tap: {
-      scale: 0.95,
-      transition: {
-        duration: 0.2,
-      },
-    },
-  };
 
   if (!isRouterReady || (loading && !user)) {
     return (
@@ -134,36 +117,14 @@ const Layout = ({ children }: any) => {
               user.data &&
               user.data.role.includes('admin') &&
               !router.pathname.includes('admin') && (
-                <motion.div
-                  variants={buttonVariants}
-                  whileHover='hover'
-                  whileTap='tap'
-                >
-                  <Button
-                    variant='contained'
-                    color='primary'
-                    onClick={() => router.push('/admin')}
-                    sx={{ textTransform: 'none' }}
-                  >
-                    Admin
-                  </Button>
-                </motion.div>
+                <CustomButton
+                  color='primary'
+                  onClick={() => router.push('/admin')}
+                  text={'Admin'}
+                />
               )}
             {user && (
-              <motion.div
-                variants={buttonVariants}
-                whileHover='hover'
-                whileTap='tap'
-              >
-                <Button
-                  variant='contained'
-                  color='error'
-                  onClick={logout}
-                  sx={{ textTransform: 'none' }}
-                >
-                  Logout
-                </Button>
-              </motion.div>
+              <CustomButton color='error' onClick={logout} text={'Logout'} />
             )}
           </Box>
         </Toolbar>
