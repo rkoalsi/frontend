@@ -16,6 +16,7 @@ import {
   Payment,
   ShoppingCart,
   ShoppingCartCheckout,
+  VideoLibrary,
 } from '@mui/icons-material';
 import CustomButton from '../src/components/common/Button';
 import axios from 'axios';
@@ -48,6 +49,9 @@ const Home = () => {
 
   const handleCatelogues = () => {
     router.push('/catalogues');
+  };
+  const handleTraining = () => {
+    router.push('/training');
   };
 
   return (
@@ -129,6 +133,13 @@ const Home = () => {
                   color={'info'}
                   text={'Catalogues'}
                   onClick={handleCatelogues}
+                />
+                <CustomButton
+                  large
+                  icon={<VideoLibrary />}
+                  color={'primary'}
+                  text={'Training Videos'}
+                  onClick={handleTraining}
                 />
               </Stack>
             </Box>
