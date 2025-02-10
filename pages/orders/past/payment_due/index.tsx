@@ -16,7 +16,7 @@ import axios from 'axios';
 import AuthContext from '../../../../src/components/Auth';
 import axiosInstance from '../../../../src/util/axios';
 import { toast } from 'react-toastify';
-
+import CustomButton from '../../../../src/components/common/Button';
 const PaymentDue = () => {
   const [loading, setLoading] = useState(false);
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -249,21 +249,17 @@ const PaymentDue = () => {
 
       {/* Navigation Buttons */}
       <Box display='flex' justifyContent='center' gap='8px' sx={{ mt: 2 }}>
-        <Button
-          variant='contained'
-          color='primary'
+        <CustomButton
+          color='secondary'
           onClick={() => router.push('/')}
-        >
-          Go Back
-        </Button>
+          text={'Go Back'}
+        />
         {user.data.role.includes('admin') && (
-          <Button
-            variant='contained'
-            color='secondary'
+          <CustomButton
+            color='primary'
             onClick={() => router.push('/admin/payments_due')}
-          >
-            View More
-          </Button>
+            text={'View More'}
+          />
         )}
       </Box>
     </Box>

@@ -21,7 +21,7 @@ import { useRouter } from 'next/router';
 import axios from 'axios';
 import AuthContext from '../../../src/components/Auth';
 import { toast } from 'react-toastify';
-
+import CustomButton from '../../../src/components/common/Button';
 type OrderType = {
   _id: string;
   estimate_created?: boolean;
@@ -293,13 +293,11 @@ const PastOrders = () => {
 
       {/* Navigation Buttons */}
       <Box display='flex' justifyContent='center' gap='8px' sx={{ mt: 2 }}>
-        <Button
-          variant='contained'
+        <CustomButton
           color='secondary'
           onClick={() => router.push('/')}
-        >
-          Go Back
-        </Button>
+          text={'Go Back'}
+        />
       </Box>
     </Box>
   );
