@@ -782,7 +782,7 @@ const Orders = () => {
             {/* Reset Filters Button */}
             <Box sx={{ mt: 2 }}>
               <Button
-                variant='outlined'
+                variant='contained'
                 fullWidth
                 onClick={() => {
                   setFilterStatus('');
