@@ -894,7 +894,7 @@ const Customers = () => {
                       </TableCell>
                       <TableCell>
                         <Button
-                          variant='outlined'
+                          variant='contained'
                           onClick={() => handleViewDetails(cust)}
                         >
                           View Details
@@ -1247,7 +1247,11 @@ const Customers = () => {
                   <Button variant='contained' onClick={handleSaveDrawer}>
                     Save Changes
                   </Button>
-                  <Button variant='outlined' onClick={handleCloseDrawer}>
+                  <Button
+                    variant='contained'
+                    color={'secondary'}
+                    onClick={handleCloseDrawer}
+                  >
                     Cancel
                   </Button>
                 </Box>
@@ -1391,7 +1395,7 @@ const Customers = () => {
                         </TableCell>
                         <TableCell>
                           <Button
-                            variant='outlined'
+                            variant='contained'
                             size='small'
                             onClick={() => handleClearMarginInDialog(prod._id)}
                           >
@@ -1438,7 +1442,13 @@ const Customers = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseAddDialog}>Cancel</Button>
+          <Button
+            variant='contained'
+            color='secondary'
+            onClick={handleCloseAddDialog}
+          >
+            Cancel
+          </Button>
           <Button variant='contained' onClick={handleBulkSaveMargins}>
             Save
           </Button>

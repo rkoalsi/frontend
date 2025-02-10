@@ -467,7 +467,7 @@ const Products = () => {
                         </TableCell>
                         <TableCell>
                           <Button
-                            variant='outlined'
+                            variant='contained'
                             size='small'
                             onClick={() => handleOpenEditModal(product)}
                           >

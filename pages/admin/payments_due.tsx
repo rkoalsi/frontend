@@ -276,7 +276,7 @@ const PaymentsDue = () => {
                                 gap={'8px'}
                               >
                                 <Button
-                                  variant='outlined'
+                                  variant='contained'
                                   onClick={() => handleViewDetails(invoice)}
                                 >
                                   View Details

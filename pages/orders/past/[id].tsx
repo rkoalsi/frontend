@@ -78,8 +78,8 @@ const OrderDetails = () => {
           {error || 'No order details available.'}
         </Typography>
         <Button
-          variant='contained'
-          color='secondary'
+          variant='outlined'
+          color='primary'
           sx={{ mt: 2 }}
           onClick={() => router.push('/orders/past')}
         >
@@ -237,7 +237,7 @@ const OrderDetails = () => {
         {/* Footer Navigation */}
         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2 }}>
           <Button
-            variant='outlined'
+            variant='contained'
             color='primary'
             onClick={() => router.push('/orders/past')}
           >
