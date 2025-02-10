@@ -26,6 +26,7 @@ import {
   Settings,
   Payment,
   LibraryBooks,
+  VideoLibrary,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -42,6 +43,11 @@ const menuItems = [
   },
   { text: 'Payments Due', icon: <Payment />, path: '/admin/payments_due' },
   { text: 'Catalogues', icon: <LibraryBooks />, path: '/admin/catalogues' },
+  {
+    text: 'Training Videos',
+    icon: <VideoLibrary />,
+    path: '/admin/training',
+  },
   // { text: 'Settings', icon: <Settings />, path: '/admin/settings' },
 ];
 

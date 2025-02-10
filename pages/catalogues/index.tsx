@@ -1,7 +1,5 @@
 import { Box, Typography } from '@mui/material';
-import { motion } from 'framer-motion';
 import CustomButton from '../../src/components/common/Button';
-import { LibraryBooks } from '@mui/icons-material';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
