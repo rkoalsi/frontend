@@ -178,11 +178,11 @@ const OrderDetails = () => {
         {/* Footer Navigation */}
         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2 }}>
           <Button
-            variant='outlined'
+            variant='contained'
             color='primary'
             onClick={() => router.push('/orders/past/payment_due')}
           >
-            Back to Payment Due
+            Back to Payments Due
           </Button>
         </Box>
       </Paper>

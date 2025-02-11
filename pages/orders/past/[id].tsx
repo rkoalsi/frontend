@@ -78,7 +78,7 @@ const OrderDetails = () => {
           {error || 'No order details available.'}
         </Typography>
         <Button
-          variant='outlined'
+          variant='contained'
           color='primary'
           sx={{ mt: 2 }}
           onClick={() => router.push('/orders/past')}
