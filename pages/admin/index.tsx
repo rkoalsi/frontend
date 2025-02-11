@@ -14,6 +14,10 @@ import {
   StorefrontOutlined,
   PeopleOutlined,
   PersonOutlineOutlined,
+  Payment,
+  LibraryBooks,
+  VideoLibrary,
+  Campaign,
 } from '@mui/icons-material';
 import StatCard from '../../src/components/admin/StatCard';
 import axiosInstance from '../../src/util/axios';
@@ -37,6 +41,14 @@ interface Stats {
   orders_declined: number;
   orders_invoiced: number;
   recent_orders: number;
+  total_due_payments: number;
+  total_due_payments_today: number;
+  active_catalogues: number;
+  inactive_catalogues: number;
+  active_trainings: number;
+  inactive_trainings: number;
+  active_announcements: number;
+  inactive_announcements: number;
 }
 
 interface SubStat {
@@ -79,6 +91,74 @@ const AdminDashboard = () => {
   // Define the cards with icons
   const cards: CardProps[] = stats
     ? [
+        {
+          label: 'Payments Due',
+          route: 'payments_due',
+          subStats: [
+            {
+              label: 'Payments Due Today',
+              value: stats.total_due_payments_today,
+              color: 'success',
+            },
+            {
+              label: 'Payments Due',
+              value: stats.total_due_payments,
+              color: 'error',
+            },
+          ],
+          icon: <Payment color='primary' />,
+        },
+        {
+          label: 'Catalogues',
+          route: 'catalogues',
+          subStats: [
+            {
+              label: 'Active Catalogues',
+              value: stats.active_catalogues,
+              color: 'success',
+            },
+            {
+              label: 'Inactive Catalogues',
+              value: stats.inactive_catalogues,
+              color: 'error',
+            },
+          ],
+          icon: <LibraryBooks color='primary' />,
+        },
+        {
+          label: 'Training Videos',
+          route: 'training',
+          subStats: [
+            {
+              label: 'Active Training Videos',
+              value: stats.active_trainings,
+              color: 'success',
+            },
+            {
+              label: 'Inactive Training Videos',
+              value: stats.inactive_trainings,
+              color: 'error',
+            },
+          ],
+          icon: <VideoLibrary color='primary' />,
+        },
+        {
+          label: 'Announcements',
+          route: 'announcements',
+          subStats: [
+            {
+              label: 'Active Announcements',
+              value: stats.active_announcements,
+              color: 'success',
+            },
+            {
+              label: 'Inactive Announcements',
+              value: stats.inactive_announcements,
+              color: 'error',
+            },
+          ],
+          icon: <Campaign color='primary' />,
+        },
         {
           label: 'Orders',
           route: 'orders',
