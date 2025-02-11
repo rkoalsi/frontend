@@ -1,21 +1,13 @@
 # Use Node.js for building
-FROM node:18-slim AS builder
+FROM node:18-slim as builder
 
 # Set working directory
 WORKDIR /app
 
-# Update and upgrade OS packages, then install build tools
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
-      build-essential \
-      python3 && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copy only package.json (omit package-lock.json if you don't have one)
+# Cache package.json and package-lock.json to avoid re-installing dependencies if unchanged
 COPY package.json ./
 
-# Install dependencies (this will generate a node_modules based on package.json)
+# Install dependencies
 RUN npm install --verbose
 
 # Copy the rest of the source code
@@ -30,13 +22,13 @@ FROM node:18-slim
 # Set working directory
 WORKDIR /app
 
-# Copy build artifacts and package files from the builder stage
+# Copy only the build output and required files
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.js ./
 
-# Install only production dependencies (without using npm ci, since there's no lock file)
+# Install only production dependencies
 RUN npm install --production
 
 # Expose the application port
