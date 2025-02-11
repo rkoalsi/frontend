@@ -134,7 +134,7 @@ const Layout = ({ children }: any) => {
       <Container
         maxWidth='lg'
         sx={{
-          minHeight: isMobileOrTablet ? '100vh' : null,
+          // minHeight: isMobileOrTablet ? '100vh' : null,
           flexGrow: 1,
           width: isMobileOrTablet ? '100%' : null,
           display: 'flex',

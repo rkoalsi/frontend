@@ -102,8 +102,8 @@ const LoginPage = () => {
           </Button>
           <Button
             type='submit'
-            variant='outlined'
-            color='primary'
+            variant='contained'
+            color='secondary'
             size='large'
             fullWidth
             onClick={() => router.push('/forgot_password')}

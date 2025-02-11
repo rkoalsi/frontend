@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 
-function Catalogue() {
+function Training() {
   const [trainings, setTrainings] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -95,4 +95,4 @@ function Catalogue() {
   );
 }
 
-export default Catalogue;
+export default Training;
