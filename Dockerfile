@@ -4,13 +4,15 @@ FROM node:18-slim AS builder
 # Set working directory
 WORKDIR /app
 
-# Install OS-level build dependencies that may be needed for native modules
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    python3 \
-    && rm -rf /var/lib/apt/lists/*
+# Update and upgrade OS packages, then install build tools
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+      build-essential \
+      python3 && \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy only package.json (omit package-lock.json)
+# Copy only package.json (omit package-lock.json if you don't have one)
 COPY package.json ./
 
 # Install dependencies (this will generate a node_modules based on package.json)
