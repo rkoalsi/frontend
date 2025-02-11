@@ -109,7 +109,7 @@ function NewAddress(props: Props) {
         </Grid>
       </Grid>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-        <Button variant='outlined' color='secondary' onClick={handleCancel}>
+        <Button variant='contained' color='secondary' onClick={handleCancel}>
           Cancel
         </Button>
         <Button variant='contained' color='primary' onClick={handleSave}>
