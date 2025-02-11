@@ -862,7 +862,7 @@ const SalesPeople = () => {
                 mt={2}
               >
                 <Button
-                  variant='outlined'
+                  variant='contained'
                   disabled={page <= 1}
                   onClick={() => setPage((prev) => prev - 1)}
                 >
@@ -874,7 +874,7 @@ const SalesPeople = () => {
                 </Typography>
 
                 <Button
-                  variant='outlined'
+                  variant='contained'
                   disabled={page >= totalPages}
                   onClick={() => setPage((prev) => prev + 1)}
                 >
