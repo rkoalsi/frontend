@@ -27,6 +27,7 @@ import {
   Payment,
   LibraryBooks,
   VideoLibrary,
+  Campaign,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -47,6 +48,11 @@ const menuItems = [
     text: 'Training Videos',
     icon: <VideoLibrary />,
     path: '/admin/training',
+  },
+  {
+    text: 'Announcements',
+    icon: <Campaign />,
+    path: '/admin/announcements',
   },
   // { text: 'Settings', icon: <Settings />, path: '/admin/settings' },
 ];

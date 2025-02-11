@@ -2,7 +2,6 @@ import {
   Box,
   Typography,
   Paper,
-  Button,
   Stack,
   useTheme,
   useMediaQuery,
@@ -10,8 +9,8 @@ import {
 import { useContext } from 'react';
 import AuthContext from '../src/components/Auth';
 import { useRouter } from 'next/router';
-import { motion } from 'framer-motion';
 import {
+  Campaign,
   LibraryBooks,
   Payment,
   ShoppingCart,
@@ -53,6 +52,9 @@ const Home = () => {
   const handleTraining = () => {
     router.push('/training');
   };
+  const handleAnnouncements = () => {
+    router.push('/announcements');
+  };
 
   return (
     <Box
@@ -61,7 +63,7 @@ const Home = () => {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'flex-start',
-        minHeight: '100vh',
+        // minHeight: '100vh',
         width: '100%',
         padding: '16px',
         color: 'white',
@@ -105,7 +107,7 @@ const Home = () => {
                 textAlign: 'center',
               }}
             >
-              <Stack direction={isMobile ? 'column' : 'row'} spacing={4}>
+              <Stack direction={'column'} spacing={4}>
                 <CustomButton
                   large
                   icon={<ShoppingCart />}
@@ -140,6 +142,13 @@ const Home = () => {
                   color={'primary'}
                   text={'Training Videos'}
                   onClick={handleTraining}
+                />
+                <CustomButton
+                  large
+                  icon={<Campaign />}
+                  color={'secondary'}
+                  text={'Announcements'}
+                  onClick={handleAnnouncements}
                 />
               </Stack>
             </Box>
