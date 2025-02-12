@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Box,
   Paper,
@@ -29,6 +29,7 @@ import { toast } from 'react-toastify';
 import { useDropzone } from 'react-dropzone';
 import { FilterAlt } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
+import ImagePopupDialog from '../../src/components/common/ImagePopUp';
 
 const Products = () => {
   const [products, setProducts] = useState<any[]>([]);
@@ -59,12 +60,21 @@ const Products = () => {
     sub_category: '',
     series: '',
   });
+  const [openImagePopup, setOpenImagePopup] = useState(false);
+  const [popupImageSrc, setPopupImageSrc] = useState('');
   const applyFilters = () => {
     setPage(0); // reset page
     setOpenFilterModal(false);
     getData(); // fetch with new filters
   };
+  const handleImageClick = useCallback((src: string) => {
+    setPopupImageSrc(src);
+    setOpenImagePopup(true);
+  }, []);
 
+  const handleClosePopup = useCallback(() => {
+    setOpenImagePopup(false);
+  }, []);
   // Debounce the search input to prevent excessive API calls
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -443,6 +453,11 @@ const Products = () => {
                       <TableRow key={product._id}>
                         <TableCell>
                           <img
+                            onClick={() =>
+                              handleImageClick(
+                                product.image_url || '/placeholder.png'
+                              )
+                            }
                             src={product.image_url || '/placeholder.png'}
                             alt={product.name}
                             style={{
@@ -450,6 +465,7 @@ const Products = () => {
                               height: '80px',
                               borderRadius: '4px',
                               objectFit: 'cover',
+                              cursor: 'pointer',
                             }}
                           />
                         </TableCell>
@@ -645,6 +661,11 @@ const Products = () => {
                     }}
                   >
                     <img
+                      onClick={() =>
+                        handleImageClick(
+                          selectedProduct.image_url || '/placeholder.png'
+                        )
+                      }
                       src={selectedProduct.image_url || '/placeholder.png'}
                       alt={selectedProduct.name}
                       style={{
@@ -653,6 +674,7 @@ const Products = () => {
                         height: 'auto',
                         borderRadius: '4px',
                         objectFit: 'cover',
+                        cursor: 'pointer',
                       }}
                     />
                   </Box>
@@ -823,6 +845,11 @@ const Products = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      <ImagePopupDialog
+        open={openImagePopup}
+        onClose={handleClosePopup}
+        imageSrc={popupImageSrc}
+      />
     </Box>
   );
 };

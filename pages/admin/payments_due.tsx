@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Typography,
   Box,
@@ -19,9 +19,12 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Checkbox,
+  Input,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
+import ImagePopupDialog from '../../src/components/common/ImagePopUp';
 
 const PaymentsDue = () => {
   const [data, setData] = useState([]);
@@ -35,6 +38,9 @@ const PaymentsDue = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [salesPeople, setSalesPeople] = useState([]);
   const [appliedSalesPersonFilter, setAppliedSalesPersonFilter] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [openImagePopup, setOpenImagePopup] = useState<boolean>(false);
+  const [popupImageSrc, setPopupImageSrc] = useState<string>('');
   // Fetch data from the server
   const fetchData = async () => {
     setLoading(true);
@@ -42,6 +48,9 @@ const PaymentsDue = () => {
       let url = `/admin/payments_due?page=${page}&limit=${rowsPerPage}`;
       if (appliedSalesPersonFilter) {
         url += `&sales_person=${encodeURIComponent(appliedSalesPersonFilter)}`;
+      }
+      if (invoiceNumber) {
+        url += `&invoice_number=${encodeURIComponent(invoiceNumber)}`;
       }
       const response = await axiosInstance.get(url);
 
@@ -74,7 +83,7 @@ const PaymentsDue = () => {
   // Re-fetch data whenever page or rowsPerPage changes
   useEffect(() => {
     fetchData();
-  }, [page, rowsPerPage, appliedSalesPersonFilter]);
+  }, [page, rowsPerPage, appliedSalesPersonFilter, invoiceNumber]);
 
   // MUI Pagination: next/previous
   const handleChangePage = (event: any, newPage: number) => {
@@ -140,6 +149,15 @@ const PaymentsDue = () => {
   const handleApplyFilter = (value: string) => {
     setAppliedSalesPersonFilter(value);
   };
+  const onClickImage = useCallback((src: string) => {
+    setPopupImageSrc(src);
+    setOpenImagePopup(true);
+  }, []);
+
+  const handleClosePopup = useCallback(() => {
+    setOpenImagePopup(false);
+  }, []);
+
   return (
     <Box sx={{ padding: 3 }}>
       <Paper
@@ -166,7 +184,13 @@ const PaymentsDue = () => {
           >
             All Payments Due
           </Typography>
-          <Box display='flex' width={'30%'} gap={2}>
+          <Box display='flex' width={'50%'} gap={2}>
+            <FormControl fullWidth sx={{ mt: 2, width: '100%' }}>
+              <InputLabel id='sales-person-filter-label'>
+                Search By Invoice Number
+              </InputLabel>
+              <Input onChange={(e: any) => setInvoiceNumber(e.target.value)} />
+            </FormControl>
             <FormControl fullWidth sx={{ mt: 2, width: '100%' }}>
               <InputLabel id='sales-person-filter-label'>
                 Sales Person
@@ -225,6 +249,8 @@ const PaymentsDue = () => {
                         <TableCell>Created By</TableCell>
                         <TableCell>Total Amount</TableCell>
                         <TableCell>Balance</TableCell>
+                        <TableCell>Additional Information</TableCell>
+                        <TableCell>Image Uploaded</TableCell>
                         <TableCell>Actions</TableCell>
                       </TableRow>
                     </TableHead>
@@ -243,7 +269,10 @@ const PaymentsDue = () => {
                           total = 0,
                           balance = 0,
                           overdue_by_days = 0,
+                          invoice_notes = {},
                         } = invoice;
+                        const { additional_info = '', images = [] } =
+                          invoice_notes;
                         const invoiceDueDate = new Date(due_date);
                         invoiceDueDate.setHours(0, 0, 0, 0);
 
@@ -269,6 +298,15 @@ const PaymentsDue = () => {
                             <TableCell>{created_by_name}</TableCell>
                             <TableCell>₹{total || 0}</TableCell>
                             <TableCell>₹{balance || 0}</TableCell>
+                            <TableCell>
+                              <Checkbox
+                                checked={additional_info !== ''}
+                                disabled
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Checkbox checked={images.length > 0} disabled />
+                            </TableCell>
                             <TableCell>
                               <Box
                                 display={'flex'}
@@ -425,7 +463,39 @@ const PaymentsDue = () => {
                     {new Date(selectedOrder.due_date).toLocaleDateString()}
                   </Typography>
                 </Box>
-
+                {selectedOrder?.invoice_notes && (
+                  <Box sx={{ marginBottom: 3 }}>
+                    <Typography>
+                      <strong>Invoice Notes:</strong>
+                      <br />
+                      {selectedOrder?.invoice_notes?.additional_info}
+                      {selectedOrder?.invoice_notes?.images?.map(
+                        (img: string, index: number) => (
+                          <Box
+                            onClick={() => onClickImage(img)}
+                            key={index}
+                            position='relative'
+                            mr={1}
+                            mb={1}
+                            width={100}
+                            height={100}
+                          >
+                            <img
+                              src={img} // Assuming img is a valid URL; adjust if needed.
+                              alt={`existing-${index}`}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                borderRadius: 4,
+                              }}
+                            />
+                          </Box>
+                        )
+                      )}
+                    </Typography>
+                  </Box>
+                )}
                 {/* Products Section */}
                 <Typography
                   variant='h6'
@@ -468,6 +538,11 @@ const PaymentsDue = () => {
           </Box>
         </Drawer>
       </Paper>
+      <ImagePopupDialog
+        open={openImagePopup}
+        onClose={handleClosePopup}
+        imageSrc={popupImageSrc}
+      />
     </Box>
   );
 };

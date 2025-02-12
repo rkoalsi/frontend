@@ -1,4 +1,3 @@
-// pages/admin/dashboard.tsx
 import { JSX, useContext, useEffect, useState } from 'react';
 import {
   Typography,
@@ -76,6 +75,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchStats();
   }, []);
+
   const fetchStats = async () => {
     try {
       const { data } = await axiosInstance.get(`/admin/stats`);
@@ -88,8 +88,8 @@ const AdminDashboard = () => {
     }
   };
 
-  // Define the cards with icons
-  const cards: CardProps[] = stats
+  // Define the cards with icons; all cards available for admin/sales_admin
+  const allCards: CardProps[] = stats
     ? [
         {
           label: 'Payments Due',
@@ -98,12 +98,12 @@ const AdminDashboard = () => {
             {
               label: 'Payments Due Today',
               value: stats.total_due_payments_today,
-              color: 'success',
+              color: 'info',
             },
             {
-              label: 'Payments Due',
+              label: 'Total Payments Due',
               value: stats.total_due_payments,
-              color: 'error',
+              color: 'info',
             },
           ],
           icon: <Payment color='primary' />,
@@ -160,27 +160,31 @@ const AdminDashboard = () => {
           icon: <Campaign color='primary' />,
         },
         {
-          label: 'Orders',
+          label: 'Orders (last 24 hours)',
           route: 'orders',
           subStats: [
             {
-              label: 'Orders in the last 24 hours',
+              label: 'Total Orders',
               value: stats.recent_orders,
               color: 'success',
             },
-            { label: 'Draft', value: stats.orders_draft, color: 'info' },
             {
-              label: 'Accepted',
+              label: 'Draft Orders',
+              value: stats.orders_draft,
+              color: 'info',
+            },
+            {
+              label: 'Accepted Orders',
               value: stats.orders_accepted,
               color: 'success',
             },
             {
-              label: 'Declined',
+              label: 'Declined Orders',
               value: stats.orders_declined,
               color: 'error',
             },
             {
-              label: 'Invoiced',
+              label: 'Invoiced Orders',
               value: stats.orders_invoiced,
               color: 'success',
             },
@@ -259,6 +263,19 @@ const AdminDashboard = () => {
       ]
     : [];
 
+  // Now filter the cards based on the user's role.
+  // If the user is a catalogue_manager (and not also an admin), then only show the Products and Catalogues cards.
+  const userRoles: string[] = user?.data?.role || [];
+  let filteredCards = allCards;
+  if (
+    userRoles.includes('catalogue_manager') &&
+    !userRoles.includes('admin') // optional check if roles are mutually exclusive
+  ) {
+    filteredCards = allCards.filter((card) =>
+      ['products', 'catalogues'].includes(card.route)
+    );
+  }
+
   return (
     <Paper
       elevation={3}
@@ -290,7 +307,7 @@ const AdminDashboard = () => {
           <Alert severity='error'>{error}</Alert>
         ) : (
           <Grid container spacing={3}>
-            {cards.map((card, idx) => (
+            {filteredCards.map((card, idx) => (
               <Grid
                 item
                 xs={12}

@@ -17,6 +17,7 @@ import AuthContext from '../../../../src/components/Auth';
 import axiosInstance from '../../../../src/util/axios';
 import { toast } from 'react-toastify';
 import CustomButton from '../../../../src/components/common/Button';
+import { Visibility } from '@mui/icons-material';
 const PaymentDue = () => {
   const [loading, setLoading] = useState(false);
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -130,8 +131,9 @@ const PaymentDue = () => {
                   total,
                   balance,
                   overdue_by_days,
+                  invoice_notes = {},
                 } = invoice;
-
+                const { images = [] } = invoice_notes;
                 // Determine whether the invoice is past due
                 const invoiceDueDate = new Date(due_date);
                 // You can adjust this logic if you want to account for time, or
@@ -173,11 +175,18 @@ const PaymentDue = () => {
                           gap: 1,
                         }}
                       >
-                        {/* Invoice Title */}
-                        <Typography variant='h6' fontWeight='bold'>
-                          {invoice_number}
-                        </Typography>
-
+                        <Box
+                          display={'flex'}
+                          flexDirection={'row'}
+                          width={'100%'}
+                          justifyContent={'space-between'}
+                        >
+                          {/* Invoice Title */}
+                          <Typography variant='h6' fontWeight='bold'>
+                            {invoice_number}
+                          </Typography>
+                          {images.length > 0 && <Visibility />}
+                        </Box>
                         {/* Customer & Dates */}
                         <Typography variant='body2' color='text.secondary'>
                           Customer: {customer_name}
