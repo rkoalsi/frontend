@@ -25,6 +25,7 @@ import {
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
+import axios from 'axios';
 
 const PaymentsDue = () => {
   const [data, setData] = useState([]);
@@ -109,7 +110,48 @@ const PaymentsDue = () => {
     setPage(requestedPage - 1);
     setSkipPage(''); // clear input so it displays the new page on next render
   };
+  const downloadAsPDF = async (invoice: any) => {
+    try {
+      const resp = await axios.get(
+        `${process.env.api_url}/invoices/download_pdf/${invoice._id}`,
+        {
+          responseType: 'blob', // Receive the response as binary data
+        }
+      );
 
+      // Check if the blob is an actual PDF or an error message
+      if (resp.data.type !== 'application/pdf') {
+        // Convert to text to read the error response
+        toast.error('Invoice Not Created');
+        return;
+      }
+
+      // Extract filename from headers or set default
+      const contentDisposition = resp.headers['content-disposition'];
+      let fileName = `${invoice.invoice_number}.pdf`;
+
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match && match[1]) {
+          fileName = match[1];
+        }
+      }
+
+      // Create and trigger download
+      const blob = new Blob([resp.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error downloading PDF:', error);
+      toast.error(error.message || 'Failed to download PDF');
+    }
+  };
   // Drawer logic
   const handleViewDetails = (order: any) => {
     console.log(order);
@@ -125,10 +167,9 @@ const PaymentsDue = () => {
   // Handler to download CSV of all payments due
   const handleDownloadCSV = async () => {
     try {
-      let url = '/admin/payments_due/download_csv';
-      if (appliedSalesPersonFilter) {
-        url += `?sales_person=${encodeURIComponent(appliedSalesPersonFilter)}`;
-      }
+      let url = `/admin/payments_due/download_csv?sales_person=${encodeURIComponent(
+        appliedSalesPersonFilter
+      )}`;
       const response = await axiosInstance.get(url, {
         responseType: 'blob', // important for binary responses
       });
@@ -319,6 +360,13 @@ const PaymentsDue = () => {
                                 >
                                   View Details
                                 </Button>
+                                <Button
+                                  color={'secondary'}
+                                  variant='contained'
+                                  onClick={() => downloadAsPDF(invoice)}
+                                >
+                                  Download Invoice
+                                </Button>
                               </Box>
                             </TableCell>
                           </TableRow>
@@ -468,31 +516,38 @@ const PaymentsDue = () => {
                     <Typography>
                       <strong>Invoice Notes:</strong>
                       <br />
+                      Additional Information:{' '}
                       {selectedOrder?.invoice_notes?.additional_info}
-                      {selectedOrder?.invoice_notes?.images?.map(
-                        (img: string, index: number) => (
-                          <Box
-                            onClick={() => onClickImage(img)}
-                            key={index}
-                            position='relative'
-                            mr={1}
-                            mb={1}
-                            width={100}
-                            height={100}
-                          >
-                            <img
-                              src={img} // Assuming img is a valid URL; adjust if needed.
-                              alt={`existing-${index}`}
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                                borderRadius: 4,
-                              }}
-                            />
-                          </Box>
-                        )
-                      )}
+                      <br />
+                      {selectedOrder?.invoice_notes?.images?.length > 0
+                        ? selectedOrder?.invoice_notes?.images?.map(
+                            (img: string, index: number) => (
+                              <Box
+                                onClick={() => onClickImage(img)}
+                                key={index}
+                                position='relative'
+                                mr={1}
+                                mb={1}
+                                width={100}
+                                height={100}
+                              >
+                                <img
+                                  src={img} // Assuming img is a valid URL; adjust if needed.
+                                  alt={`existing-${index}`}
+                                  style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                    borderRadius: 4,
+                                  }}
+                                />
+                              </Box>
+                            )
+                          )
+                        : 'No Image(s) Uploaded'}
+                      <br />
+                      Invoice Note Created By:{' '}
+                      {selectedOrder?.note_created_by_name}
                     </Typography>
                   </Box>
                 )}
