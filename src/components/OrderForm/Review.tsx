@@ -27,6 +27,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import QuantitySelector from './QuantitySelector'; // Adjust the path as necessary
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import ImagePopupDialog from '../common/ImagePopUp';
 
 interface Props {
   customer: any;
@@ -723,46 +724,11 @@ const Review: React.FC<Props> = React.memo((props) => {
             </Box>
           )}
         </Paper>
-
-        {/* Image Popup */}
-        <Dialog
+        <ImagePopupDialog
           open={openImagePopup}
           onClose={handleClosePopup}
-          sx={{ zIndex: 1300 }}
-        >
-          <DialogContent
-            sx={{
-              position: 'relative',
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 0,
-            }}
-          >
-            <IconButton
-              onClick={handleClosePopup}
-              sx={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                color: 'white',
-                zIndex: 1400,
-              }}
-            >
-              <Close />
-            </IconButton>
-            <img
-              src={popupImageSrc}
-              alt='Full screen'
-              style={{
-                maxWidth: '100%',
-                maxHeight: '100%',
-                objectFit: 'contain',
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+          imageSrc={popupImageSrc}
+        />
       </Box>
     </Box>
   );

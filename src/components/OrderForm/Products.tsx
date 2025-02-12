@@ -34,17 +34,20 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Menu,
 } from '@mui/material';
 import {
   AddShoppingCart,
   RemoveShoppingCart,
   Close as CloseIcon,
   ShoppingCart as ShoppingCartIcon,
+  Sort,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import debounce from 'lodash.debounce';
 import { toast } from 'react-toastify';
 import QuantitySelector from './QuantitySelector'; // Adjust the path as necessary
+import ImagePopupDialog from '../common/ImagePopUp';
 
 // ------------------ Interface Definitions ---------------------
 interface SearchResult {
@@ -124,6 +127,8 @@ const Products: React.FC<SearchBarProps> = ({
   const [noMoreProducts, setNoMoreProducts] = useState<{
     [key: string]: boolean;
   }>({}); // State to indicate no more products per key
+  const [sortOrder, setSortOrder] = useState<string>('default');
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   // ------------------ Refs for Caching and Avoiding Duplicate Fetches ---------------------
   const isFetching = useRef<{
@@ -244,7 +249,8 @@ const Products: React.FC<SearchBarProps> = ({
       brand?: string,
       category?: string,
       search?: string,
-      page = 1
+      page = 1,
+      sortOverride?: string
     ) => {
       if (isFetching.current[key]) return;
       const controller = new AbortController();
@@ -252,8 +258,17 @@ const Products: React.FC<SearchBarProps> = ({
 
       try {
         setLoadingMore(true);
+        // Use sortOverride if provided, otherwise fall back to state sortOrder
+        const sortToUse = sortOverride || sortOrder;
         const response = await axios.get(`${process.env.api_url}/products`, {
-          params: { brand, category, search, page, per_page: 75 },
+          params: {
+            brand,
+            category,
+            search,
+            page,
+            per_page: 75,
+            sort: sortToUse, // Pass the chosen sort order
+          },
           signal: controller.signal,
         });
 
@@ -279,9 +294,9 @@ const Products: React.FC<SearchBarProps> = ({
         setLoadingMore(false);
       }
 
-      return () => controller.abort(); // Abort request on cleanup
+      return () => controller.abort();
     },
-    [debouncedError]
+    [debouncedError, sortOrder]
   );
 
   // Reset pagination and fetch products for a category
@@ -347,6 +362,10 @@ const Products: React.FC<SearchBarProps> = ({
 
       // Reset pagination and products if search term changes
       if (search.trim() !== '') {
+        // Reset brand and category since they should not be used when searching.
+        setActiveBrand('');
+        setActiveCategory('');
+
         setPaginationState((prev) => ({
           ...prev,
           [key]: { page: 1, hasMore: true },
@@ -361,22 +380,44 @@ const Products: React.FC<SearchBarProps> = ({
         }));
         await fetchProducts(key, undefined, undefined, search, 1);
       } else {
+        // Determine the default brand from brandList and default category from categoriesByBrand
+        const defaultBrand = brandList.length > 0 ? brandList[0].brand : '';
+        // Use the first category available for the defaultBrand (if any)
+        const defaultCategory =
+          (categoriesByBrand[defaultBrand] &&
+            categoriesByBrand[defaultBrand][0]) ||
+          '';
+
+        // Update activeBrand and activeCategory with default values
+        setActiveBrand(defaultBrand);
+        setActiveCategory(defaultCategory);
+
+        // Compute a new key using the default values
+        const newKey = `${defaultBrand}-${defaultCategory}`;
+
         setPaginationState((prev) => ({
           ...prev,
-          [key]: { page: 1, hasMore: true },
+          [newKey]: { page: 1, hasMore: true },
         }));
         setProductsByBrandCategory((prev) => ({
           ...prev,
-          [key]: [],
+          [newKey]: [],
         }));
         setNoMoreProducts((prev) => ({
           ...prev,
-          [key]: false,
+          [newKey]: false,
         }));
-        await fetchProducts(key, activeBrand, activeCategory, undefined, 1);
 
-        // **Reset options to all products when search is cleared**
-        setOptions(productsByBrandCategory[key] || []);
+        await fetchProducts(
+          newKey,
+          defaultBrand,
+          defaultCategory,
+          undefined,
+          1
+        );
+
+        // Reset options if needed
+        setOptions(productsByBrandCategory[newKey] || []);
       }
     }, 500),
     [activeBrand, activeCategory, fetchProducts, productsByBrandCategory]
@@ -616,6 +657,43 @@ const Products: React.FC<SearchBarProps> = ({
       );
     }
   }, [activeBrand, categoriesByBrand, resetPaginationAndFetch]);
+  const handleSortChange = (e: any) => {
+    const newSort = e.target.value as string;
+    setSortOrder(newSort);
+    // Reset pagination and re-fetch products for current brand/category or search
+    const key =
+      searchTerm.trim() !== ''
+        ? 'search'
+        : activeBrand && activeCategory
+        ? `${activeBrand}-${activeCategory}`
+        : 'all';
+    setPaginationState((prev) => ({
+      ...prev,
+      [key]: { page: 1, hasMore: true },
+    }));
+    setProductsByBrandCategory((prev) => ({ ...prev, [key]: [] }));
+    setNoMoreProducts((prev) => ({ ...prev, [key]: false }));
+    fetchProducts(
+      key,
+      activeBrand,
+      activeCategory,
+      searchTerm.trim() !== '' ? searchTerm : undefined,
+      1,
+      newSort
+    );
+  };
+  const handleSortIconClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleSortMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleSortMenuSelect = (value: any) => {
+    handleSortChange({ target: { value } });
+    setAnchorEl(null);
+  };
 
   // ------------------ Render Component ---------------------
   if (!customer) {
@@ -723,6 +801,7 @@ const Products: React.FC<SearchBarProps> = ({
                 id='brand-select'
                 value={activeBrand}
                 label='Brand'
+                disabled={searchTerm !== ''}
                 onChange={(e) => handleTabChange(e.target.value)}
               >
                 {brandList.map((b) => (
@@ -794,6 +873,7 @@ const Products: React.FC<SearchBarProps> = ({
                 id='category-select'
                 value={activeCategory}
                 label='Category'
+                disabled={searchTerm !== ''}
                 onChange={(e) => handleCategoryTabChange(e.target.value)}
               >
                 {categories.map((category) => (
@@ -829,7 +909,63 @@ const Products: React.FC<SearchBarProps> = ({
               </Tabs>
             )
           )}
+          {/* <<-- New: Sort Filter Dropdown --> */}
         </Box>
+
+        {isMobile ? (
+          // Mobile: full-width dropdown as before
+          <Box sx={{ mt: 2, mb: 2, width: '100%' }}>
+            <FormControl fullWidth variant='outlined'>
+              <InputLabel id='sort-select-label'>Sort By</InputLabel>
+              <Select
+                labelId='sort-select-label'
+                id='sort-select'
+                value={sortOrder}
+                label='Sort By'
+                onChange={(e: any) => handleSortChange(e)}
+              >
+                <MenuItem value='default'>Default</MenuItem>
+                <MenuItem value='price_asc'>Price: Low to High</MenuItem>
+                <MenuItem value='price_desc'>Price: High to Low</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        ) : (
+          // Desktop: show sort icon button that opens a menu
+          !searchTerm.trim() &&
+          activeBrand &&
+          categories.length > 0 && (
+            <Box sx={{ mt: 2, mb: 2 }}>
+              <IconButton onClick={handleSortIconClick}>
+                <Sort />
+              </IconButton>
+              <Menu
+                id='sort-menu'
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleSortMenuClose}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+              >
+                <MenuItem onClick={() => handleSortMenuSelect('default')}>
+                  Default
+                </MenuItem>
+                <MenuItem onClick={() => handleSortMenuSelect('price_asc')}>
+                  Price: Low to High
+                </MenuItem>
+                <MenuItem onClick={() => handleSortMenuSelect('price_desc')}>
+                  Price: High to Low
+                </MenuItem>
+              </Menu>
+            </Box>
+          )
+        )}
 
         {/* Responsive Products Display */}
         {!isMobile ? (
@@ -1714,44 +1850,11 @@ const Products: React.FC<SearchBarProps> = ({
       </Drawer>
 
       {/* Image Popup Dialog */}
-      <Dialog
+      <ImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}
-        sx={{ zIndex: 1300 }}
-      >
-        <DialogContent
-          sx={{
-            position: 'relative',
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 0,
-          }}
-        >
-          <IconButton
-            onClick={handleClosePopup}
-            sx={{
-              position: 'absolute',
-              top: '16px',
-              right: '16px',
-              color: 'white',
-              zIndex: 1400,
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-          <img
-            src={popupImageSrc}
-            alt='Full screen'
-            style={{
-              maxWidth: '100%',
-              maxHeight: '100%',
-              objectFit: 'contain',
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+        imageSrc={popupImageSrc}
+      />
     </Box>
   );
 };

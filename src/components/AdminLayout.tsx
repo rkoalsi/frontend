@@ -23,7 +23,6 @@ import {
   ShoppingCart as ProductsIcon,
   Receipt as OrdersIcon,
   PeopleAlt as SalesPeopleIcon,
-  Settings,
   Payment,
   LibraryBooks,
   VideoLibrary,
@@ -33,29 +32,74 @@ import { toast } from 'react-toastify';
 import AuthContext from './Auth';
 
 const menuItems = [
-  { text: 'Dashboard', icon: <Dashboard />, path: '/admin' },
-  { text: 'Customers', icon: <CustomersIcon />, path: '/admin/customers' },
-  { text: 'Products', icon: <ProductsIcon />, path: '/admin/products' },
-  { text: 'Orders', icon: <OrdersIcon />, path: '/admin/orders' },
+  {
+    text: 'Dashboard',
+    icon: <Dashboard />,
+    path: '/admin',
+    allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
+  },
+  {
+    text: 'Customers',
+    icon: <CustomersIcon />,
+    path: '/admin/customers',
+    allowedRoles: ['admin', 'sales_admin'],
+  },
+  {
+    text: 'Products',
+    icon: <ProductsIcon />,
+    path: '/admin/products',
+    allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
+  },
+  {
+    text: 'Orders',
+    icon: <OrdersIcon />,
+    path: '/admin/orders',
+    allowedRoles: ['admin', 'sales_admin'],
+  },
   {
     text: 'Sales People',
     icon: <SalesPeopleIcon />,
     path: '/admin/sales_people',
+    allowedRoles: ['admin', 'sales_admin'],
   },
-  { text: 'Payments Due', icon: <Payment />, path: '/admin/payments_due' },
-  { text: 'Catalogues', icon: <LibraryBooks />, path: '/admin/catalogues' },
+  {
+    text: 'Payments Due',
+    icon: <Payment />,
+    path: '/admin/payments_due',
+    allowedRoles: ['admin', 'sales_admin'],
+  },
+  {
+    text: 'Catalogues',
+    icon: <LibraryBooks />,
+    path: '/admin/catalogues',
+    allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
+  },
   {
     text: 'Training Videos',
     icon: <VideoLibrary />,
     path: '/admin/training',
+    allowedRoles: ['admin', 'sales_admin'],
   },
   {
     text: 'Announcements',
     icon: <Campaign />,
     path: '/admin/announcements',
+    allowedRoles: ['admin', 'sales_admin'],
   },
-  // { text: 'Settings', icon: <Settings />, path: '/admin/settings' },
 ];
+
+const getAllowedRoles = (path: string): string[] => {
+  // For products and catalogues pages (and Dashboard) allow additional roles
+  if (
+    path === '/admin' ||
+    path === '/admin/products' ||
+    path === '/admin/catalogues'
+  ) {
+    return ['admin', 'sales_admin', 'catalogue_manager'];
+  }
+  // For other admin routes, allow admin and sales_admin
+  return ['admin', 'sales_admin'];
+};
 
 const AdminLayout = ({ children }: any) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -66,23 +110,26 @@ const AdminLayout = ({ children }: any) => {
 
   useEffect(() => {
     if (!loading) {
-      // If user is not logged in
       if (!user) {
         toast.error('You are not logged in. Please log in to continue.');
         router.replace('/login');
         return;
       }
 
-      // If user is not an admin
-      if (!user.data.role.includes('admin')) {
+      const allowedRolesForRoute = getAllowedRoles(router.pathname);
+      if (!allowedRolesForRoute.some((role) => user.data.role.includes(role))) {
         toast.error('You are not authorized to access this page.');
         router.replace('/');
       }
     }
   }, [user, loading, router]);
 
-  // Show nothing while loading user info
-  if (loading || !user || !user.data.role.includes('admin')) {
+  const allowedRolesForRoute = getAllowedRoles(router.pathname);
+  if (
+    loading ||
+    !user ||
+    !allowedRolesForRoute.some((role) => user.data.role.includes(role))
+  ) {
     return null;
   }
 
@@ -114,10 +161,7 @@ const AdminLayout = ({ children }: any) => {
               color='inherit'
               edge='start'
               onClick={() => setSidebarOpen(!isSidebarOpen)}
-              sx={{
-                marginRight: 2,
-                color: 'white',
-              }}
+              sx={{ marginRight: 2, color: 'white' }}
             >
               <MenuIcon />
             </IconButton>
@@ -134,9 +178,11 @@ const AdminLayout = ({ children }: any) => {
               Admin Dashboard
             </Typography>
           </Box>
-          <Box display={'flex'} gap={'16px'} flexDirection={'row'}>
+          <Box display='flex' gap='16px' flexDirection='row'>
             {user &&
-              user.data.role.includes('admin') &&
+              allowedRolesForRoute.some((role) =>
+                user.data.role.includes(role)
+              ) &&
               router.pathname.includes('/admin') && (
                 <Button
                   variant='contained'
@@ -190,51 +236,55 @@ const AdminLayout = ({ children }: any) => {
           sx={{
             flexGrow: 1,
             overflowY: 'auto',
-            height: 'calc(100vh - 64px)', // Adjust for AppBar height
+            height: 'calc(100vh - 64px)',
           }}
         >
           <List>
-            {menuItems.map(({ text, icon, path }, index) => (
-              <ListItem
-                component={'a'}
-                key={index}
-                onClick={() => handleMenuItemClick(path)}
-                sx={{
-                  marginY: 0.5,
-                  paddingX: 2,
-                  paddingY: 1.5,
-                  borderRadius: 2,
-                  cursor: 'pointer',
-                  backgroundColor:
-                    router.pathname === path ? '#78354f' : '#344d69',
-                  color: 'white',
-                  transition: 'background-color 0.3s, color 0.3s',
-                  '&:hover': {
-                    backgroundColor: '#78354f',
-                    color: 'white',
-                  },
-                }}
-              >
-                <ListItemIcon
+            {menuItems
+              .filter((item) =>
+                item.allowedRoles.some((role) => user.data.role.includes(role))
+              )
+              .map(({ text, icon, path }, index) => (
+                <ListItem
+                  component='a'
+                  key={index}
+                  onClick={() => handleMenuItemClick(path)}
                   sx={{
-                    color: 'inherit',
-                    minWidth: 40,
-                    marginRight: 1,
+                    marginY: 0.5,
+                    paddingX: 2,
+                    paddingY: 1.5,
+                    borderRadius: 2,
+                    cursor: 'pointer',
+                    backgroundColor:
+                      router.pathname === path ? '#78354f' : '#344d69',
+                    color: 'white',
+                    transition: 'background-color 0.3s, color 0.3s',
+                    '&:hover': {
+                      backgroundColor: '#78354f',
+                      color: 'white',
+                    },
                   }}
                 >
-                  {icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={text}
-                  primaryTypographyProps={{
-                    color: 'inherit',
-                    fontSize: 16,
-                    fontWeight: '500',
-                    fontFamily: 'Roboto, sans-serif',
-                  }}
-                />
-              </ListItem>
-            ))}
+                  <ListItemIcon
+                    sx={{
+                      color: 'inherit',
+                      minWidth: 40,
+                      marginRight: 1,
+                    }}
+                  >
+                    {icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={text}
+                    primaryTypographyProps={{
+                      color: 'inherit',
+                      fontSize: 16,
+                      fontWeight: '500',
+                      fontFamily: 'Roboto, sans-serif',
+                    }}
+                  />
+                </ListItem>
+              ))}
           </List>
         </Box>
       </Drawer>
