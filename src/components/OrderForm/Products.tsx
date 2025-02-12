@@ -1751,9 +1751,38 @@ const Products: React.FC<SearchBarProps> = ({
                       backgroundColor: theme.palette.background.paper,
                     }}
                   >
-                    <Grid container spacing={2} alignItems='center'>
+                    <Grid
+                      container
+                      spacing={2}
+                      alignItems={isMobile ? 'center' : 'flex-end'}
+                    >
                       {/* Product Details */}
                       <Grid item xs={12} sm={8}>
+                        <Box
+                          sx={{ width: '100%' }}
+                          display={'flex'}
+                          justifyContent={'center'}
+                          alignItems={'center'}
+                        >
+                          <img
+                            src={product.image_url || '/placeholder.png'}
+                            alt={product.name}
+                            loading='lazy'
+                            style={{
+                              width: isMobile ? '200px' : '150px',
+                              height: 'fit-content',
+                              borderRadius: '4px',
+                              objectFit: 'cover',
+                              cursor: 'pointer',
+                            }}
+                            onClick={() =>
+                              handleImageClick(
+                                product.image_url || '/placeholder.png'
+                              )
+                            }
+                          />
+                        </Box>
+
                         <Typography
                           variant='subtitle1'
                           sx={{ fontWeight: 'bold' }}

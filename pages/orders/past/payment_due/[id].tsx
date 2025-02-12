@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -18,6 +18,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import ImagePopupDialog from '../../../../src/components/common/ImagePopUp';
+import AuthContext from '../../../../src/components/Auth';
 
 const OrderDetails = () => {
   const [invoiceData, setInvoiceData] = useState<any>(null);
@@ -33,11 +35,21 @@ const OrderDetails = () => {
   const [submitting, setSubmitting] = useState(false);
   // noteData will store any existing invoice note from the backend
   const [noteData, setNoteData] = useState<any>(null);
+  const [openImagePopup, setOpenImagePopup] = useState(false);
+  const [popupImageSrc, setPopupImageSrc] = useState('');
   const router = useRouter();
   const { id } = router.query;
   const theme = useTheme();
+  const { user }: any = useContext(AuthContext);
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const handleImageClick = useCallback((src: string) => {
+    setPopupImageSrc(src);
+    setOpenImagePopup(true);
+  }, []);
 
+  const handleClosePopup = useCallback(() => {
+    setOpenImagePopup(false);
+  }, []);
   /**
    * Fetch invoice details from the API
    */
@@ -154,6 +166,7 @@ const OrderDetails = () => {
       setSubmitting(true);
       const formData = new FormData();
       // Append the invoice number from invoiceData
+      formData.append('created_by', user?.data?._id);
       formData.append('invoice_number', invoiceData.invoice_number);
       if (additionalInfo) {
         formData.append('additional_info', additionalInfo);
@@ -190,7 +203,48 @@ const OrderDetails = () => {
       setSubmitting(false);
     }
   };
+  const downloadAsPDF = async (invoice: any) => {
+    try {
+      const resp = await axios.get(
+        `${process.env.api_url}/invoices/download_pdf/${invoice._id}`,
+        {
+          responseType: 'blob', // Receive the response as binary data
+        }
+      );
 
+      // Check if the blob is an actual PDF or an error message
+      if (resp.data.type !== 'application/pdf') {
+        // Convert to text to read the error response
+        toast.error('Invoice Not Created');
+        return;
+      }
+
+      // Extract filename from headers or set default
+      const contentDisposition = resp.headers['content-disposition'];
+      let fileName = `${invoice.invoice_number}.pdf`;
+
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match && match[1]) {
+          fileName = match[1];
+        }
+      }
+
+      // Create and trigger download
+      const blob = new Blob([resp.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error downloading PDF:', error);
+      toast.error(error.message || 'Failed to download PDF');
+    }
+  };
   /**
    * Handle Loading State
    */
@@ -252,10 +306,23 @@ const OrderDetails = () => {
         }}
       >
         {/* Order Header */}
-        <Box display='flex' alignItems='baseline'>
+        <Box
+          display='flex'
+          alignItems='center'
+          width={'100%'}
+          gap={'16px'}
+          justifyContent={'space-between'}
+        >
           <Typography variant='h5' fontWeight='bold' gutterBottom>
             {invoiceData?.invoice_number}
           </Typography>
+          <Button
+            color='primary'
+            variant='contained'
+            onClick={() => downloadAsPDF(invoiceData)}
+          >
+            Download as PDF
+          </Button>
         </Box>
         <Divider sx={{ mb: 2 }} />
 
@@ -386,6 +453,7 @@ const OrderDetails = () => {
                     height={100}
                   >
                     <img
+                      onClick={() => handleImageClick(img)}
                       src={img} // Assuming img is a valid URL; adjust if needed.
                       alt={`existing-${index}`}
                       style={{
@@ -463,6 +531,11 @@ const OrderDetails = () => {
           </Button>
         </Box>
       </Paper>
+      <ImagePopupDialog
+        open={openImagePopup}
+        onClose={handleClosePopup}
+        imageSrc={popupImageSrc}
+      />
     </Box>
   );
 };

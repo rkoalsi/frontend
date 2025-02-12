@@ -125,28 +125,28 @@ const Home = () => {
                 <CustomButton
                   large
                   icon={<Payment />}
-                  color={'success'}
+                  color={'info'}
                   text={'Payments Due'}
                   onClick={handlePaymentsDue}
                 />
                 <CustomButton
                   large
                   icon={<LibraryBooks />}
-                  color={'info'}
+                  color={'primary'}
                   text={'Catalogues'}
                   onClick={handleCatelogues}
                 />
                 <CustomButton
                   large
                   icon={<VideoLibrary />}
-                  color={'primary'}
+                  color={'secondary'}
                   text={'Training Videos'}
                   onClick={handleTraining}
                 />
                 <CustomButton
                   large
                   icon={<Campaign />}
-                  color={'secondary'}
+                  color={'info'}
                   text={'Announcements'}
                   onClick={handleAnnouncements}
                 />
