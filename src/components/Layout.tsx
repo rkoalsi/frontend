@@ -115,7 +115,8 @@ const Layout = ({ children }: any) => {
           <Box display={'flex'} flexDirection={'row'} gap={'16px'}>
             {user &&
               user.data &&
-              user.data.role.includes('admin') &&
+              (user.data.role.includes('admin') ||
+                user.data.role.includes('catalogue_manager')) &&
               !router.pathname.includes('admin') && (
                 <CustomButton
                   color='primary'

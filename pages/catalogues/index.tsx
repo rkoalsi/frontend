@@ -38,11 +38,12 @@ function Catalogue(props: Props) {
         color: 'white',
       }}
     >
-      <Typography variant='h3' fontWeight={'bold'} color={'white'}>
+      <Typography variant='h4' fontWeight={'bold'} color={'white'}>
         View Catalogues
       </Typography>
       {brands.map((b: any, index: number) => (
         <CustomButton
+          large
           color={'primary'}
           onClick={() => handleOpenCatalogue(b.image_url)}
           text={`${b.name} Catalogue`}
