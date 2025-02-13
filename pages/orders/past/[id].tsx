@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -15,8 +15,9 @@ import {
 } from '@mui/material';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import { Edit } from '@mui/icons-material';
+import { AddToPhotos, ContentCopy, Edit } from '@mui/icons-material';
 import Link from 'next/link';
+import AuthContext from '../../../src/components/Auth';
 
 const OrderDetails = () => {
   const [orderData, setOrderData] = useState<any>(null);
@@ -24,6 +25,7 @@ const OrderDetails = () => {
   const [error, setError] = useState('');
   const router = useRouter();
   const { id } = router.query;
+  const { user }: any = useContext(AuthContext);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   /**
@@ -40,6 +42,25 @@ const OrderDetails = () => {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCopyEstimate = () => {
+    if (orderData?.estimate_number) {
+      navigator.clipboard.writeText(orderData.estimate_number);
+    }
+  };
+  const handleDuplicateOrder = async () => {
+    try {
+      const resp = await axios.post(
+        `${process.env.api_url}/orders/duplicate_order`,
+        {
+          order_id: id,
+        }
+      );
+      router.push(`/orders/new/${resp.data}`);
+    } catch (error) {
+      console.error('Error creating new order:', error);
     }
   };
 
@@ -120,18 +141,36 @@ const OrderDetails = () => {
         }}
       >
         {/* Order Header */}
-        <Box display={'flex'} alignItems={'baseline'}>
+        <Box
+          display={'flex'}
+          alignItems={'flex-end'}
+          justifyContent={'space-between'}
+        >
           <Typography variant='h5' fontWeight='bold' gutterBottom>
             Order
             {orderData?.estimate_created
               ? ` ${orderData?.estimate_number}`
               : ` ${orderData._id.slice(-6)}`}
+            {orderData?.estimate_created && (
+              <IconButton
+                size='small'
+                onClick={handleCopyEstimate}
+                sx={{ ml: 1 }}
+              >
+                <ContentCopy fontSize='small' />
+              </IconButton>
+            )}
           </Typography>
-          <IconButton
-            onClick={() => router.push(`/orders/new/${orderData._id || id}`)}
-          >
-            <Edit fontSize='small' />
-          </IconButton>
+          <Box display={'flex'} alignItems={'flex-end'}>
+            <IconButton onClick={handleDuplicateOrder}>
+              <AddToPhotos fontSize='medium' />
+            </IconButton>
+            <IconButton
+              onClick={() => router.push(`/orders/new/${orderData._id || id}`)}
+            >
+              <Edit fontSize='medium' />
+            </IconButton>
+          </Box>
         </Box>
         <Divider sx={{ mb: 2 }} />
         {/* Order Details */}

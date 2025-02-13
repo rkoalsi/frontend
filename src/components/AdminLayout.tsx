@@ -27,6 +27,7 @@ import {
   LibraryBooks,
   VideoLibrary,
   Campaign,
+  Checklist,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -84,6 +85,12 @@ const menuItems = [
     text: 'Announcements',
     icon: <Campaign />,
     path: '/admin/announcements',
+    allowedRoles: ['admin', 'sales_admin'],
+  },
+  {
+    text: 'Daily Visits',
+    icon: <Checklist />,
+    path: '/admin/daily_visits',
     allowedRoles: ['admin', 'sales_admin'],
   },
 ];
