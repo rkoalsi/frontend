@@ -59,6 +59,7 @@ const Products = () => {
     category: '',
     sub_category: '',
     series: '',
+    upc_code: '',
   });
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
@@ -205,6 +206,7 @@ const Products = () => {
       category: product.category || '',
       sub_category: product.sub_category || '',
       series: product.series || '',
+      upc_code: product?.upc_code || '',
     });
   };
 
@@ -216,6 +218,7 @@ const Products = () => {
       category: '',
       sub_category: '',
       series: '',
+      upc_code: '',
     });
   };
 
@@ -282,13 +285,14 @@ const Products = () => {
   const handleSaveEdit = async () => {
     if (!selectedProduct) return;
 
-    const { category, sub_category, series } = editableFields;
+    const { category, sub_category, series, upc_code } = editableFields;
 
     // Basic validation
     if (
       category.trim() === '' ||
       sub_category.trim() === '' ||
-      series.trim() === ''
+      series.trim() === '' ||
+      upc_code.trim() === ''
     ) {
       toast.error('All fields are required.');
       return;
@@ -301,6 +305,7 @@ const Products = () => {
         category: category.trim(),
         sub_category: sub_category.trim(),
         series: series.trim(),
+        upc_code: upc_code.trim(),
       };
 
       // Send update request to the backend
@@ -750,6 +755,20 @@ const Products = () => {
                       />
                     </Grid>
 
+                    {/* UPC/EAN (Read-only) */}
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant='subtitle2' color='textSecondary'>
+                        UPC/EAN
+                      </Typography>
+                      <TextField
+                        name='upc_code'
+                        variant='outlined'
+                        fullWidth
+                        value={editableFields?.upc_code}
+                        onChange={handleEditableFieldChange}
+                        size='small'
+                      />
+                    </Grid>
                     {/* SKU (Read-only) */}
                     <Grid item xs={12} sm={6}>
                       <Typography variant='subtitle2' color='textSecondary'>
@@ -820,6 +839,7 @@ const Products = () => {
                         {selectedProduct.hsn_or_sac}
                       </Typography>
                     </Grid>
+
                     {/* Add any other fields you wish to display */}
                   </Grid>
                 </Grid>
