@@ -820,6 +820,16 @@ const Products = () => {
                         {selectedProduct.hsn_or_sac}
                       </Typography>
                     </Grid>
+
+                    {/* UPC/EAN (Read-only) */}
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant='subtitle2' color='textSecondary'>
+                        UPC/EAN
+                      </Typography>
+                      <Typography variant='body1'>
+                        {selectedProduct?.upc_code}
+                      </Typography>
+                    </Grid>
                     {/* Add any other fields you wish to display */}
                   </Grid>
                 </Grid>
