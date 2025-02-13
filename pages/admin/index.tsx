@@ -49,6 +49,8 @@ interface Stats {
   inactive_trainings: number;
   active_announcements: number;
   inactive_announcements: number;
+  submitted_daily_visits: number;
+  updated_daily_visits: number;
 }
 
 interface SubStat {
@@ -268,12 +270,12 @@ const AdminDashboard = () => {
           subStats: [
             {
               label: 'Submitted Daily Visits',
-              value: stats.active_announcements,
+              value: stats.submitted_daily_visits,
               color: 'info',
             },
             {
               label: 'Updated Daily Visits',
-              value: stats.inactive_announcements,
+              value: stats.updated_daily_visits,
               color: 'info',
             },
           ],
