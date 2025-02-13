@@ -129,6 +129,9 @@ const Products: React.FC<SearchBarProps> = ({
   }>({}); // State to indicate no more products per key
   const [sortOrder, setSortOrder] = useState<string>('default');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [productCounts, setProductCounts] = useState<{
+    [brand: string]: { [category: string]: number };
+  }>({});
 
   // ------------------ Refs for Caching and Avoiding Duplicate Fetches ---------------------
   const isFetching = useRef<{
@@ -298,6 +301,16 @@ const Products: React.FC<SearchBarProps> = ({
     },
     [debouncedError, sortOrder]
   );
+  const fetchProductCounts = useCallback(async () => {
+    try {
+      const response = await axios.get(
+        `${process.env.api_url}/products/counts`
+      );
+      setProductCounts(response.data);
+    } catch (error) {
+      debouncedError('Failed to fetch product counts.');
+    }
+  }, [debouncedError]);
 
   // Reset pagination and fetch products for a category
   const resetPaginationAndFetch = useCallback(
@@ -345,8 +358,8 @@ const Products: React.FC<SearchBarProps> = ({
   // Initialize brands and categories
   useEffect(() => {
     fetchAllBrands();
-  }, [fetchAllBrands]);
-
+    fetchProductCounts();
+  }, [fetchAllBrands, fetchProductCounts]);
   useEffect(() => {
     if (activeBrand && !categoriesByBrand[activeBrand]) {
       fetchCategories(activeBrand); // Fetch categories only if they aren't already cached
@@ -804,18 +817,26 @@ const Products: React.FC<SearchBarProps> = ({
                 disabled={searchTerm !== ''}
                 onChange={(e) => handleTabChange(e.target.value)}
               >
-                {brandList.map((b) => (
-                  <MenuItem key={b.brand} value={b.brand}>
-                    <Box display='flex' alignItems='center'>
-                      {/* <img
+                {brandList.map((b: any) => {
+                  const brandCount = productCounts[b.brand]
+                    ? Object.values(productCounts[b.brand]).reduce(
+                        (a, b) => a + b,
+                        0
+                      )
+                    : 0;
+                  return (
+                    <MenuItem key={b.brand} value={b.brand}>
+                      <Box display='flex' alignItems='center'>
+                        {/* <img
                         src={b.url}
                         alt={b.brand}
                         style={{ width: 200, height: 40, marginRight: 8 }}
                       /> */}
-                      {b.brand}
-                    </Box>
-                  </MenuItem>
-                ))}
+                        {b.brand} ({brandCount})
+                      </Box>
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
           ) : (
@@ -836,22 +857,23 @@ const Products: React.FC<SearchBarProps> = ({
                   '.Mui-selected': { color: 'primary.main' },
                 }}
               >
-                {brandList.map((b) => (
-                  <Tab
-                    key={b.brand}
-                    value={b.brand}
-                    label={
-                      <Box display='flex' alignItems='center'>
-                        {/* <img
-                          src={b.url}
-                          alt={b.brand}
-                          style={{ width: 200, height: 40, marginRight: 8 }}
-                        /> */}
-                        {b.brand}
-                      </Box>
-                    }
-                  />
-                ))}
+                {brandList.map((b) => {
+                  // Sum counts across all categories for the brand if available
+                  const brandCount = productCounts[b.brand]
+                    ? Object.values(productCounts[b.brand]).reduce(
+                        (a, b) => a + b,
+                        0
+                      )
+                    : 0;
+
+                  return (
+                    <Tab
+                      key={b.brand}
+                      value={b.brand}
+                      label={`${b.brand} (${brandCount})`}
+                    />
+                  );
+                })}
               </Tabs>
             )
           )}
@@ -876,11 +898,15 @@ const Products: React.FC<SearchBarProps> = ({
                 disabled={searchTerm !== ''}
                 onChange={(e) => handleCategoryTabChange(e.target.value)}
               >
-                {categories.map((category) => (
-                  <MenuItem key={category} value={category}>
-                    {category}
-                  </MenuItem>
-                ))}
+                {categories.map((category) => {
+                  const categoryCount =
+                    productCounts[activeBrand]?.[category] || 0;
+                  return (
+                    <MenuItem key={category} value={category}>
+                      {category} ({categoryCount})
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
           ) : (
@@ -888,7 +914,7 @@ const Products: React.FC<SearchBarProps> = ({
             activeBrand &&
             categories.length > 0 && (
               <Tabs
-                value={activeCategory || categories[0] || ''} // Ensure a valid default value
+                value={activeCategory || categories[0] || ''}
                 onChange={(e, newValue) => handleCategoryTabChange(newValue)}
                 variant='scrollable'
                 scrollButtons='auto'
@@ -903,9 +929,17 @@ const Products: React.FC<SearchBarProps> = ({
                   '.Mui-selected': { color: 'primary.main' },
                 }}
               >
-                {categories.map((category) => (
-                  <Tab key={category} label={category} value={category} />
-                ))}
+                {categories.map((category) => {
+                  const categoryCount =
+                    productCounts[activeBrand]?.[category] || 0;
+                  return (
+                    <Tab
+                      key={category}
+                      label={`${category} (${categoryCount})`}
+                      value={category}
+                    />
+                  );
+                })}
               </Tabs>
             )
           )}
