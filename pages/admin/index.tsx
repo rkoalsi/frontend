@@ -17,6 +17,7 @@ import {
   LibraryBooks,
   VideoLibrary,
   Campaign,
+  Checklist,
 } from '@mui/icons-material';
 import StatCard from '../../src/components/admin/StatCard';
 import axiosInstance from '../../src/util/axios';
@@ -159,6 +160,7 @@ const AdminDashboard = () => {
           ],
           icon: <Campaign color='primary' />,
         },
+
         {
           label: 'Orders (last 24 hours)',
           route: 'orders',
@@ -260,6 +262,23 @@ const AdminDashboard = () => {
           ],
           icon: <PersonOutlineOutlined color='primary' />,
         },
+        {
+          label: 'Daily Visits (last 24 hours)',
+          route: 'daily_visits',
+          subStats: [
+            {
+              label: 'Submitted Daily Visits',
+              value: stats.active_announcements,
+              color: 'info',
+            },
+            {
+              label: 'Updated Daily Visits',
+              value: stats.inactive_announcements,
+              color: 'info',
+            },
+          ],
+          icon: <Checklist color='primary' />,
+        },
       ]
     : [];
 
@@ -311,8 +330,8 @@ const AdminDashboard = () => {
               <Grid
                 item
                 xs={12}
-                sm={card.subStats && card.subStats.length > 2 ? 6 : 3}
-                md={card.subStats && card.subStats.length > 2 ? 6 : 3}
+                sm={card.subStats && card.subStats.length > 2 ? 4 : 3}
+                md={card.subStats && card.subStats.length > 2 ? 4 : 3}
                 key={idx}
               >
                 <StatCard {...card} />

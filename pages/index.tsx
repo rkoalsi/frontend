@@ -11,6 +11,7 @@ import AuthContext from '../src/components/Auth';
 import { useRouter } from 'next/router';
 import {
   Campaign,
+  Checklist,
   LibraryBooks,
   Payment,
   ShoppingCart,
@@ -54,6 +55,9 @@ const Home = () => {
   };
   const handleAnnouncements = () => {
     router.push('/announcements');
+  };
+  const handleDailyVisits = () => {
+    router.push('/daily_visits');
   };
 
   return (
@@ -125,7 +129,7 @@ const Home = () => {
                 <CustomButton
                   large
                   icon={<Payment />}
-                  color={'info'}
+                  color={'error'}
                   text={'Payments Due'}
                   onClick={handlePaymentsDue}
                 />
@@ -146,9 +150,16 @@ const Home = () => {
                 <CustomButton
                   large
                   icon={<Campaign />}
-                  color={'info'}
+                  color={'error'}
                   text={'Announcements'}
                   onClick={handleAnnouncements}
+                />
+                <CustomButton
+                  large
+                  icon={<Checklist />}
+                  color={'primary'}
+                  text={'Daily Visits'}
+                  onClick={handleDailyVisits}
                 />
               </Stack>
             </Box>
