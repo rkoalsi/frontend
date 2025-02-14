@@ -287,17 +287,6 @@ const Products = () => {
 
     const { category, sub_category, series, upc_code } = editableFields;
 
-    // Basic validation
-    if (
-      category.trim() === '' ||
-      sub_category.trim() === '' ||
-      series.trim() === '' ||
-      upc_code.trim() === ''
-    ) {
-      toast.error('All fields are required.');
-      return;
-    }
-
     try {
       setUpdating(true);
 
