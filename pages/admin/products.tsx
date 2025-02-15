@@ -428,6 +428,7 @@ const Products = () => {
                     <TableCell>Name</TableCell>
                     <TableCell>Category</TableCell>
                     <TableCell>Sub Category</TableCell>
+                    <TableCell>Series</TableCell>
                     <TableCell>SKU</TableCell>
                     <TableCell>Price</TableCell>
                     <TableCell>Stock</TableCell>
@@ -466,6 +467,7 @@ const Products = () => {
                         <TableCell>{product.name}</TableCell>
                         <TableCell>{product.category}</TableCell>
                         <TableCell>{product.sub_category}</TableCell>
+                        <TableCell>{product.series}</TableCell>
                         <TableCell>{product.cf_sku_code}</TableCell>
                         <TableCell>₹{product.rate}</TableCell>
                         <TableCell>{product.stock}</TableCell>
