@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Typography,
   Box,
@@ -29,6 +29,7 @@ import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
 import { Delete, Edit, FilterAlt, Visibility } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
+import ImagePopupDialog from '../../src/components/common/ImagePopUp';
 
 const Orders = () => {
   const router = useRouter();
@@ -79,6 +80,8 @@ const Orders = () => {
     'SP20',
     'SP21',
   ]);
+  const [openImagePopup, setOpenImagePopup] = useState(false);
+  const [popupImageSrc, setPopupImageSrc] = useState('');
   useEffect(() => {
     const fetchSalesPeople = async () => {
       try {
@@ -91,6 +94,14 @@ const Orders = () => {
     };
 
     fetchSalesPeople();
+  }, []);
+  const handleImageClick = useCallback((src: string) => {
+    setPopupImageSrc(src);
+    setOpenImagePopup(true);
+  }, []);
+
+  const handleClosePopup = useCallback(() => {
+    setOpenImagePopup(false);
   }, []);
   const applyFilters = () => {
     setPage(0); // reset page
@@ -664,6 +675,11 @@ const Orders = () => {
                         <TableRow key={product.product_id}>
                           <TableCell>
                             <img
+                              onClick={() =>
+                                handleImageClick(
+                                  product.image_url || '/placeholder.png'
+                                )
+                              }
                               src={product.image_url || '/placeholder.png'}
                               alt={product.name}
                               style={{
@@ -796,6 +812,11 @@ const Orders = () => {
           </Box>
         </Drawer>
       </Paper>
+      <ImagePopupDialog
+        open={openImagePopup}
+        onClose={handleClosePopup}
+        imageSrc={popupImageSrc}
+      />
     </Box>
   );
 };
