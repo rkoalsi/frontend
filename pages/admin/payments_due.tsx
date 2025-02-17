@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Typography,
   Box,
@@ -27,21 +27,30 @@ import axiosInstance from '../../src/util/axios';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
 import axios from 'axios';
 
+interface SortConfig {
+  key: string;
+  direction: 'asc' | 'desc';
+}
+
 const PaymentsDue = () => {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState<any[]>([]);
   const [page, setPage] = useState(0); // 0-based current page
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [totalCount, setTotalCount] = useState(0); // total number of data from backend
-  const [totalPagesCount, setTotalPagesCount] = useState(0); // total number of data from backend
+  const [totalPagesCount, setTotalPagesCount] = useState(0);
   const [skipPage, setSkipPage] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [salesPeople, setSalesPeople] = useState([]);
+  const [salesPeople, setSalesPeople] = useState<any[]>([]);
   const [appliedSalesPersonFilter, setAppliedSalesPersonFilter] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [openImagePopup, setOpenImagePopup] = useState<boolean>(false);
   const [popupImageSrc, setPopupImageSrc] = useState<string>('');
+
+  // New sort state
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+
   // Fetch data from the server
   const fetchData = async () => {
     setLoading(true);
@@ -54,10 +63,8 @@ const PaymentsDue = () => {
         url += `&invoice_number=${encodeURIComponent(invoiceNumber)}`;
       }
       const response = await axiosInstance.get(url);
-
-      // The backend returns { data, total_count }
+      // The backend returns { invoices, total_count, total_pages }
       const { invoices, total_count, total_pages } = response.data;
-
       setData(invoices);
       setTotalCount(total_count);
       setTotalPagesCount(total_pages);
@@ -68,6 +75,7 @@ const PaymentsDue = () => {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     const fetchSalesPeople = async () => {
       try {
@@ -81,7 +89,8 @@ const PaymentsDue = () => {
 
     fetchSalesPeople();
   }, []);
-  // Re-fetch data whenever page or rowsPerPage changes
+
+  // Re-fetch data whenever page, rowsPerPage, or filters change
   useEffect(() => {
     fetchData();
   }, [page, rowsPerPage, appliedSalesPersonFilter, invoiceNumber]);
@@ -108,8 +117,9 @@ const PaymentsDue = () => {
     }
     // Our internal page is 0-based; user typed 1-based
     setPage(requestedPage - 1);
-    setSkipPage(''); // clear input so it displays the new page on next render
+    setSkipPage('');
   };
+
   const downloadAsPDF = async (invoice: any) => {
     try {
       const resp = await axios.get(
@@ -119,14 +129,11 @@ const PaymentsDue = () => {
         }
       );
 
-      // Check if the blob is an actual PDF or an error message
       if (resp.data.type !== 'application/pdf') {
-        // Convert to text to read the error response
         toast.error('Invoice Not Created');
         return;
       }
 
-      // Extract filename from headers or set default
       const contentDisposition = resp.headers['content-disposition'];
       let fileName = `${invoice.invoice_number}.pdf`;
 
@@ -137,7 +144,6 @@ const PaymentsDue = () => {
         }
       }
 
-      // Create and trigger download
       const blob = new Blob([resp.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -152,9 +158,9 @@ const PaymentsDue = () => {
       toast.error(error.message || 'Failed to download PDF');
     }
   };
+
   // Drawer logic
   const handleViewDetails = (order: any) => {
-    console.log(order);
     setSelectedOrder(order);
     setDrawerOpen(true);
   };
@@ -171,9 +177,8 @@ const PaymentsDue = () => {
         appliedSalesPersonFilter
       )}`;
       const response = await axiosInstance.get(url, {
-        responseType: 'blob', // important for binary responses
+        responseType: 'blob',
       });
-      // Create a URL for the blob and simulate a link click to download
       const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = blobUrl;
@@ -186,10 +191,12 @@ const PaymentsDue = () => {
       toast.error('Error downloading CSV');
     }
   };
+
   // Handler to apply the sales person filter
   const handleApplyFilter = (value: string) => {
     setAppliedSalesPersonFilter(value);
   };
+
   const onClickImage = useCallback((src: string) => {
     setPopupImageSrc(src);
     setOpenImagePopup(true);
@@ -198,6 +205,58 @@ const PaymentsDue = () => {
   const handleClosePopup = useCallback(() => {
     setOpenImagePopup(false);
   }, []);
+
+  // Handler for sorting when a column header is clicked.
+  const handleSort = (columnKey: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (
+      sortConfig &&
+      sortConfig.key === columnKey &&
+      sortConfig.direction === 'asc'
+    ) {
+      direction = 'desc';
+    }
+    setSortConfig({ key: columnKey, direction });
+  };
+
+  // Memoized sorted data with support for nested values
+  const sortedData = useMemo(() => {
+    if (!sortConfig) return data;
+    const sorted = [...data].sort((a, b) => {
+      let aVal: any;
+      let bVal: any;
+
+      // Check for nested fields first
+      if (sortConfig.key === 'additional_info') {
+        aVal = a.invoice_notes?.additional_info || '';
+        bVal = b.invoice_notes?.additional_info || '';
+      } else if (sortConfig.key === 'images') {
+        // Sort based on number of images uploaded
+        aVal = a.invoice_notes?.images?.length || 0;
+        bVal = b.invoice_notes?.images?.length || 0;
+      } else {
+        aVal = a[sortConfig.key];
+        bVal = b[sortConfig.key];
+
+        // Handle dates if applicable
+        if (sortConfig.key === 'created_at' || sortConfig.key === 'due_date') {
+          aVal = new Date(aVal);
+          bVal = new Date(bVal);
+        }
+      }
+
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [data, sortConfig]);
+
+  // A helper function to show sort indicator
+  const renderSortIndicator = (columnKey: string) => {
+    if (!sortConfig || sortConfig.key !== columnKey) return null;
+    return sortConfig.direction === 'asc' ? ' 🔼' : ' 🔽';
+  };
 
   return (
     <Box sx={{ padding: 3 }}>
@@ -227,7 +286,7 @@ const PaymentsDue = () => {
           </Typography>
           <Box display='flex' width={'50%'} gap={2}>
             <FormControl fullWidth sx={{ mt: 2, width: '100%' }}>
-              <InputLabel id='sales-person-filter-label'>
+              <InputLabel id='invoice-number-filter-label'>
                 Search By Invoice Number
               </InputLabel>
               <Input onChange={(e: any) => setInvoiceNumber(e.target.value)} />
@@ -240,7 +299,6 @@ const PaymentsDue = () => {
                 labelId='sales-person-filter-label'
                 id='sales-person-filter'
                 value={appliedSalesPersonFilter}
-                // disabled={filterUnassigned}
                 label='Sales Person'
                 onChange={(e) => {
                   handleApplyFilter(e.target.value);
@@ -275,28 +333,91 @@ const PaymentsDue = () => {
           <>
             {data.length > 0 ? (
               <>
-                {/* data Table */}
+                {/* Data Table */}
                 <TableContainer component={Paper}>
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Created At</TableCell>
-                        <TableCell>Due Date</TableCell>
-                        <TableCell>Invoice Number</TableCell>
-                        <TableCell>Overdue By</TableCell>
-                        <TableCell>Customer Name</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Sales Person</TableCell>
-                        <TableCell>Created By</TableCell>
-                        <TableCell>Total Amount</TableCell>
-                        <TableCell>Balance</TableCell>
-                        <TableCell>Additional Information</TableCell>
-                        <TableCell>Image Uploaded</TableCell>
+                        {/* Sortable Headers */}
+                        <TableCell
+                          onClick={() => handleSort('created_at')}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          Created At{renderSortIndicator('created_at')}
+                        </TableCell>
+                        <TableCell
+                          onClick={() => handleSort('due_date')}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          Due Date{renderSortIndicator('due_date')}
+                        </TableCell>
+                        <TableCell
+                          onClick={() => handleSort('invoice_number')}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          Invoice Number{renderSortIndicator('invoice_number')}
+                        </TableCell>
+                        <TableCell
+                          onClick={() => handleSort('overdue_by_days')}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          Overdue By{renderSortIndicator('overdue_by_days')}
+                        </TableCell>
+                        <TableCell
+                          onClick={() => handleSort('customer_name')}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          Customer Name{renderSortIndicator('customer_name')}
+                        </TableCell>
+                        <TableCell
+                          onClick={() => handleSort('status')}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          Status{renderSortIndicator('status')}
+                        </TableCell>
+                        <TableCell
+                          onClick={() => handleSort('cf_sales_person')}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          Sales Person{renderSortIndicator('cf_sales_person')}
+                        </TableCell>
+                        <TableCell
+                          onClick={() => handleSort('created_by_name')}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          Created By{renderSortIndicator('created_by_name')}
+                        </TableCell>
+                        <TableCell
+                          onClick={() => handleSort('total')}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          Total Amount{renderSortIndicator('total')}
+                        </TableCell>
+                        <TableCell
+                          onClick={() => handleSort('balance')}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          Balance{renderSortIndicator('balance')}
+                        </TableCell>
+                        {/* Now sortable additional columns */}
+                        <TableCell
+                          onClick={() => handleSort('additional_info')}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          Additional Information
+                          {renderSortIndicator('additional_info')}
+                        </TableCell>
+                        <TableCell
+                          onClick={() => handleSort('images')}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          Image Uploaded{renderSortIndicator('images')}
+                        </TableCell>
                         <TableCell>Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {data.map((invoice: any) => {
+                      {sortedData.map((invoice: any) => {
                         const {
                           _id = '',
                           created_at = new Date(),
@@ -310,13 +431,12 @@ const PaymentsDue = () => {
                           total = 0,
                           balance = 0,
                           overdue_by_days = 0,
-                          invoice_notes = {},
                         } = invoice;
-                        const { additional_info = '', images = [] } =
-                          invoice_notes;
                         const invoiceDueDate = new Date(due_date);
                         invoiceDueDate.setHours(0, 0, 0, 0);
-
+                        const invoiceNotes = invoice.invoice_notes || {};
+                        const { additional_info = '', images = [] } =
+                          invoiceNotes;
                         return (
                           <TableRow key={_id}>
                             <TableCell>
@@ -394,29 +514,20 @@ const PaymentsDue = () => {
                     <TablePagination
                       rowsPerPageOptions={[25, 50, 100, 200]}
                       component='div'
-                      // totalCount from server
                       count={totalCount}
                       rowsPerPage={rowsPerPage}
                       page={page}
                       onPageChange={handleChangePage}
                       onRowsPerPageChange={handleChangeRowsPerPage}
                     />
-
                     {/* "Go to page" UI */}
-                    <Box
-                      sx={{
-                        ml: 2,
-                        display: 'flex',
-                        alignItems: 'center',
-                      }}
-                    >
+                    <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
                       <TextField
                         label='Go to page'
                         type='number'
                         variant='outlined'
                         size='small'
                         sx={{ width: 100, mr: 1 }}
-                        // If user typed something, show that; otherwise, current page + 1
                         value={skipPage !== '' ? skipPage : page + 1}
                         onChange={(e) =>
                           parseInt(e.target.value) <= totalPagesCount
@@ -479,7 +590,6 @@ const PaymentsDue = () => {
             </Typography>
             {selectedOrder && (
               <>
-                {/* Order Info */}
                 <Box sx={{ marginBottom: 3 }}>
                   <Typography>
                     <strong>Invoice Number:</strong>{' '}
@@ -532,7 +642,7 @@ const PaymentsDue = () => {
                                 height={100}
                               >
                                 <img
-                                  src={img} // Assuming img is a valid URL; adjust if needed.
+                                  src={img}
                                   alt={`existing-${index}`}
                                   style={{
                                     width: '100%',
@@ -551,7 +661,6 @@ const PaymentsDue = () => {
                     </Typography>
                   </Box>
                 )}
-                {/* Products Section */}
                 <Typography
                   variant='h6'
                   sx={{
