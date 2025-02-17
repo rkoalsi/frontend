@@ -24,6 +24,10 @@ import {
   FormControlLabel,
   RadioGroup,
   Radio,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import { useDropzone } from 'react-dropzone';
@@ -46,28 +50,81 @@ const Products = () => {
   // NEW: For skip-page functionality
   const [skipPage, setSkipPage] = useState(''); // we'll store a string and convert on "Go"
 
+  // Filter states
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterStock, setFilterStock] = useState<string>('');
+  const [filterNewArrivals, setFilterNewArrivals] = useState<boolean>(false);
+  // NEW: New dropdown filter states
+  const [filterBrand, setFilterBrand] = useState<string>('');
+  const [filterCategory, setFilterCategory] = useState<string>('');
+  const [filterSubCategory, setFilterSubCategory] = useState<string>('');
+
+  // NEW: Options for dropdowns (could be fetched from API)
+  const [brandOptions, setBrandOptions] = useState<string[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+  const [subCategoryOptions, setSubCategoryOptions] = useState<string[]>([]);
+
+  const [openFilterModal, setOpenFilterModal] = useState(false);
+
   // State for Edit Modal
   const [openEditModal, setOpenEditModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [updating, setUpdating] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<string>('');
-  const [filterStock, setFilterStock] = useState<string>('');
-  const [filterNewArrivals, setFilterNewArrivals] = useState<boolean>(false);
-  const [openFilterModal, setOpenFilterModal] = useState(false);
   // NEW: State for editable fields
   const [editableFields, setEditableFields] = useState({
     category: '',
     sub_category: '',
     series: '',
     upc_code: '',
+    brand: '',
   });
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
+
+  // Fetch dropdown options (simulate API calls or use static data)
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        // You can fetch these from your backend instead of hardcoding
+        // For example:
+        const brands = await axiosInstance.get('/admin/brands');
+        const categories = await axiosInstance.get('/admin/categories');
+        const sub_categories = await axiosInstance.get('/admin/sub_categories');
+
+        // setBrandOptions(response.data.brands);
+        // setCategoryOptions(response.data.categories);
+        // setSubCategoryOptions(response.data.sub_categories);
+
+        // Static options for demonstration:
+        setBrandOptions(brands.data.brands);
+        setCategoryOptions(categories.data.categories);
+        setSubCategoryOptions(sub_categories.data.sub_categories);
+      } catch (error) {
+        console.error('Error fetching filter options', error);
+      }
+    };
+
+    fetchFilterOptions();
+  }, []);
+
   const applyFilters = () => {
     setPage(0); // reset page
     setOpenFilterModal(false);
     getData(); // fetch with new filters
   };
+
+  const resetFilters = () => {
+    setFilterStatus('');
+    setFilterStock('');
+    setFilterNewArrivals(false);
+    setFilterBrand('');
+    setFilterCategory('');
+    setFilterSubCategory('');
+    setPage(0); // reset page
+    setOpenFilterModal(false);
+    getData(); // fetch with new filters
+  };
+
   const handleImageClick = useCallback((src: string) => {
     setPopupImageSrc(src);
     setOpenImagePopup(true);
@@ -76,6 +133,7 @@ const Products = () => {
   const handleClosePopup = useCallback(() => {
     setOpenImagePopup(false);
   }, []);
+
   // Debounce the search input to prevent excessive API calls
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -109,6 +167,16 @@ const Products = () => {
       if (filterNewArrivals) {
         params.new_arrivals = true;
       }
+      // NEW: Add dropdown filter params
+      if (filterBrand) {
+        params.brand = filterBrand;
+      }
+      if (filterCategory) {
+        params.category = filterCategory;
+      }
+      if (filterSubCategory) {
+        params.sub_category = filterSubCategory;
+      }
 
       const response = await axiosInstance.get(`/admin/products`, {
         params,
@@ -123,6 +191,7 @@ const Products = () => {
       setLoading(false);
     }
   };
+
   // Fetch data whenever page, rowsPerPage, or debouncedSearchQuery changes
   useEffect(() => {
     getData();
@@ -207,6 +276,7 @@ const Products = () => {
       sub_category: product.sub_category || '',
       series: product.series || '',
       upc_code: product?.upc_code || '',
+      brand: product?.brand || '',
     });
   };
 
@@ -219,6 +289,7 @@ const Products = () => {
       sub_category: '',
       series: '',
       upc_code: '',
+      brand: '',
     });
   };
 
@@ -285,7 +356,7 @@ const Products = () => {
   const handleSaveEdit = async () => {
     if (!selectedProduct) return;
 
-    const { category, sub_category, series, upc_code } = editableFields;
+    const { category, sub_category, series, upc_code, brand } = editableFields;
 
     try {
       setUpdating(true);
@@ -295,6 +366,7 @@ const Products = () => {
         sub_category: sub_category.trim(),
         series: series.trim(),
         upc_code: upc_code.trim(),
+        brand: brand.trim(),
       };
 
       // Send update request to the backend
@@ -511,7 +583,6 @@ const Products = () => {
                 <TablePagination
                   rowsPerPageOptions={[25, 50, 100, 200]}
                   component='div'
-                  // totalCount from server
                   count={totalCount}
                   rowsPerPage={rowsPerPage}
                   page={page}
@@ -533,7 +604,6 @@ const Products = () => {
                     variant='outlined'
                     size='small'
                     sx={{ width: 100, mr: 1 }}
-                    // If user typed something, show that; otherwise, current page + 1
                     value={skipPage !== '' ? skipPage : page + 1}
                     onChange={(e) =>
                       parseInt(e.target.value) <= totalPageCount
@@ -558,6 +628,8 @@ const Products = () => {
           </>
         )}
       </Paper>
+
+      {/* Filter Drawer */}
       <Drawer
         anchor='right'
         open={openFilterModal}
@@ -592,7 +664,7 @@ const Products = () => {
         <Typography variant='subtitle2'>Stock</Typography>
         <RadioGroup
           value={filterStock}
-          onChange={(e: any) => setFilterStock(e.target.value)}
+          onChange={(e) => setFilterStock(e.target.value)}
         >
           <FormControlLabel value='' control={<Radio />} label='All' />
           <FormControlLabel
@@ -621,12 +693,81 @@ const Products = () => {
           label='New Arrivals Only'
         />
 
-        <Box sx={{ mt: 3 }}>
+        {/* NEW: Brand Filter */}
+        <FormControl fullWidth sx={{ mt: 2 }}>
+          <InputLabel id='brand-filter-label'>Brand</InputLabel>
+          <Select
+            labelId='brand-filter-label'
+            label='Brand'
+            value={filterBrand}
+            onChange={(e) => setFilterBrand(e.target.value)}
+          >
+            <MenuItem value=''>
+              <em>All</em>
+            </MenuItem>
+            {brandOptions.map((brand) => (
+              <MenuItem key={brand} value={brand}>
+                {brand}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {/* NEW: Category Filter */}
+        <FormControl fullWidth sx={{ mt: 2 }}>
+          <InputLabel id='category-filter-label'>Category</InputLabel>
+          <Select
+            labelId='category-filter-label'
+            label='Category'
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+          >
+            <MenuItem value=''>
+              <em>All</em>
+            </MenuItem>
+            {categoryOptions.map((cat) => (
+              <MenuItem key={cat} value={cat}>
+                {cat}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {/* NEW: Sub Category Filter */}
+        <FormControl fullWidth sx={{ mt: 2 }}>
+          <InputLabel id='sub-category-filter-label'>Sub Category</InputLabel>
+          <Select
+            labelId='sub-category-filter-label'
+            label='Sub Category'
+            value={filterSubCategory}
+            onChange={(e) => setFilterSubCategory(e.target.value)}
+          >
+            <MenuItem value=''>
+              <em>All</em>
+            </MenuItem>
+            {subCategoryOptions.map((subCat) => (
+              <MenuItem key={subCat} value={subCat}>
+                {subCat}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <Box sx={{ mt: 3 }} display={'flex'} flexDirection={'row'} gap={'16px'}>
           <Button variant='contained' onClick={applyFilters}>
             Apply
           </Button>
+
+          <Button
+            color={'secondary'}
+            variant='contained'
+            onClick={resetFilters}
+          >
+            Reset
+          </Button>
         </Box>
       </Drawer>
+
       {/* Edit Product Modal */}
       <Dialog
         open={openEditModal}
@@ -811,14 +952,19 @@ const Products = () => {
                       </Typography>
                     </Grid>
 
-                    {/* Brand (Read-only) */}
+                    {/* Brand (Editable) */}
                     <Grid item xs={12} sm={6}>
                       <Typography variant='subtitle2' color='textSecondary'>
                         Brand
                       </Typography>
-                      <Typography variant='body1'>
-                        {selectedProduct.brand}
-                      </Typography>
+                      <TextField
+                        name='brand'
+                        variant='outlined'
+                        fullWidth
+                        value={editableFields.brand}
+                        onChange={handleEditableFieldChange}
+                        size='small'
+                      />
                     </Grid>
 
                     {/* HSN/SAC (Read-only) */}
@@ -830,8 +976,6 @@ const Products = () => {
                         {selectedProduct.hsn_or_sac}
                       </Typography>
                     </Grid>
-
-                    {/* Add any other fields you wish to display */}
                   </Grid>
                 </Grid>
               </Grid>
