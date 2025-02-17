@@ -5,7 +5,7 @@ FROM node:18-slim as builder
 WORKDIR /app
 
 # Cache package.json and package-lock.json to avoid re-installing dependencies if unchanged
-COPY package.json package-lock.json ./
+COPY package.json ./
 
 # Install dependencies
 RUN npm install --verbose
@@ -23,7 +23,7 @@ FROM node:18-slim
 WORKDIR /app
 
 # Copy only the build output and required files
-COPY --from=builder /app/package.json /app/package-lock.json ./
+COPY --from=builder /app/package.json ./
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.js ./
