@@ -114,15 +114,14 @@ const Products = () => {
   };
 
   const resetFilters = () => {
+    setPage(0); // reset page
+    setOpenFilterModal(false);
     setFilterStatus('');
     setFilterStock('');
     setFilterNewArrivals(false);
     setFilterBrand('');
     setFilterCategory('');
     setFilterSubCategory('');
-    setPage(0); // reset page
-    setOpenFilterModal(false);
-    getData(); // fetch with new filters
   };
 
   const handleImageClick = useCallback((src: string) => {
@@ -195,7 +194,17 @@ const Products = () => {
   // Fetch data whenever page, rowsPerPage, or debouncedSearchQuery changes
   useEffect(() => {
     getData();
-  }, [page, rowsPerPage, debouncedSearchQuery]);
+  }, [
+    page,
+    rowsPerPage,
+    debouncedSearchQuery,
+    filterStatus,
+    filterStock,
+    filterNewArrivals,
+    filterBrand,
+    filterCategory,
+    filterSubCategory,
+  ]);
 
   // Handle searching by updating the searchQuery state
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
