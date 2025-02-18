@@ -440,6 +440,7 @@ const Products: React.FC<SearchBarProps> = ({
   const router = useRouter();
   const { id = '' } = router.query;
   const theme = useTheme();
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // ------------------ States ------------------
@@ -1056,7 +1057,9 @@ const Products: React.FC<SearchBarProps> = ({
             onClick={handleClearCart}
             disabled={
               selectedProducts.length === 0 ||
-              !order?.status?.toLowerCase()?.includes('draft')
+              !['draft', 'sent'].includes(
+                order?.status?.toLowerCase() as string
+              )
             }
             sx={{
               textTransform: 'none',
@@ -1109,7 +1112,7 @@ const Products: React.FC<SearchBarProps> = ({
           {/* When grouping by category, hide brand controls */}
           {!groupByCategory && (
             <>
-              {isMobile ? (
+              {isMobile || isTablet ? (
                 <FormControl fullWidth sx={{ mt: 2 }}>
                   <InputLabel id='brand-select-label'>Brand</InputLabel>
                   <Select
@@ -1179,7 +1182,7 @@ const Products: React.FC<SearchBarProps> = ({
 
           {/* Category Controls */}
           <Box>
-            {isMobile ? (
+            {isMobile || isTablet ? (
               groupByCategory ? (
                 // On mobile when grouping by category: use a dropdown
                 <FormControl fullWidth sx={{ mt: 2 }}>
@@ -1283,7 +1286,7 @@ const Products: React.FC<SearchBarProps> = ({
               )
             )}
           </Box>
-          {isMobile ? (
+          {isMobile || isTablet ? (
             <Box sx={{ mt: 2, mb: 2, width: '100%' }}>
               <FormControl fullWidth variant='outlined'>
                 <InputLabel id='sort-select-label'>Sort By</InputLabel>
@@ -1356,7 +1359,7 @@ const Products: React.FC<SearchBarProps> = ({
         </Box>
 
         {/* Products Display */}
-        {isMobile ? (
+        {isMobile || isTablet ? (
           <Box>
             {displayedProducts.length > 0 ? (
               <Grid container spacing={2}>
@@ -1538,8 +1541,8 @@ const Products: React.FC<SearchBarProps> = ({
         onClick={() => setCartDrawerOpen(true)}
         sx={{
           position: 'fixed',
-          bottom: isMobile ? theme.spacing(10) : theme.spacing(4),
-          right: isMobile ? theme.spacing(2) : theme.spacing(4),
+          bottom: isMobile || isTablet ? theme.spacing(10) : theme.spacing(4),
+          right: isMobile || isTablet ? theme.spacing(2) : theme.spacing(4),
           backgroundColor: 'background.paper',
           boxShadow: 3,
           '&:hover': { backgroundColor: 'background.default' },
@@ -1564,7 +1567,7 @@ const Products: React.FC<SearchBarProps> = ({
         ModalProps={{ keepMounted: true }}
         PaperProps={{
           sx: {
-            width: isMobile ? '100%' : 450,
+            width: isMobile || isTablet ? '100%' : 450,
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
@@ -1600,9 +1603,9 @@ const Products: React.FC<SearchBarProps> = ({
                 const itemTotal = parseFloat(
                   (sellingPrice * product.quantity).toFixed(2)
                 );
-                const isDisabled =
-                  order?.status?.toLowerCase().includes('accepted') ||
-                  order?.status?.toLowerCase().includes('declined');
+                const isDisabled = ['accepted', 'declined'].includes(
+                  order?.status?.toLowerCase() as string
+                );
                 return (
                   <Grid
                     item
@@ -1619,7 +1622,7 @@ const Products: React.FC<SearchBarProps> = ({
                     <Grid
                       container
                       spacing={2}
-                      alignItems={isMobile ? 'center' : 'flex-end'}
+                      alignItems={isMobile || isTablet ? 'center' : 'flex-end'}
                     >
                       <Grid item xs={12} sm={8}>
                         <Box
@@ -1632,7 +1635,7 @@ const Products: React.FC<SearchBarProps> = ({
                             alt={product.name}
                             loading='lazy'
                             style={{
-                              width: isMobile ? '200px' : '150px',
+                              width: isMobile || isTablet ? '200px' : '150px',
                               height: 'fit-content',
                               borderRadius: '4px',
                               objectFit: 'cover',
@@ -1674,14 +1677,21 @@ const Products: React.FC<SearchBarProps> = ({
                         xs={12}
                         sm={4}
                         container
-                        direction={isMobile ? 'row' : 'column'}
-                        justifyContent={isMobile ? 'space-between' : 'flex-end'}
-                        alignItems={isMobile ? 'center' : 'flex-end'}
-                        sx={{ mt: isMobile ? 0 : 1 }}
+                        direction={isMobile || isTablet ? 'row' : 'column'}
+                        justifyContent={
+                          isMobile || isTablet ? 'space-between' : 'flex-end'
+                        }
+                        alignItems={
+                          isMobile || isTablet ? 'center' : 'flex-end'
+                        }
+                        sx={{ mt: isMobile || isTablet ? 0 : 1 }}
                       >
                         <Typography
                           variant='subtitle1'
-                          sx={{ fontWeight: 'bold', mb: isMobile ? 0 : 1 }}
+                          sx={{
+                            fontWeight: 'bold',
+                            mb: isMobile || isTablet ? 0 : 1,
+                          }}
                         >
                           ₹{itemTotal.toFixed(2)}
                         </Typography>
@@ -1725,7 +1735,9 @@ const Products: React.FC<SearchBarProps> = ({
                 }}
                 disabled={
                   selectedProducts.length === 0 ||
-                  !order?.status?.toLowerCase()?.includes('draft')
+                  !['draft', 'sent'].includes(
+                    order?.status?.toLowerCase() as string
+                  )
                 }
               >
                 Checkout
