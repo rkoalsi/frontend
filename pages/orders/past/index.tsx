@@ -40,6 +40,7 @@ const PastOrders = () => {
   >('all');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const router = useRouter();
   const { user }: any = useContext(AuthContext);
 
@@ -178,7 +179,7 @@ const PastOrders = () => {
         <Box
           sx={{
             background: 'none',
-            width: isMobile ? '100%' : '35%',
+            width: isMobile ? '80%' : isTablet ? '50%' : '100%',
             borderRadius: '8px',
           }}
         >

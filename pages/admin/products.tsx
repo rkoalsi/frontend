@@ -79,6 +79,7 @@ const Products = () => {
     series: '',
     upc_code: '',
     brand: '',
+    status: false,
   });
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
@@ -259,19 +260,26 @@ const Products = () => {
   // Example: Toggling product status
   const handleToggleActive = async (product: any) => {
     try {
-      const updatedFields = {
-        status: product.status === 'active' ? 'inactive' : 'active',
-      };
+      const newStatus = product.status === 'active' ? 'inactive' : 'active';
+      const updatedFields = { status: newStatus };
 
       await axiosInstance.put(`/products/${product._id}`, updatedFields);
+
+      // Update the products list
       setProducts((prev: any[]) =>
         prev.map((p) =>
           p._id === product._id ? { ...p, ...updatedFields } : p
         )
       );
+
+      // Also update the selected product if it matches
+      if (selectedProduct && selectedProduct._id === product._id) {
+        setSelectedProduct({ ...selectedProduct, ...updatedFields });
+      }
+
       toast.success(
         `Product ${product.name} marked as ${
-          updatedFields.status === 'active' ? 'Active' : 'Inactive'
+          newStatus === 'active' ? 'Active' : 'Inactive'
         }`
       );
     } catch (error) {
@@ -292,6 +300,7 @@ const Products = () => {
       series: product.series || '',
       upc_code: product?.upc_code || '',
       brand: product?.brand || '',
+      status: product?.status || false,
     });
   };
 
@@ -305,6 +314,7 @@ const Products = () => {
       series: '',
       upc_code: '',
       brand: '',
+      status: false,
     });
   };
 
@@ -371,7 +381,8 @@ const Products = () => {
   const handleSaveEdit = async () => {
     if (!selectedProduct) return;
 
-    const { category, sub_category, series, upc_code, brand } = editableFields;
+    const { category, sub_category, series, upc_code, brand, status } =
+      editableFields;
 
     try {
       setUpdating(true);
@@ -382,6 +393,7 @@ const Products = () => {
         series: series.trim(),
         upc_code: upc_code.trim(),
         brand: brand.trim(),
+        status,
       };
 
       // Send update request to the backend
@@ -1049,10 +1061,20 @@ const Products = () => {
                       <Typography variant='subtitle2' color='textSecondary'>
                         Status
                       </Typography>
-                      <Typography variant='body1'>
-                        {selectedProduct.status.charAt(0).toUpperCase() +
-                          selectedProduct.status.slice(1)}
-                      </Typography>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={selectedProduct?.status === 'active'}
+                            onChange={() => handleToggleActive(selectedProduct)}
+                            color='primary'
+                          />
+                        }
+                        label={
+                          selectedProduct?.status === 'active'
+                            ? 'Active'
+                            : 'Inactive'
+                        }
+                      />
                     </Grid>
 
                     {/* Brand (Editable) */}
