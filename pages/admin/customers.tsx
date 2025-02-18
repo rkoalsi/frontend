@@ -26,6 +26,7 @@ import {
   Checkbox,
   InputAdornment,
   FormControlLabel,
+  Chip,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import { FilterAlt } from '@mui/icons-material';
@@ -84,7 +85,7 @@ const Customers = () => {
   const [filterSalesPerson, setFilterSalesPerson] = useState<string>('');
   const [filterType, setFilterType] = useState<string>('');
   const [filterUnassigned, setFilterUnassigned] = useState<boolean>(false);
-
+  const [assignedSalesPeople, setAssignedSalesPeople] = useState<string[]>([]);
   // Sales People List (Assuming it's fetched from an API)
   const [salesPeople, setSalesPeople] = useState<string[]>([]);
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
@@ -303,14 +304,6 @@ const Customers = () => {
     setSkipPage('');
   };
 
-  // --------------------- Drawer (Customer Details) Functions ---------------------
-  const handleViewDetails = (cust: any) => {
-    setSelectedCustomer(cust);
-    setEditMargin(cust.cf_margin || '40%');
-    setEditInEx(cust.cf_in_ex || 'Exclusive');
-    setDrawerOpen(true);
-  };
-
   const handleCloseDrawer = () => {
     setDrawerOpen(false);
     setSelectedCustomer(null);
@@ -358,6 +351,8 @@ const Customers = () => {
       const updatedFields = {
         cf_margin: editMargin,
         cf_in_ex: editInEx,
+        // Join the array into a comma-separated string
+        cf_sales_person: assignedSalesPeople.join(', '),
       };
 
       await axiosInstance.put(
@@ -384,6 +379,7 @@ const Customers = () => {
       toast.error('Failed to update customer details.');
     }
   };
+
   const getSpecialMargins = async () => {
     setLoading(true);
     try {
@@ -804,7 +800,21 @@ const Customers = () => {
       toast.error('Failed to delete all special margins.');
     }
   };
-
+  const handleViewDetails = (cust: any) => {
+    setSelectedCustomer(cust);
+    // Convert a comma-separated string into an array.
+    const salesPeopleArray =
+      typeof cust?.cf_sales_person === 'string'
+        ? cust?.cf_sales_person.split(',').map((s: any) => s.trim())
+        : Array.isArray(cust?.cf_sales_person)
+        ? cust?.cf_sales_person
+        : [];
+    console.log(salesPeopleArray);
+    setAssignedSalesPeople(salesPeopleArray);
+    setEditMargin(cust.cf_margin || '40%');
+    setEditInEx(cust.cf_in_ex || 'Exclusive');
+    setDrawerOpen(true);
+  };
   return (
     <Box sx={{ padding: 3 }}>
       <Paper
@@ -1023,7 +1033,6 @@ const Customers = () => {
                 ))}
               </Select>
             </FormControl>
-
             {/* Unassigned Customers Filter */}
             <FormControlLabel
               control={
@@ -1157,6 +1166,42 @@ const Customers = () => {
                       >
                         <MenuItem value='Inclusive'>Inclusive</MenuItem>
                         <MenuItem value='Exclusive'>Exclusive</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Box>
+
+                  {/* Editable Sales Person */}
+                  <Box sx={{ mt: 2 }}>
+                    <FormControl fullWidth>
+                      <InputLabel id='cf-sales-person-label'>
+                        Sales Person
+                      </InputLabel>
+                      <Select
+                        labelId='cf-sales-person-label'
+                        multiple
+                        value={assignedSalesPeople}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Always store the value as an array of strings
+                          setAssignedSalesPeople(
+                            typeof value === 'string' ? value.split(',') : value
+                          );
+                        }}
+                        renderValue={(selected) => (
+                          <Box
+                            sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}
+                          >
+                            {selected.map((val: string) => (
+                              <Chip key={val} label={val} />
+                            ))}
+                          </Box>
+                        )}
+                      >
+                        {salesPeople.map((sp) => (
+                          <MenuItem key={sp} value={sp}>
+                            {sp}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </Box>
