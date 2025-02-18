@@ -79,7 +79,6 @@ const Products = () => {
     series: '',
     upc_code: '',
     brand: '',
-    status: false,
   });
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
@@ -300,7 +299,6 @@ const Products = () => {
       series: product.series || '',
       upc_code: product?.upc_code || '',
       brand: product?.brand || '',
-      status: product?.status || false,
     });
   };
 
@@ -314,7 +312,6 @@ const Products = () => {
       series: '',
       upc_code: '',
       brand: '',
-      status: false,
     });
   };
 
@@ -381,8 +378,7 @@ const Products = () => {
   const handleSaveEdit = async () => {
     if (!selectedProduct) return;
 
-    const { category, sub_category, series, upc_code, brand, status } =
-      editableFields;
+    const { category, sub_category, series, upc_code, brand } = editableFields;
 
     try {
       setUpdating(true);
@@ -393,7 +389,6 @@ const Products = () => {
         series: series.trim(),
         upc_code: upc_code.trim(),
         brand: brand.trim(),
-        status,
       };
 
       // Send update request to the backend
