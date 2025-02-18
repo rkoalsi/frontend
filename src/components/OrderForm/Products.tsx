@@ -1057,7 +1057,9 @@ const Products: React.FC<SearchBarProps> = ({
             onClick={handleClearCart}
             disabled={
               selectedProducts.length === 0 ||
-              !order?.status?.toLowerCase()?.includes('draft')
+              !['draft', 'sent'].includes(
+                order?.status?.toLowerCase() as string
+              )
             }
             sx={{
               textTransform: 'none',
@@ -1601,9 +1603,9 @@ const Products: React.FC<SearchBarProps> = ({
                 const itemTotal = parseFloat(
                   (sellingPrice * product.quantity).toFixed(2)
                 );
-                const isDisabled =
-                  order?.status?.toLowerCase().includes('accepted') ||
-                  order?.status?.toLowerCase().includes('declined');
+                const isDisabled = ['accepted', 'declined'].includes(
+                  order?.status?.toLowerCase() as string
+                );
                 return (
                   <Grid
                     item
@@ -1733,7 +1735,9 @@ const Products: React.FC<SearchBarProps> = ({
                 }}
                 disabled={
                   selectedProducts.length === 0 ||
-                  !order?.status?.toLowerCase()?.includes('draft')
+                  !['draft', 'sent'].includes(
+                    order?.status?.toLowerCase() as string
+                  )
                 }
               >
                 Checkout

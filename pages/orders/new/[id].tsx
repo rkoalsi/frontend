@@ -388,7 +388,7 @@ const NewOrder: React.FC = () => {
         typeof order.status === 'string'
           ? order.status.trim().toLowerCase()
           : '';
-      if (status !== 'draft') {
+      if (!['draft', 'sent'].includes(status)) {
         toast.error(`You can not view this order as it's status is not draft`, {
           autoClose: 5000,
         });
@@ -724,7 +724,7 @@ const NewOrder: React.FC = () => {
                       !totals.totalAmount ||
                       loading ||
                       (!isShared &&
-                        !['deleted', 'draft'].includes(
+                        !['deleted', 'draft', 'sent'].includes(
                           order?.status?.toLowerCase()
                         ))
                     }
@@ -750,7 +750,7 @@ const NewOrder: React.FC = () => {
                       selectedProducts.length === 0 ||
                       !totals.totalAmount ||
                       loading ||
-                      !order?.status?.toLowerCase()?.includes('draft')
+                      !['draft', 'sent'].includes(order?.status?.toLowerCase())
                     }
                     sx={{
                       textTransform: 'none',
@@ -774,7 +774,7 @@ const NewOrder: React.FC = () => {
                       selectedProducts.length === 0 ||
                       !totals.totalAmount ||
                       loading ||
-                      !order?.status?.toLowerCase()?.includes('draft')
+                      !['draft', 'sent'].includes(order?.status?.toLowerCase())
                     }
                     sx={{
                       textTransform: 'none',
