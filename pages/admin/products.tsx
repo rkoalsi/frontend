@@ -31,7 +31,7 @@ import {
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import { useDropzone } from 'react-dropzone';
-import { FilterAlt } from '@mui/icons-material';
+import { Download, FilterAlt } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
 
@@ -54,6 +54,8 @@ const Products = () => {
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterStock, setFilterStock] = useState<string>('');
   const [filterNewArrivals, setFilterNewArrivals] = useState<boolean>(false);
+  const [missingInfoProducts, setMissingInfoProducts] =
+    useState<boolean>(false);
   // NEW: New dropdown filter states
   const [filterBrand, setFilterBrand] = useState<string>('');
   const [filterCategory, setFilterCategory] = useState<string>('');
@@ -165,6 +167,10 @@ const Products = () => {
       }
       if (filterNewArrivals) {
         params.new_arrivals = true;
+      }
+
+      if (missingInfoProducts) {
+        params.missing_info_products = true;
       }
       // NEW: Add dropdown filter params
       if (filterBrand) {
@@ -405,6 +411,72 @@ const Products = () => {
       setUpdating(false);
     }
   };
+  const handleDownloadProducts = async () => {
+    try {
+      // Construct query params based on current filters and pagination
+      const params: any = {
+        page,
+        limit: rowsPerPage,
+      };
+
+      if (debouncedSearchQuery.trim() !== '') {
+        params.search = debouncedSearchQuery.trim();
+      }
+      if (filterStatus) {
+        params.status = filterStatus;
+      }
+      if (filterStock) {
+        params.stock = filterStock;
+      }
+      if (filterNewArrivals) {
+        params.new_arrivals = true;
+      }
+      if (missingInfoProducts) {
+        params.missing_info_products = true;
+      }
+      if (filterBrand) {
+        params.brand = filterBrand;
+      }
+      if (filterCategory) {
+        params.category = filterCategory;
+      }
+      if (filterSubCategory) {
+        params.sub_category = filterSubCategory;
+      }
+
+      // Request the download endpoint with responseType set to blob
+      const response = await axiosInstance.get('/admin/products/download', {
+        params,
+        responseType: 'blob',
+      });
+
+      // Extract filename from the Content-Disposition header if available
+      const disposition = response.headers['content-disposition'];
+      let fileName = 'products.xlsx';
+      if (disposition) {
+        const fileNameMatch = disposition.match(/filename="(.+)"/);
+        if (fileNameMatch && fileNameMatch.length === 2) {
+          fileName = fileNameMatch[1];
+        }
+      }
+
+      // Create a blob URL and simulate a click to download the file
+      const blob = new Blob([response.data], {
+        type: response.data.type,
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download products file.');
+    }
+  };
 
   // Dropzone Component for Image Upload
   const ImageDropzone = () => {
@@ -464,7 +536,16 @@ const Products = () => {
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
             All Products
           </Typography>
-          <FilterAlt onClick={() => setOpenFilterModal(true)} />
+          <Box
+            display={'flex'}
+            flexDirection={'row'}
+            justifyContent={'flex-end'}
+            alignItems={'end'}
+            gap={'16px'}
+          >
+            <Download onClick={() => handleDownloadProducts()} />
+            <FilterAlt onClick={() => setOpenFilterModal(true)} />
+          </Box>
         </Box>
         <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
           A comprehensive list of all products in your inventory.
@@ -700,6 +781,19 @@ const Products = () => {
             />
           }
           label='New Arrivals Only'
+        />
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={missingInfoProducts}
+              onChange={(e) => {
+                setMissingInfoProducts(e.target.checked);
+                setFilterStatus('');
+              }}
+            />
+          }
+          label='Missing Information Products'
         />
 
         {/* NEW: Brand Filter */}

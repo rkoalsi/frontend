@@ -15,9 +15,10 @@ import {
 } from '@mui/material';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import { AddToPhotos, ContentCopy, Edit } from '@mui/icons-material';
+import { AddToPhotos, ContentCopy, Download, Edit } from '@mui/icons-material';
 import Link from 'next/link';
 import AuthContext from '../../../src/components/Auth';
+import { toast } from 'react-toastify';
 
 const OrderDetails = () => {
   const [orderData, setOrderData] = useState<any>(null);
@@ -48,6 +49,48 @@ const OrderDetails = () => {
   const handleCopyEstimate = () => {
     if (orderData?.estimate_number) {
       navigator.clipboard.writeText(orderData.estimate_number);
+    }
+  };
+  const handleDownloadEstimate = async (order: any) => {
+    try {
+      const resp = await axios.get(
+        `${process.env.api_url}/orders/download_pdf/${order._id}`,
+        {
+          responseType: 'blob', // Receive the response as binary data
+        }
+      );
+
+      // Check if the blob is an actual PDF or an error message
+      if (resp.data.type !== 'application/pdf') {
+        // Convert to text to read the error response
+        toast.error('Draft Estimate Not Created');
+        return;
+      }
+
+      // Extract filename from headers or set default
+      const contentDisposition = resp.headers['content-disposition'];
+      let fileName = `${order.estimate_number}.pdf`;
+
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match && match[1]) {
+          fileName = match[1];
+        }
+      }
+
+      // Create and trigger download
+      const blob = new Blob([resp.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error downloading PDF:', error);
+      toast.error(error.message || 'Failed to download PDF');
     }
   };
   const handleDuplicateOrder = async () => {
@@ -141,27 +184,29 @@ const OrderDetails = () => {
         }}
       >
         {/* Order Header */}
-        <Box
-          display={'flex'}
-          alignItems={'flex-end'}
-          justifyContent={'space-between'}
-        >
-          <Typography variant='h5' fontWeight='bold' gutterBottom>
-            Order
-            {orderData?.estimate_created
-              ? ` ${orderData?.estimate_number}`
-              : ` ${orderData._id.slice(-6)}`}
-            {orderData?.estimate_created && (
-              <IconButton
-                size='small'
-                onClick={handleCopyEstimate}
-                sx={{ ml: 1 }}
-              >
-                <ContentCopy fontSize='small' />
-              </IconButton>
-            )}
-          </Typography>
-          <Box display={'flex'} alignItems={'flex-end'}>
+        <Box display={'flex'} flexDirection={'column'}>
+          <Box
+            display={'flex'}
+            flexDirection={'column'}
+            alignItems={'flex-start'}
+            justifyContent={'space-between'}
+          >
+            <Typography variant='h5' fontWeight='bold' gutterBottom>
+              {orderData?.estimate_created
+                ? ` ${orderData?.estimate_number}`
+                : `Order ${orderData._id.slice(-6)}`}
+              {orderData?.estimate_created && (
+                <IconButton size='small' onClick={handleCopyEstimate}>
+                  <ContentCopy fontSize='small' />
+                </IconButton>
+              )}
+            </Typography>
+          </Box>
+          <Box
+            display={'flex'}
+            alignItems={'flex-end'}
+            justifyContent={'flex-end'}
+          >
             <IconButton onClick={handleDuplicateOrder}>
               <AddToPhotos fontSize='medium' />
             </IconButton>
@@ -170,6 +215,14 @@ const OrderDetails = () => {
             >
               <Edit fontSize='medium' />
             </IconButton>
+            {orderData?.estimate_created && (
+              <IconButton
+                size='small'
+                onClick={() => handleDownloadEstimate(orderData)}
+              >
+                <Download fontSize='medium' />
+              </IconButton>
+            )}
           </Box>
         </Box>
         <Divider sx={{ mb: 2 }} />

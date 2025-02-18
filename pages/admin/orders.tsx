@@ -27,9 +27,16 @@ import {
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
-import { Delete, Edit, FilterAlt, Visibility } from '@mui/icons-material';
+import {
+  Delete,
+  Download,
+  Edit,
+  FilterAlt,
+  Visibility,
+} from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
+import axios from 'axios';
 
 const Orders = () => {
   const router = useRouter();
@@ -176,6 +183,49 @@ const Orders = () => {
     console.log(order);
     setSelectedOrder(order);
     setDrawerOpen(true);
+  };
+
+  const handleDownload = async (order: any) => {
+    try {
+      const resp = await axios.get(
+        `${process.env.api_url}/orders/download_pdf/${order._id}`,
+        {
+          responseType: 'blob', // Receive the response as binary data
+        }
+      );
+
+      // Check if the blob is an actual PDF or an error message
+      if (resp.data.type !== 'application/pdf') {
+        // Convert to text to read the error response
+        toast.error('Draft Estimate Not Created');
+        return;
+      }
+
+      // Extract filename from headers or set default
+      const contentDisposition = resp.headers['content-disposition'];
+      let fileName = `${order.estimate_number}.pdf`;
+
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match && match[1]) {
+          fileName = match[1];
+        }
+      }
+
+      // Create and trigger download
+      const blob = new Blob([resp.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error downloading PDF:', error);
+      toast.error(error.message || 'Failed to download PDF');
+    }
   };
 
   const handleCloseDrawer = () => {
@@ -389,6 +439,13 @@ const Orders = () => {
                               >
                                 <Visibility />
                               </IconButton>
+                              {order?.estimate_created && (
+                                <IconButton
+                                  onClick={() => handleDownload(order)}
+                                >
+                                  <Download />
+                                </IconButton>
+                              )}
                             </Box>
                           </TableCell>
                         </TableRow>
