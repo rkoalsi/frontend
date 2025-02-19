@@ -179,7 +179,7 @@ const PastOrders = () => {
         <Box
           sx={{
             background: 'none',
-            width: isMobile ? '80%' : isTablet ? '50%' : '100%',
+            width: isMobile ? '80%' : isTablet ? '50%' : '35%',
             borderRadius: '8px',
           }}
         >

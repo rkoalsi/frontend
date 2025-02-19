@@ -5,9 +5,9 @@ module.exports = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'order-form.s3.ap-south-1.amazonaws.com',
-        port: '',
-        pathname: '/signatures/**',
+        hostname: 'assets.pupscribe.in',
+        port: '', // Leave this empty for default ports
+        pathname: '/**', // Match the "signatures" path and all subpaths
       },
     ],
   },

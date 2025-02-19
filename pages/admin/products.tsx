@@ -124,6 +124,7 @@ const Products = () => {
     setFilterBrand('');
     setFilterCategory('');
     setFilterSubCategory('');
+    setMissingInfoProducts(false);
   };
 
   const handleImageClick = useCallback((src: string) => {
