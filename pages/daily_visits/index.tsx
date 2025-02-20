@@ -11,12 +11,15 @@ import {
   DialogActions,
   TextField,
   Button,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { Fragment, useContext, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import AuthContext from '../../src/components/Auth';
 import { useRouter } from 'next/router';
+import Header from '../../src/components/common/Header';
 
 function DailyVisits() {
   const [dailyVisits, setDailyVisits] = useState([]);
@@ -27,7 +30,8 @@ function DailyVisits() {
   const [open, setOpen] = useState(false);
   const [plan, setPlan] = useState('');
   const [selfie, setSelfie]: any = useState(null);
-
+  const theme: any = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   // Fetch daily visits from the API
   const getData = async () => {
     setLoading(true);
@@ -95,12 +99,19 @@ function DailyVisits() {
   };
 
   return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant='h4' align='center' gutterBottom color='white'>
-        Daily Visits
-      </Typography>
-
+    <Box
+      display='flex'
+      flexDirection='column'
+      alignItems='center'
+      justifyContent='flex-start'
+      sx={{
+        width: '100%',
+        gap: '16px',
+        padding: isMobile ? '16px' : '16px',
+      }}
+    >
       {/* Create Button */}
+      <Header title={'Daily Visits'} showBackButton />
       <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
         <Button
           variant='contained'

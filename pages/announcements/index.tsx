@@ -8,15 +8,19 @@ import {
   List,
   ListItem,
   Divider,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { Fragment, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import Header from '../../src/components/common/Header';
 
 function Announcements() {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(false);
-
+  const theme: any = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   // Fetch training videos from the API
   const getData = async () => {
     setLoading(true);
@@ -37,14 +41,17 @@ function Announcements() {
 
   return (
     <Box
+      display='flex'
+      flexDirection='column'
+      alignItems='center'
+      justifyContent='flex-start'
       sx={{
-        p: 2,
+        width: '100%',
+        gap: '16px',
+        padding: isMobile ? '16px' : '16px',
       }}
     >
-      <Typography variant='h4' align='center' gutterBottom color='white'>
-        Announcements
-      </Typography>
-
+      <Header title={'Announcements'} showBackButton />
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
           <CircularProgress />

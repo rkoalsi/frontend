@@ -18,6 +18,7 @@ import axiosInstance from '../../../../src/util/axios';
 import { toast } from 'react-toastify';
 import CustomButton from '../../../../src/components/common/Button';
 import { Visibility } from '@mui/icons-material';
+import Header from '../../../../src/components/common/Header';
 const PaymentDue = () => {
   const [loading, setLoading] = useState(false);
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -97,9 +98,7 @@ const PaymentDue = () => {
       }}
     >
       {/* Header */}
-      <Typography variant='h4' fontWeight='bold' sx={{ mb: 2, color: 'white' }}>
-        Payments Due
-      </Typography>
+      <Header title={'Payments Due'} showBackButton />
       <Button variant='contained' color='primary' onClick={handleDownloadCSV}>
         Download CSV
       </Button>
