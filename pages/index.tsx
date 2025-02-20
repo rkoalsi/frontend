@@ -2,29 +2,131 @@ import {
   Box,
   Typography,
   Paper,
-  Stack,
+  styled,
   useTheme,
+  Button,
+  Container,
   useMediaQuery,
 } from '@mui/material';
 import { useContext } from 'react';
 import AuthContext from '../src/components/Auth';
 import { useRouter } from 'next/router';
 import {
+  CalendarMonth,
   Campaign,
-  Checklist,
-  LibraryBooks,
+  History,
+  MenuBook,
   Payment,
+  PlayCircle,
   ShoppingCart,
-  ShoppingCartCheckout,
-  VideoLibrary,
 } from '@mui/icons-material';
-import CustomButton from '../src/components/common/Button';
 import axios from 'axios';
+import { motion } from 'framer-motion';
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(3),
+  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  borderRadius: 16,
+  border: '1px solid rgba(255, 255, 255, 0.15)',
+  boxShadow: '0px 4px 20px rgba(0,0,0,0.25)',
+}));
+
+const StyledButton = styled(Button)(({ theme }) => ({
+  padding: theme.spacing(2),
+  justifyContent: 'flex-start',
+  borderRadius: 12,
+  textTransform: 'none',
+  fontSize: '1.1rem',
+  fontWeight: 500,
+  marginBottom: theme.spacing(2),
+  transition: 'all 0.3s ease-in-out',
+  backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  color: theme.palette.common.white,
+  boxShadow: 'none',
+  '&:hover': {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    transform: 'translateY(-2px)',
+    boxShadow: '0px 8px 20px rgba(0,0,0,0.2)',
+  },
+  '& .MuiSvgIcon-root': {
+    marginRight: theme.spacing(3),
+    fontSize: '1.75rem',
+  },
+}));
+
+const containerVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+      when: 'beforeChildren',
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.3 },
+  },
+};
+
+const menuItems = [
+  {
+    icon: <ShoppingCart />,
+    text: 'Create New Order',
+    color: '#4fc3f7',
+    action: 'newOrder',
+  },
+  {
+    icon: <History />,
+    text: 'Past Orders',
+    color: '#7c4dff',
+    action: 'pastOrder',
+  },
+  {
+    icon: <Payment />,
+    text: 'Payments Due',
+    color: '#ff5252',
+    action: 'paymentsDue',
+  },
+  {
+    icon: <MenuBook />,
+    text: 'Catalogues',
+    color: '#4db6ac',
+    action: 'catalogues',
+  },
+  {
+    icon: <PlayCircle />,
+    text: 'Training Videos',
+    color: '#7986cb',
+    action: 'training',
+  },
+  {
+    icon: <Campaign />,
+    text: 'Announcements',
+    color: '#ffa726',
+    action: 'announcements',
+  },
+  {
+    icon: <CalendarMonth />,
+    text: 'Daily Visits',
+    color: '#4dd0e1',
+    action: 'dailyVisits',
+  },
+];
+
 const Home = () => {
   const router = useRouter();
   const { user }: any = useContext(AuthContext);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const handleNewOrder = async () => {
     try {
       const resp = await axios.post(`${process.env.api_url}/orders/`, {
@@ -39,134 +141,93 @@ const Home = () => {
     }
   };
 
-  const handlePastOrder = () => {
-    router.push('/orders/past');
-  };
-
-  const handlePaymentsDue = () => {
-    router.push('/orders/past/payment_due');
-  };
-
-  const handleCatelogues = () => {
-    router.push('/catalogues');
-  };
-  const handleTraining = () => {
-    router.push('/training');
-  };
-  const handleAnnouncements = () => {
-    router.push('/announcements');
-  };
-  const handleDailyVisits = () => {
-    router.push('/daily_visits');
+  const handleNavigation = (action: string) => {
+    switch (action) {
+      case 'newOrder':
+        handleNewOrder();
+        break;
+      case 'pastOrder':
+        router.push('/orders/past');
+        break;
+      case 'paymentsDue':
+        router.push('/orders/past/payment_due');
+        break;
+      case 'catalogues':
+        router.push('/catalogues');
+        break;
+      case 'training':
+        router.push('/training');
+        break;
+      case 'announcements':
+        router.push('/announcements');
+        break;
+      case 'dailyVisits':
+        router.push('/daily_visits');
+        break;
+      default:
+        break;
+    }
   };
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        // minHeight: '100vh',
-        width: '100%',
-        padding: '16px',
-        color: 'white',
-      }}
-    >
-      {/* Header */}
-      <Paper
-        sx={{
-          background: 'none',
-          width: '100%',
-          padding: '16px',
-          textAlign: 'center',
-          boxShadow: 'none',
-        }}
+    <Container maxWidth={isMobile ? 'xs' : 'sm'} style={{ padding: '16px' }}>
+      <motion.div
+        variants={containerVariants}
+        initial='hidden'
+        animate='visible'
       >
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            width: '100%',
-            padding: '16px',
-            gap: '16px',
-          }}
-        >
-          <Typography variant='h4' fontWeight='bold' color={'white'}>
-            Welcome, {user?.data?.first_name || 'Guest'}!
-          </Typography>
-          <Typography variant='body1' color={'white'}>
-            Your gateway to seamless order management.
-          </Typography>
-          <Box
-            display='flex'
-            flexDirection='column'
-            alignItems='center'
-            justifyContent='center'
-          >
-            <Box
+        <StyledPaper elevation={0}>
+          <Box textAlign='center' mb={4}>
+            <Typography
+              variant='h4'
+              component='h1'
+              gutterBottom
               sx={{
-                textAlign: 'center',
+                fontWeight: 700,
+                background: 'linear-gradient(45deg, #fff, #e3f2fd)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                mb: 1,
               }}
             >
-              <Stack direction={'column'} spacing={4}>
-                <CustomButton
-                  large
-                  icon={<ShoppingCart />}
-                  text={'New Order'}
-                  color={'primary'}
-                  onClick={handleNewOrder}
-                />
-                <CustomButton
-                  large
-                  icon={<ShoppingCartCheckout />}
-                  text={'Past Orders'}
-                  color={'secondary'}
-                  onClick={handlePastOrder}
-                />
-                <CustomButton
-                  large
-                  icon={<Payment />}
-                  color={'error'}
-                  text={'Payments Due'}
-                  onClick={handlePaymentsDue}
-                />
-                <CustomButton
-                  large
-                  icon={<LibraryBooks />}
-                  color={'primary'}
-                  text={'Catalogues'}
-                  onClick={handleCatelogues}
-                />
-                <CustomButton
-                  large
-                  icon={<VideoLibrary />}
-                  color={'secondary'}
-                  text={'Training Videos'}
-                  onClick={handleTraining}
-                />
-                <CustomButton
-                  large
-                  icon={<Campaign />}
-                  color={'error'}
-                  text={'Announcements'}
-                  onClick={handleAnnouncements}
-                />
-                <CustomButton
-                  large
-                  icon={<Checklist />}
-                  color={'primary'}
-                  text={'Daily Visits'}
-                  onClick={handleDailyVisits}
-                />
-              </Stack>
-            </Box>
+              Welcome, {user?.data?.first_name}
+            </Typography>
+            <Typography
+              variant='subtitle1'
+              sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+            >
+              Your portal to effortless and streamlined order management.
+            </Typography>
           </Box>
-        </Box>
-      </Paper>
-    </Box>
+
+          <Box>
+            {menuItems.map((item, index) => (
+              <motion.div
+                key={index}
+                variants={itemVariants}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.75 }}
+              >
+                <StyledButton
+                  fullWidth
+                  startIcon={item.icon}
+                  onClick={() => handleNavigation(item.action)}
+                  sx={{
+                    '&:hover': {
+                      backgroundColor: `${item.color}20`,
+                      border: `2px solid ${item.color}`,
+                    },
+                  }}
+                >
+                  {item.text}
+                </StyledButton>
+              </motion.div>
+            ))}
+          </Box>
+        </StyledPaper>
+      </motion.div>
+    </Container>
   );
 };
 

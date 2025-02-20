@@ -3,6 +3,7 @@ import {
   Box,
   Typography,
   Paper,
+  styled,
   Divider,
   Button,
   Skeleton,
@@ -32,6 +33,12 @@ const OrderDetails = () => {
   /**
    * Fetch order details from the API
    */
+  const StyledPaper = styled(Paper)(({ theme }) => ({
+    padding: theme.spacing(3),
+    borderRadius: 16,
+    border: '1px solid rgba(255, 255, 255, 0.15)',
+    boxShadow: '0px 4px 20px rgba(0,0,0,0.25)',
+  }));
   const fetchOrderDetails = async () => {
     try {
       setLoading(true);
@@ -174,15 +181,7 @@ const OrderDetails = () => {
         margin: isMobile ? '16px 0 0 0' : '0 auto',
       }}
     >
-      <Paper
-        elevation={3}
-        sx={{
-          padding: 3,
-          borderRadius: '12px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-          marginX: { xs: 2, sm: 'auto' },
-        }}
-      >
+      <StyledPaper>
         {/* Order Header */}
         <Box display={'flex'} flexDirection={'column'}>
           <Box
@@ -336,7 +335,7 @@ const OrderDetails = () => {
             Back to Orders
           </Button>
         </Box>
-      </Paper>
+      </StyledPaper>
     </Box>
   );
 };
