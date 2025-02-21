@@ -355,7 +355,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                             opacity: !isActive ? 0.7 : 1,
                           }}
                         >
-                          {/* Image Section */}
+                          <Typography variant='h6'>{index + 1}.</Typography>
                           <Box sx={{ mr: 2 }}>
                             <Badge
                               badgeContent={product.new ? 'New' : undefined}
@@ -388,7 +388,6 @@ const Review: React.FC<Props> = React.memo((props) => {
                               />
                             </Badge>
                           </Box>
-
                           {/* Details Section */}
                           <Box sx={{ flex: 1 }}>
                             <Box
@@ -573,6 +572,14 @@ const Review: React.FC<Props> = React.memo((props) => {
                             justifyContent: 'center',
                           }}
                         >
+                          <Typography
+                            variant='h6'
+                            fontWeight={'bold'}
+                            textAlign={'left'}
+                            width={'85%'}
+                          >
+                            {index + 1}.
+                          </Typography>
                           {/* Image Section */}
                           <Box>
                             <Badge
