@@ -27,14 +27,24 @@ import Address from '../../../src/components/OrderForm/SelectAddress';
 import Products from '../../../src/components/OrderForm/Products';
 import Review from '../../../src/components/OrderForm/Review';
 import { useRouter } from 'next/router';
-import axios, { CancelTokenSource } from 'axios';
+import axios from 'axios';
 import { toast } from 'react-toastify';
 import { ContentCopy } from '@mui/icons-material';
+import useDebounce from '../../../src/util/useDebounce';
 
-// Create an Axios instance to avoid repeating the base URL
+// Create an Axios instance
 const api = axios.create({
   baseURL: process.env.api_url,
 });
+
+// Helper to update order data
+const updateOrderData = async (id: string, data: any) => {
+  try {
+    await api.put(`/orders/${id}`, data);
+  } catch (error) {
+    console.error('Error updating order:', error);
+  }
+};
 
 interface StepContent {
   name: string;
@@ -69,24 +79,26 @@ const NewOrder: React.FC = () => {
   // ------------------ Fetch Special Margins -------------------------
   useEffect(() => {
     if (!customer?._id) return;
-    const cancelSource: CancelTokenSource = axios.CancelToken.source();
+    const controller = new AbortController();
 
     const fetchSpecialMargins = async () => {
       try {
         const res = await api.get(
           `/customers/special_margins/${customer._id}`,
           {
-            cancelToken: cancelSource.token,
+            signal: controller.signal,
           }
         );
-        const productList = res.data.products || [];
-        const marginMap: { [key: string]: string } = {};
-        productList.forEach((item: any) => {
-          marginMap[item.product_id] = item.margin;
-        });
+        const marginMap = (res.data.products || []).reduce(
+          (acc: any, item: any) => {
+            acc[item.product_id] = item.margin;
+            return acc;
+          },
+          {}
+        );
         setSpecialMargins(marginMap);
-      } catch (error) {
-        if (!axios.isCancel(error)) {
+      } catch (error: any) {
+        if (error.name !== 'CanceledError') {
           console.error('Error fetching special margins:', error);
         }
       }
@@ -94,9 +106,8 @@ const NewOrder: React.FC = () => {
 
     fetchSpecialMargins();
 
-    // Cleanup: cancel request if customer changes/unmounts
     return () => {
-      cancelSource.cancel();
+      controller.abort();
     };
   }, [customer]);
 
@@ -108,8 +119,8 @@ const NewOrder: React.FC = () => {
           product?.item_tax_preferences?.[0]?.tax_percentage || 0;
         const rate = parseFloat(product.rate.toString()) || 0;
         const quantity = parseInt(product.quantity?.toString() || '1', 10) || 1;
-        // Check for special margin or fallback to customer margin
-        let margin = specialMargins[product._id]
+        // Use special margin if available; fallback to customer's margin (default 40%)
+        const margin = specialMargins[product._id]
           ? parseInt(specialMargins[product._id].replace('%', ''), 10) / 100
           : parseInt(customer?.cf_margin?.replace('%', '') || '40', 10) / 100;
         const sellingPrice = rate - rate * margin;
@@ -130,8 +141,6 @@ const NewOrder: React.FC = () => {
       },
       { totalGST: 0, totalAmount: 0 }
     );
-
-    // Apply rounding
     return {
       totalGST: Math.round(totalGST * 100) / 100,
       totalAmount:
@@ -141,23 +150,31 @@ const NewOrder: React.FC = () => {
     };
   }, [selectedProducts, customer, specialMargins]);
 
-  // ------------------ Update Order on Products/Totals Changes ---------------------
+  // ------------------ Debounced Order Updates ---------------------
+  const debouncedData = useDebounce({ selectedProducts, totals }, 500);
+
   useEffect(() => {
-    if (selectedProducts.length > 0 || totals.totalAmount > 0) {
-      const updateOrder = async () => {
-        try {
-          await api.put(`/orders/${id}`, {
-            products: selectedProducts,
-            total_gst: parseFloat(totals.totalGST.toFixed(2)),
-            total_amount: parseFloat(totals.totalAmount.toFixed(2)),
-          });
-        } catch (error) {
-          console.error('Error updating order:', error);
-        }
-      };
-      updateOrder();
+    if (
+      debouncedData.selectedProducts.length > 0 ||
+      debouncedData.totals.totalAmount > 0
+    ) {
+      updateOrderData(id as string, {
+        products: debouncedData.selectedProducts,
+        total_gst: parseFloat(debouncedData.totals.totalGST.toFixed(2)),
+        total_amount: parseFloat(debouncedData.totals.totalAmount.toFixed(2)),
+      });
     }
-  }, [selectedProducts, totals, id]);
+  }, [debouncedData, id]);
+
+  // ------------------ Update Addresses ---------------------
+  useEffect(() => {
+    if (billingAddress || shippingAddress) {
+      updateOrderData(id as string, {
+        billing_address: billingAddress,
+        shipping_address: shippingAddress,
+      });
+    }
+  }, [billingAddress, shippingAddress, id]);
 
   // ------------------ Validate and Collect Data per Step ---------------------
   const validateAndCollectData = useCallback(
@@ -200,7 +217,6 @@ const NewOrder: React.FC = () => {
         default:
           break;
       }
-      console.log(body);
       return { message, body };
     },
     [
@@ -212,22 +228,8 @@ const NewOrder: React.FC = () => {
     ]
   );
 
-  // ------------------ Update Addresses ---------------------
-  useEffect(() => {
-    if (billingAddress || shippingAddress) {
-      const updateAddress = async () => {
-        try {
-          await api.put(`/orders/${id}`, {
-            billing_address: billingAddress,
-            shipping_address: shippingAddress,
-          });
-        } catch (error) {
-          console.error('Error updating address:', error);
-        }
-      };
-      updateAddress();
-    }
-  }, [billingAddress, shippingAddress, id]);
+  // ------------------ Get Order Data ---------------------
+  const customerRef = useRef<any>(null);
   const getOrder = useCallback(async () => {
     try {
       const resp = await api.get(`/orders/${id}`);
@@ -242,12 +244,10 @@ const NewOrder: React.FC = () => {
         setCustomer(customerResponse.data.customer);
         setReferenceNumber(resp.data?.reference_number);
       }
-      if (resp.data.billing_address) {
+      if (resp.data.billing_address)
         setBillingAddress(resp.data.billing_address);
-      }
-      if (resp.data.shipping_address) {
+      if (resp.data.shipping_address)
         setShippingAddress(resp.data.shipping_address);
-      }
       if (resp.data.products && resp.data.products.length > 0) {
         const detailedProducts = await Promise.all(
           resp.data.products.map(async (product: any) => {
@@ -270,20 +270,21 @@ const NewOrder: React.FC = () => {
       console.error('Error fetching order:', error);
     }
   }, [id]);
-  // ------------------ Handle Step Navigation ---------------------
+
+  useEffect(() => {
+    if (id) getOrder();
+  }, [id, getOrder]);
+
+  // ------------------ Navigation & Finalization ---------------------
   const handleNext = useCallback(async () => {
-    try {
-      const { message, body } = validateAndCollectData(activeStep);
-      if (message) {
-        setError({ message, status: 'error' });
-        setOpen(true);
-        return;
-      }
-      await api.put(`/orders/${id}`, body);
-      setActiveStep((prev) => Math.min(prev + 1, steps.length - 1));
-    } catch (error) {
-      console.error('Error updating order:', error);
+    const { message, body } = validateAndCollectData(activeStep);
+    if (message) {
+      setError({ message, status: 'error' });
+      setOpen(true);
+      return;
     }
+    await updateOrderData(id as string, body);
+    setActiveStep((prev) => Math.min(prev + 1, steps.length - 1));
   }, [activeStep, id, validateAndCollectData]);
 
   const handleEnd = useCallback(
@@ -312,14 +313,6 @@ const NewOrder: React.FC = () => {
     [id, getOrder]
   );
 
-  // ------------------ Order and Customer Fetching ---------------------
-  const customerRef = useRef<any>(null);
-
-  useEffect(() => {
-    if (id) getOrder();
-  }, [id, getOrder]);
-
-  // ------------------ Generate Shared Link ---------------------
   const generateSharedLink = useCallback(() => {
     const baseURL = window.location.origin;
     const link = `${baseURL}/orders/new/${id}?shared=true`;
@@ -328,7 +321,6 @@ const NewOrder: React.FC = () => {
     setLinkCopied(true);
   }, [id]);
 
-  // ------------------ Handle Step Click (with validations) ---------------------
   const handleStepClick = useCallback(
     async (index: number) => {
       if (isShared) {
@@ -353,12 +345,10 @@ const NewOrder: React.FC = () => {
       }
 
       if (index < activeStep) {
-        // Allow backwards navigation without an update
         setActiveStep(index);
         return;
       }
 
-      // For forward navigation, perform the update like handleNext
       const { message, body } = validateAndCollectData(activeStep);
       if (message) {
         toast.error(message);
@@ -366,7 +356,7 @@ const NewOrder: React.FC = () => {
       }
 
       try {
-        await api.put(`/orders/${id}`, body);
+        await updateOrderData(id as string, body);
         setActiveStep(index);
       } catch (error) {
         console.error('Error updating order:', error);
@@ -381,7 +371,6 @@ const NewOrder: React.FC = () => {
     setOpen(false);
   }, []);
 
-  // ------------------ Validate Order Status for Shared Users ---------------------
   useEffect(() => {
     if (isShared && order) {
       const status =
@@ -389,7 +378,7 @@ const NewOrder: React.FC = () => {
           ? order.status.trim().toLowerCase()
           : '';
       if (!['draft', 'sent'].includes(status)) {
-        toast.error(`You can not view this order as it's status is not draft`, {
+        toast.error(`You cannot view this order as its status is not draft`, {
           autoClose: 5000,
         });
         router.push('/login');
@@ -397,7 +386,7 @@ const NewOrder: React.FC = () => {
     }
   }, [order, isShared, router]);
 
-  // ------------------ Memoize Steps Array ---------------------
+  // ------------------ Steps Configuration ---------------------
   const steps: StepContent[] = useMemo(() => {
     return [
       {
@@ -414,7 +403,7 @@ const NewOrder: React.FC = () => {
                 const defaultAddress = value.addresses[0];
                 setBillingAddress(defaultAddress);
                 setShippingAddress(defaultAddress);
-                await api.put(`/orders/${id}`, {
+                await updateOrderData(id as string, {
                   customer_id: value._id,
                   billing_address: defaultAddress,
                   shipping_address: defaultAddress,
@@ -422,16 +411,14 @@ const NewOrder: React.FC = () => {
               } else {
                 setBillingAddress(null);
                 setShippingAddress(null);
-                await api.put(`/orders/${id}`, {
+                await updateOrderData(id as string, {
                   customer_id: value?._id,
                 });
               }
             }}
             value={customer}
             initialValue={customer}
-            onChangeReference={async (
-              e: React.ChangeEvent<HTMLInputElement>
-            ) => {
+            onChangeReference={(e: React.ChangeEvent<HTMLInputElement>) => {
               setReferenceNumber(e.target.value);
             }}
             reference={referenceNumber}
@@ -443,7 +430,7 @@ const NewOrder: React.FC = () => {
         component: isShared ? null : (
           <Address
             type='Billing'
-            id={id}
+            id={id as string}
             address={billingAddress}
             setAddress={setBillingAddress}
             selectedAddress={billingAddress}
@@ -457,7 +444,7 @@ const NewOrder: React.FC = () => {
         component: isShared ? null : (
           <Address
             type='Shipping'
-            id={id}
+            id={id as string}
             address={shippingAddress}
             setAddress={setShippingAddress}
             selectedAddress={shippingAddress}
@@ -512,23 +499,26 @@ const NewOrder: React.FC = () => {
     id,
     referenceNumber,
   ]);
+
   const handleCopyEstimate = () => {
     if (order?.estimate_number) {
       navigator.clipboard.writeText(order.estimate_number);
     }
   };
+
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'draft':
-        return '#FFA500'; // orange
+        return '#FFA500';
       case 'accepted':
-        return '#2ecc71'; // green
+        return '#2ecc71';
       case 'declined':
-        return '#e74c3c'; // red
+        return '#e74c3c';
       default:
         return 'black';
     }
   };
+
   return (
     <Box
       sx={{
@@ -566,8 +556,6 @@ const NewOrder: React.FC = () => {
             {order?.estimate_created ? 'Update ' : 'Create '}
             {order?.estimate_created ? 'Existing ' : 'New '}Order
           </Typography>
-
-          {/* Order Status line in one row */}
           <Box display='flex' alignItems='center' justifyContent='center'>
             <Typography
               variant={isMobile ? 'h6' : 'h5'}
@@ -585,9 +573,7 @@ const NewOrder: React.FC = () => {
               {order?.status}
             </Typography>
           </Box>
-
-          {/* Estimate Number row with copy-to-clipboard */}
-          {order?.estimate_created && (
+          {order?.estimate_created ? (
             <Box display='flex' alignItems='center' justifyContent='center'>
               <Typography
                 variant={isMobile ? 'body1' : 'h5'}
@@ -604,16 +590,14 @@ const NewOrder: React.FC = () => {
                 <ContentCopy fontSize='small' />
               </IconButton>
             </Box>
-          )}
-
-          {/* Message when no estimate is created */}
-          {!order?.estimate_created && (
+          ) : (
             <Typography variant='body1' fontWeight='bold' color='black'>
               Complete each step to finalize your order.
             </Typography>
           )}
         </Box>
       </Paper>
+
       {/* Main content */}
       <Box
         sx={{
@@ -644,7 +628,6 @@ const NewOrder: React.FC = () => {
             <Box sx={{ padding: '24px', minHeight: '100px' }}>
               {steps[activeStep]?.component}
             </Box>
-            {/* Navigation Buttons */}
             <Box
               sx={{
                 display: 'flex',
@@ -657,7 +640,6 @@ const NewOrder: React.FC = () => {
                 gap: 2,
               }}
             >
-              {/* Left Side Buttons */}
               <Box
                 sx={{
                   display: 'flex',
@@ -700,7 +682,6 @@ const NewOrder: React.FC = () => {
                   </Button>
                 )}
               </Box>
-              {/* Right Side Buttons */}
               <Box
                 sx={{
                   display: 'flex',
@@ -805,7 +786,7 @@ const NewOrder: React.FC = () => {
           </CardContent>
         </Card>
       </Box>
-      {/* Snackbar for Link Copied */}
+
       <Snackbar
         open={linkCopied}
         autoHideDuration={3000}
@@ -816,7 +797,7 @@ const NewOrder: React.FC = () => {
           Link copied to clipboard!
         </Alert>
       </Snackbar>
-      {/* Snackbar for Errors */}
+
       {error && (
         <Snackbar
           open={open}
