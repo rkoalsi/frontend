@@ -1298,6 +1298,7 @@ const Products: React.FC<SearchBarProps> = ({
                   onChange={handleSortChange}
                 >
                   <MenuItem value='default'>Default</MenuItem>
+                  <MenuItem value='catalogue'>Catalogue Order</MenuItem>
                   <MenuItem value='price_asc'>Price: Low to High</MenuItem>
                   <MenuItem value='price_desc'>Price: High to Low</MenuItem>
                 </Select>
@@ -1321,6 +1322,9 @@ const Products: React.FC<SearchBarProps> = ({
                 >
                   <MenuItem onClick={() => handleSortMenuSelect('default')}>
                     Default
+                  </MenuItem>
+                  <MenuItem onClick={() => handleSortMenuSelect('catalogue')}>
+                    Catalogue Order
                   </MenuItem>
                   <MenuItem onClick={() => handleSortMenuSelect('price_asc')}>
                     Price: Low to High

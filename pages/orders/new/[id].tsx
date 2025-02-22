@@ -151,18 +151,28 @@ const NewOrder: React.FC = () => {
   }, [selectedProducts, customer, specialMargins]);
 
   // ------------------ Debounced Order Updates ---------------------
+  // We use a ref to track the last sent update so we don't update if nothing has changed.
+  const lastUpdateDataRef = useRef<any>(null);
   const debouncedData = useDebounce({ selectedProducts, totals }, 500);
 
   useEffect(() => {
+    const newData = {
+      selectedProducts: debouncedData.selectedProducts,
+      totals: debouncedData.totals,
+    };
+
+    // Compare the new data with the last update.
     if (
-      debouncedData.selectedProducts.length > 0 ||
-      debouncedData.totals.totalAmount > 0
+      JSON.stringify(newData) !== JSON.stringify(lastUpdateDataRef.current) &&
+      (debouncedData.selectedProducts.length > 0 ||
+        debouncedData.totals.totalAmount > 0)
     ) {
       updateOrderData(id as string, {
         products: debouncedData.selectedProducts,
         total_gst: parseFloat(debouncedData.totals.totalGST.toFixed(2)),
         total_amount: parseFloat(debouncedData.totals.totalAmount.toFixed(2)),
       });
+      lastUpdateDataRef.current = newData;
     }
   }, [debouncedData, id]);
 
