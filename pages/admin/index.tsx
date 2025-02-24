@@ -1,11 +1,15 @@
-import { JSX, useContext, useEffect, useState } from 'react';
+'use client';
+
+import { type JSX, useContext, useEffect, useState } from 'react';
 import {
   Typography,
-  Paper,
   Box,
   Grid,
   CircularProgress,
   Alert,
+  Container,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import AuthContext from '../../src/components/Auth';
 import {
@@ -69,6 +73,8 @@ interface CardProps {
 
 const AdminDashboard = () => {
   const { user }: any = useContext(AuthContext);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -298,51 +304,63 @@ const AdminDashboard = () => {
   }
 
   return (
-    <Paper
-      elevation={3}
-      sx={{
-        padding: { xs: 2, md: 4 },
-        borderRadius: 4,
-        backgroundColor: 'background.paper',
-        minHeight: '80vh',
-      }}
-    >
-      <Typography
-        variant='h4'
-        gutterBottom
-        sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 'bold' }}
+    <Container maxWidth='xl'>
+      <Box
+        sx={{
+          backgroundColor: 'background.paper',
+          borderRadius: 4,
+          boxShadow: 3,
+          overflow: 'hidden',
+          minHeight: '80vh',
+        }}
       >
-        Welcome, {user?.data?.first_name || 'User'}
-      </Typography>
-      <Typography variant='body1' sx={{ color: 'text.secondary' }}>
-        This is your central hub to manage users, view analytics, and update
-        settings.
-      </Typography>
+        <Box
+          sx={{
+            backgroundColor: theme.palette.secondary.dark,
+            color: 'white',
+            padding: { xs: 3, md: 4 },
+          }}
+        >
+          <Typography
+            variant={isMobile ? 'h5' : 'h4'}
+            gutterBottom
+            sx={{ fontWeight: 'bold' }}
+          >
+            Welcome, {user?.data?.first_name || 'User'}
+          </Typography>
+          <Typography variant='body1'>
+            This is your central hub to manage users, view analytics, and update
+            settings.
+          </Typography>
+        </Box>
 
-      <Box mt={4}>
-        {loading ? (
-          <Box display='flex' justifyContent='center' mt={10}>
-            <CircularProgress />
-          </Box>
-        ) : error ? (
-          <Alert severity='error'>{error}</Alert>
-        ) : (
-          <Grid container spacing={3}>
-            {filteredCards.map((card, idx) => (
-              <Grid
-                item
-                xs={12}
-                sm={card.subStats && card.subStats.length > 2 ? 4 : 3}
-                md={card.subStats && card.subStats.length > 2 ? 4 : 3}
-                key={idx}
-              >
-                <StatCard {...card} />
-              </Grid>
-            ))}
-          </Grid>
-        )}
+        <Box sx={{ padding: { xs: 2, md: 4 } }}>
+          {loading ? (
+            <Box display='flex' justifyContent='center' mt={10}>
+              <CircularProgress />
+            </Box>
+          ) : error ? (
+            <Alert severity='error' sx={{ mt: 2 }}>
+              {error}
+            </Alert>
+          ) : (
+            <Grid container spacing={3}>
+              {filteredCards.map((card, idx) => (
+                <Grid
+                  item
+                  xs={12}
+                  sm={card.subStats && card.subStats.length > 2 ? 6 : 4}
+                  md={card.subStats && card.subStats.length > 2 ? 4 : 3}
+                  key={idx}
+                >
+                  <StatCard {...card} />
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </Box>
       </Box>
-    </Paper>
+    </Container>
   );
 };
 

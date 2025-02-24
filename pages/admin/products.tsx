@@ -1,103 +1,67 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  Box,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Typography,
-  CircularProgress,
-  TablePagination,
-  TextField,
-  Switch,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Grid,
-  Drawer,
-  Checkbox,
-  FormControlLabel,
-  RadioGroup,
-  Radio,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
-} from '@mui/material';
 import { toast } from 'react-toastify';
-import { useDropzone } from 'react-dropzone';
-import { Download, FilterAlt } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
+import { Box, Paper, TextField, Typography } from '@mui/material';
+import { Download, FilterAlt } from '@mui/icons-material';
+import ProductTable from '../../src/components/admin/products/ProductsTable';
+import FilterDrawerComponent from '../../src/components/admin/products/FilterDrawer';
+import ProductDialog from '../../src/components/admin/products/ProductDialog';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
 
 const Products = () => {
-  const [products, setProducts] = useState<any[]>([]);
+  // States for products, pagination, filtering, editing, etc.
+  const [products, setProducts] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPageCount, setTotalPageCount] = useState(0);
   const [loading, setLoading] = useState(true);
-
   const [rowsPerPage, setRowsPerPage] = useState(25);
-  const [page, setPage] = useState(0); // 0-based page
-
+  const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-
-  // NEW: For skip-page functionality
-  const [skipPage, setSkipPage] = useState(''); // we'll store a string and convert on "Go"
+  const [skipPage, setSkipPage] = useState('');
 
   // Filter states
-  const [filterStatus, setFilterStatus] = useState<string>('');
-  const [filterStock, setFilterStock] = useState<string>('');
-  const [filterNewArrivals, setFilterNewArrivals] = useState<boolean>(false);
-  const [missingInfoProducts, setMissingInfoProducts] =
-    useState<boolean>(false);
-  // NEW: New dropdown filter states
-  const [filterBrand, setFilterBrand] = useState<string>('');
-  const [filterCategory, setFilterCategory] = useState<string>('');
-  const [filterSubCategory, setFilterSubCategory] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterStock, setFilterStock] = useState('');
+  const [filterNewArrivals, setFilterNewArrivals] = useState(false);
+  const [missingInfoProducts, setMissingInfoProducts] = useState(false);
+  const [filterBrand, setFilterBrand] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterSubCategory, setFilterSubCategory] = useState('');
+  const [filterSortBy, setFilterSortBy] = useState('');
 
-  // NEW: Options for dropdowns (could be fetched from API)
-  const [brandOptions, setBrandOptions] = useState<string[]>([]);
-  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
-  const [subCategoryOptions, setSubCategoryOptions] = useState<string[]>([]);
+  // Dropdown options for filters
+  const [brandOptions, setBrandOptions] = useState([]);
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  const [subCategoryOptions, setSubCategoryOptions] = useState([]);
 
+  // UI states for modals/drawers
   const [openFilterModal, setOpenFilterModal] = useState(false);
-
-  // State for Edit Modal
   const [openEditModal, setOpenEditModal] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
-  const [updating, setUpdating] = useState(false);
-  // NEW: State for editable fields
+  const [openImagePopup, setOpenImagePopup] = useState(false);
+
+  // States for the currently selected product and its editable fields
+  const [selectedProduct, setSelectedProduct]: any = useState(null);
   const [editableFields, setEditableFields] = useState({
     category: '',
     sub_category: '',
     series: '',
     upc_code: '',
     brand: '',
+    catalogue_order: '',
+    catalogue_page: '',
   });
-  const [openImagePopup, setOpenImagePopup] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
 
-  // Fetch dropdown options (simulate API calls or use static data)
+  /* ----------------------- Fetch Filter Options ----------------------- */
   useEffect(() => {
     const fetchFilterOptions = async () => {
       try {
-        // You can fetch these from your backend instead of hardcoding
-        // For example:
         const brands = await axiosInstance.get('/admin/brands');
         const categories = await axiosInstance.get('/admin/categories');
         const sub_categories = await axiosInstance.get('/admin/sub_categories');
 
-        // setBrandOptions(response.data.brands);
-        // setCategoryOptions(response.data.categories);
-        // setSubCategoryOptions(response.data.sub_categories);
-
-        // Static options for demonstration:
         setBrandOptions(brands.data.brands);
         setCategoryOptions(categories.data.categories);
         setSubCategoryOptions(sub_categories.data.sub_categories);
@@ -105,47 +69,16 @@ const Products = () => {
         console.error('Error fetching filter options', error);
       }
     };
-
     fetchFilterOptions();
   }, []);
 
-  const applyFilters = () => {
-    setPage(0); // reset page
-    setOpenFilterModal(false);
-    getData(); // fetch with new filters
-  };
-
-  const resetFilters = () => {
-    setPage(0); // reset page
-    setOpenFilterModal(false);
-    setFilterStatus('');
-    setFilterStock('');
-    setFilterNewArrivals(false);
-    setFilterBrand('');
-    setFilterCategory('');
-    setFilterSubCategory('');
-    setMissingInfoProducts(false);
-  };
-
-  const handleImageClick = useCallback((src: string) => {
-    setPopupImageSrc(src);
-    setOpenImagePopup(true);
-  }, []);
-
-  const handleClosePopup = useCallback(() => {
-    setOpenImagePopup(false);
-  }, []);
-
-  // Debounce the search input to prevent excessive API calls
+  /* ----------------------- Data Fetching & Search ----------------------- */
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-      setPage(0); // Reset to first page on new search
-    }, 500); // 500ms debounce delay
-
-    return () => {
-      clearTimeout(handler);
-    };
+      setPage(0);
+    }, 500);
+    return () => clearTimeout(handler);
   }, [searchQuery]);
 
   const getData = async () => {
@@ -158,35 +91,16 @@ const Products = () => {
       if (debouncedSearchQuery.trim() !== '') {
         params.search = debouncedSearchQuery.trim();
       }
+      if (filterStatus) params.status = filterStatus;
+      if (filterStock) params.stock = filterStock;
+      if (filterSortBy) params.sort_by = filterSortBy;
+      if (filterNewArrivals) params.new_arrivals = true;
+      if (missingInfoProducts) params.missing_info_products = true;
+      if (filterBrand) params.brand = filterBrand;
+      if (filterCategory) params.category = filterCategory;
+      if (filterSubCategory) params.sub_category = filterSubCategory;
 
-      // Add filters if chosen
-      if (filterStatus) {
-        params.status = filterStatus; // e.g. 'active' or 'inactive'
-      }
-      if (filterStock) {
-        params.stock = filterStock; // e.g. 'zero' or 'gt_zero'
-      }
-      if (filterNewArrivals) {
-        params.new_arrivals = true;
-      }
-
-      if (missingInfoProducts) {
-        params.missing_info_products = true;
-      }
-      // NEW: Add dropdown filter params
-      if (filterBrand) {
-        params.brand = filterBrand;
-      }
-      if (filterCategory) {
-        params.category = filterCategory;
-      }
-      if (filterSubCategory) {
-        params.sub_category = filterSubCategory;
-      }
-
-      const response = await axiosInstance.get(`/admin/products`, {
-        params,
-      });
+      const response = await axiosInstance.get('/admin/products', { params });
       setProducts(response.data.products);
       setTotalCount(response.data.total_count);
       setTotalPageCount(response.data.total_pages);
@@ -198,7 +112,6 @@ const Products = () => {
     }
   };
 
-  // Fetch data whenever page, rowsPerPage, or debouncedSearchQuery changes
   useEffect(() => {
     getData();
   }, [
@@ -213,70 +126,46 @@ const Products = () => {
     filterSubCategory,
   ]);
 
-  // Handle searching by updating the searchQuery state
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  };
-
-  const handleChangePage = (
-    event: React.MouseEvent<HTMLButtonElement> | null,
-    newPage: number
-  ) => {
+  const handleSearch = (e: any) => setSearchQuery(e.target.value);
+  const handleChangePage = (event: any, newPage: any) => {
     setPage(newPage);
-    // Reset skipPage so the TextField shows the new page number
     setSkipPage('');
   };
-
-  const handleChangeRowsPerPage = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChangeRowsPerPage = (event: any) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
     setSkipPage('');
   };
-
-  // NEW: Jump to page
   const handleSkipPage = () => {
-    // Convert the user’s input from string to integer
     const requestedPage = parseInt(skipPage, 10);
-
-    // Basic validation: must be a valid number and ≥ 1
     if (isNaN(requestedPage) || requestedPage < 1) {
       toast.error('Invalid page number');
       return;
     }
-
-    // Calculate the zero-based page index
     const totalPages = Math.ceil(totalCount / rowsPerPage);
     if (requestedPage > totalPages) {
       toast.error(`Page number exceeds total pages (${totalPages})`);
       return;
     }
-
     setPage(requestedPage - 1);
     setSkipPage('');
   };
 
-  // Example: Toggling product status
+  /* ----------------------- Toggle & Edit Handlers ----------------------- */
   const handleToggleActive = async (product: any) => {
     try {
       const newStatus = product.status === 'active' ? 'inactive' : 'active';
       const updatedFields = { status: newStatus };
-
       await axiosInstance.put(`/products/${product._id}`, updatedFields);
 
-      // Update the products list
-      setProducts((prev: any[]) =>
-        prev.map((p) =>
+      setProducts((prev: any) =>
+        prev.map((p: any) =>
           p._id === product._id ? { ...p, ...updatedFields } : p
         )
       );
-
-      // Also update the selected product if it matches
       if (selectedProduct && selectedProduct._id === product._id) {
         setSelectedProduct({ ...selectedProduct, ...updatedFields });
       }
-
       toast.success(
         `Product ${product.name} marked as ${
           newStatus === 'active' ? 'Active' : 'Inactive'
@@ -288,22 +177,20 @@ const Products = () => {
     }
   };
 
-  // Open Edit Modal
   const handleOpenEditModal = (product: any) => {
     setSelectedProduct(product);
     setOpenEditModal(true);
-
-    // Initialize editable fields with current product data
     setEditableFields({
       category: product.category || '',
       sub_category: product.sub_category || '',
       series: product.series || '',
       upc_code: product?.upc_code || '',
       brand: product?.brand || '',
+      catalogue_order: product?.catalogue_order || '',
+      catalogue_page: product?.catalogue_page || '',
     });
   };
 
-  // Close Edit Modal
   const handleCloseEditModal = () => {
     setSelectedProduct(null);
     setOpenEditModal(false);
@@ -313,48 +200,38 @@ const Products = () => {
       series: '',
       upc_code: '',
       brand: '',
+      catalogue_order: '',
+      catalogue_page: '',
     });
   };
 
-  // Handle Image Upload
-  const handleImageUpload = async (file: File) => {
+  const handleImageUpload = async (file: any) => {
     if (!selectedProduct) return;
-
     const formData = new FormData();
     formData.append('file', file);
     formData.append('product_id', selectedProduct._id);
-
     try {
       setUpdating(true);
       const response = await axiosInstance.post(
-        `/admin/upload-image`,
+        '/admin/upload-image',
         formData,
         {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
+          headers: { 'Content-Type': 'multipart/form-data' },
         }
       );
-
       const newImageUrl = response.data.image_url;
-
-      // Update the product's image_url in the backend
       await axiosInstance.put(`/products/${selectedProduct._id}`, {
         image_url: newImageUrl,
       });
 
-      // Update the product in the local state
-      setProducts((prev) =>
-        prev.map((p) =>
+      setProducts((prev: any) =>
+        prev.map((p: any) =>
           p._id === selectedProduct._id ? { ...p, image_url: newImageUrl } : p
         )
       );
-
-      // Update the selected product
       setSelectedProduct((prev: any) =>
         prev ? { ...prev, image_url: newImageUrl } : prev
       );
-
       toast.success('Image updated successfully.');
     } catch (error) {
       console.error(error);
@@ -364,52 +241,45 @@ const Products = () => {
     }
   };
 
-  // Handle Editable Field Changes
-  const handleEditableFieldChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleEditableFieldChange = (e: any) => {
     const { name, value } = e.target;
-    setEditableFields((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setEditableFields((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Save Edited Fields
   const handleSaveEdit = async () => {
     if (!selectedProduct) return;
-
-    const { category, sub_category, series, upc_code, brand } = editableFields;
-
+    const {
+      category,
+      sub_category,
+      series,
+      upc_code,
+      brand,
+      catalogue_order,
+      catalogue_page,
+    } = editableFields;
     try {
       setUpdating(true);
-
       const updatedFields = {
         category: category.trim(),
         sub_category: sub_category.trim(),
         series: series.trim(),
         upc_code: upc_code.trim(),
         brand: brand.trim(),
+        catalogue_order: parseInt(catalogue_order),
+        catalogue_page: parseInt(catalogue_page),
       };
-
-      // Send update request to the backend
       await axiosInstance.put(
         `/products/${selectedProduct._id}`,
         updatedFields
       );
-
-      // Update the product in the local state
-      setProducts((prev) =>
-        prev.map((p) =>
+      setProducts((prev: any) =>
+        prev.map((p: any) =>
           p._id === selectedProduct._id ? { ...p, ...updatedFields } : p
         )
       );
-
-      // Update the selected product
       setSelectedProduct((prev: any) =>
         prev ? { ...prev, ...updatedFields } : prev
       );
-
       toast.success('Product details updated successfully.');
       handleCloseEditModal();
     } catch (error) {
@@ -419,46 +289,28 @@ const Products = () => {
       setUpdating(false);
     }
   };
+
   const handleDownloadProducts = async () => {
     try {
-      // Construct query params based on current filters and pagination
       const params: any = {
         page,
         limit: rowsPerPage,
       };
-
-      if (debouncedSearchQuery.trim() !== '') {
+      if (debouncedSearchQuery.trim() !== '')
         params.search = debouncedSearchQuery.trim();
-      }
-      if (filterStatus) {
-        params.status = filterStatus;
-      }
-      if (filterStock) {
-        params.stock = filterStock;
-      }
-      if (filterNewArrivals) {
-        params.new_arrivals = true;
-      }
-      if (missingInfoProducts) {
-        params.missing_info_products = true;
-      }
-      if (filterBrand) {
-        params.brand = filterBrand;
-      }
-      if (filterCategory) {
-        params.category = filterCategory;
-      }
-      if (filterSubCategory) {
-        params.sub_category = filterSubCategory;
-      }
+      if (filterStatus) params.status = filterStatus;
+      if (filterStock) params.stock = filterStock;
+      if (filterNewArrivals) params.new_arrivals = true;
+      if (missingInfoProducts) params.missing_info_products = true;
+      if (filterBrand) params.brand = filterBrand;
+      if (filterCategory) params.category = filterCategory;
+      if (filterSubCategory) params.sub_category = filterSubCategory;
 
-      // Request the download endpoint with responseType set to blob
       const response = await axiosInstance.get('/admin/products/download', {
         params,
         responseType: 'blob',
       });
 
-      // Extract filename from the Content-Disposition header if available
       const disposition = response.headers['content-disposition'];
       let fileName = 'products.xlsx';
       if (disposition) {
@@ -468,10 +320,7 @@ const Products = () => {
         }
       }
 
-      // Create a blob URL and simulate a click to download the file
-      const blob = new Blob([response.data], {
-        type: response.data.type,
-      });
+      const blob = new Blob([response.data], { type: response.data.type });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -486,72 +335,36 @@ const Products = () => {
     }
   };
 
-  // Dropzone Component for Image Upload
-  const ImageDropzone = () => {
-    const onDrop = (acceptedFiles: File[]) => {
-      if (acceptedFiles && acceptedFiles.length > 0) {
-        handleImageUpload(acceptedFiles[0]);
-      }
-    };
+  const handleImageClick = useCallback((src: any) => {
+    setPopupImageSrc(src);
+    setOpenImagePopup(true);
+  }, []);
 
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
-      onDrop,
-      accept: {
-        'image/*': [],
-      },
-      multiple: false,
-    });
-
-    return (
-      <Box
-        {...getRootProps()}
-        sx={{
-          border: '2px dashed #cccccc',
-          padding: 2,
-          textAlign: 'center',
-          cursor: 'pointer',
-          backgroundColor: isDragActive ? '#f0f0f0' : 'transparent',
-        }}
-      >
-        <input {...getInputProps()} />
-        {isDragActive ? (
-          <Typography>Drop the image here...</Typography>
-        ) : (
-          <Typography>
-            Drag and drop an image here, or click to select an image
-          </Typography>
-        )}
-      </Box>
-    );
-  };
+  const handleClosePopup = useCallback(() => setOpenImagePopup(false), []);
 
   return (
     <Box sx={{ padding: 3 }}>
       <Paper
         elevation={3}
-        sx={{
-          padding: 4,
-          borderRadius: 4,
-          backgroundColor: 'white',
-        }}
+        sx={{ padding: 4, borderRadius: 4, backgroundColor: 'white' }}
       >
         <Box
-          display={'flex'}
-          flexDirection={'row'}
-          justifyContent={'space-between'}
-          alignItems={'center'}
+          display='flex'
+          flexDirection='row'
+          justifyContent='space-between'
+          alignItems='center'
         >
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
             All Products
           </Typography>
           <Box
-            display={'flex'}
-            flexDirection={'row'}
-            justifyContent={'flex-end'}
-            alignItems={'end'}
-            gap={'16px'}
+            display='flex'
+            flexDirection='row'
+            justifyContent='flex-end'
+            alignItems='end'
+            gap='16px'
           >
-            <Download onClick={() => handleDownloadProducts()} />
+            <Download onClick={handleDownloadProducts} />
             <FilterAlt onClick={() => setOpenFilterModal(true)} />
           </Box>
         </Box>
@@ -569,558 +382,78 @@ const Products = () => {
           sx={{ marginBottom: 3 }}
         />
 
-        {loading ? (
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              minHeight: '200px',
-            }}
-          >
-            <CircularProgress />
-          </Box>
-        ) : (
-          <>
-            {/* Table */}
-            <TableContainer
-              component={Paper}
-              sx={{
-                borderRadius: '8px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                overflowX: 'auto',
-              }}
-            >
-              <Table stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Image</TableCell>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Category</TableCell>
-                    <TableCell>Sub Category</TableCell>
-                    <TableCell>Series</TableCell>
-                    <TableCell>SKU</TableCell>
-                    <TableCell>Price</TableCell>
-                    <TableCell>Stock</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {products.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={9} align='center'>
-                        No products found.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    products.map((product) => (
-                      <TableRow key={product._id}>
-                        <TableCell>
-                          <img
-                            onClick={() =>
-                              handleImageClick(
-                                product.image_url || '/placeholder.png'
-                              )
-                            }
-                            src={product.image_url || '/placeholder.png'}
-                            alt={product.name}
-                            style={{
-                              width: '80px',
-                              height: '80px',
-                              borderRadius: '4px',
-                              objectFit: 'cover',
-                              cursor: 'pointer',
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>{product.name}</TableCell>
-                        <TableCell>{product.category}</TableCell>
-                        <TableCell>{product.sub_category}</TableCell>
-                        <TableCell>{product.series}</TableCell>
-                        <TableCell>{product.cf_sku_code}</TableCell>
-                        <TableCell>₹{product.rate}</TableCell>
-                        <TableCell>{product.stock}</TableCell>
-                        <TableCell>
-                          <Switch
-                            checked={product.status === 'active'}
-                            onChange={() => handleToggleActive(product)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant='contained'
-                            size='small'
-                            onClick={() => handleOpenEditModal(product)}
-                          >
-                            Edit
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-
-            {/* Table Pagination */}
-            <Box
-              display={'flex'}
-              flexDirection={'row'}
-              alignItems={'end'}
-              justifyContent={'space-between'}
-            >
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  mt: 2,
-                  gap: '8px',
-                }}
-              >
-                <TablePagination
-                  rowsPerPageOptions={[25, 50, 100, 200]}
-                  component='div'
-                  count={totalCount}
-                  rowsPerPage={rowsPerPage}
-                  page={page}
-                  onPageChange={handleChangePage}
-                  onRowsPerPageChange={handleChangeRowsPerPage}
-                />
-
-                {/* "Go to page" UI */}
-                <Box
-                  sx={{
-                    ml: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                >
-                  <TextField
-                    label='Go to page'
-                    type='number'
-                    variant='outlined'
-                    size='small'
-                    sx={{ width: 100, mr: 1 }}
-                    value={skipPage !== '' ? skipPage : page + 1}
-                    onChange={(e) =>
-                      parseInt(e.target.value) <= totalPageCount
-                        ? setSkipPage(e.target.value)
-                        : toast.error('Invalid Page Number')
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleSkipPage();
-                      }
-                    }}
-                  />
-                  <Button variant='contained' onClick={handleSkipPage}>
-                    Go
-                  </Button>
-                </Box>
-              </Box>
-              <Typography variant='subtitle1'>
-                Total Pages: {totalPageCount}
-              </Typography>
-            </Box>
-          </>
-        )}
+        <ProductTable
+          products={products}
+          loading={loading}
+          filterSortBy={filterSortBy}
+          totalCount={totalCount}
+          totalPageCount={totalPageCount}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          skipPage={skipPage}
+          setSkipPage={setSkipPage}
+          handleChangePage={handleChangePage}
+          handleChangeRowsPerPage={handleChangeRowsPerPage}
+          handleSkipPage={handleSkipPage}
+          handleImageClick={handleImageClick}
+          handleOpenEditModal={handleOpenEditModal}
+          handleToggleActive={handleToggleActive}
+        />
       </Paper>
 
-      {/* Filter Drawer */}
-      <Drawer
-        anchor='right'
+      <FilterDrawerComponent
         open={openFilterModal}
         onClose={() => setOpenFilterModal(false)}
-        sx={{
-          '& .MuiDrawer-paper': {
-            width: 300,
-            padding: 3,
-          },
+        filterStatus={filterStatus}
+        setFilterStatus={setFilterStatus}
+        filterStock={filterStock}
+        setFilterStock={setFilterStock}
+        filterNewArrivals={filterNewArrivals}
+        setFilterNewArrivals={setFilterNewArrivals}
+        missingInfoProducts={missingInfoProducts}
+        setMissingInfoProducts={setMissingInfoProducts}
+        filterBrand={filterBrand}
+        setFilterBrand={setFilterBrand}
+        filterCategory={filterCategory}
+        setFilterCategory={setFilterCategory}
+        filterSubCategory={filterSubCategory}
+        setFilterSubCategory={setFilterSubCategory}
+        filterSortBy={filterSortBy}
+        setFilterSortBy={setFilterSortBy}
+        brandOptions={brandOptions}
+        categoryOptions={categoryOptions}
+        subCategoryOptions={subCategoryOptions}
+        applyFilters={() => {
+          setPage(0);
+          setOpenFilterModal(false);
+          getData();
         }}
-      >
-        <Typography variant='h6' gutterBottom>
-          Filter Products
-        </Typography>
+        resetFilters={() => {
+          setPage(0);
+          setOpenFilterModal(false);
+          setFilterStatus('');
+          setFilterStock('');
+          setFilterNewArrivals(false);
+          setFilterBrand('');
+          setFilterCategory('');
+          setFilterSubCategory('');
+          setMissingInfoProducts(false);
+        }}
+      />
 
-        {/* Status Filter */}
-        <Typography variant='subtitle2'>Status</Typography>
-        <RadioGroup
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <FormControlLabel value='' control={<Radio />} label='All' />
-          <FormControlLabel value='active' control={<Radio />} label='Active' />
-          <FormControlLabel
-            value='inactive'
-            control={<Radio />}
-            label='Inactive'
-          />
-        </RadioGroup>
-
-        {/* Stock Filter */}
-        <Typography variant='subtitle2'>Stock</Typography>
-        <RadioGroup
-          value={filterStock}
-          onChange={(e) => setFilterStock(e.target.value)}
-        >
-          <FormControlLabel value='' control={<Radio />} label='All' />
-          <FormControlLabel
-            value='zero'
-            control={<Radio />}
-            label='Zero Stock'
-          />
-          <FormControlLabel
-            value='gt_zero'
-            control={<Radio />}
-            label='> 0 Stock'
-          />
-        </RadioGroup>
-
-        {/* New Arrivals */}
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={filterNewArrivals}
-              onChange={(e) => {
-                setFilterNewArrivals(e.target.checked);
-                setFilterStatus('');
-              }}
-            />
-          }
-          label='New Arrivals Only'
-        />
-
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={missingInfoProducts}
-              onChange={(e) => {
-                setMissingInfoProducts(e.target.checked);
-                setFilterStatus('');
-              }}
-            />
-          }
-          label='Missing Information Products'
-        />
-
-        {/* NEW: Brand Filter */}
-        <FormControl fullWidth sx={{ mt: 2 }}>
-          <InputLabel id='brand-filter-label'>Brand</InputLabel>
-          <Select
-            labelId='brand-filter-label'
-            label='Brand'
-            value={filterBrand}
-            onChange={(e) => setFilterBrand(e.target.value)}
-          >
-            <MenuItem value=''>
-              <em>All</em>
-            </MenuItem>
-            {brandOptions.map((brand) => (
-              <MenuItem key={brand} value={brand}>
-                {brand}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        {/* NEW: Category Filter */}
-        <FormControl fullWidth sx={{ mt: 2 }}>
-          <InputLabel id='category-filter-label'>Category</InputLabel>
-          <Select
-            labelId='category-filter-label'
-            label='Category'
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-          >
-            <MenuItem value=''>
-              <em>All</em>
-            </MenuItem>
-            {categoryOptions.map((cat) => (
-              <MenuItem key={cat} value={cat}>
-                {cat}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        {/* NEW: Sub Category Filter */}
-        <FormControl fullWidth sx={{ mt: 2 }}>
-          <InputLabel id='sub-category-filter-label'>Sub Category</InputLabel>
-          <Select
-            labelId='sub-category-filter-label'
-            label='Sub Category'
-            value={filterSubCategory}
-            onChange={(e) => setFilterSubCategory(e.target.value)}
-          >
-            <MenuItem value=''>
-              <em>All</em>
-            </MenuItem>
-            {subCategoryOptions.map((subCat) => (
-              <MenuItem key={subCat} value={subCat}>
-                {subCat}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <Box sx={{ mt: 3 }} display={'flex'} flexDirection={'row'} gap={'16px'}>
-          <Button variant='contained' onClick={applyFilters}>
-            Apply
-          </Button>
-
-          <Button
-            color={'secondary'}
-            variant='contained'
-            onClick={resetFilters}
-          >
-            Reset
-          </Button>
-        </Box>
-      </Drawer>
-
-      {/* Edit Product Modal */}
-      <Dialog
+      <ProductDialog
         open={openEditModal}
         onClose={handleCloseEditModal}
-        fullWidth
-        maxWidth='md'
-      >
-        <DialogTitle>Edit Product Details</DialogTitle>
-        <DialogContent>
-          {selectedProduct && (
-            <Box sx={{ mt: 2 }}>
-              <Grid container spacing={2}>
-                {/* Image Section */}
-                <Grid item xs={12} md={4}>
-                  <Typography
-                    variant='subtitle2'
-                    color='textSecondary'
-                    gutterBottom
-                  >
-                    Product Image
-                  </Typography>
-                  <Box
-                    sx={{
-                      mb: 2,
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <img
-                      onClick={() =>
-                        handleImageClick(
-                          selectedProduct.image_url || '/placeholder.png'
-                        )
-                      }
-                      src={selectedProduct.image_url || '/placeholder.png'}
-                      alt={selectedProduct.name}
-                      style={{
-                        width: '100%',
-                        maxWidth: '200px',
-                        height: 'auto',
-                        borderRadius: '4px',
-                        objectFit: 'cover',
-                        cursor: 'pointer',
-                      }}
-                    />
-                  </Box>
-                  <ImageDropzone />
-                  {updating && (
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        mt: 2,
-                      }}
-                    >
-                      <CircularProgress size={24} />
-                    </Box>
-                  )}
-                </Grid>
+        selectedProduct={selectedProduct}
+        updating={updating}
+        editableFields={editableFields}
+        handleEditableFieldChange={handleEditableFieldChange}
+        handleSaveEdit={handleSaveEdit}
+        handleToggleActive={handleToggleActive}
+        handleImageClick={handleImageClick}
+        handleImageUpload={handleImageUpload}
+      />
 
-                {/* Details Section */}
-                <Grid item xs={12} md={8}>
-                  <Grid container spacing={2}>
-                    {/* Item Name (Read-only) */}
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant='subtitle2' color='textSecondary'>
-                        Item Name
-                      </Typography>
-                      <Typography variant='body1'>
-                        {selectedProduct.item_name}
-                      </Typography>
-                    </Grid>
-
-                    {/* Category (Editable) */}
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant='subtitle2' color='textSecondary'>
-                        Category
-                      </Typography>
-                      <TextField
-                        name='category'
-                        variant='outlined'
-                        fullWidth
-                        value={editableFields.category}
-                        onChange={handleEditableFieldChange}
-                        size='small'
-                      />
-                    </Grid>
-
-                    {/* Sub Category (Editable) */}
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant='subtitle2' color='textSecondary'>
-                        Sub Category
-                      </Typography>
-                      <TextField
-                        name='sub_category'
-                        variant='outlined'
-                        fullWidth
-                        value={editableFields.sub_category}
-                        onChange={handleEditableFieldChange}
-                        size='small'
-                      />
-                    </Grid>
-
-                    {/* Series (Editable) */}
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant='subtitle2' color='textSecondary'>
-                        Series
-                      </Typography>
-                      <TextField
-                        name='series'
-                        variant='outlined'
-                        fullWidth
-                        value={editableFields.series}
-                        onChange={handleEditableFieldChange}
-                        size='small'
-                      />
-                    </Grid>
-
-                    {/* UPC/EAN (Read-only) */}
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant='subtitle2' color='textSecondary'>
-                        UPC/EAN
-                      </Typography>
-                      <TextField
-                        name='upc_code'
-                        variant='outlined'
-                        fullWidth
-                        value={editableFields?.upc_code}
-                        onChange={handleEditableFieldChange}
-                        size='small'
-                      />
-                    </Grid>
-                    {/* SKU (Read-only) */}
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant='subtitle2' color='textSecondary'>
-                        SKU
-                      </Typography>
-                      <Typography variant='body1'>
-                        {selectedProduct.cf_sku_code}
-                      </Typography>
-                    </Grid>
-
-                    {/* Manufacture Code (Read-only) */}
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant='subtitle2' color='textSecondary'>
-                        Manufacture Code
-                      </Typography>
-                      <Typography variant='body1'>
-                        {selectedProduct.cf_item_code}
-                      </Typography>
-                    </Grid>
-
-                    {/* Price (Read-only) */}
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant='subtitle2' color='textSecondary'>
-                        Price
-                      </Typography>
-                      <Typography variant='body1'>
-                        ₹{selectedProduct.rate}
-                      </Typography>
-                    </Grid>
-
-                    {/* Stock (Read-only) */}
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant='subtitle2' color='textSecondary'>
-                        Stock
-                      </Typography>
-                      <Typography variant='body1'>
-                        {selectedProduct.stock}
-                      </Typography>
-                    </Grid>
-
-                    {/* Status (Read-only) */}
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant='subtitle2' color='textSecondary'>
-                        Status
-                      </Typography>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={selectedProduct?.status === 'active'}
-                            onChange={() => handleToggleActive(selectedProduct)}
-                            color='primary'
-                          />
-                        }
-                        label={
-                          selectedProduct?.status === 'active'
-                            ? 'Active'
-                            : 'Inactive'
-                        }
-                      />
-                    </Grid>
-
-                    {/* Brand (Editable) */}
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant='subtitle2' color='textSecondary'>
-                        Brand
-                      </Typography>
-                      <TextField
-                        name='brand'
-                        variant='outlined'
-                        fullWidth
-                        value={editableFields.brand}
-                        onChange={handleEditableFieldChange}
-                        size='small'
-                      />
-                    </Grid>
-
-                    {/* HSN/SAC (Read-only) */}
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant='subtitle2' color='textSecondary'>
-                        HSN/SAC
-                      </Typography>
-                      <Typography variant='body1'>
-                        {selectedProduct.hsn_or_sac}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Grid>
-              </Grid>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={handleCloseEditModal}
-            color='primary'
-            disabled={updating}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSaveEdit}
-            color='primary'
-            variant='contained'
-            disabled={updating}
-          >
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
       <ImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}

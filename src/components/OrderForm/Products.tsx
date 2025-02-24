@@ -1,12 +1,11 @@
-// ProductsOptimized.tsx
-
+// Products.tsx
 import React, {
   useState,
   useEffect,
-  memo,
   useCallback,
-  useRef,
   useMemo,
+  useRef,
+  memo,
 } from 'react';
 import axios from 'axios';
 import {
@@ -26,422 +25,73 @@ import {
   Button,
   Tabs,
   Tab,
-  Dialog,
-  DialogContent,
   useMediaQuery,
   useTheme,
   Badge,
   Drawer,
   Divider,
-  Card,
-  CardContent,
-  CardMedia,
   Grid,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   Menu,
-  Switch,
-  FormControlLabel,
   Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import {
-  AddShoppingCart,
-  RemoveShoppingCart,
   Close as CloseIcon,
   ShoppingCart as ShoppingCartIcon,
   Sort,
 } from '@mui/icons-material';
-import { useRouter } from 'next/router';
 import debounce from 'lodash.debounce';
 import { toast } from 'react-toastify';
-import QuantitySelector from './QuantitySelector';
+import { useRouter } from 'next/router';
+import ProductRow from './products/ProductRow';
+import ProductCard from './products/ProductCard';
+import CartDrawer from './products/Cart';
 import ImagePopupDialog from '../common/ImagePopUp';
 
 interface SearchResult {
-  id: number;
+  id?: number;
+  _id: string;
   name: string;
   brand: string;
-  _id: string;
+  image_url?: string;
+  sub_category?: string;
+  series?: string;
   cf_sku_code?: string;
-  item_tax_preferences?: { tax_percentage: number }[];
-  quantity?: number;
   rate: number;
   stock: number;
-  image_url?: string;
   new?: boolean;
-  sub_category?: string;
-  category?: string;
-  series?: string;
 }
 
-interface SearchBarProps {
+interface ProductsProps {
   label: string;
   selectedProducts: SearchResult[];
   setSelectedProducts: React.Dispatch<React.SetStateAction<SearchResult[]>>;
-  customer: {
-    cf_margin?: string;
-    cf_in_ex?: string;
-  };
-  order: {
-    status?: string;
-  };
+  customer: { cf_margin?: string; cf_in_ex?: string };
+  order: { status?: string };
   specialMargins: { [key: string]: string };
-  totals: any;
+  totals: { totalGST: number; totalAmount: number };
   onCheckout: () => void;
 }
 
-// ---------- Helper Components ----------
-
-interface ProductRowProps {
-  product: SearchResult;
-  selectedProducts: SearchResult[];
-  temporaryQuantities: { [key: string]: number };
-  specialMargins: { [key: string]: string };
-  customerMargin: string;
-  orderStatus?: string;
-  getSellingPrice: (product: SearchResult) => number;
-  handleImageClick: (src: string) => void;
-  handleQuantityChange: (id: string, newQuantity: number) => void;
-  handleAddOrRemove: (product: SearchResult) => void;
-}
-const ProductRow: React.FC<ProductRowProps> = memo(
-  ({
-    product,
-    selectedProducts,
-    temporaryQuantities,
-    specialMargins,
-    customerMargin,
-    orderStatus,
-    getSellingPrice,
-    handleImageClick,
-    handleQuantityChange,
-    handleAddOrRemove,
-  }) => {
-    const productId = product._id;
-    const selectedProduct = selectedProducts.find((p) => p._id === productId);
-    const quantity: any =
-      selectedProduct?.quantity || temporaryQuantities[productId] || '';
-    const sellingPrice = getSellingPrice(product);
-    const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
-    const isQuantityExceedingStock = quantity > product.stock;
-    const isDisabled =
-      orderStatus?.toLowerCase().includes('accepted') ||
-      orderStatus?.toLowerCase().includes('declined');
-
-    return (
-      <TableRow key={productId}>
-        <TableCell>
-          <Badge
-            badgeContent={product.new ? 'New' : undefined}
-            color='secondary'
-            overlap='rectangular'
-            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-          >
-            <img
-              src={product.image_url || '/placeholder.png'}
-              alt={product.name}
-              loading='lazy'
-              style={{
-                width: '100px',
-                height: '100px',
-                borderRadius: '4px',
-                objectFit: 'cover',
-                cursor: 'pointer',
-              }}
-              onClick={() =>
-                handleImageClick(product.image_url || '/placeholder.png')
-              }
-            />
-          </Badge>
-        </TableCell>
-        <TableCell>{product.name}</TableCell>
-        <TableCell>{product.sub_category || '-'}</TableCell>
-        <TableCell>{product.series || '-'}</TableCell>
-        <TableCell>{product.cf_sku_code || '-'}</TableCell>
-        <TableCell>₹{product.rate}</TableCell>
-        <TableCell>{product.stock}</TableCell>
-        <TableCell>
-          {specialMargins[productId]
-            ? specialMargins[productId]
-            : customerMargin}
-        </TableCell>
-        <TableCell>₹{sellingPrice}</TableCell>
-        <TableCell style={{ padding: 0 }}>
-          <QuantitySelector
-            quantity={quantity}
-            max={product.stock}
-            onChange={(newQuantity) =>
-              handleQuantityChange(productId, newQuantity)
-            }
-            disabled={isDisabled}
-          />
-          {isQuantityExceedingStock && (
-            <Typography variant='caption' color='error'>
-              Exceeds stock!
-            </Typography>
-          )}
-        </TableCell>
-        <TableCell>{selectedProduct ? `₹${itemTotal}` : '-'}</TableCell>
-        <TableCell>
-          <IconButton
-            color='primary'
-            disabled={isDisabled}
-            onClick={() => handleAddOrRemove(product)}
-          >
-            {selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />}
-          </IconButton>
-        </TableCell>
-      </TableRow>
-    );
-  }
-);
-
-interface ProductCardProps {
-  product: SearchResult;
-  selectedProducts: SearchResult[];
-  temporaryQuantities: { [key: string]: number };
-  specialMargins: { [key: string]: string };
-  customerMargin: string;
-  orderStatus?: string;
-  getSellingPrice: (product: SearchResult) => number;
-  handleImageClick: (src: string) => void;
-  handleQuantityChange: (id: string, newQuantity: number) => void;
-  handleAddOrRemove: (product: SearchResult) => void;
-  index: number;
-}
-const ProductCard: React.FC<ProductCardProps> = memo(
-  ({
-    product,
-    selectedProducts,
-    temporaryQuantities,
-    specialMargins,
-    customerMargin,
-    orderStatus,
-    getSellingPrice,
-    handleImageClick,
-    handleQuantityChange,
-    handleAddOrRemove,
-    index,
-  }) => {
-    const productId = product._id;
-    const selectedProduct = selectedProducts.find((p) => p._id === productId);
-    const quantity: any =
-      selectedProduct?.quantity || temporaryQuantities[productId] || '';
-    const sellingPrice = getSellingPrice(product);
-    const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
-    const isQuantityExceedingStock = quantity > product.stock;
-    const isDisabled =
-      orderStatus?.toLowerCase().includes('accepted') ||
-      orderStatus?.toLowerCase().includes('declined');
-
-    return (
-      <Grid item xs={12} key={productId}>
-        <Card
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            borderRadius: 2,
-            boxShadow: 3,
-            overflow: 'hidden',
-            backgroundColor: 'background.paper',
-            mt: index === 0 ? '16px' : undefined,
-          }}
-        >
-          <Box sx={{ position: 'relative' }}>
-            {product.new && (
-              <Badge
-                badgeContent='New'
-                color='secondary'
-                overlap='rectangular'
-                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                sx={{
-                  position: 'absolute',
-                  top: 16,
-                  right: 20,
-                  zIndex: 10,
-                  '& .MuiBadge-badge': {
-                    fontSize: '0.7rem',
-                    fontWeight: 'bold',
-                    borderRadius: 1,
-                    padding: '4px 6px',
-                  },
-                }}
-              />
-            )}
-            <CardMedia
-              component='img'
-              image={product.image_url || '/placeholder.png'}
-              alt={product.name}
-              sx={{
-                width: '100%',
-                objectFit: 'cover',
-                cursor: 'pointer',
-                transition: 'transform 0.3s ease-in-out',
-                '&:hover': { transform: 'scale(1.03)' },
-              }}
-              onClick={() =>
-                handleImageClick(product.image_url || '/placeholder.png')
-              }
-            />
-          </Box>
-          <CardContent sx={{ p: 2 }}>
-            <Typography variant='h6' sx={{ fontWeight: 'bold', mb: 1 }}>
-              {product.name}
-            </Typography>
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, auto)',
-                gap: 1,
-                mb: 1,
-              }}
-            >
-              <Typography
-                variant='body2'
-                color='text.secondary'
-                sx={{ fontWeight: 500 }}
-              >
-                Sub Category
-              </Typography>
-              <Typography variant='body2'>
-                {product.sub_category || '-'}
-              </Typography>
-              <Typography
-                variant='body2'
-                color='text.secondary'
-                sx={{ fontWeight: 500 }}
-              >
-                Series
-              </Typography>
-              <Typography variant='body2'>{product.series || '-'}</Typography>
-              <Typography
-                variant='body2'
-                color='text.secondary'
-                sx={{ fontWeight: 500 }}
-              >
-                SKU
-              </Typography>
-              <Typography variant='body2'>
-                {product.cf_sku_code || '-'}
-              </Typography>
-              <Typography
-                variant='body2'
-                color='text.secondary'
-                sx={{ fontWeight: 500 }}
-              >
-                Price
-              </Typography>
-              <Typography variant='body2'>₹{product.rate}</Typography>
-              <Typography
-                variant='body2'
-                color='text.secondary'
-                sx={{ fontWeight: 500 }}
-              >
-                Stock
-              </Typography>
-              <Typography variant='body2'>{product.stock}</Typography>
-              <Typography
-                variant='body2'
-                color='text.secondary'
-                sx={{ fontWeight: 500 }}
-              >
-                Margin
-              </Typography>
-              <Typography variant='body2'>
-                {specialMargins[productId]
-                  ? specialMargins[productId]
-                  : customerMargin}
-              </Typography>
-              <Typography
-                variant='body2'
-                color='text.secondary'
-                sx={{ fontWeight: 500 }}
-              >
-                Selling Price
-              </Typography>
-              <Typography variant='body2'>₹{sellingPrice}</Typography>
-              {selectedProduct && (
-                <>
-                  <Typography
-                    variant='body2'
-                    color='text.secondary'
-                    sx={{ fontWeight: 800 }}
-                  >
-                    Item Total
-                  </Typography>
-                  <Typography variant='body2' fontWeight='bold'>
-                    ₹{itemTotal}
-                  </Typography>
-                </>
-              )}
-            </Box>
-            <Box
-              sx={{
-                mt: 2,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-              }}
-            >
-              <QuantitySelector
-                quantity={quantity}
-                max={product.stock}
-                onChange={(newQuantity) =>
-                  handleQuantityChange(productId, newQuantity)
-                }
-                disabled={isDisabled}
-              />
-            </Box>
-            {isQuantityExceedingStock && (
-              <Typography variant='caption' color='error'>
-                Exceeds stock!
-              </Typography>
-            )}
-            <Box mt={2}>
-              <Button
-                variant='contained'
-                color={selectedProduct ? 'error' : 'primary'}
-                startIcon={
-                  selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />
-                }
-                onClick={() => handleAddOrRemove(product)}
-                disabled={isDisabled}
-                fullWidth
-                sx={{
-                  textTransform: 'none',
-                  borderRadius: 2,
-                  fontWeight: 'bold',
-                }}
-              >
-                {selectedProduct ? 'Remove from Cart' : 'Add to Cart'}
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
-      </Grid>
-    );
-  }
-);
-
-// ---------- Main Component ----------
-
-const Products: React.FC<SearchBarProps> = ({
+const Products: React.FC<ProductsProps> = ({
   label = 'Search',
   selectedProducts = [],
   setSelectedProducts,
   customer = {},
   order = {},
   specialMargins = {},
-  totals = {},
+  totals = { totalGST: 0, totalAmount: 0 },
   onCheckout,
 }) => {
   const router = useRouter();
   const { id = '' } = router.query;
   const theme = useTheme();
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
   // ------------------ States ------------------
   const [query, setQuery] = useState<string>('');
@@ -480,7 +130,6 @@ const Products: React.FC<SearchBarProps> = ({
   );
   const [groupByCategory, setGroupByCategory] = useState<boolean>(false);
 
-  // ------------------ Refs ------------------
   const isFetching = useRef<{ [key: string]: boolean }>({});
 
   // ------------------ Debounced Toasts ------------------
@@ -566,10 +215,8 @@ const Products: React.FC<SearchBarProps> = ({
     [activeCategory, debouncedError]
   );
 
-  // New function to fetch all categories (ignoring brand)
   const fetchAllCategories = useCallback(async () => {
     try {
-      // You may need to implement this endpoint on your backend
       const response = await axios.get(
         `${process.env.api_url}/products/all_categories`
       );
@@ -638,13 +285,20 @@ const Products: React.FC<SearchBarProps> = ({
     }
   }, [debouncedError]);
 
-  // Modified resetPaginationAndFetch to handle groupByCategory
   const resetPaginationAndFetch = useCallback(
     (brand: string, category: string) => {
       let key = '';
-      if (groupByCategory) {
+      if (sortOrder === 'catalogue') {
+        key = brand ? `${brand}-catalogue` : 'catalogue';
+        setPaginationState((prev) => ({
+          ...prev,
+          [key]: { page: 1, hasMore: true },
+        }));
+        setProductsByBrandCategory((prev) => ({ ...prev, [key]: [] }));
+        // In catalogue mode, we pass the activeBrand and leave category undefined
+        fetchProducts(key, brand, undefined, undefined, 1);
+      } else if (groupByCategory) {
         key = `all-${category}`;
-        // When grouping by category, we do not filter by brand.
         setPaginationState((prev) => ({
           ...prev,
           [key]: { page: 1, hasMore: true },
@@ -661,17 +315,19 @@ const Products: React.FC<SearchBarProps> = ({
         fetchProducts(key, brand, category, undefined, 1);
       }
     },
-    [groupByCategory, fetchProducts]
+    [groupByCategory, fetchProducts, sortOrder]
   );
 
   // ------------------ Handlers ------------------
   const handleTabChange = useCallback(
     debounce((newBrand: string) => {
       setActiveBrand(newBrand);
-      const categories = categoriesByBrand[newBrand] || [];
-      const firstCategory = categories[0] || '';
-      setActiveCategory(firstCategory);
-      if (firstCategory) resetPaginationAndFetch(newBrand, firstCategory);
+      if (sortOrder !== 'catalogue') {
+        const categories = categoriesByBrand[newBrand] || [];
+        const firstCategory = categories[0] || '';
+        setActiveCategory(firstCategory);
+        if (firstCategory) resetPaginationAndFetch(newBrand, firstCategory);
+      }
     }, 300),
     [categoriesByBrand, resetPaginationAndFetch]
   );
@@ -679,7 +335,6 @@ const Products: React.FC<SearchBarProps> = ({
   const handleCategoryTabChange = useCallback(
     debounce((newCategory: string) => {
       setActiveCategory(newCategory);
-      // If grouping by category, brand is not used.
       resetPaginationAndFetch(groupByCategory ? '' : activeBrand, newCategory);
     }, 300),
     [activeBrand, groupByCategory, resetPaginationAndFetch]
@@ -695,8 +350,10 @@ const Products: React.FC<SearchBarProps> = ({
           ? `all-${activeCategory}`
           : `${activeBrand}-${activeCategory}`;
       if (search.trim() !== '') {
-        setActiveBrand('');
-        setActiveCategory('');
+        // setActiveBrand('');
+        // setActiveCategory('');
+        // Instead of clearing the active filters in the UI,
+        // pass undefined for both brand and category so the API call is global.
         setPaginationState((prev) => ({
           ...prev,
           [key]: { page: 1, hasMore: true },
@@ -705,6 +362,7 @@ const Products: React.FC<SearchBarProps> = ({
         setNoMoreProducts((prev) => ({ ...prev, [key]: false }));
         await fetchProducts(key, undefined, undefined, search, 1);
       } else {
+        // When search is empty, use the normal brand/category filters
         if (groupByCategory) {
           const defaultCategory =
             allCategories.length > 0 ? allCategories[0] : '';
@@ -765,7 +423,7 @@ const Products: React.FC<SearchBarProps> = ({
   );
 
   const handleAddProducts = useCallback(
-    (product: SearchResult) => {
+    (product: any) => {
       if (!product) return;
       const isAlreadySelected = selectedProducts.some(
         (p) => p._id === product._id
@@ -884,7 +542,6 @@ const Products: React.FC<SearchBarProps> = ({
       setOptions([]);
       debouncedSuccess('Cart cleared successfully.');
     } catch (error) {
-      console.error('Failed to clear the cart:', error);
       debouncedError('Failed to clear the cart.');
     }
   }, [id, setSelectedProducts, debouncedSuccess, debouncedError]);
@@ -899,9 +556,19 @@ const Products: React.FC<SearchBarProps> = ({
   const handleSortChange = (e: any) => {
     const newSort = e.target.value as string;
     setSortOrder(newSort);
+    // In catalogue mode, keep the activeBrand so that tab changes fetch brand‐specific data.
+    if (newSort === 'catalogue') {
+      // Optionally clear the activeCategory if you don't need it
+      setActiveCategory('');
+      setGroupByCategory(false);
+    }
     const key =
       searchTerm.trim() !== ''
         ? 'search'
+        : newSort === 'catalogue'
+        ? activeBrand
+          ? `${activeBrand}-catalogue`
+          : 'catalogue'
         : groupByCategory
         ? `all-${activeCategory}`
         : activeBrand && activeCategory
@@ -915,8 +582,8 @@ const Products: React.FC<SearchBarProps> = ({
     setNoMoreProducts((prev) => ({ ...prev, [key]: false }));
     fetchProducts(
       key,
-      groupByCategory ? undefined : activeBrand,
-      activeCategory,
+      newSort === 'catalogue' ? activeBrand : activeBrand,
+      newSort === 'catalogue' ? undefined : activeCategory,
       searchTerm.trim() !== '' ? searchTerm : undefined,
       1,
       newSort
@@ -967,9 +634,7 @@ const Products: React.FC<SearchBarProps> = ({
 
   useEffect(() => {
     if (groupByCategory) {
-      // When grouping by category, fetch all categories
       fetchAllCategories();
-      // Reset products for the currently selected category
       if (activeCategory) {
         resetPaginationAndFetch('', activeCategory);
       }
@@ -988,7 +653,6 @@ const Products: React.FC<SearchBarProps> = ({
     resetPaginationAndFetch,
   ]);
 
-  // ------------------ Initial API Calls ------------------
   useEffect(() => {
     fetchAllBrands();
     fetchProductCounts();
@@ -1000,22 +664,24 @@ const Products: React.FC<SearchBarProps> = ({
     }
   }, [activeBrand, categoriesByBrand, fetchCategories, groupByCategory]);
 
-  // ------------------ Derived Values ------------------
   const productsKey = useMemo(() => {
-    return searchTerm.trim() !== ''
-      ? 'search'
-      : groupByCategory && activeCategory
+    if (searchTerm.trim() !== '') {
+      return 'search';
+    }
+    if (sortOrder === 'catalogue') {
+      return activeBrand ? `${activeBrand}-catalogue` : 'catalogue';
+    }
+    return groupByCategory && activeCategory
       ? `all-${activeCategory}`
       : activeBrand && activeCategory
       ? `${activeBrand}-${activeCategory}`
       : 'all';
-  }, [searchTerm, activeBrand, activeCategory, groupByCategory]);
+  }, [searchTerm, activeBrand, activeCategory, groupByCategory, sortOrder]);
 
   const displayedProducts = useMemo(() => {
     return productsByBrandCategory[productsKey] || [];
   }, [productsByBrandCategory, productsKey]);
 
-  // Compute counts for all categories across brands
   const allCategoryCounts = useMemo(() => {
     const counts: { [category: string]: number } = {};
     Object.values(productCounts).forEach((brandCounts) => {
@@ -1026,7 +692,6 @@ const Products: React.FC<SearchBarProps> = ({
     return counts;
   }, [productCounts]);
 
-  // ------------------ Render ------------------
   return (
     <Box
       sx={{
@@ -1107,9 +772,9 @@ const Products: React.FC<SearchBarProps> = ({
             />
           )}
         />
-        {/* Tabs: When groupByCategory is true, show only category tabs across all brands */}
+
+        {/* Tabs and Sorting Controls */}
         <Box display='flex' flexDirection={'column'} gap='8px' sx={{ mt: 2 }}>
-          {/* When grouping by category, hide brand controls */}
           {!groupByCategory && (
             <>
               {isMobile || isTablet ? (
@@ -1181,111 +846,112 @@ const Products: React.FC<SearchBarProps> = ({
           )}
 
           {/* Category Controls */}
-          <Box>
-            {isMobile || isTablet ? (
-              groupByCategory ? (
-                // On mobile when grouping by category: use a dropdown
-                <FormControl fullWidth sx={{ mt: 2 }}>
-                  <InputLabel id='category-select-label'>Category</InputLabel>
-                  <Select
-                    labelId='category-select-label'
-                    id='category-select'
-                    value={activeCategory}
-                    label='Category'
-                    disabled={searchTerm !== ''}
-                    onChange={(e) => handleCategoryTabChange(e.target.value)}
-                  >
-                    {allCategories.map((cat) => (
-                      <MenuItem key={cat} value={cat}>
-                        {cat} ({allCategoryCounts[cat] || 0})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              ) : (
-                // On mobile when NOT grouping: use the standard mobile dropdown for category
-                <FormControl fullWidth sx={{ mt: 2 }}>
-                  <InputLabel id='category-select-label'>Category</InputLabel>
-                  <Select
-                    labelId='category-select-label'
-                    id='category-select'
-                    value={activeCategory}
-                    label='Category'
-                    disabled={searchTerm !== ''}
-                    onChange={(e) => handleCategoryTabChange(e.target.value)}
-                  >
-                    {categoriesByBrand[activeBrand]?.map((cat) => {
-                      const catCount = productCounts[activeBrand]?.[cat] || 0;
-                      return (
+          {sortOrder !== 'catalogue' && (
+            <Box>
+              {isMobile || isTablet ? (
+                groupByCategory ? (
+                  <FormControl fullWidth sx={{ mt: 2 }}>
+                    <InputLabel id='category-select-label'>Category</InputLabel>
+                    <Select
+                      labelId='category-select-label'
+                      id='category-select'
+                      value={activeCategory}
+                      label='Category'
+                      disabled={searchTerm !== ''}
+                      onChange={(e) => handleCategoryTabChange(e.target.value)}
+                    >
+                      {allCategories.map((cat) => (
                         <MenuItem key={cat} value={cat}>
-                          {cat} ({catCount})
+                          {cat} ({allCategoryCounts[cat] || 0})
                         </MenuItem>
-                      );
-                    })}
-                  </Select>
-                </FormControl>
-              )
-            ) : // Desktop view
-            groupByCategory ? (
-              <Tabs
-                value={activeCategory || allCategories[0] || ''}
-                onChange={(e, newValue) => handleCategoryTabChange(newValue)}
-                variant='scrollable'
-                scrollButtons='auto'
-                sx={{
-                  mt: 2,
-                  '.MuiTab-root': {
-                    textTransform: 'none',
-                    fontWeight: 'bold',
-                    padding: '10px 20px',
-                  },
-                  '.Mui-selected': { color: 'primary.main' },
-                }}
-              >
-                {allCategories.map((cat) => (
-                  <Tab
-                    key={cat}
-                    value={cat}
-                    label={`${cat} (${allCategoryCounts[cat] || 0})`}
-                  />
-                ))}
-              </Tabs>
-            ) : (
-              !searchTerm.trim() &&
-              activeBrand &&
-              (categoriesByBrand[activeBrand] || []).length > 0 && (
+                      ))}
+                    </Select>
+                  </FormControl>
+                ) : (
+                  <FormControl fullWidth sx={{ mt: 2 }}>
+                    <InputLabel id='category-select-label'>Category</InputLabel>
+                    <Select
+                      labelId='category-select-label'
+                      id='category-select'
+                      value={activeCategory}
+                      label='Category'
+                      disabled={searchTerm !== ''}
+                      onChange={(e) => handleCategoryTabChange(e.target.value)}
+                    >
+                      {categoriesByBrand[activeBrand]?.map((cat) => {
+                        const catCount = productCounts[activeBrand]?.[cat] || 0;
+                        return (
+                          <MenuItem key={cat} value={cat}>
+                            {cat} ({catCount})
+                          </MenuItem>
+                        );
+                      })}
+                    </Select>
+                  </FormControl>
+                )
+              ) : groupByCategory ? (
                 <Tabs
-                  value={
-                    activeCategory || categoriesByBrand[activeBrand][0] || ''
-                  }
+                  value={activeCategory || allCategories[0] || ''}
                   onChange={(e, newValue) => handleCategoryTabChange(newValue)}
                   variant='scrollable'
                   scrollButtons='auto'
                   sx={{
                     mt: 2,
-                    mb: 2,
                     '.MuiTab-root': {
                       textTransform: 'none',
                       fontWeight: 'bold',
-                      padding: '8px 16px',
+                      padding: '10px 20px',
                     },
                     '.Mui-selected': { color: 'primary.main' },
                   }}
                 >
-                  {categoriesByBrand[activeBrand].map((cat) => {
-                    const catCount = productCounts[activeBrand]?.[cat] || 0;
-                    return (
-                      <Tab
-                        key={cat}
-                        label={`${cat} (${catCount})`}
-                        value={cat}
-                      />
-                    );
-                  })}
+                  {allCategories.map((cat) => (
+                    <Tab
+                      key={cat}
+                      value={cat}
+                      label={`${cat} (${allCategoryCounts[cat] || 0})`}
+                    />
+                  ))}
                 </Tabs>
-              )
-            )}
-          </Box>
+              ) : (
+                !searchTerm.trim() &&
+                activeBrand &&
+                (categoriesByBrand[activeBrand] || []).length > 0 && (
+                  <Tabs
+                    value={
+                      activeCategory || categoriesByBrand[activeBrand][0] || ''
+                    }
+                    onChange={(e, newValue) =>
+                      handleCategoryTabChange(newValue)
+                    }
+                    variant='scrollable'
+                    scrollButtons='auto'
+                    sx={{
+                      mt: 2,
+                      mb: 2,
+                      '.MuiTab-root': {
+                        textTransform: 'none',
+                        fontWeight: 'bold',
+                        padding: '8px 16px',
+                      },
+                      '.Mui-selected': { color: 'primary.main' },
+                    }}
+                  >
+                    {categoriesByBrand[activeBrand].map((cat) => {
+                      const catCount = productCounts[activeBrand]?.[cat] || 0;
+                      return (
+                        <Tab
+                          key={cat}
+                          label={`${cat} (${catCount})`}
+                          value={cat}
+                        />
+                      );
+                    })}
+                  </Tabs>
+                )
+              )}
+            </Box>
+          )}
           {isMobile || isTablet ? (
             <Box sx={{ mt: 2, mb: 2, width: '100%' }}>
               <FormControl fullWidth variant='outlined'>
@@ -1298,6 +964,7 @@ const Products: React.FC<SearchBarProps> = ({
                   onChange={handleSortChange}
                 >
                   <MenuItem value='default'>Default</MenuItem>
+                  <MenuItem value='catalogue'>Catalogue Order</MenuItem>
                   <MenuItem value='price_asc'>Price: Low to High</MenuItem>
                   <MenuItem value='price_desc'>Price: High to Low</MenuItem>
                 </Select>
@@ -1308,7 +975,10 @@ const Products: React.FC<SearchBarProps> = ({
             activeBrand &&
             (categoriesByBrand[activeBrand] || []).length > 0 && (
               <Box sx={{ mt: 2, mb: 2 }}>
-                <IconButton onClick={handleSortIconClick}>
+                <IconButton
+                  onClick={handleSortIconClick}
+                  style={{ display: 'flex', flexDirection: 'column' }}
+                >
                   <Sort />
                 </IconButton>
                 <Menu
@@ -1322,6 +992,9 @@ const Products: React.FC<SearchBarProps> = ({
                   <MenuItem onClick={() => handleSortMenuSelect('default')}>
                     Default
                   </MenuItem>
+                  <MenuItem onClick={() => handleSortMenuSelect('catalogue')}>
+                    Catalogue Order
+                  </MenuItem>
                   <MenuItem onClick={() => handleSortMenuSelect('price_asc')}>
                     Price: Low to High
                   </MenuItem>
@@ -1332,30 +1005,31 @@ const Products: React.FC<SearchBarProps> = ({
               </Box>
             )
           )}
-          {/* Toggle Switch for Group by Category */}
-          <Box display='flex' justifyContent='flex-end'>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={groupByCategory}
-                  onChange={(e) => {
-                    const newValue = e.target.checked;
-                    setGroupByCategory(newValue);
-                    if (!newValue) {
-                      const defaultBrand = brandList[0]?.brand || '';
-                      const defaultCategory =
-                        categoriesByBrand[defaultBrand]?.[0] || '';
-                      setActiveBrand(defaultBrand);
-                      setActiveCategory(defaultCategory);
-                      resetPaginationAndFetch(defaultBrand, defaultCategory);
-                    }
-                  }}
-                  color='primary'
-                />
-              }
-              label='Group by Category'
-            />
-          </Box>
+          {sortOrder !== 'catalogue' && (
+            <Box display='flex' justifyContent='flex-end'>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={groupByCategory}
+                    onChange={(e) => {
+                      const newValue = e.target.checked;
+                      setGroupByCategory(newValue);
+                      if (!newValue) {
+                        const defaultBrand = brandList[0]?.brand || '';
+                        const defaultCategory =
+                          categoriesByBrand[defaultBrand]?.[0] || '';
+                        setActiveBrand(defaultBrand);
+                        setActiveCategory(defaultCategory);
+                        resetPaginationAndFetch(defaultBrand, defaultCategory);
+                      }
+                    }}
+                    color='primary'
+                  />
+                }
+                label='Group by Category'
+              />
+            </Box>
+          )}
         </Box>
 
         {/* Products Display */}
@@ -1375,7 +1049,7 @@ const Products: React.FC<SearchBarProps> = ({
                     getSellingPrice={getSellingPrice}
                     handleImageClick={handleImageClick}
                     handleQuantityChange={handleQuantityChange}
-                    handleAddOrRemove={(prod) =>
+                    handleAddOrRemove={(prod: any) =>
                       selectedProducts.some((p) => p._id === prod._id)
                         ? handleRemoveProduct(prod._id)
                         : handleAddProducts(prod)
@@ -1478,7 +1152,7 @@ const Products: React.FC<SearchBarProps> = ({
                         getSellingPrice={getSellingPrice}
                         handleImageClick={handleImageClick}
                         handleQuantityChange={handleQuantityChange}
-                        handleAddOrRemove={(prod) =>
+                        handleAddOrRemove={(prod: any) =>
                           selectedProducts.some((p) => p._id === prod._id)
                             ? handleRemoveProduct(prod._id)
                             : handleAddProducts(prod)
@@ -1560,192 +1234,23 @@ const Products: React.FC<SearchBarProps> = ({
       </IconButton>
 
       {/* Cart Drawer */}
-      <Drawer
-        anchor='right'
+      <CartDrawer
         open={cartDrawerOpen}
         onClose={() => setCartDrawerOpen(false)}
-        ModalProps={{ keepMounted: true }}
-        PaperProps={{
-          sx: {
-            width: isMobile || isTablet ? '100%' : 450,
-            display: 'flex',
-            flexDirection: 'column',
-            height: '100%',
-          },
+        selectedProducts={selectedProducts}
+        getSellingPrice={getSellingPrice}
+        handleImageClick={handleImageClick}
+        handleQuantityChange={handleQuantityChange}
+        handleRemoveProduct={handleRemoveProduct}
+        totals={totals}
+        onCheckout={() => {
+          setCartDrawerOpen(false);
+          onCheckout();
         }}
-      >
-        <Box
-          sx={{
-            padding: 2,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            borderBottom: `1px solid ${theme.palette.divider}`,
-          }}
-        >
-          <Typography variant='h6' sx={{ fontWeight: 'bold' }}>
-            Cart
-          </Typography>
-          <IconButton onClick={() => setCartDrawerOpen(false)}>
-            <CloseIcon />
-          </IconButton>
-        </Box>
-        <Box sx={{ flex: 1, overflowY: 'auto' }}>
-          {selectedProducts.length === 0 ? (
-            <Typography variant='body1' align='center' sx={{ mt: 4 }}>
-              Your cart is empty.
-            </Typography>
-          ) : (
-            <Grid container paddingX={2} gap={2}>
-              {selectedProducts.map((product: any) => {
-                const productId = product._id;
-                const sellingPrice = getSellingPrice(product);
-                const itemTotal = parseFloat(
-                  (sellingPrice * product.quantity).toFixed(2)
-                );
-                const isDisabled = ['accepted', 'declined'].includes(
-                  order?.status?.toLowerCase() as string
-                );
-                return (
-                  <Grid
-                    item
-                    xs={12}
-                    key={productId}
-                    sx={{
-                      border: `1px solid ${theme.palette.divider}`,
-                      borderRadius: 2,
-                      padding: 2,
-                      boxShadow: 1,
-                      backgroundColor: theme.palette.background.paper,
-                    }}
-                  >
-                    <Grid
-                      container
-                      spacing={2}
-                      alignItems={isMobile || isTablet ? 'center' : 'flex-end'}
-                    >
-                      <Grid item xs={12} sm={8}>
-                        <Box
-                          display='flex'
-                          justifyContent='center'
-                          alignItems='center'
-                        >
-                          <img
-                            src={product.image_url || '/placeholder.png'}
-                            alt={product.name}
-                            loading='lazy'
-                            style={{
-                              width: isMobile || isTablet ? '200px' : '150px',
-                              height: 'fit-content',
-                              borderRadius: '4px',
-                              objectFit: 'cover',
-                              cursor: 'pointer',
-                            }}
-                            onClick={() =>
-                              handleImageClick(
-                                product.image_url || '/placeholder.png'
-                              )
-                            }
-                          />
-                        </Box>
-                        <Typography
-                          variant='subtitle1'
-                          sx={{ fontWeight: 'bold' }}
-                        >
-                          {product.name}
-                        </Typography>
-                        <Box sx={{ mt: 1 }}>
-                          <QuantitySelector
-                            quantity={product.quantity}
-                            max={product.stock}
-                            onChange={(newQuantity) =>
-                              handleQuantityChange(productId, newQuantity)
-                            }
-                            disabled={isDisabled}
-                          />
-                        </Box>
-                        <Typography
-                          variant='body2'
-                          color='text.secondary'
-                          sx={{ mt: 1 }}
-                        >
-                          Price: ₹{sellingPrice.toFixed(2)}
-                        </Typography>
-                      </Grid>
-                      <Grid
-                        item
-                        xs={12}
-                        sm={4}
-                        container
-                        direction={isMobile || isTablet ? 'row' : 'column'}
-                        justifyContent={
-                          isMobile || isTablet ? 'space-between' : 'flex-end'
-                        }
-                        alignItems={
-                          isMobile || isTablet ? 'center' : 'flex-end'
-                        }
-                        sx={{ mt: isMobile || isTablet ? 0 : 1 }}
-                      >
-                        <Typography
-                          variant='subtitle1'
-                          sx={{
-                            fontWeight: 'bold',
-                            mb: isMobile || isTablet ? 0 : 1,
-                          }}
-                        >
-                          ₹{itemTotal.toFixed(2)}
-                        </Typography>
-                        <IconButton
-                          size='small'
-                          color='error'
-                          onClick={() => handleRemoveProduct(productId)}
-                          aria-label={`Remove ${product.name} from cart`}
-                        >
-                          <RemoveShoppingCart />
-                        </IconButton>
-                      </Grid>
-                    </Grid>
-                  </Grid>
-                );
-              })}
-            </Grid>
-          )}
-        </Box>
-        <Divider />
-        <Box sx={{ padding: 2 }}>
-          {selectedProducts.length > 0 && (
-            <>
-              <Box sx={{ mb: 1 }}>
-                <Typography variant='subtitle1' sx={{ fontWeight: 'bold' }}>
-                  Total GST ({customer?.cf_in_ex || 'Exclusive'}): ₹
-                  {totals.totalGST.toFixed(2)}
-                </Typography>
-                <Typography variant='h6' sx={{ fontWeight: 'bold', mt: 1 }}>
-                  Total Amount: ₹{totals.totalAmount.toFixed(2)}
-                </Typography>
-              </Box>
-              <Button
-                variant='contained'
-                color='primary'
-                fullWidth
-                sx={{ mt: 2 }}
-                onClick={() => {
-                  setCartDrawerOpen(false);
-                  onCheckout();
-                }}
-                disabled={
-                  selectedProducts.length === 0 ||
-                  !['draft', 'sent'].includes(
-                    order?.status?.toLowerCase() as string
-                  )
-                }
-              >
-                Checkout
-              </Button>
-            </>
-          )}
-        </Box>
-      </Drawer>
+        orderStatus={order?.status}
+        customer={customer}
+        isMobile={isMobile}
+      />
 
       {/* Image Popup Dialog */}
       <ImagePopupDialog

@@ -18,6 +18,9 @@ import {
   TableCell,
   TableBody,
   IconButton,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../../util/axios';
@@ -47,6 +50,8 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   const [editInEx, setEditInEx] = useState('');
   const [assignedSalesPeople, setAssignedSalesPeople] = useState<string[]>([]);
   const [salesPeople, setSalesPeople] = useState<string[]>([]);
+  const [showAddresses, setShowAddresses] = useState(false); // New state for toggling addresses
+
   // Local state for special margins (copied from prop)
   const [localSpecialMargins, setLocalSpecialMargins] = useState<any[]>(
     specialMarginProducts
@@ -258,7 +263,34 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
               </Select>
             </FormControl>
           </Box>
-
+          {customer.addresses.length > 0 && (
+            <Box sx={{ mt: 2, mb: 2 }}>
+              <Button
+                variant='outlined'
+                onClick={() => setShowAddresses((prev) => !prev)}
+              >
+                {showAddresses ? 'Hide Addresses' : 'Show Addresses'}
+              </Button>
+              {showAddresses && (
+                <List>
+                  {customer.addresses.map((a: any, i: number) => (
+                    <ListItem key={a.address_id}>
+                      <ListItemText
+                        primary={`Address ${i + 1}: ${a.attention}`}
+                        secondary={
+                          <>
+                            {a.address}, {a.street2 && `${a.street2}, `}
+                            {a.city}, {a.state} - {a.zip} <br />
+                            {a.country} ({a.country_code})
+                          </>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </Box>
+          )}
           <Box sx={{ mt: 2, mb: 2 }}>
             <Typography variant='h5' mb={2}>
               Special Margins
@@ -374,7 +406,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
             )}
           </Box>
 
-          <Box sx={{ mt: 3, mb: 3, display: 'flex', gap: 2 }}>
+          <Box sx={{ mt: 3, mb: 3, display: ' flex', gap: 2 }}>
             <Button variant='contained' onClick={handleSave}>
               Save Changes
             </Button>
