@@ -296,8 +296,8 @@ const OrderDetails = () => {
         </Typography>
         <List
           sx={{
-            maxHeight: isMobile ? 'none' : '300px',
-            overflowY: isMobile ? 'visible' : 'auto',
+            maxHeight: 'none',
+            overflowY: 'visible',
           }}
         >
           {orderData.products?.map((item: any, index: number) => (
