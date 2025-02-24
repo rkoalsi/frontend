@@ -28,8 +28,6 @@ import {
   useMediaQuery,
   useTheme,
   Badge,
-  Drawer,
-  Divider,
   Grid,
   FormControl,
   InputLabel,
@@ -38,6 +36,7 @@ import {
   Menu,
   Checkbox,
   FormControlLabel,
+  Switch,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -129,6 +128,9 @@ const Products: React.FC<ProductsProps> = ({
     []
   );
   const [groupByCategory, setGroupByCategory] = useState<boolean>(false);
+  const [cataloguePage, setCataloguePage]: any = useState();
+  const [cataloguePages, setCataloguePages] = useState([]);
+  const [catalogueEnabled, setCatalogueEnabled] = useState<boolean>(false);
 
   const isFetching = useRef<{ [key: string]: boolean }>({});
 
@@ -153,7 +155,24 @@ const Products: React.FC<ProductsProps> = ({
       debouncedError.cancel();
     };
   }, [debouncedSuccess, debouncedWarn, debouncedError]);
-
+  useEffect(() => {
+    if (catalogueEnabled && activeBrand) {
+      axios
+        .get(
+          `${process.env.api_url}/products/catalogue_pages?brand=${activeBrand}`
+        )
+        .then((response) => {
+          const pages = response.data.catalogue_pages;
+          setCataloguePages(pages);
+          if (pages && pages.length > 0) {
+            setCataloguePage(pages[0]); // reset to first available page
+          } else {
+            setCataloguePage(undefined);
+          }
+        })
+        .catch((error) => debouncedError('Failed to fetch catalogue pages.'));
+    }
+  }, [catalogueEnabled, activeBrand]);
   // ------------------ Price Calculation ------------------
   const getSellingPrice = useCallback(
     (product: SearchResult): number => {
@@ -251,6 +270,9 @@ const Products: React.FC<ProductsProps> = ({
             page,
             per_page: 75,
             sort: sortToUse,
+            // Pass catalogue_page only in catalogue mode:
+            catalogue_page:
+              sortToUse === 'catalogue' ? cataloguePage : undefined,
           },
           signal: controller.signal,
         });
@@ -271,7 +293,7 @@ const Products: React.FC<ProductsProps> = ({
       }
       return () => controller.abort();
     },
-    [sortOrder, debouncedError]
+    [sortOrder, debouncedError, cataloguePage]
   );
 
   const fetchProductCounts = useCallback(async () => {
@@ -597,6 +619,10 @@ const Products: React.FC<ProductsProps> = ({
     handleSortChange({ target: { value } });
     setAnchorEl(null);
   };
+  const handleCataloguePage = (e: any) => {
+    const value = e.target.value;
+    setCataloguePage(parseInt(value));
+  };
 
   // ------------------ Infinite Scroll ------------------
   const handleScroll = useCallback(() => {
@@ -663,6 +689,26 @@ const Products: React.FC<ProductsProps> = ({
       fetchCategories(activeBrand);
     }
   }, [activeBrand, categoriesByBrand, fetchCategories, groupByCategory]);
+  useEffect(() => {
+    if (sortOrder === 'catalogue') {
+      const key = activeBrand ? `${activeBrand}-catalogue` : 'catalogue';
+      // Reset the product list and pagination for this key
+      setPaginationState((prev) => ({
+        ...prev,
+        [key]: { page: 1, hasMore: true },
+      }));
+      setProductsByBrandCategory((prev) => ({ ...prev, [key]: [] }));
+      // Re-fetch with page set to 1 and include the updated catalogue_page param.
+      fetchProducts(
+        key,
+        activeBrand,
+        undefined,
+        searchTerm.trim() !== '' ? searchTerm : undefined,
+        1,
+        sortOrder
+      );
+    }
+  }, [cataloguePage, sortOrder, activeBrand, searchTerm, fetchProducts]);
 
   const productsKey = useMemo(() => {
     if (searchTerm.trim() !== '') {
@@ -953,7 +999,16 @@ const Products: React.FC<ProductsProps> = ({
             </Box>
           )}
           {isMobile || isTablet ? (
-            <Box sx={{ mt: 2, mb: 2, width: '100%' }}>
+            <Box
+              sx={{
+                mt: 2,
+                mb: 2,
+                width: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}
+            >
               <FormControl fullWidth variant='outlined'>
                 <InputLabel id='sort-select-label'>Sort By</InputLabel>
                 <Select
@@ -969,12 +1024,66 @@ const Products: React.FC<ProductsProps> = ({
                   <MenuItem value='price_desc'>Price: High to Low</MenuItem>
                 </Select>
               </FormControl>
+              {sortOrder === 'catalogue' && (
+                <>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={catalogueEnabled}
+                        onChange={(e: any) => {
+                          const value = e.target.checked;
+                          setCatalogueEnabled(value);
+                          if (!value) {
+                            setCataloguePage(undefined);
+                          }
+                        }}
+                        color='primary'
+                      />
+                    }
+                    label='Enable Catalogue Page Input'
+                  />
+                  {catalogueEnabled && (
+                    <FormControl fullWidth variant='outlined' sx={{ mt: 2 }}>
+                      <Autocomplete
+                        freeSolo
+                        options={cataloguePages.map((page: any) =>
+                          page.toString()
+                        )}
+                        value={
+                          cataloguePage !== undefined
+                            ? cataloguePage.toString()
+                            : ''
+                        }
+                        onChange={(event, newValue: any) => {
+                          if (newValue && newValue.trim() !== '') {
+                            setCataloguePage(parseInt(newValue));
+                          } else {
+                            setCataloguePage(undefined);
+                          }
+                        }}
+                        renderInput={(params) => (
+                          <TextField {...params} label='Catalogue Page' />
+                        )}
+                      />
+                    </FormControl>
+                  )}
+                </>
+              )}
             </Box>
           ) : (
             !searchTerm.trim() &&
             activeBrand &&
             (categoriesByBrand[activeBrand] || []).length > 0 && (
-              <Box sx={{ mt: 2, mb: 2 }}>
+              <Box
+                sx={{
+                  mt: 2,
+                  mb: 2,
+                  flexDirection: 'row',
+                  display: 'flex',
+                  gap: '24px',
+                  alignItems: 'flex-start',
+                }}
+              >
                 <IconButton
                   onClick={handleSortIconClick}
                   style={{ display: 'flex', flexDirection: 'column' }}
@@ -1002,6 +1111,51 @@ const Products: React.FC<ProductsProps> = ({
                     Price: High to Low
                   </MenuItem>
                 </Menu>
+                {sortOrder === 'catalogue' && (
+                  <>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={catalogueEnabled}
+                          onChange={(e: any) => {
+                            const value = e.target.checked;
+                            setCatalogueEnabled(value);
+                            if (!value) {
+                              setCataloguePage(undefined);
+                            }
+                          }}
+                          color='primary'
+                        />
+                      }
+                      label='Enable Catalogue Page Input'
+                    />
+                    {catalogueEnabled && (
+                      <FormControl fullWidth variant='outlined' sx={{ mt: 2 }}>
+                        <Autocomplete
+                          freeSolo
+                          options={cataloguePages.map((page: any) =>
+                            page.toString()
+                          )}
+                          value={
+                            cataloguePage !== undefined
+                              ? cataloguePage.toString()
+                              : ''
+                          }
+                          onChange={(event, newValue: any) => {
+                            if (newValue && newValue.trim() !== '') {
+                              setCataloguePage(parseInt(newValue));
+                            } else {
+                              setCataloguePage(undefined);
+                            }
+                          }}
+                          renderInput={(params) => (
+                            <TextField {...params} label='Catalogue Page' />
+                          )}
+                        />
+                      </FormControl>
+                    )}
+                  </>
+                )}
               </Box>
             )
           )}
@@ -1061,7 +1215,11 @@ const Products: React.FC<ProductsProps> = ({
             ) : (
               <Box mt={2}>
                 <Typography variant='body1' align='center'>
-                  {loading ? 'Loading products...' : 'No products found.'}
+                  {loading
+                    ? 'Loading products...'
+                    : sortOrder === 'catalogue' && cataloguePage !== ''
+                    ? 'No products found on this catalogue page'
+                    : 'No products found.'}
                 </Typography>
               </Box>
             )}
