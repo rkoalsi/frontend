@@ -155,8 +155,14 @@ function DailyVisits() {
                     {new Date(visit.created_at).toLocaleDateString()}
                   </Typography>
                   {/* Display the plan */}
-                  <Typography variant='body1' fontWeight='bold' color='black'>
-                    Plan: {visit.plan}
+                  Plan:
+                  <Typography
+                    variant='body1'
+                    fontWeight='bold'
+                    color='black'
+                    style={{ whiteSpace: 'pre-line' }}
+                  >
+                    {visit.plan}
                   </Typography>
                   {/* If available, display the selfie */}
                   {visit.selfie && (
