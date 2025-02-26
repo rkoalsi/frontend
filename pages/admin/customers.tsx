@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Paper, CircularProgress, Typography } from '@mui/material';
+import {
+  Box,
+  Paper,
+  CircularProgress,
+  Typography,
+  Button,
+} from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import CustomerTable from '../../src/components/admin/customers/CustomerTable';
@@ -173,7 +179,35 @@ const Customers = () => {
       toast.error('Failed to refresh special margins.');
     }
   };
+  const handleDownloadReport = async () => {
+    try {
+      const params = {
+        name: debouncedSearchQuery,
+        status: filterOptions.status,
+        sales_person: filterOptions.sales_person.join(','),
+        unassigned: filterOptions.unassigned,
+        gst_type: filterOptions.gst_type,
+        sort: 'asc', // or 'desc' as needed
+      };
 
+      const response = await axiosInstance.get('/admin/customers/report', {
+        params,
+        responseType: 'blob', // important for binary data!
+      });
+
+      // Create a URL and trigger a download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'customers_report.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error downloading report.');
+    }
+  };
   return (
     <Box sx={{ padding: 3 }}>
       <Paper sx={{ padding: 4, borderRadius: 4, backgroundColor: 'white' }}>
@@ -186,7 +220,16 @@ const Customers = () => {
           <Typography variant='h4' sx={{ fontWeight: 'bold' }}>
             All Customers
           </Typography>
-          <FilterAlt onClick={() => setOpenFilterDrawer(true)} />
+          <Box display='flex' alignItems='center' gap={2}>
+            <Button
+              variant='contained'
+              color='primary'
+              onClick={handleDownloadReport}
+            >
+              Download XLSX
+            </Button>
+            <FilterAlt onClick={() => setOpenFilterDrawer(true)} />
+          </Box>
         </Box>
 
         {loading ? (

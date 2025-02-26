@@ -152,7 +152,9 @@ const DailyVisits = () => {
                     <TableBody>
                       {dailyVisits.map((visit) => (
                         <TableRow key={visit._id}>
-                          <TableCell>{visit.plan}</TableCell>
+                          <TableCell style={{ whiteSpace: 'pre-line' }}>
+                            {visit.plan}
+                          </TableCell>
                           <TableCell>
                             {visit.created_by && visit.created_by.name
                               ? visit.created_by.name
@@ -260,8 +262,13 @@ const DailyVisits = () => {
               <Typography variant='h5' gutterBottom>
                 Daily Visit Details
               </Typography>
-              <Typography variant='subtitle1' gutterBottom>
-                <strong>Plan:</strong> {selectedVisit.plan}
+              <strong>Plan:</strong>
+              <Typography
+                variant='subtitle1'
+                gutterBottom
+                style={{ whiteSpace: 'pre-line', marginLeft: 32 }}
+              >
+                {selectedVisit.plan}
               </Typography>
               <Typography variant='subtitle1' gutterBottom>
                 <strong>Created By:</strong>{' '}

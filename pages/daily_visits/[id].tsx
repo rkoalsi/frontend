@@ -59,6 +59,29 @@ const DailyVisitDetail = () => {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
+  const [mainPlanDialogOpen, setMainPlanDialogOpen] = useState(false);
+  const [mainPlanText, setMainPlanText] = useState('');
+
+  const handleSubmitMainPlanUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const formData = new FormData();
+      formData.append('uploaded_by', user?.data?._id);
+      formData.append('plan', mainPlanText);
+      // Note: We do not include update_text if only editing the main plan.
+      const response = await axios.put(
+        `${process.env.api_url}/daily_visits/${id}`,
+        formData
+      );
+      toast.success(response.data.message);
+      setDailyVisit(response.data.daily_visit);
+      setMainPlanDialogOpen(false);
+    } catch (error) {
+      console.error(error);
+      toast.error('Error updating daily visit plan');
+    }
+  };
+
   useEffect(() => {
     if (id) {
       fetchDailyVisit();
@@ -178,8 +201,20 @@ const DailyVisitDetail = () => {
           ).toLocaleString()}`}
         />
         <CardContent>
-          <Typography variant='h6'>Plan:</Typography>
-          <Typography variant='body1' sx={{ mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <Typography variant='h6'>Plan:</Typography>
+            <IconButton
+              onClick={() => {
+                setMainPlanText(dailyVisit.plan);
+                setMainPlanDialogOpen(true);
+              }}
+              size='small'
+              sx={{ ml: 1 }}
+            >
+              <EditIcon fontSize='inherit' />
+            </IconButton>
+          </Box>
+          <Typography variant='body1' sx={{ mb: 2, whiteSpace: 'pre-line' }}>
             {dailyVisit.plan}
           </Typography>
           {dailyVisit.selfie && (
@@ -340,6 +375,40 @@ const DailyVisitDetail = () => {
           </form>
         </DialogContent>
       </Dialog>
+      <Dialog
+        open={mainPlanDialogOpen}
+        onClose={() => setMainPlanDialogOpen(false)}
+        fullWidth
+        maxWidth='sm'
+      >
+        <DialogTitle>Edit Daily Visit Plan</DialogTitle>
+        <DialogContent>
+          <form onSubmit={handleSubmitMainPlanUpdate}>
+            <TextField
+              label='Edit Plan'
+              variant='outlined'
+              fullWidth
+              multiline
+              rows={4}
+              value={mainPlanText}
+              onChange={(e) => setMainPlanText(e.target.value)}
+              sx={{ mb: 2, mt: 1 }}
+            />
+            <DialogActions>
+              <Button
+                onClick={() => setMainPlanDialogOpen(false)}
+                color='secondary'
+              >
+                Cancel
+              </Button>
+              <Button type='submit' variant='contained' color='primary'>
+                Update Plan
+              </Button>
+            </DialogActions>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <ImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}
