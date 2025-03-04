@@ -299,7 +299,10 @@ const DailyVisits = () => {
                 {selectedVisit.updates && selectedVisit.updates.length > 0 ? (
                   selectedVisit.updates.map((update: any) => (
                     <Paper key={update._id} sx={{ p: 2, my: 1 }}>
-                      <Typography variant='subtitle1'>
+                      <Typography
+                        variant='subtitle1'
+                        style={{ whiteSpace: 'pre-line' }}
+                      >
                         <strong>Text:</strong> {update.text}
                       </Typography>
                       <Typography variant='subtitle2'>
