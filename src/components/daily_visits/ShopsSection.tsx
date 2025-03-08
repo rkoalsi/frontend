@@ -9,10 +9,12 @@ import {
   Chip,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
+import { Phishing } from '@mui/icons-material';
 
 interface ShopsSectionProps {
   shops: any[];
   onEditShops: () => void;
+  onHookUpdate: any;
 }
 
 // Helper to format the address object
@@ -39,7 +41,11 @@ const getCustomerName = (customer: any) => {
   return customer;
 };
 
-const ShopsSection = ({ shops, onEditShops }: ShopsSectionProps) => {
+const ShopsSection = ({
+  shops,
+  onEditShops,
+  onHookUpdate,
+}: ShopsSectionProps) => {
   return (
     <Box sx={{ mb: 3 }}>
       <Box
@@ -97,6 +103,17 @@ const ShopsSection = ({ shops, onEditShops }: ShopsSectionProps) => {
                       ? shop?.customer_name
                       : getCustomerName(shop.selectedCustomer)}
                   </Typography>
+                  {!shop.potential_customer && (
+                    <Tooltip title='Set Hook'>
+                      <IconButton
+                        onClick={() => onHookUpdate(shop)}
+                        size='small'
+                        color='primary'
+                      >
+                        <Phishing />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                   {shop?.potential_customer && (
                     <Chip
                       size='small'
@@ -114,6 +131,20 @@ const ShopsSection = ({ shops, onEditShops }: ShopsSectionProps) => {
                     ? shop?.potential_customer_address
                     : formatAddress(shop.address) || 'No address provided'}
                 </Typography>
+                {shop?.potential_customer && (
+                  <>
+                    <Typography
+                      variant='body2'
+                      color='text.secondary'
+                      gutterBottom
+                    >
+                      <strong>Tier:</strong>
+                    </Typography>
+                    <Typography variant='body2' paragraph>
+                      {shop?.potential_customer_tier}
+                    </Typography>
+                  </>
+                )}
                 <Typography variant='body2' color='text.secondary' gutterBottom>
                   <strong>Reason:</strong>
                 </Typography>

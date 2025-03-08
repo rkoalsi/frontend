@@ -15,7 +15,7 @@ interface SearchBarProps {
   onChange: (value: SearchResult | null) => void;
   value?: any;
   disabled?: boolean;
-  initialValue?: SearchResult | null;
+  initialValue?: any;
   onChangeReference?: (value: any | null) => void;
   reference?: any;
   ref_no?: boolean;
@@ -40,6 +40,7 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
     initialValue ? initialValue.contact_name : ''
   );
 
+  // When an initial value is provided, ensure internal state is in sync.
   useEffect(() => {
     if (
       initialValue &&
@@ -78,7 +79,13 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
   };
 
   return (
-    <Box display='flex' flexDirection='column' width='100%' gap='16px'>
+    <Box
+      display='flex'
+      flexDirection='column'
+      width='100%'
+      gap={2}
+      sx={{ maxWidth: 500, mx: 'auto' }}
+    >
       <Autocomplete
         disabled={disabled}
         freeSolo
@@ -90,7 +97,6 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
         value={selectedOption}
         inputValue={inputValue}
         onInputChange={(event, newInputValue, reason) => {
-          // Prevent unnecessary state updates
           if (newInputValue !== inputValue) {
             setInputValue(newInputValue);
             handleSearch(newInputValue);
@@ -102,6 +108,7 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
             {...params}
             label={label}
             variant='standard'
+            fullWidth
             InputProps={{
               ...params.InputProps,
               endAdornment: (
@@ -125,6 +132,8 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
             label='Reference Number'
             onChange={onChangeReference}
             value={reference || ''}
+            fullWidth
+            variant='standard'
           />
         )}
     </Box>

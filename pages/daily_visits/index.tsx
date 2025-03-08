@@ -163,6 +163,16 @@ const ShopCard = memo(function ShopCard({
               }
             />
           )}
+          {shop.potentialCustomer && (
+            <TextField
+              label='Enter Customer Tier'
+              fullWidth
+              value={shop.potential_customer_tier || ''}
+              onChange={(e) =>
+                updateShop(index, 'potential_customer_tier', e.target.value)
+              }
+            />
+          )}
           {/* Render address component if potential customer OR when a customer is selected */}
           {shop.selectedCustomer && (
             <AddressSelection
@@ -528,27 +538,23 @@ function DailyVisits() {
       }
     }
     const formData = new FormData();
-    const formattedShops = shops.map((shop: any) => ({
-      customer_id:
-        !shop.potentialCustomer &&
-        typeof shop.selectedCustomer === 'object' &&
-        shop.selectedCustomer._id
-          ? shop.selectedCustomer._id
-          : undefined,
-      customer_name:
-        !shop.potentialCustomer && typeof shop.selectedCustomer === 'object'
-          ? shop.selectedCustomer.contact_name || shop.selectedCustomer.name
-          : undefined,
-      potential_customer: shop.potentialCustomer ?? null,
-      potential_customer_name: shop.potentialCustomer
-        ? shop.potential_customer_name
-        : null,
-      potential_customer_address: shop.potentialCustomer
-        ? shop.potential_customer_address
-        : null,
-      address: shop.address,
-      reason: shop.reason,
-    }));
+    const formattedShops = shops.map((shop: any) => {
+      let body: any = {
+        address: shop.address,
+        reason: shop.reason,
+      };
+      if (shop.potentialCustomer) {
+        delete body['address'];
+        body['potential_customer'] = shop.potentialCustomer;
+        body['potential_customer_name'] = shop.potential_customer_name;
+        body['potential_customer_address'] = shop.potential_customer_address;
+        body['potential_customer_tier'] = shop.potential_customer_tier;
+      } else {
+        body['customer_id'] = shop.selectedCustomer._id;
+        body['customer_name'] = shop.selectedCustomer.contact_name;
+      }
+      return body;
+    });
     formData.append('shops', JSON.stringify(formattedShops));
     formData.append('created_by', user?.data?._id);
 

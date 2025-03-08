@@ -17,6 +17,7 @@ import {
   History,
   MenuBook,
   Payment,
+  Phishing,
   PlayCircle,
   ShoppingCart,
 } from '@mui/icons-material';
@@ -38,7 +39,7 @@ const StyledButton = styled(Button)(({ theme }) => ({
   textTransform: 'none',
   fontSize: '1.1rem',
   fontWeight: 500,
-  marginBottom: theme.spacing(2),
+  marginBottom: theme.spacing(1.5),
   transition: 'all 0.3s ease-in-out',
   backgroundColor: 'rgba(255, 255, 255, 0.06)',
   color: theme.palette.common.white,
@@ -119,6 +120,12 @@ const menuItems = [
     color: '#4dd0e1',
     action: 'dailyVisits',
   },
+  {
+    icon: <Phishing />,
+    text: 'Set Customer Hooks',
+    color: '#7c4dff',
+    action: 'hooks',
+  },
 ];
 
 const Home = () => {
@@ -163,6 +170,9 @@ const Home = () => {
         break;
       case 'dailyVisits':
         router.push('/daily_visits');
+        break;
+      case 'hooks':
+        router.push('/hooks');
         break;
       default:
         break;

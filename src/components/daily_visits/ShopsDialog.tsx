@@ -88,7 +88,10 @@ const ShopsDialog = ({
               potential_customer_address: shop.potential_customer
                 ? shop.potential_customer_address
                 : null,
-              address: shop.address || {},
+              potential_customer_tier: shop.potential_customer
+                ? shop.potential_customer_tier
+                : null,
+              address: !shop.potential_customer ? shop.address : {},
               reason: shop.reason || '',
               editing: false,
               customer_id: shop.customer_id || null,
@@ -179,6 +182,7 @@ const ShopsDialog = ({
         potential_customer: shop.potential_customer,
         potential_customer_name: shop.potential_customer_name,
         potential_customer_address: shop.potential_customer_address,
+        potential_customer_tier: shop.potential_customer_tier,
         address: shop.address,
         reason: shop.reason,
       }));
@@ -359,6 +363,18 @@ const ShopsDialog = ({
                             )
                           }
                         />
+                        <TextField
+                          label='Enter Customer Tier'
+                          fullWidth
+                          value={shop.potential_customer_tier || ''}
+                          onChange={(e) =>
+                            updateShop(
+                              index,
+                              'potential_customer_tier',
+                              e.target.value
+                            )
+                          }
+                        />
                       </>
                     ) : (
                       <>
@@ -429,6 +445,20 @@ const ShopsDialog = ({
                         ? shop.address.address
                         : 'No address provided'}
                     </Typography>
+                    {shop?.potential_customer && (
+                      <>
+                        <Typography
+                          variant='body2'
+                          color='text.secondary'
+                          gutterBottom
+                        >
+                          <strong>Tier:</strong>
+                        </Typography>
+                        <Typography variant='body2' paragraph>
+                          {shop.potential_customer_tier}
+                        </Typography>
+                      </>
+                    )}
                     <Typography
                       variant='body2'
                       color='text.secondary'

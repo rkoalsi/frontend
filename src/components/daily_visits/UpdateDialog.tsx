@@ -66,6 +66,12 @@ const UpdateDialog = ({
           customer_name: updateData.customer_name,
         });
       }
+      if (updateData.potential_customer) {
+        setShop({
+          potential_customer: updateData.potential_customer,
+          potential_customer_name: updateData.potential_customer_name,
+        });
+      }
     } else {
       setUpdateText('');
       setExistingImages([]);
@@ -103,11 +109,19 @@ const UpdateDialog = ({
     setSubmitting(true);
     const formData = new FormData();
     // Include the shop's ID so the backend can remove it
-    formData.append('potential_customer', shop.potential_customer);
-    formData.append('potential_customer_name', shop.potential_customer_name);
-    // Send both customer_id and customer_name
-    formData.append('customer_id', shop.customer_id);
-    formData.append('customer_name', shop.customer_name);
+    if (shop.potential_customer) {
+      formData.append('potential_customer', shop.potential_customer);
+      formData.append('potential_customer_name', shop.potential_customer_name);
+      formData.append(
+        'potential_customer_address',
+        shop.potential_customer_address
+      );
+      formData.append('potential_customer_tier', shop.potential_customer_tier);
+    } else {
+      // Send both customer_id and customer_name
+      formData.append('customer_id', shop.customer_id);
+      formData.append('customer_name', shop.customer_name);
+    }
     formData.append('uploaded_by', user?.data?._id);
     formData.append('update_text', updateText);
     if (updateData?._id) {
@@ -167,7 +181,18 @@ const UpdateDialog = ({
             >
               {updateData
                 ? dailyVisit.shops?.map((shop: any) => (
-                    <MenuItem key={shop.customer_id} value={shop.customer_id}>
+                    <MenuItem
+                      key={
+                        shop.potential_customer
+                          ? shop.potential_customer_name
+                          : shop.customer_id
+                      }
+                      value={
+                        shop.potential_customer
+                          ? shop.potential_customer_name
+                          : shop.customer_id
+                      }
+                    >
                       {shop.potential_customer
                         ? shop.potential_customer_name
                         : shop.customer_name}

@@ -11,12 +11,14 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import { Phishing } from '@mui/icons-material';
 
 interface UpdateSectionProps {
   updates: any[];
   onAddUpdate: () => void;
   onEditUpdate: (update: any) => void;
   onDeleteUpdate: (update: any) => void;
+  onHookUpdate: (update: any) => void;
   onClickImage: any;
 }
 
@@ -24,6 +26,7 @@ const UpdateSection = ({
   updates,
   onAddUpdate,
   onEditUpdate,
+  onHookUpdate,
   onDeleteUpdate,
   onClickImage,
 }: UpdateSectionProps) => {
@@ -80,6 +83,17 @@ const UpdateSection = ({
                 )}
               </Typography>
               <Box>
+                {!upd.potential_customer && (
+                  <Tooltip title='Set Hook'>
+                    <IconButton
+                      onClick={() => onHookUpdate(upd)}
+                      size='small'
+                      color='primary'
+                    >
+                      <Phishing />
+                    </IconButton>
+                  </Tooltip>
+                )}
                 <Tooltip title='Edit Update'>
                   <IconButton
                     onClick={() => onEditUpdate(upd)}
@@ -100,7 +114,6 @@ const UpdateSection = ({
                 </Tooltip>
               </Box>
             </Box>
-            {console.log(upd)}
             {/* Display customer information if available */}
             {upd.potential_customer ? (
               <Typography variant='subtitle2' sx={{ mb: 1 }}>

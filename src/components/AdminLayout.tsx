@@ -28,6 +28,10 @@ import {
   VideoLibrary,
   Campaign,
   Checklist,
+  Phishing,
+  Shop,
+  Category,
+  Insights,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -91,6 +95,24 @@ const menuItems = [
     text: 'Daily Visits',
     icon: <Checklist />,
     path: '/admin/daily_visits',
+    allowedRoles: ['admin', 'sales_admin'],
+  },
+  {
+    text: 'Hooks Categories',
+    icon: <Category />,
+    path: '/admin/hooks_categories',
+    allowedRoles: ['admin', 'sales_admin'],
+  },
+  {
+    text: 'Shop Hooks',
+    icon: <Phishing />,
+    path: '/admin/hooks',
+    allowedRoles: ['admin', 'sales_admin'],
+  },
+  {
+    text: 'Potential Customers',
+    icon: <Insights />,
+    path: '/admin/potential_customers',
     allowedRoles: ['admin', 'sales_admin'],
   },
 ];

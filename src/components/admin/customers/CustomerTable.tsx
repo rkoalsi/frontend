@@ -57,6 +57,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
               <TableCell>Name</TableCell>
               <TableCell>Sales Person</TableCell>
               <TableCell>Type</TableCell>
+              <TableCell>Tier</TableCell>
               <TableCell>Margin</TableCell>
               <TableCell>GST Treatment</TableCell>
               <TableCell>Status</TableCell>
@@ -79,6 +80,9 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
                     {cust.customer_sub_type
                       ? capitalize(cust.customer_sub_type)
                       : 'N/A'}
+                  </TableCell>
+                  <TableCell>
+                    {String(cust?.cf_tier || '-').toUpperCase()}
                   </TableCell>
                   <TableCell>{cust.cf_margin || '40%'}</TableCell>
                   <TableCell>{cust.cf_in_ex || 'Exclusive'}</TableCell>

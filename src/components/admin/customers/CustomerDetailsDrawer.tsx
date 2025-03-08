@@ -27,6 +27,7 @@ import axiosInstance from '../../../util/axios';
 import capitalize from '../../../util/capitalize';
 import { Delete } from '@mui/icons-material';
 
+const TIERS = ['A+', 'A', 'B', 'C', 'D'];
 export interface CustomerDetailsDrawerProps {
   open: boolean;
   onClose: () => void;
@@ -47,7 +48,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   handleDeleteAllSpecialMargins,
 }) => {
   const [editMargin, setEditMargin] = useState('');
+  const [editTier, setEditTier] = useState('');
   const [editInEx, setEditInEx] = useState('');
+  const [status, setStatus] = useState('');
   const [assignedSalesPeople, setAssignedSalesPeople] = useState<string[]>([]);
   const [salesPeople, setSalesPeople] = useState<string[]>([]);
   const [showAddresses, setShowAddresses] = useState(false); // New state for toggling addresses
@@ -75,6 +78,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
       margin = margin.endsWith('%') ? margin.slice(0, -1) : margin;
       setEditMargin(margin);
       setEditInEx(customer.cf_in_ex || 'Exclusive');
+      setEditTier(String(customer.cf_tier).toUpperCase() || '');
+
+      setStatus(String(customer.status) || '');
       const arrayOfCodes =
         typeof customer.cf_sales_person === 'string'
           ? customer.cf_sales_person.split(',').map((s: string) => s.trim())
@@ -96,6 +102,15 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
     const updatedFields: any = {};
     const originalMargin = (customer.cf_margin || '40%').trim();
     const newMargin = editMargin.trim();
+    if (
+      editTier &&
+      editTier !== String(customer.cf_tier || '-').toUpperCase()
+    ) {
+      updatedFields.cf_tier = editTier;
+    }
+    if (status && status !== String(customer.status)) {
+      updatedFields.status = status;
+    }
     if (newMargin && `${newMargin}%` !== originalMargin) {
       updatedFields.cf_margin = `${newMargin}%`;
     }
@@ -114,6 +129,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
       toast.info('No changes to update');
       return;
     }
+
     try {
       await axiosInstance.put(`/customers/${customer._id}`, updatedFields);
       toast.success('Customer details updated successfully');
@@ -215,6 +231,22 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
             <strong>GST Number:</strong> {customer.gst_no || 'N/A'}
           </Typography>
           <Box sx={{ mt: 2 }}>
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel id='status-filter-label'>Tier</InputLabel>
+              <Select
+                label='Tier'
+                value={editTier}
+                onChange={(e) => setEditTier(e.target.value)}
+              >
+                {TIERS.map((letter: string, index: number) => (
+                  <MenuItem value={letter} defaultValue={editTier}>
+                    {letter}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+          <Box sx={{ mt: 2 }}>
             <TextField
               fullWidth
               label='Margin'
@@ -232,6 +264,19 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
               >
                 <MenuItem value='Inclusive'>Inclusive</MenuItem>
                 <MenuItem value='Exclusive'>Exclusive</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+          <Box sx={{ mt: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={status}
+                label='Status'
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <MenuItem value='active'>Active</MenuItem>
+                <MenuItem value='inactive'>Inactive</MenuItem>
               </Select>
             </FormControl>
           </Box>
