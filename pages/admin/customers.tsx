@@ -210,7 +210,14 @@ const Customers = () => {
   };
   return (
     <Box sx={{ padding: 3 }}>
-      <Paper sx={{ padding: 4, borderRadius: 4, backgroundColor: 'white' }}>
+      <Paper
+        sx={{
+          padding: 4,
+          borderRadius: 4,
+          backgroundColor: 'white',
+          position: 'relative', // added so we can position the overlay
+        }}
+      >
         <Box
           display='flex'
           justifyContent='space-between'
@@ -232,30 +239,38 @@ const Customers = () => {
           </Box>
         </Box>
 
-        {loading ? (
+        {/* Always render the table */}
+        <CustomerTable
+          customers={customers}
+          totalCount={totalCount}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={setRowsPerPage}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          onViewDetails={handleViewDetails}
+          handleToggle={handleToggleActive}
+        />
+
+        {/* Overlay the loader if data is being fetched */}
+        {loading && (
           <Box
             sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              minHeight: '200px',
+              backgroundColor: 'rgba(255, 255, 255, 0.7)', // semi-transparent overlay
+              zIndex: 1,
             }}
           >
             <CircularProgress />
           </Box>
-        ) : (
-          <CustomerTable
-            customers={customers}
-            totalCount={totalCount}
-            page={page}
-            rowsPerPage={rowsPerPage}
-            onPageChange={setPage}
-            onRowsPerPageChange={setRowsPerPage}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            onViewDetails={handleViewDetails}
-            handleToggle={handleToggleActive}
-          />
         )}
       </Paper>
 

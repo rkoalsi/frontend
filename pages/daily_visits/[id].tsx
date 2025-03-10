@@ -1,92 +1,185 @@
-// pages/daily_visits/[id].tsx
-
 import { useState, useEffect, useContext, useCallback } from 'react';
-import { useRouter } from 'next/router';
 import {
   Box,
-  Typography,
-  CircularProgress,
-  TextField,
-  Button,
   Card,
   CardContent,
-  CardHeader,
-  Grid,
-  Paper,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  CircularProgress,
+  Alert,
+  Button,
 } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import AuthContext from '../../src/components/Auth';
+import DailyVisitHeader from '../../src/components/daily_visits/DailyVisitHeader';
+import ShopsSection from '../../src/components/daily_visits/ShopsSection';
+import SelfieCard from '../../src/components/daily_visits/SelfieCard';
+import UpdateSection from '../../src/components/daily_visits/UpdateSection';
+import ShopsDialog from '../../src/components/daily_visits/ShopsDialog';
+import UpdateDialog from '../../src/components/daily_visits/UpdateDialog';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
-
-interface UpdateEntry {
-  _id: string;
-  text: string;
-  images: {
-    url: string;
-    s3_key: string;
-  }[];
-  created_at: string;
-  updated_at?: string;
-}
+import HookDialog from '../../src/components/daily_visits/HookDialog';
 
 const DailyVisitDetail = () => {
   const router = useRouter();
   const { id } = router.query;
   const { user }: any = useContext(AuthContext);
-
   const [dailyVisit, setDailyVisit] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Dialog control for update form
-  const [dialogOpen, setDialogOpen] = useState<boolean>(false);
-
-  // Form state for the update entry
-  const [updateId, setUpdateId] = useState<string | null>(null);
-  const [updateText, setUpdateText] = useState<string>('');
-  const [newImages, setNewImages] = useState<File[]>([]);
-  const [existingImages, setExistingImages] = useState<
-    { url: string; s3_key: string }[]
-  >([]);
-  const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState<boolean>(false);
+  // Dialog controls
+  const [shopsDialogOpen, setShopsDialogOpen] = useState<boolean>(false);
+  const [updateDialogOpen, setUpdateDialogOpen] = useState<boolean>(false);
+  const [open, setOpen] = useState(false);
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
-  const [mainPlanDialogOpen, setMainPlanDialogOpen] = useState(false);
-  const [mainPlanText, setMainPlanText] = useState('');
+  const [updateData, setUpdateData] = useState<any>(null); // holds update entry for editing
+  const [hooks, setHooks] = useState<any[]>([]);
+  const [hookCategories, setHookCategories] = useState<
+    { id: string; name: string }[]
+  >([]);
+  const [formData, setFormData]: any = useState({
+    selectedCustomer: null as any,
+    customerAddress: '',
+    hookEntries: [] as any[],
+  });
+  const [addresses, setAddresses] = useState<any[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingHookId, setEditingHookId] = useState<string | null>(null);
 
-  const handleSubmitMainPlanUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const fetchHooks = async () => {
     try {
-      const formData = new FormData();
-      formData.append('uploaded_by', user?.data?._id);
-      formData.append('plan', mainPlanText);
-      // Note: We do not include update_text if only editing the main plan.
-      const response = await axios.put(
-        `${process.env.api_url}/daily_visits/${id}`,
-        formData
-      );
-      toast.success(response.data.message);
-      setDailyVisit(response.data.daily_visit);
-      setMainPlanDialogOpen(false);
-    } catch (error) {
-      console.error(error);
-      toast.error('Error updating daily visit plan');
+      const resp = await axios.get(`${process.env.api_url}/hooks`, {
+        params: { created_by: user?.data?._id },
+      });
+      setHooks(resp.data);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to fetch hooks');
     }
   };
 
-  useEffect(() => {
-    if (id) {
-      fetchDailyVisit();
+  const fetchCategories = async () => {
+    try {
+      const resp = await axios.get(`${process.env.api_url}/hooks/categories`);
+      const cats = resp.data.map((cat: any) => ({
+        id: cat._id,
+        name: cat.name,
+      }));
+      setHookCategories(cats);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to fetch hook categories');
     }
-  }, [id]);
+  };
+
+  // Fetch hook categories and hooks on mount.
+  useEffect(() => {
+    fetchHooks();
+    fetchCategories();
+  }, []);
+
+  const handleCustomerSelect = (customer: any) => {
+    if (customer) {
+      setFormData((prev: any) => ({
+        ...prev,
+        selectedCustomer: customer,
+      }));
+      setAddresses(Array.isArray(customer.addresses) ? customer.addresses : []);
+    }
+  };
+  const handleOpenDialog = async (customer: any) => {
+    const { customer_id = '' } = customer;
+    const shop = dailyVisit.shops.find(
+      (s: any) => s.customer_id === customer_id
+    );
+    const { address = {} } = shop;
+    const { data = {} } = await axios.get(
+      `${process.env.api_url}/customers/${customer_id}`
+    );
+    const { data: hooksData = [] } = await axios.get(
+      `${process.env.api_url}/hooks`,
+      { params: { created_by: user?.data?._id } }
+    );
+    const { customer: selectedCustomer = {} } = data;
+    setOpen(true);
+    setFormData((prev: any) => ({
+      ...prev,
+      selectedCustomer: selectedCustomer,
+      customerAddress: address,
+      hookEntries: hooksData.filter(
+        (h: any) => h.customer_id === selectedCustomer._id
+      )[0]?.hooks,
+    }));
+    setEditingHookId(
+      hooksData.filter((h: any) => h.customer_id === selectedCustomer._id)[0]
+        ?._id
+    );
+    setAddresses(
+      Array.isArray(selectedCustomer.addresses)
+        ? selectedCustomer.addresses
+        : []
+    );
+  };
+
+  const handleAddressSelect = (address: string) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      customerAddress: addresses.find((adr) => adr.address_id == address),
+    }));
+  };
+
+  const addHookEntry = () => {
+    const newEntry = {
+      entryId: Date.now().toString(),
+      category_id: '',
+      hooksAvailable: '',
+      totalHooks: '',
+      editing: true,
+    };
+    setFormData((prev: any) => ({
+      ...prev,
+      hookEntries: [...prev.hookEntries, newEntry],
+    }));
+  };
+
+  const updateEntry = (index: number, field: string, value: any) => {
+    setFormData((prev: any) => {
+      const updatedEntries = [...prev.hookEntries];
+      if (field === 'hooksAvailable' || field === 'totalHooks') {
+        updatedEntries[index][field] = value === '' ? '' : parseInt(value, 10);
+      } else {
+        updatedEntries[index][field] = value;
+      }
+      return { ...prev, hookEntries: updatedEntries };
+    });
+  };
+
+  const removeEntry = (index: number) => {
+    setFormData((prev: any) => {
+      const updatedEntries = prev.hookEntries.filter(
+        (_: any, i: any) => i !== index
+      );
+      return { ...prev, hookEntries: updatedEntries };
+    });
+  };
+
+  const toggleEditEntry = (index: number) => {
+    setFormData((prev: any) => {
+      const updatedEntries = prev.hookEntries.map((entry: any, i: any) => {
+        if (i === index) {
+          console.log(entry);
+          setIsEditing(true);
+          setOpen(true);
+          return { ...entry, editing: !entry.editing };
+        } else {
+          return entry;
+        }
+      });
+      return { ...prev, hookEntries: updatedEntries };
+    });
+  };
   const handleImageClick = useCallback((src: string) => {
     setPopupImageSrc(src);
     setOpenImagePopup(true);
@@ -95,93 +188,111 @@ const DailyVisitDetail = () => {
   const handleClosePopup = useCallback(() => {
     setOpenImagePopup(false);
   }, []);
-  const fetchDailyVisit = async () => {
+  const fetchDailyVisit = useCallback(async () => {
+    if (!id) return;
     setLoading(true);
+    setError(null);
     try {
       const response = await axios.get(
         `${process.env.api_url}/daily_visits/${id}`
       );
       setDailyVisit(response.data);
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
+      setError('Error fetching daily visit details');
       toast.error('Error fetching daily visit details');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  // Open the dialog for adding a new update.
-  const handleOpenDialogForNew = () => {
-    // Reset form state for a new update.
-    setUpdateId(null);
-    setUpdateText('');
-    setNewImages([]);
-    setExistingImages([]);
-    setImagesToDelete([]);
-    setDialogOpen(true);
-  };
+  useEffect(() => {
+    fetchDailyVisit();
+  }, [id, fetchDailyVisit]);
 
-  // When editing an existing update, load its data into the form and open the dialog.
-  const handleEditUpdate = (update: UpdateEntry) => {
-    console.log('Editing update:', update);
-    // Use update.id (or update._id if that’s how it comes down) for editing.
-    setUpdateId(update._id);
-    setUpdateText(update.text || '');
-    setExistingImages(update.images || []);
-    setImagesToDelete([]);
-    setDialogOpen(true);
-  };
-
-  // Mark an existing image for deletion.
-  const handleDeleteExistingImage = (s3_key: string) => {
-    setExistingImages((prev) => prev.filter((img) => img.s3_key !== s3_key));
-    setImagesToDelete((prev) => [...prev, s3_key]);
-  };
-
-  // Handle new file uploads for the update form.
-  const handleNewImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setNewImages(Array.from(e.target.files));
-    }
-  };
-
-  // Submit the update form.
-  const handleSubmitUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    const formData = new FormData();
-    formData.append('uploaded_by', user?.data?._id);
-    formData.append('update_text', updateText);
-    if (updateId) {
-      formData.append('update_id', updateId);
-    }
-    newImages.forEach((file) => {
-      formData.append('new_images', file);
-    });
-    formData.append('delete_images', JSON.stringify(imagesToDelete));
+  const handleDeleteUpdate = async (updateId: string) => {
     try {
+      const formData = new FormData();
+      formData.append('uploaded_by', user?.data?._id);
+      formData.append('delete_update', updateId);
       const response = await axios.put(
         `${process.env.api_url}/daily_visits/${id}`,
         formData
       );
-      console.log(response.data);
-      toast.success(response.data.message);
-      setDailyVisit(response.data.daily_visit);
-      // Reset the update form and close dialog.
-      setUpdateId(null);
-      setUpdateText('');
-      setNewImages([]);
-      setExistingImages([]);
-      setImagesToDelete([]);
-      setDialogOpen(false);
+      toast.success(response.data.message || 'Update deleted successfully');
+      fetchDailyVisit();
     } catch (error) {
       console.error(error);
-      toast.error('Error updating daily visit');
-    } finally {
-      setSubmitting(false);
+      toast.error('Error deleting update');
     }
   };
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+    if (!formData.selectedCustomer) {
+      toast.error('Please select a customer');
+      return;
+    }
+    if (!formData.customerAddress) {
+      toast.error('Please select an address');
+      return;
+    }
+    if (formData.hookEntries.length === 0) {
+      toast.error('Please add at least one hook entry');
+      return;
+    }
+    for (let entry of formData.hookEntries) {
+      if (entry.editing) {
+        toast.error(
+          'Please complete editing all hook entries before submitting'
+        );
+        return;
+      }
+    }
+    const hooksWithCategoryName = formData.hookEntries.map((entry: any) => {
+      const category = hookCategories.find(
+        (cat: any) => cat.id === entry.category_id
+      );
+      return {
+        ...entry,
+        category_name: category ? category.name : '',
+      };
+    });
 
+    const payload = {
+      customer_id: formData.selectedCustomer._id,
+      customer_name: formData.selectedCustomer.contact_name,
+      customer_address: formData.customerAddress,
+      hooks: hooksWithCategoryName,
+      created_by: user?.data?._id,
+    };
+
+    try {
+      console.log(isEditing, editingHookId);
+      if (isEditing && editingHookId) {
+        await axios.put(
+          `${process.env.api_url}/hooks/${editingHookId}`,
+          payload
+        );
+        toast.success('Hook details updated successfully');
+      } else {
+        await axios.post(`${process.env.api_url}/hooks`, payload);
+        toast.success('Hook details submitted successfully');
+      }
+      setFormData({
+        selectedCustomer: null,
+        customerAddress: '',
+        hookEntries: [],
+      });
+      setAddresses([]);
+      setOpen(false);
+      setIsEditing(false);
+      setEditingHookId(null);
+      await fetchHooks();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to submit hook details');
+    }
+  };
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -190,225 +301,86 @@ const DailyVisitDetail = () => {
     );
   }
 
+  if (error) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity='error'>{error}</Alert>
+        <Button variant='contained' sx={{ mt: 2 }} onClick={fetchDailyVisit}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
+
   return (
-    <Box sx={{ p: 2 }}>
-      {/* Main Daily Visit Details */}
-      <Card>
-        <CardHeader
-          title='Daily Visit Details'
-          subheader={`Date: ${new Date(
-            dailyVisit.created_at
-          ).toLocaleString()}`}
-        />
+    <Box sx={{ p: { xs: 1, sm: 2 }, maxWidth: '1200px', mx: 'auto' }}>
+      <Card elevation={3}>
+        <DailyVisitHeader createdAt={dailyVisit.created_at} />
         <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-            <Typography variant='h6'>Plan:</Typography>
-            <IconButton
-              onClick={() => {
-                setMainPlanText(dailyVisit.plan);
-                setMainPlanDialogOpen(true);
-              }}
-              size='small'
-              sx={{ ml: 1 }}
-            >
-              <EditIcon fontSize='inherit' />
-            </IconButton>
-          </Box>
-          <Typography variant='body1' sx={{ mb: 2, whiteSpace: 'pre-line' }}>
-            {dailyVisit.plan}
-          </Typography>
+          <ShopsSection
+            onHookUpdate={handleOpenDialog}
+            shops={dailyVisit.shops}
+            onEditShops={() => setShopsDialogOpen(true)}
+          />
           {dailyVisit.selfie && (
-            <Box sx={{ mb: 2, textAlign: 'center' }}>
-              <img
-                onClick={() => handleImageClick(dailyVisit.selfie)}
-                src={dailyVisit.selfie}
-                alt='Selfie'
-                style={{
-                  borderRadius: '8px',
-                  width: '100%',
-                  maxWidth: '300px', // Smaller on desktop.
-                }}
-              />
-            </Box>
+            <SelfieCard
+              selfieUrl={dailyVisit.selfie}
+              onClickImage={() => handleImageClick(dailyVisit.selfie)}
+            />
           )}
-          {/* Display Update Entries */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant='h6'>Updates:</Typography>
-            {dailyVisit.updates && dailyVisit.updates.length > 0 ? (
-              dailyVisit.updates.map((upd: UpdateEntry) => (
-                <Paper key={upd._id} sx={{ p: 2, mb: 2 }}>
-                  <Box
-                    sx={{ display: 'flex', justifyContent: 'space-between' }}
-                  >
-                    <Typography variant='body1'>{upd.text}</Typography>
-                    <IconButton onClick={() => handleEditUpdate(upd)}>
-                      <EditIcon />
-                    </IconButton>
-                  </Box>
-                  {upd.images && upd.images.length > 0 && (
-                    <Grid container spacing={2} sx={{ mt: 1 }}>
-                      {upd.images.map((img, idx) => (
-                        <Grid item xs={6} md={4} key={idx}>
-                          <Box sx={{ position: 'relative' }}>
-                            <img
-                              onClick={() => handleImageClick(img.url)}
-                              src={img.url}
-                              alt={`Update Image ${idx + 1}`}
-                              style={{ width: '100%', borderRadius: '8px' }}
-                            />
-                          </Box>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  )}
-                </Paper>
-              ))
-            ) : (
-              <Typography variant='body2'>No updates yet.</Typography>
-            )}
-          </Box>
-          {/* Button to add a new update */}
-          <Box sx={{ textAlign: 'center', mt: 2 }}>
-            <Button variant='contained' onClick={handleOpenDialogForNew}>
-              Add Additional Information
-            </Button>
-          </Box>
+          <UpdateSection
+            onHookUpdate={handleOpenDialog}
+            onClickImage={handleImageClick}
+            updates={dailyVisit.updates}
+            onAddUpdate={() => {
+              setUpdateData(null);
+              setUpdateDialogOpen(true);
+            }}
+            onEditUpdate={(update: any) => {
+              setUpdateData(update);
+              setUpdateDialogOpen(true);
+            }}
+            onDeleteUpdate={(update: string) => {
+              handleDeleteUpdate(update);
+            }}
+          />
         </CardContent>
       </Card>
 
-      {/* Dialog for Adding/Editing Update */}
-      <Dialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        fullWidth
-        maxWidth='sm'
-      >
-        <DialogTitle>{updateId ? 'Edit Update' : 'Add Update'}</DialogTitle>
-        <DialogContent>
-          <form onSubmit={async (e: any) => await handleSubmitUpdate(e)}>
-            <TextField
-              label='Enter update text'
-              variant='outlined'
-              fullWidth
-              multiline
-              rows={4}
-              value={updateText}
-              onChange={(e) => setUpdateText(e.target.value)}
-              sx={{ mb: 2, mt: 1 }}
-            />
-            {/* When editing, show existing images with a delete icon */}
-            {existingImages.length > 0 && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant='subtitle1'>Existing Images:</Typography>
-                <Grid container spacing={2}>
-                  {existingImages.map((img, idx) => (
-                    <Grid
-                      item
-                      xs={6}
-                      md={4}
-                      key={idx}
-                      sx={{ position: 'relative' }}
-                    >
-                      <img
-                        onClick={() => handleImageClick(img.url)}
-                        src={img.url}
-                        alt={`Existing Update Image ${idx + 1}`}
-                        style={{ width: '100%', borderRadius: '8px' }}
-                      />
-                      <IconButton
-                        size='small'
-                        color='error'
-                        sx={{
-                          position: 'absolute',
-                          top: 4,
-                          right: 4,
-                          background: 'rgba(255,255,255,0.7)',
-                        }}
-                        onClick={() => handleDeleteExistingImage(img.s3_key)}
-                      >
-                        <DeleteIcon fontSize='small' />
-                      </IconButton>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Box>
-            )}
-            <Box sx={{ textAlign: 'center', mb: 2 }}>
-              <Button
-                variant='contained'
-                color='error'
-                component='label'
-                sx={{ mr: 2 }}
-              >
-                Upload New Images
-                <input
-                  type='file'
-                  hidden
-                  multiple
-                  accept='image/*'
-                  onChange={handleNewImageChange}
-                />
-              </Button>
-              {newImages.length > 0 && (
-                <Typography variant='body2'>
-                  {newImages.length} file(s) selected.
-                </Typography>
-              )}
-            </Box>
-            <DialogActions>
-              <Button onClick={() => setDialogOpen(false)} color='secondary'>
-                Cancel
-              </Button>
-              <Button
-                type='submit'
-                variant='contained'
-                color='primary'
-                disabled={submitting}
-              >
-                {submitting
-                  ? 'Updating...'
-                  : updateId
-                  ? 'Update Entry'
-                  : 'Add Update'}
-              </Button>
-            </DialogActions>
-          </form>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={mainPlanDialogOpen}
-        onClose={() => setMainPlanDialogOpen(false)}
-        fullWidth
-        maxWidth='sm'
-      >
-        <DialogTitle>Edit Daily Visit Plan</DialogTitle>
-        <DialogContent>
-          <form onSubmit={handleSubmitMainPlanUpdate}>
-            <TextField
-              label='Edit Plan'
-              variant='outlined'
-              fullWidth
-              multiline
-              rows={4}
-              value={mainPlanText}
-              onChange={(e) => setMainPlanText(e.target.value)}
-              sx={{ mb: 2, mt: 1 }}
-            />
-            <DialogActions>
-              <Button
-                onClick={() => setMainPlanDialogOpen(false)}
-                color='secondary'
-              >
-                Cancel
-              </Button>
-              <Button type='submit' variant='contained' color='primary'>
-                Update Plan
-              </Button>
-            </DialogActions>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Shops editing dialog */}
+      <ShopsDialog
+        open={shopsDialogOpen}
+        onClose={() => setShopsDialogOpen(false)}
+        dailyVisit={dailyVisit}
+        refreshDailyVisit={fetchDailyVisit}
+        user={user}
+      />
 
+      {/* Update add/edit dialog */}
+      <UpdateDialog
+        open={updateDialogOpen}
+        onClose={() => setUpdateDialogOpen(false)}
+        updateData={updateData}
+        dailyVisitId={id as string}
+        dailyVisit={dailyVisit}
+        refreshDailyVisit={fetchDailyVisit}
+        user={user}
+      />
+      <HookDialog
+        open={open}
+        setOpen={setOpen}
+        isEditing={isEditing}
+        formData={formData}
+        addresses={addresses}
+        hookCategories={hookCategories}
+        handleSubmit={handleSubmit}
+        handleCustomerSelect={handleCustomerSelect}
+        handleAddressSelect={handleAddressSelect}
+        updateEntry={updateEntry as any}
+        removeEntry={removeEntry}
+        toggleEditEntry={toggleEditEntry}
+        addHookEntry={addHookEntry}
+      />
       <ImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}
