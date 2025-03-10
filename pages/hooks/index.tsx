@@ -507,8 +507,15 @@ function CustomerHooks() {
               py: 1.5,
             }}
             onClick={() => {
-              setOpen(true);
+              setFormData({
+                selectedCustomer: null,
+                customerAddress: '',
+                hookEntries: [],
+              });
+              setAddresses([]);
               setIsEditing(false);
+              setEditingHookId(null);
+              setOpen(true);
             }}
           >
             Create Hook Entry
@@ -547,6 +554,7 @@ function CustomerHooks() {
           isEditing={isEditing}
           formData={formData}
           addresses={addresses}
+          hooks={hooks}
           hookCategories={hookCategories}
           handleSubmit={handleSubmit}
           handleCustomerSelect={handleCustomerSelect}

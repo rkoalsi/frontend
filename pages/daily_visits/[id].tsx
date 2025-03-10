@@ -165,26 +165,6 @@ const DailyVisitDetail = () => {
     });
   };
 
-  const handleEditHook = async (hookData: any) => {
-    const { data = {} } = await axios.get(
-      `${process.env.api_url}/customers/${hookData.customer_id}`
-    );
-    const { customer = {} } = data;
-    setFormData({
-      selectedCustomer: customer,
-      customerAddress: hookData.customer_address,
-      hookEntries: hookData.hooks.map((entry: any) => ({
-        entryId: entry.entryId,
-        category_id: entry.category_id,
-        hooksAvailable: entry.hooksAvailable,
-        totalHooks: entry.totalHooks,
-        editing: false,
-        category_name: entry.category_name,
-      })),
-    });
-    setAddresses(customer.addresses);
-    setEditingHookId(hookData._id);
-  };
   const toggleEditEntry = (index: number) => {
     setFormData((prev: any) => {
       const updatedEntries = prev.hookEntries.map((entry: any, i: any) => {

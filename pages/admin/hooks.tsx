@@ -188,6 +188,28 @@ const Hooks = () => {
     setSelectedCustomerHook(hook);
     setDialogOpen(true);
   };
+  const handleDownload = async () => {
+    try {
+      const params = {};
+
+      const response = await axiosInstance.get('/admin/hooks/report', {
+        params,
+        responseType: 'blob', // important for binary data!
+      });
+
+      // Create a URL and trigger a download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'shop_hooks_report.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error downloading report.');
+    }
+  };
   return (
     <Box sx={{ padding: 3 }}>
       <Paper
@@ -207,7 +229,7 @@ const Hooks = () => {
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
             All Shop Hooks
           </Typography>
-          <Button variant='contained' onClick={handleAddCategory}>
+          <Button variant='contained' onClick={handleDownload}>
             Download All Shop Hooks
           </Button>
         </Box>

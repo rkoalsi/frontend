@@ -82,6 +82,7 @@ const ShopsDialog = ({
               selectedCustomer: selectedCustomer || null,
               customer_name: shop.customer_name || '',
               potential_customer: shop.potential_customer,
+              potential_customer_id: shop.potential_customer_id,
               potential_customer_name: shop.potential_customer
                 ? shop.potential_customer_name
                 : null,
@@ -172,7 +173,7 @@ const ShopsDialog = ({
     try {
       const formData = new FormData();
       const shopsData = shopsForm.map((shop: any) => ({
-        id: shop.id,
+        id: shop._id,
         customer_id: shop.selectedCustomer?._id || shop.selectedCustomer?.id,
         customer_name:
           shop.customer_name ||
@@ -180,6 +181,7 @@ const ShopsDialog = ({
             ? shop.selectedCustomer.contact_name || shop.selectedCustomer.name
             : null),
         potential_customer: shop.potential_customer,
+        potential_customer_id: shop.potential_customer_id,
         potential_customer_name: shop.potential_customer_name,
         potential_customer_address: shop.potential_customer_address,
         potential_customer_tier: shop.potential_customer_tier,

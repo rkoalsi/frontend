@@ -28,6 +28,7 @@ interface HookDialogProps {
   removeEntry: (index: number) => void;
   toggleEditEntry: (index: number) => void;
   addHookEntry: () => void;
+  hooks?: any;
 }
 
 const HookDialog: React.FC<HookDialogProps> = ({
@@ -44,6 +45,7 @@ const HookDialog: React.FC<HookDialogProps> = ({
   removeEntry,
   toggleEditEntry,
   addHookEntry,
+  hooks,
 }) => {
   console.log(formData);
   return (
@@ -84,6 +86,7 @@ const HookDialog: React.FC<HookDialogProps> = ({
                 addresses &&
                 addresses.length > 0 && (
                   <AddressSelection
+                    hooks={hooks}
                     shop={formData}
                     handleAddressChange={(e: any) =>
                       handleAddressSelect(e.target.value)

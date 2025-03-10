@@ -20,11 +20,14 @@ const AddressSelection = ({
   shop,
   selectedAddressId,
   handleAddressChange,
+  hooks = [],
 }: any) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   if (typeof shop.selectedCustomer !== 'object') return null;
-
+  const hook = hooks?.filter(
+    (h: any) => h.customer_id === shop.selectedCustomer._id
+  );
   return (
     <FormControl component='fieldset' fullWidth>
       <FormLabel component='legend'>Select an Address</FormLabel>
@@ -47,6 +50,12 @@ const AddressSelection = ({
                 value={address.address_id}
                 control={
                   <Radio
+                    disabled={
+                      hook && hook.length > 0
+                        ? hook[0].customer_address?.address_id ===
+                          address.address_id
+                        : false
+                    }
                     onClick={(event) => event.stopPropagation()}
                     onFocus={(event) => event.stopPropagation()}
                   />

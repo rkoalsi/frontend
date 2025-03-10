@@ -69,6 +69,7 @@ const UpdateDialog = ({
       if (updateData.potential_customer) {
         setShop({
           potential_customer: updateData.potential_customer,
+          potential_customer_id: updateData.potential_customer_id,
           potential_customer_name: updateData.potential_customer_name,
         });
       }
@@ -111,6 +112,7 @@ const UpdateDialog = ({
     // Include the shop's ID so the backend can remove it
     if (shop.potential_customer) {
       formData.append('potential_customer', shop.potential_customer);
+      formData.append('potential_customer_id', shop.potential_customer_id);
       formData.append('potential_customer_name', shop.potential_customer_name);
       formData.append(
         'potential_customer_address',

@@ -555,6 +555,7 @@ function DailyVisits() {
       }
       return body;
     });
+
     formData.append('shops', JSON.stringify(formattedShops));
     formData.append('created_by', user?.data?._id);
 

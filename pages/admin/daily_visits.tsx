@@ -107,7 +107,28 @@ const DailyVisits = () => {
     setDrawerOpen(false);
     setSelectedVisit(null);
   };
+  const handleDownload = async () => {
+    try {
+      const params = {};
 
+      const response = await axiosInstance.get('/admin/daily_visits/report', {
+        params,
+        responseType: 'blob', // important for binary data!
+      });
+
+      // Create a URL and trigger a download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'daily_visits_report.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error downloading report.');
+    }
+  };
   return (
     <Box sx={{ padding: 3 }}>
       <Paper
@@ -118,6 +139,7 @@ const DailyVisits = () => {
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
             All Daily Visits
           </Typography>
+          <Button onClick={handleDownload}>Download Daily Visits XLSX</Button>
         </Box>
         <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
           View all daily visits from sales people below.
