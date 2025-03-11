@@ -140,7 +140,7 @@ const DailyVisitDetail = () => {
     };
     setFormData((prev: any) => ({
       ...prev,
-      hookEntries: [...prev.hookEntries, newEntry],
+      hookEntries: [...(prev?.hookEntries || []), newEntry],
     }));
   };
 
