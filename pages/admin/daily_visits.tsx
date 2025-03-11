@@ -16,6 +16,7 @@ import {
   TextField,
   Drawer,
   Grid,
+  Container,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -106,7 +107,28 @@ const DailyVisits = () => {
     setDrawerOpen(false);
     setSelectedVisit(null);
   };
+  const handleDownload = async () => {
+    try {
+      const params = {};
 
+      const response = await axiosInstance.get('/admin/daily_visits/report', {
+        params,
+        responseType: 'blob', // important for binary data!
+      });
+
+      // Create a URL and trigger a download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'daily_visits_report.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error downloading report.');
+    }
+  };
   return (
     <Box sx={{ padding: 3 }}>
       <Paper
@@ -117,6 +139,7 @@ const DailyVisits = () => {
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
             All Daily Visits
           </Typography>
+          <Button onClick={handleDownload}>Download Daily Visits XLSX</Button>
         </Box>
         <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
           View all daily visits from sales people below.
@@ -140,7 +163,6 @@ const DailyVisits = () => {
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Plan</TableCell>
                         <TableCell>Created By</TableCell>
                         <TableCell>Selfie</TableCell>
                         <TableCell>Created At</TableCell>
@@ -152,9 +174,6 @@ const DailyVisits = () => {
                     <TableBody>
                       {dailyVisits.map((visit) => (
                         <TableRow key={visit._id}>
-                          <TableCell style={{ whiteSpace: 'pre-line' }}>
-                            {visit.plan}
-                          </TableCell>
                           <TableCell>
                             {visit.created_by && visit.created_by.name
                               ? visit.created_by.name
@@ -256,19 +275,11 @@ const DailyVisits = () => {
       </Paper>
 
       <Drawer anchor='right' open={drawerOpen} onClose={handleCloseDrawer}>
-        <Box sx={{ width: { xs: 300, sm: 400, md: 500 }, p: 3 }}>
+        <Box sx={{ width: { xs: 200, lg: 400, xl: 500 }, p: 3 }}>
           {selectedVisit && (
             <>
               <Typography variant='h5' gutterBottom>
                 Daily Visit Details
-              </Typography>
-              <strong>Plan:</strong>
-              <Typography
-                variant='subtitle1'
-                gutterBottom
-                style={{ whiteSpace: 'pre-line', marginLeft: 32 }}
-              >
-                {selectedVisit.plan}
               </Typography>
               <Typography variant='subtitle1' gutterBottom>
                 <strong>Created By:</strong>{' '}
@@ -299,7 +310,23 @@ const DailyVisits = () => {
                 {selectedVisit.updates && selectedVisit.updates.length > 0 ? (
                   selectedVisit.updates.map((update: any) => (
                     <Paper key={update._id} sx={{ p: 2, my: 1 }}>
-                      <Typography variant='subtitle1'>
+                      <Typography
+                        variant='subtitle1'
+                        style={{ whiteSpace: 'pre-line' }}
+                      >
+                        <strong>
+                          {update.potential_customer
+                            ? 'Potential Customer:'
+                            : 'Customer Name:'}
+                        </strong>{' '}
+                        {update.potential_customer
+                          ? update.potential_customer_name
+                          : update.customer_name}
+                      </Typography>
+                      <Typography
+                        variant='subtitle1'
+                        style={{ whiteSpace: 'pre-line' }}
+                      >
                         <strong>Text:</strong> {update.text}
                       </Typography>
                       <Typography variant='subtitle2'>
