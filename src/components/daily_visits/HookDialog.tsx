@@ -100,7 +100,7 @@ const HookDialog: React.FC<HookDialogProps> = ({
             <Typography variant='h6' gutterBottom>
               Hook Categories
             </Typography>
-            {formData.hookEntries.map((entry: any, index: number) => {
+            {formData?.hookEntries?.map((entry: any, index: number) => {
               const selectedCategoryIds = formData.hookEntries
                 .filter((_: any, i: number) => i !== index)
                 .map((entry: any) => entry.category_id);
