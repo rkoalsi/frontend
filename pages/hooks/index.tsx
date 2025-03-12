@@ -472,19 +472,25 @@ function CustomerHooks() {
             sx={{
               width: '100%',
               maxWidth: 400,
-              color: 'white !important',
-              '.MuiOutlinedInput-notchedOutline': {
-                borderColor: 'white',
+              // Style for the input text
+              '& .MuiInputBase-input': {
                 color: 'white',
               },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'white',
+              // Style for the label
+              '& .MuiInputLabel-root': {
                 color: 'white',
+              },
+              // Style for the outline
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'white',
               },
               '&:hover .MuiOutlinedInput-notchedOutline': {
                 borderColor: 'white',
-                color: 'white',
               },
+              '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline':
+                {
+                  borderColor: 'white',
+                },
             }}
           />
         </Box>
@@ -527,6 +533,7 @@ function CustomerHooks() {
             severity='info'
             variant='outlined'
             sx={{
+              color: 'white',
               justifyContent: 'center',
               borderRadius: 3,
             }}
