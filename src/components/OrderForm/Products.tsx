@@ -69,8 +69,8 @@ interface ProductsProps {
   label: string;
   selectedProducts: SearchResult[];
   setSelectedProducts: React.Dispatch<React.SetStateAction<SearchResult[]>>;
-  customer: { cf_margin?: string; cf_in_ex?: string };
-  order: { status?: string };
+  customer: any;
+  order: any;
   specialMargins: { [key: string]: string };
   totals: { totalGST: number; totalAmount: number };
   onCheckout: () => void;
@@ -131,7 +131,9 @@ const Products: React.FC<ProductsProps> = ({
   const [cataloguePage, setCataloguePage]: any = useState();
   const [cataloguePages, setCataloguePages] = useState([]);
   const [catalogueEnabled, setCatalogueEnabled] = useState<boolean>(false);
-
+  const [link, setLink] = useState(
+    order?.spreadsheet_created ? order?.spreadsheet_url : ''
+  );
   const isFetching = useRef<{ [key: string]: boolean }>({});
 
   // ------------------ Debounced Toasts ------------------
@@ -756,6 +758,8 @@ const Products: React.FC<ProductsProps> = ({
         <Box
           display='flex'
           justifyContent='space-between'
+          flexDirection={isMobile ? 'column' : 'row'}
+          gap={isMobile ? '16px' : '8px'}
           alignItems='center'
           sx={{ mb: 2 }}
         >
