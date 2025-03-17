@@ -70,7 +70,7 @@ const NewOrder: React.FC = () => {
   const [open, setOpen] = useState<boolean>(false);
   const [error, setError] = useState<any>(null);
   const [sharedLink, setSharedLink] = useState<string>('');
-  const [sortOrder, setSortOrder] = useState<string>('default');
+  const [sort, setSort] = useState<string>('default');
   const [link, setLink] = useState(
     order?.spreadsheet_created ? order?.spreadsheet_url : ''
   );
@@ -116,7 +116,21 @@ const NewOrder: React.FC = () => {
       controller.abort();
     };
   }, [customer]);
-
+  const handleSortText = () => {
+    switch (sort) {
+      case 'default':
+        return 'Default';
+      case 'price_asc':
+        return 'Price Ascending';
+      case 'price_desc':
+        return 'Price Descending';
+      case 'catalogue':
+        return 'Catalogue Order';
+      default:
+        console.log(sort);
+        break;
+    }
+  };
   // ------------------ Calculate Totals ---------------------
   const totals = useMemo(() => {
     const { totalGST, totalAmount } = selectedProducts.reduce(
@@ -482,7 +496,7 @@ const NewOrder: React.FC = () => {
             specialMargins={specialMargins}
             order={order}
             onCheckout={() => setActiveStep((prev) => prev + 1)}
-            // sort={sortOrder}
+            setSort={setSort}
           />
         ),
       },
@@ -547,12 +561,13 @@ const NewOrder: React.FC = () => {
           params: {
             customer_id: customer._id,
             order_id: order._id,
-            sort: sortOrder,
+            sort,
           },
         }
       );
       const { google_sheet_url = '' } = data;
       setLink(google_sheet_url);
+      toast.success('Sheet Successfully Created');
     } catch (error) {
       console.error(error);
       toast.error('Error setting report. Try again Later');
@@ -663,6 +678,7 @@ const NewOrder: React.FC = () => {
             googleSheetsLink={link}
             updateCart={updateCart}
             loading={loading}
+            sort={handleSortText()}
           />
         ) : (
           <Button

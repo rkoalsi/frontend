@@ -22,7 +22,8 @@ const SheetsDisplay = ({
   googleSheetsLink = '',
   updateCart = () => {},
   loading = false,
-}) => {
+  sort = '',
+}: any) => {
   const theme: any = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [copied, setCopied] = useState(false);
@@ -57,9 +58,12 @@ const SheetsDisplay = ({
           borderRadius: '8px',
         }}
       >
-        <Typography variant='h6' fontWeight='bold'>
-          Google Sheet Template
-        </Typography>
+        <Box display='flex' alignItems='center' gap={1}>
+          <InsertDriveFileIcon color='success' fontSize='large' />
+          <Typography variant='h6' fontWeight='bold'>
+            Order Form Google Sheet Template
+          </Typography>
+        </Box>
       </AccordionSummary>
       <AccordionDetails>
         <Paper
@@ -73,17 +77,11 @@ const SheetsDisplay = ({
           }}
         >
           <Box display='flex' flexDirection='column' gap={3}>
-            <Box display='flex' alignItems='center' gap={1}>
-              <InsertDriveFileIcon color='success' fontSize='large' />
-              <Typography variant='h6' fontWeight='bold'>
-                Order Form Google Sheet Template
-              </Typography>
-            </Box>
             <Alert severity='info' sx={{ borderRadius: '8px' }}>
               You can place the order directly below or generate a Google Sheet
               template to share with your customer for easy order input.
             </Alert>
-
+            <Typography>Current Sort Order: {sort}</Typography>
             <TextField
               fullWidth
               variant='outlined'
@@ -98,6 +96,10 @@ const SheetsDisplay = ({
                 },
               }}
             />
+            <Alert severity='warning' sx={{ borderRadius: '8px' }}>
+              On Creation of google Sheet, images will not show. Click on "Allow
+              Access" on the sheet to display images on sheet.
+            </Alert>
 
             <Box
               display='flex'

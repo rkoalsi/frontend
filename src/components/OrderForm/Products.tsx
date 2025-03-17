@@ -74,6 +74,7 @@ interface ProductsProps {
   specialMargins: { [key: string]: string };
   totals: { totalGST: number; totalAmount: number };
   onCheckout: () => void;
+  setSort: any;
 }
 
 const Products: React.FC<ProductsProps> = ({
@@ -85,6 +86,7 @@ const Products: React.FC<ProductsProps> = ({
   specialMargins = {},
   totals = { totalGST: 0, totalAmount: 0 },
   onCheckout,
+  setSort,
 }) => {
   const router = useRouter();
   const { id = '' } = router.query;
@@ -580,6 +582,7 @@ const Products: React.FC<ProductsProps> = ({
   const handleSortChange = (e: any) => {
     const newSort = e.target.value as string;
     setSortOrder(newSort);
+    setSort(newSort);
     // In catalogue mode, keep the activeBrand so that tab changes fetch brand‐specific data.
     if (newSort === 'catalogue') {
       // Optionally clear the activeCategory if you don't need it
@@ -1088,33 +1091,22 @@ const Products: React.FC<ProductsProps> = ({
                   alignItems: 'flex-start',
                 }}
               >
-                <IconButton
-                  onClick={handleSortIconClick}
-                  style={{ display: 'flex', flexDirection: 'column' }}
-                >
-                  <Sort />
-                </IconButton>
-                <Menu
-                  id='sort-menu'
-                  anchorEl={anchorEl}
-                  open={Boolean(anchorEl)}
-                  onClose={handleSortMenuClose}
-                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                >
-                  <MenuItem onClick={() => handleSortMenuSelect('default')}>
-                    Default
-                  </MenuItem>
-                  <MenuItem onClick={() => handleSortMenuSelect('catalogue')}>
-                    Catalogue Order
-                  </MenuItem>
-                  <MenuItem onClick={() => handleSortMenuSelect('price_asc')}>
-                    Price: Low to High
-                  </MenuItem>
-                  <MenuItem onClick={() => handleSortMenuSelect('price_desc')}>
-                    Price: High to Low
-                  </MenuItem>
-                </Menu>
+                <FormControl fullWidth variant='outlined'>
+                  <InputLabel id='sort-select-label'>Sort By</InputLabel>
+                  <Select
+                    labelId='sort-select-label'
+                    id='sort-select'
+                    value={sortOrder}
+                    label='Sort By'
+                    onChange={handleSortChange}
+                  >
+                    <MenuItem value='default'>Default</MenuItem>
+                    <MenuItem value='catalogue'>Catalogue Order</MenuItem>
+                    <MenuItem value='price_asc'>Price: Low to High</MenuItem>
+                    <MenuItem value='price_desc'>Price: High to Low</MenuItem>
+                  </Select>
+                </FormControl>
+
                 {sortOrder === 'catalogue' && (
                   <>
                     <FormControlLabel
