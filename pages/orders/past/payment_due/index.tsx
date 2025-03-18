@@ -9,6 +9,7 @@ import {
   Grid,
   Card,
   CardContent,
+  TextField,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useRouter } from 'next/router';
@@ -22,6 +23,7 @@ import Header from '../../../../src/components/common/Header';
 const PaymentDue = () => {
   const [loading, setLoading] = useState(false);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const router = useRouter();
@@ -99,6 +101,36 @@ const PaymentDue = () => {
     >
       {/* Header */}
       <Header title={'Payments Due'} showBackButton />
+      <TextField
+        label='Search by Customer Name'
+        variant='outlined'
+        fullWidth
+        sx={{
+          width: '100%',
+          maxWidth: 400,
+          // Style for the input text
+          '& .MuiInputBase-input': {
+            color: 'white',
+          },
+          // Style for the label
+          '& .MuiInputLabel-root': {
+            color: 'white',
+          },
+          // Style for the outline
+          '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'white',
+          },
+          '&:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'white',
+          },
+          '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline':
+            {
+              borderColor: 'white',
+            },
+        }}
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+      />
       <Button variant='contained' color='primary' onClick={handleDownloadCSV}>
         Download CSV
       </Button>
@@ -119,129 +151,135 @@ const PaymentDue = () => {
         >
           {invoices.length > 0 ? (
             <Grid container spacing={3}>
-              {invoices.map((invoice: any) => {
-                const {
-                  _id,
-                  invoice_number,
-                  customer_name,
-                  created_at,
-                  due_date,
-                  status,
-                  total,
-                  balance,
-                  overdue_by_days,
-                  invoice_notes = {},
-                } = invoice;
-                const { images = [] } = invoice_notes;
-                // Determine whether the invoice is past due
-                const invoiceDueDate = new Date(due_date);
-                // You can adjust this logic if you want to account for time, or
-                // if you only care about the date, you can normalize both to midnight:
-                const today = new Date();
-                // Set hours to 0 to compare just dates (optional).
-                today.setHours(0, 0, 0, 0);
-                invoiceDueDate.setHours(0, 0, 0, 0);
+              {invoices
+                .filter((invoice) =>
+                  invoice.customer_name
+                    .toLowerCase()
+                    .includes(searchQuery.toLowerCase())
+                )
+                .map((invoice: any) => {
+                  const {
+                    _id,
+                    invoice_number,
+                    customer_name,
+                    created_at,
+                    due_date,
+                    status,
+                    total,
+                    balance,
+                    overdue_by_days,
+                    invoice_notes = {},
+                  } = invoice;
+                  const { images = [] } = invoice_notes;
+                  // Determine whether the invoice is past due
+                  const invoiceDueDate = new Date(due_date);
+                  // You can adjust this logic if you want to account for time, or
+                  // if you only care about the date, you can normalize both to midnight:
+                  const today = new Date();
+                  // Set hours to 0 to compare just dates (optional).
+                  today.setHours(0, 0, 0, 0);
+                  invoiceDueDate.setHours(0, 0, 0, 0);
 
-                const isPastDue = invoiceDueDate < today;
-                // Format the status label with first letter uppercase
-                const formattedStatus =
-                  status.charAt(0).toUpperCase() +
-                  status.slice(1).toLowerCase();
+                  const isPastDue = invoiceDueDate < today;
+                  // Format the status label with first letter uppercase
+                  const formattedStatus =
+                    status.charAt(0).toUpperCase() +
+                    status.slice(1).toLowerCase();
 
-                return (
-                  <Grid
-                    item
-                    xs={12}
-                    sm={6}
-                    md={4}
-                    lg={3}
-                    key={_id}
-                    onClick={() => handleOrderClick(_id)}
-                    sx={{ cursor: 'pointer' }}
-                  >
-                    <Card
-                      sx={{
-                        height: '100%',
-                        '&:hover': {
-                          boxShadow: 6, // Increase the shadow on hover
-                        },
-                      }}
+                  return (
+                    <Grid
+                      item
+                      xs={12}
+                      sm={6}
+                      md={4}
+                      lg={3}
+                      key={_id}
+                      onClick={() => handleOrderClick(_id)}
+                      sx={{ cursor: 'pointer' }}
                     >
-                      <CardContent
+                      <Card
                         sx={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 1,
+                          height: '100%',
+                          '&:hover': {
+                            boxShadow: 6, // Increase the shadow on hover
+                          },
                         }}
                       >
-                        <Box
-                          display={'flex'}
-                          flexDirection={'row'}
-                          width={'100%'}
-                          justifyContent={'space-between'}
-                        >
-                          {/* Invoice Title */}
-                          <Typography variant='h6' fontWeight='bold'>
-                            {invoice_number}
-                          </Typography>
-                          {images.length > 0 && <Visibility />}
-                        </Box>
-                        {/* Customer & Dates */}
-                        <Typography variant='body2' color='text.secondary'>
-                          Customer: {customer_name}
-                        </Typography>
-                        <Typography variant='body2' color='text.secondary'>
-                          Date: {new Date(created_at).toLocaleDateString()}
-                        </Typography>
-
-                        <Typography
-                          variant='body2'
-                          sx={{ color: 'rebeccapurple' }}
-                        >
-                          Overdue by: {overdue_by_days}{' '}
-                          {parseInt(overdue_by_days) === 1 ? 'day' : 'days'}
-                        </Typography>
-
-                        <Typography
-                          variant='body2'
-                          sx={{ color: isPastDue ? 'red' : 'text.secondary' }}
-                        >
-                          Due Date: {invoiceDueDate.toLocaleDateString()}
-                        </Typography>
-
-                        {/* Status, Total & Balance */}
-                        <Box
+                        <CardContent
                           sx={{
-                            mt: 1,
                             display: 'flex',
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
+                            flexDirection: 'column',
+                            gap: 1,
                           }}
                         >
-                          <Chip
-                            label={formattedStatus}
-                            color={
-                              status.toLowerCase() === 'overdue'
-                                ? 'warning'
-                                : 'info'
-                            }
-                            sx={{ fontWeight: 'bold' }}
-                          />
-                          <Box sx={{ textAlign: 'right' }}>
-                            <Typography variant='body1' fontWeight='bold'>
-                              ₹{total || 0} Total
+                          <Box
+                            display={'flex'}
+                            flexDirection={'row'}
+                            width={'100%'}
+                            justifyContent={'space-between'}
+                          >
+                            {/* Invoice Title */}
+                            <Typography variant='h6' fontWeight='bold'>
+                              {invoice_number}
                             </Typography>
-                            <Typography variant='body2'>
-                              Balance: ₹{balance || 0}
-                            </Typography>
+                            {images.length > 0 && <Visibility />}
                           </Box>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                );
-              })}
+                          {/* Customer & Dates */}
+                          <Typography variant='body2' color='text.secondary'>
+                            Customer: {customer_name}
+                          </Typography>
+                          <Typography variant='body2' color='text.secondary'>
+                            Date: {new Date(created_at).toLocaleDateString()}
+                          </Typography>
+
+                          <Typography
+                            variant='body2'
+                            sx={{ color: 'rebeccapurple' }}
+                          >
+                            Overdue by: {overdue_by_days}{' '}
+                            {parseInt(overdue_by_days) === 1 ? 'day' : 'days'}
+                          </Typography>
+
+                          <Typography
+                            variant='body2'
+                            sx={{ color: isPastDue ? 'red' : 'text.secondary' }}
+                          >
+                            Due Date: {invoiceDueDate.toLocaleDateString()}
+                          </Typography>
+
+                          {/* Status, Total & Balance */}
+                          <Box
+                            sx={{
+                              mt: 1,
+                              display: 'flex',
+                              flexDirection: 'row',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <Chip
+                              label={formattedStatus}
+                              color={
+                                status.toLowerCase() === 'overdue'
+                                  ? 'warning'
+                                  : 'info'
+                              }
+                              sx={{ fontWeight: 'bold' }}
+                            />
+                            <Box sx={{ textAlign: 'right' }}>
+                              <Typography variant='body1' fontWeight='bold'>
+                                ₹{total || 0} Total
+                              </Typography>
+                              <Typography variant='body2'>
+                                Balance: ₹{balance || 0}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  );
+                })}
             </Grid>
           ) : (
             <Typography
