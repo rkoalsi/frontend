@@ -26,6 +26,10 @@ import {
   Avatar,
   FormControlLabel,
   Checkbox,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -164,15 +168,22 @@ const ShopCard = memo(function ShopCard({
             />
           )}
           {shop.potentialCustomer && (
-            <TextField
-              label='Enter Customer Tier'
-              fullWidth
-              value={shop.potential_customer_tier || ''}
-              onChange={(e) =>
-                updateShop(index, 'potential_customer_tier', e.target.value)
-              }
-            />
+            <FormControl fullWidth>
+              <InputLabel>Customer Tier</InputLabel>
+              <Select
+                value={shop.potential_customer_tier || ''}
+                onChange={(e) =>
+                  updateShop(index, 'potential_customer_tier', e.target.value)
+                }
+              >
+                <MenuItem value='A'>A</MenuItem>
+                <MenuItem value='B'>B</MenuItem>
+                <MenuItem value='C'>C</MenuItem>
+                <MenuItem value='D'>D</MenuItem>
+              </Select>
+            </FormControl>
           )}
+
           {/* Render address component if potential customer OR when a customer is selected */}
           {shop.selectedCustomer && (
             <AddressSelection
@@ -387,7 +398,7 @@ function DailyVisits() {
 
   // State for the creation dialog (with multiple shops)
   const [open, setOpen] = useState(false);
-  const [shops, setShops] = useState([
+  const [shops, setShops]: any = useState([
     {
       id: Date.now(),
       selectedCustomer: null,
@@ -469,7 +480,7 @@ function DailyVisits() {
   }, []);
 
   const updateShop = useCallback((index: number, field: string, value: any) => {
-    setShops((prev) => {
+    setShops((prev: any) => {
       const updated: any = [...prev];
       if (updated[index][field] === value) return prev;
       updated[index] = { ...updated[index], [field]: value };
@@ -478,20 +489,20 @@ function DailyVisits() {
   }, []);
 
   const toggleEditShop = useCallback((index: number) => {
-    setShops((prev) =>
-      prev.map((shop, i) =>
+    setShops((prev: any) =>
+      prev.map((shop: any, i: number) =>
         i === index ? { ...shop, editing: !shop.editing } : shop
       )
     );
   }, []);
 
   const deleteShop = useCallback((index: any) => {
-    setShops((prev) => prev.filter((_, i) => i !== index));
+    setShops((prev: any) => prev.filter((_: any, i: number) => i !== index));
   }, []);
 
   const moveShopUp = useCallback((index: any) => {
     if (index === 0) return;
-    setShops((prev) => {
+    setShops((prev: any) => {
       const updated = [...prev];
       [updated[index - 1], updated[index]] = [
         updated[index],
@@ -502,7 +513,7 @@ function DailyVisits() {
   }, []);
 
   const moveShopDown = useCallback((index: any) => {
-    setShops((prev) => {
+    setShops((prev: any) => {
       if (index === prev.length - 1) return prev;
       const updated = [...prev];
       [updated[index + 1], updated[index]] = [
@@ -531,6 +542,20 @@ function DailyVisits() {
       if (!(shop.selectedCustomer || shop.potentialCustomer)) {
         toast.error('Please select a customer for each shop.');
         return;
+      }
+      if (shop.potentialCustomer) {
+        if (!shop?.potential_customer_name) {
+          toast.error('Potential Customer Name Cannot be Empty');
+          return;
+        }
+        if (!shop?.potential_customer_address) {
+          toast.error('Potential Customer Address Cannot be Empty');
+          return;
+        }
+        if (!shop?.potential_customer_tier) {
+          toast.error('Potential Customer Tier Cannot be Empty');
+          return;
+        }
       }
       if (!shop.address || !shop.reason) {
         toast.error('Please complete address and reason for each shop.');
@@ -815,7 +840,7 @@ function DailyVisits() {
                 </Box>
               )}
             </Box>
-            {shops.map((shop, index) => (
+            {shops.map((shop: any, index: number) => (
               <ShopCard
                 key={shop.id}
                 shop={shop}

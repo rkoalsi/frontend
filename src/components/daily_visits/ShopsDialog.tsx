@@ -16,6 +16,10 @@ import {
   TextField,
   FormControlLabel,
   Checkbox,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
@@ -365,18 +369,24 @@ const ShopsDialog = ({
                             )
                           }
                         />
-                        <TextField
-                          label='Enter Customer Tier'
-                          fullWidth
-                          value={shop.potential_customer_tier || ''}
-                          onChange={(e) =>
-                            updateShop(
-                              index,
-                              'potential_customer_tier',
-                              e.target.value
-                            )
-                          }
-                        />
+                        <FormControl fullWidth>
+                          <InputLabel>Customer Tier</InputLabel>
+                          <Select
+                            value={shop.potential_customer_tier || ''}
+                            onChange={(e) =>
+                              updateShop(
+                                index,
+                                'potential_customer_tier',
+                                e.target.value
+                              )
+                            }
+                          >
+                            <MenuItem value='A'>A</MenuItem>
+                            <MenuItem value='B'>B</MenuItem>
+                            <MenuItem value='C'>C</MenuItem>
+                            <MenuItem value='D'>D</MenuItem>
+                          </Select>
+                        </FormControl>
                       </>
                     ) : (
                       <>
