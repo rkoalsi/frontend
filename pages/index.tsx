@@ -15,6 +15,7 @@ import {
   CalendarMonth,
   Campaign,
   History,
+  Insights,
   MenuBook,
   Payment,
   Phishing,
@@ -126,6 +127,12 @@ const menuItems = [
     color: '#7c4dff',
     action: 'hooks',
   },
+  {
+    icon: <Insights />,
+    text: 'Potential Customers',
+    color: '#7c4dff',
+    action: 'potential_customers',
+  },
 ];
 
 const Home = () => {
@@ -173,6 +180,9 @@ const Home = () => {
         break;
       case 'hooks':
         router.push('/hooks');
+        break;
+      case 'potential_customers':
+        router.push('/potential_customers');
         break;
       default:
         break;
