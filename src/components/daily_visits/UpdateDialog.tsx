@@ -165,7 +165,7 @@ const UpdateDialog = ({
                 shop?.potential_customer
                   ? shop?.potential_customer_name
                   : shop
-                  ? shop.customer_id
+                  ? `${shop.customer_id}`
                   : ''
               }
               disabled={updateData}
@@ -196,8 +196,10 @@ const UpdateDialog = ({
                       }
                     >
                       {shop.potential_customer
-                        ? shop.potential_customer_name
-                        : shop.customer_name}
+                        ? `${shop.potential_customer_name} (Potential Customer)`
+                        : `${shop.customer_name} (${
+                            shop.address.attention || shop.address.address
+                          })`}
                     </MenuItem>
                   ))
                 : dailyVisit.shops
@@ -224,8 +226,10 @@ const UpdateDialog = ({
                         }
                       >
                         {shop.potential_customer
-                          ? shop.potential_customer_name
-                          : shop.customer_name}
+                          ? `${shop.potential_customer_name} (Potential Customer)`
+                          : `${shop.customer_name} (${
+                              shop.address.attention || shop.address.address
+                            })`}
                       </MenuItem>
                     ))}
             </Select>
