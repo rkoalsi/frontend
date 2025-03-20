@@ -394,13 +394,45 @@ const Hooks = () => {
               </Typography>
               <Typography variant='subtitle1' gutterBottom>
                 <strong>Hooks:</strong>{' '}
-                {selectedCustomerHook.hooks.map((h: any) => (
-                  <>
-                    {`${h.category_name} - ${h.hooksAvailable}/${h.totalHooks}`}
-                    <br />
-                  </>
-                ))}
+                {selectedCustomerHook.hooks.map(
+                  (hook: any, hookIndex: number) => (
+                    <li key={hookIndex}>
+                      <strong>{hook.category_name}</strong>:{' '}
+                      {hook.hooksAvailable}/{hook.totalHooks}
+                    </li>
+                  )
+                )}
               </Typography>
+              <Typography variant='subtitle1' gutterBottom>
+                <strong>Past Hooks:</strong>
+              </Typography>
+
+              {selectedCustomerHook.history?.length > 0 ? (
+                selectedCustomerHook.history.map(
+                  (historyItem: any, index: number) => (
+                    <div key={index} style={{ marginBottom: '10px' }}>
+                      <Typography variant='body2' color='textSecondary'>
+                        <strong>Updated At:</strong>{' '}
+                        {new Date(historyItem.updated_at).toLocaleString()}
+                      </Typography>
+                      <ul>
+                        {historyItem.previous_hooks.map(
+                          (hook: any, hookIndex: number) => (
+                            <li key={hookIndex}>
+                              <strong>{hook.category_name}</strong>:{' '}
+                              {hook.hooksAvailable}/{hook.totalHooks}
+                            </li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )
+                )
+              ) : (
+                <Typography variant='body2' color='textSecondary'>
+                  No past hooks available.
+                </Typography>
+              )}
 
               <Box sx={{ mt: 3 }}>
                 <Button

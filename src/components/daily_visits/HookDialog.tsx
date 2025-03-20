@@ -105,16 +105,18 @@ const HookDialog: React.FC<HookDialogProps> = ({
                 .filter((_: any, i: number) => i !== index)
                 .map((entry: any) => entry.category_id);
               return (
-                <HookEntryCard
-                  key={entry.entryId}
-                  entry={entry}
-                  index={index}
-                  updateEntry={updateEntry as any}
-                  removeEntry={removeEntry}
-                  hookCategories={hookCategories}
-                  selectedCategoryIds={selectedCategoryIds}
-                  toggleEditEntry={toggleEditEntry}
-                />
+                <>
+                  <HookEntryCard
+                    key={entry.entryId}
+                    entry={entry}
+                    index={index}
+                    updateEntry={updateEntry as any}
+                    removeEntry={removeEntry}
+                    hookCategories={hookCategories}
+                    selectedCategoryIds={selectedCategoryIds}
+                    toggleEditEntry={toggleEditEntry}
+                  />
+                </>
               );
             })}
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
@@ -126,6 +128,27 @@ const HookDialog: React.FC<HookDialogProps> = ({
                 Add Category
               </Button>
             </Box>
+            {formData.history && formData.history.length > 0 && (
+              <Box
+                sx={{
+                  mt: 2,
+                  p: 2,
+                  backgroundColor: '#f9f9f9',
+                  borderRadius: 2,
+                }}
+              >
+                <Typography variant='subtitle2'>Change History:</Typography>
+                {formData.history.map((historyEntry: any, i: number) => (
+                  <Typography key={i} variant='body2'>
+                    {`Updated on: ${new Date(
+                      historyEntry.updated_at
+                    ).toLocaleString()}`}{' '}
+                    -
+                    {` Hooks Available: ${historyEntry.hooksAvailable}, Total Hooks: ${historyEntry.totalHooks}`}
+                  </Typography>
+                ))}
+              </Box>
+            )}
           </Box>
           <DialogActions sx={{ mt: 2 }}>
             <Button
