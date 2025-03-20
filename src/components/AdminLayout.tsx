@@ -266,6 +266,11 @@ const AdminLayout = ({ children }: any) => {
             flexGrow: 1,
             overflowY: 'auto',
             height: 'calc(100vh - 64px)',
+            '&::-webkit-scrollbar': {
+              width: 0,
+              background: 'transparent',
+            },
+            scrollbarWidth: 'none',
           }}
         >
           <List>

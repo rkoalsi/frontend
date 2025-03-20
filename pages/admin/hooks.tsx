@@ -13,7 +13,10 @@ import {
   Button,
   TablePagination,
   TextField,
-  Drawer,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogActions,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -368,23 +371,28 @@ const Hooks = () => {
         )}
       </Paper>
 
-      <Drawer
-        anchor='right'
+      <Dialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
+        maxWidth='sm'
+        fullWidth
       >
-        <Box sx={{ p: 3 }}>
+        <DialogTitle sx={{ textAlign: 'center', fontWeight: 'bold' }}>
+          Customer Details
+        </DialogTitle>
+
+        <DialogContent>
           {selectedCustomerHook && (
-            <>
-              <Typography variant='subtitle1' gutterBottom>
-                <strong>Customer Name: </strong>
-                {selectedCustomerHook.customer_name}
+            <Box sx={{ textAlign: 'left', p: 2 }}>
+              {/* Customer Info */}
+              <Typography variant='subtitle1'>
+                <strong>Name:</strong> {selectedCustomerHook.customer_name}
               </Typography>
-              <Typography variant='subtitle1' gutterBottom>
+              <Typography variant='subtitle1'>
                 <strong>Address:</strong>{' '}
                 {formatAddress(selectedCustomerHook?.customer_address)}
               </Typography>
-              <Typography variant='subtitle1' gutterBottom>
+              <Typography variant='subtitle1'>
                 <strong>Created By:</strong>{' '}
                 {selectedCustomerHook.created_by_info.name}
               </Typography>
@@ -392,60 +400,75 @@ const Hooks = () => {
                 <strong>Created At:</strong>{' '}
                 {new Date(selectedCustomerHook.created_at).toLocaleString()}
               </Typography>
-              <Typography variant='subtitle1' gutterBottom>
-                <strong>Hooks:</strong>{' '}
-                {selectedCustomerHook.hooks.map(
-                  (hook: any, hookIndex: number) => (
-                    <li key={hookIndex}>
-                      <strong>{hook.category_name}</strong>:{' '}
-                      {hook.hooksAvailable}/{hook.totalHooks}
-                    </li>
-                  )
-                )}
-              </Typography>
-              <Typography variant='subtitle1' gutterBottom>
-                <strong>Past Hooks:</strong>
-              </Typography>
 
-              {selectedCustomerHook.history?.length > 0 ? (
-                selectedCustomerHook.history.map(
-                  (historyItem: any, index: number) => (
-                    <div key={index} style={{ marginBottom: '10px' }}>
-                      <Typography variant='body2' color='textSecondary'>
-                        <strong>Updated At:</strong>{' '}
-                        {new Date(historyItem.updated_at).toLocaleString()}
-                      </Typography>
-                      <ul>
-                        {historyItem.previous_hooks.map(
-                          (hook: any, hookIndex: number) => (
-                            <li key={hookIndex}>
-                              <strong>{hook.category_name}</strong>:{' '}
-                              {hook.hooksAvailable}/{hook.totalHooks}
-                            </li>
-                          )
-                        )}
-                      </ul>
-                    </div>
-                  )
-                )
-              ) : (
-                <Typography variant='body2' color='textSecondary'>
-                  No past hooks available.
+              {/* Hooks Section */}
+              <Box sx={{ mt: 2 }}>
+                <Typography variant='subtitle1' fontWeight='bold'>
+                  Hooks:
                 </Typography>
-              )}
-
-              <Box sx={{ mt: 3 }}>
-                <Button
-                  variant='contained'
-                  onClick={() => setDialogOpen(false)}
-                >
-                  Close
-                </Button>
+                <ul style={{ paddingLeft: '20px', marginTop: '5px' }}>
+                  {selectedCustomerHook.hooks.map(
+                    (hook: any, index: number) => (
+                      <li key={index}>
+                        <strong>{hook.category_name}</strong>:{' '}
+                        {hook.hooksAvailable}/{hook.totalHooks}
+                      </li>
+                    )
+                  )}
+                </ul>
               </Box>
-            </>
+
+              {/* Past Hooks Section */}
+              <Box sx={{ mt: 2 }}>
+                <Typography variant='subtitle1' fontWeight='bold'>
+                  Past Hooks:
+                </Typography>
+                {selectedCustomerHook.history?.length > 0 ? (
+                  selectedCustomerHook.history.map(
+                    (historyItem: any, index: number) => (
+                      <Box
+                        key={index}
+                        sx={{
+                          mt: 1,
+                          p: 2,
+                          border: '1px solid #ddd',
+                          borderRadius: '8px',
+                          backgroundColor: '#f9f9f9',
+                        }}
+                      >
+                        <Typography variant='body2' color='textSecondary'>
+                          <strong>Updated At:</strong>{' '}
+                          {new Date(historyItem.updated_at).toLocaleString()}
+                        </Typography>
+                        <ul style={{ paddingLeft: '20px', marginTop: '5px' }}>
+                          {historyItem.previous_hooks.map(
+                            (hook: any, hookIndex: number) => (
+                              <li key={hookIndex}>
+                                <strong>{hook.category_name}</strong>:{' '}
+                                {hook.hooksAvailable}/{hook.totalHooks}
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </Box>
+                    )
+                  )
+                ) : (
+                  <Typography variant='body2' color='textSecondary'>
+                    No past hooks available.
+                  </Typography>
+                )}
+              </Box>
+            </Box>
           )}
-        </Box>
-      </Drawer>
+        </DialogContent>
+
+        <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+          <Button variant='contained' onClick={() => setDialogOpen(false)}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
