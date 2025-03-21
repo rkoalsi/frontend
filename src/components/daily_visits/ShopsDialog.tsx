@@ -387,6 +387,18 @@ const ShopsDialog = ({
                             <MenuItem value='D'>D</MenuItem>
                           </Select>
                         </FormControl>
+                        <TextField
+                          label='Enter Customer Phone'
+                          fullWidth
+                          value={shop.potential_customer_mobile || ''}
+                          onChange={(e) =>
+                            updateShop(
+                              index,
+                              'potential_customer_mobile',
+                              e.target.value
+                            )
+                          }
+                        />
                       </>
                     ) : (
                       <>

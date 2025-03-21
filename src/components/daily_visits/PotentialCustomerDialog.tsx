@@ -89,6 +89,14 @@ const PotentialCustomerDialog: React.FC<PotentialCustomerDialogProps> = ({
                 </Select>
               </FormControl>
             </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label='Enter Customer Phone'
+                fullWidth
+                value={formData.mobile || ''}
+                onChange={(e) => handleChange('mobile', e.target.value)}
+              />
+            </Grid>
           </Grid>
           <DialogActions sx={{ mt: 2 }}>
             <Button

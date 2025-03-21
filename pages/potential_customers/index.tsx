@@ -118,6 +118,16 @@ const ShopHookCard = ({ hookData, onEdit }: any) => {
               {hookData.tier}
             </Typography>
           </div>
+          {hookData?.mobile && (
+            <div>
+              <Typography variant='body2' color='textSecondary'>
+                Mobile
+              </Typography>
+              <Typography variant='subtitle1' fontWeight='bold'>
+                {hookData.mobile}
+              </Typography>
+            </div>
+          )}
         </div>
 
         {/* Edit Button */}
@@ -155,6 +165,7 @@ function PotentialCustomers() {
   const [open, setOpen] = useState(false);
   const [potentialCustomers, setPotentialCustomers] = useState<ShopHook[]>([]);
   const [formData, setFormData]: any = useState({
+    mobile: '',
     name: null as any,
     address: '',
     tier: '',
@@ -204,6 +215,7 @@ function PotentialCustomers() {
       name: hookData.name,
       address: hookData.address,
       tier: hookData.tier,
+      mobile: hookData.mobile,
     });
     setEditingId(hookData._id);
     setIsEditing(true);
@@ -230,6 +242,7 @@ function PotentialCustomers() {
       name: formData.name,
       address: formData.address,
       tier: formData.tier,
+      mobile: formData.mobile,
     };
 
     try {

@@ -183,7 +183,16 @@ const ShopCard = memo(function ShopCard({
               </Select>
             </FormControl>
           )}
-
+          {shop.potentialCustomer && (
+            <TextField
+              label='Enter Customer Mobile Number'
+              fullWidth
+              value={shop.potential_customer_mobile || ''}
+              onChange={(e) =>
+                updateShop(index, 'potential_customer_mobile', e.target.value)
+              }
+            />
+          )}
           {/* Render address component if potential customer OR when a customer is selected */}
           {shop.selectedCustomer && (
             <AddressSelection
@@ -574,6 +583,7 @@ function DailyVisits() {
         body['potential_customer_name'] = shop.potential_customer_name;
         body['potential_customer_address'] = shop.potential_customer_address;
         body['potential_customer_tier'] = shop.potential_customer_tier;
+        body['potential_customer_mobile'] = shop.potential_customer_mobile;
       } else {
         body['customer_id'] = shop.selectedCustomer._id;
         body['customer_name'] = shop.selectedCustomer.contact_name;

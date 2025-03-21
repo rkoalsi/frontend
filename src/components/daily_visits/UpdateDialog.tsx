@@ -197,9 +197,7 @@ const UpdateDialog = ({
                     >
                       {shop.potential_customer
                         ? `${shop.potential_customer_name} (Potential Customer)`
-                        : `${shop.customer_name} (${
-                            shop.address.attention || shop.address.address
-                          })`}
+                        : `${shop.customer_name} (${shop.address.address})`}
                     </MenuItem>
                   ))
                 : dailyVisit.shops
@@ -227,9 +225,7 @@ const UpdateDialog = ({
                       >
                         {shop.potential_customer
                           ? `${shop.potential_customer_name} (Potential Customer)`
-                          : `${shop.customer_name} (${
-                              shop.address.attention || shop.address.address
-                            })`}
+                          : `${shop.customer_name} (${shop.address.address})`}
                       </MenuItem>
                     ))}
             </Select>
