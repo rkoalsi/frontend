@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import {
   Box,
   Typography,
@@ -15,44 +15,8 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import AuthContext from '../../src/components/Auth';
 import EditIcon from '@mui/icons-material/Edit';
-import PotentialCustomerDialog from '../../src/components/daily_visits/PotentialCustomerDialog';
-// ---------- ShopHookCard Component ----------
-
-interface Address {
-  address_id: string;
-  attention: string;
-  address: string;
-  street2: string;
-  city: string;
-  state_code: string;
-  state: string;
-  zip: string;
-  country: string;
-  county: string;
-  country_code: string;
-  phone: string;
-  fax: string;
-}
-
-interface HookEntry {
-  entryId: string;
-  potential_customersAvailable: number;
-  totalHooks: number;
-  editing: boolean;
-  category_name: string;
-  // We'll use category_id as string for simplicity.
-  category_id: string;
-}
-
-interface ShopHook {
-  _id: string;
-  customer_id: string;
-  customer_name: string;
-  customer_address: Address;
-  potential_customers: HookEntry[];
-  created_by: string;
-  created_at: string;
-}
+import ExpectedReorderDialog from '../../src/components/daily_visits/ExpectedReorderDialog';
+import formatAddress from '../../src/util/formatAddress';
 
 const ShopHookCard = ({ hookData, onEdit }: any) => {
   return (
@@ -76,7 +40,7 @@ const ShopHookCard = ({ hookData, onEdit }: any) => {
         }}
       >
         <Typography variant='h6' color='inherit'>
-          {hookData.name}
+          {hookData.customer_name}
         </Typography>
       </div>
 
@@ -96,10 +60,10 @@ const ShopHookCard = ({ hookData, onEdit }: any) => {
         >
           <div>
             <Typography variant='body2' color='textSecondary'>
-              Potential Customer Name
+              Customer Name
             </Typography>
             <Typography variant='subtitle1' fontWeight='bold'>
-              {hookData.name}
+              {hookData.customer_name}
             </Typography>
           </div>
           <div>
@@ -107,27 +71,9 @@ const ShopHookCard = ({ hookData, onEdit }: any) => {
               Shop Address
             </Typography>
             <Typography variant='subtitle1' fontWeight='bold'>
-              {hookData.address}
+              {formatAddress(hookData.address)}
             </Typography>
           </div>
-          <div>
-            <Typography variant='body2' color='textSecondary'>
-              Tier
-            </Typography>
-            <Typography variant='subtitle1' fontWeight='bold'>
-              {hookData.tier}
-            </Typography>
-          </div>
-          {hookData?.mobile && (
-            <div>
-              <Typography variant='body2' color='textSecondary'>
-                Mobile
-              </Typography>
-              <Typography variant='subtitle1' fontWeight='bold'>
-                {hookData.mobile}
-              </Typography>
-            </div>
-          )}
         </div>
 
         {/* Edit Button */}
@@ -158,46 +104,42 @@ const ShopHookCard = ({ hookData, onEdit }: any) => {
   );
 };
 
-// ---------- PotentialCustomers Component ----------
+// ---------- ExpectedReorder Component ----------
 
-function PotentialCustomers() {
+function ExpectedReorder() {
   const { user }: any = useContext(AuthContext);
   const [open, setOpen] = useState(false);
-  const [potentialCustomers, setPotentialCustomers] = useState<ShopHook[]>([]);
+  const [customersReorder, setExpectedReorder] = useState<any[]>([]);
   const [formData, setFormData]: any = useState({
-    mobile: '',
-    name: null as any,
-    address: '',
-    tier: '',
+    customer: '',
   });
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(''); // New state for search query
 
-  const fetchPotentialCustomers = async () => {
+  const fetchExpectedReorder = async () => {
     try {
-      const resp = await axios.get(
-        `${process.env.api_url}/potential_customers`,
-        {
-          params: { created_by: user?.data?._id },
-        }
-      );
-      setPotentialCustomers(resp.data);
+      const resp = await axios.get(`${process.env.api_url}/expected_reorders`, {
+        params: { created_by: user?.data?._id },
+      });
+      setExpectedReorder(resp.data);
     } catch (err) {
       console.error(err);
-      toast.error('Failed to fetch potential customers');
+      toast.error('Failed to fetch expected reorders');
     }
   };
 
   // Fetch hook categories and potential_customers on mount.
   useEffect(() => {
-    fetchPotentialCustomers();
+    fetchExpectedReorder();
   }, []);
 
   // Compute filtered potential_customers based on search query.
-  const filteredPotentialCustomers = potentialCustomers.filter(
+  const filteredExpectedReorder = customersReorder.filter(
     (potentialCustomer: any) =>
-      potentialCustomer.name.toLowerCase().includes(searchQuery.toLowerCase())
+      potentialCustomer.customer_name
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase())
   );
 
   const handleChange = (key: string, value: any) => {
@@ -210,12 +152,14 @@ function PotentialCustomers() {
   };
 
   const handleEditHook = async (hookData: any) => {
+    const { data = {} } = await axios.get(
+      `${process.env.api_url}/customers/${hookData.customer_id}`
+    );
+    const { customer = {} } = data;
     setFormData({
       _id: hookData._id,
-      name: hookData.name,
+      customer: customer,
       address: hookData.address,
-      tier: hookData.tier,
-      mobile: hookData.mobile,
     });
     setEditingId(hookData._id);
     setIsEditing(true);
@@ -225,49 +169,38 @@ function PotentialCustomers() {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     console.log(editingId);
-    if (!formData.name) {
-      toast.error('Please enter a customer name');
-      return;
-    }
-    if (!formData.address) {
-      toast.error('Please enter an address address');
-      return;
-    }
-    if (!formData.tier) {
-      toast.error('Please enter a tier');
+    if (!formData.customer) {
+      toast.error('Please enter a customer');
       return;
     }
     const payload = {
       _id: formData._id,
-      name: formData.name,
-      address: formData.address,
-      tier: formData.tier,
-      mobile: formData.mobile,
+      customer_id: formData?.customer?._id,
+      customer_name: formData?.customer?.contact_name,
+      address: formData?.address,
     };
 
     try {
       if (isEditing && editingId) {
         await axios.put(
-          `${process.env.api_url}/potential_customers/${editingId}`,
+          `${process.env.api_url}/expected_reorders/${editingId}`,
           payload
         );
         toast.success('Hook details updated successfully');
       } else {
-        await axios.post(`${process.env.api_url}/potential_customers`, {
+        await axios.post(`${process.env.api_url}/expected_reorders`, {
           ...payload,
           created_by: user?.data?._id,
         });
         toast.success('Hook details submitted successfully');
       }
       setFormData({
-        name: null,
-        address: '',
-        tier: [],
+        customer: '',
       });
       setOpen(false);
       setIsEditing(false);
       setEditingId(null);
-      await fetchPotentialCustomers();
+      await fetchExpectedReorder();
     } catch (err) {
       console.error(err);
       toast.error('Failed to submit hook details');
@@ -276,7 +209,13 @@ function PotentialCustomers() {
 
   return (
     <Container maxWidth='lg'>
-      <Container sx={{ py: 4, display: 'flex', flexDirection: 'column' }}>
+      <Container
+        sx={{
+          py: 4,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         <Container
           sx={{
             py: 4,
@@ -285,9 +224,10 @@ function PotentialCustomers() {
             alignItems: 'center',
           }}
         >
-          <Header title='Potential Customers' showBackButton />
+          <Header title='Customers Reorder' showBackButton />
           <Alert color='info'>
-            This page is for creation of NEW customers that do not exist on zoho
+            This is for Existing Customers In Zoho that are expected to place
+            orders soon
           </Alert>
         </Container>
         {/* Search Field */}
@@ -299,7 +239,7 @@ function PotentialCustomers() {
           }}
         >
           <TextField
-            label='Search by Potential Customer Name'
+            label='Search by Customer Name'
             variant='outlined'
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -357,11 +297,11 @@ function PotentialCustomers() {
               setOpen(true);
             }}
           >
-            Create Potential Customer
+            Create Expected Reorder
           </Button>
         </Box>
 
-        {filteredPotentialCustomers.length === 0 ? (
+        {filteredExpectedReorder.length === 0 ? (
           <Alert
             severity='info'
             variant='outlined'
@@ -371,9 +311,9 @@ function PotentialCustomers() {
               borderRadius: 3,
             }}
           >
-            {potentialCustomers.length === 0
-              ? 'No Potential Customers found. Create your Potential Customer!'
-              : 'No Potential Customers match your search.'}
+            {filteredExpectedReorder.length === 0
+              ? 'No Expected Reorders found.'
+              : 'No Expected Reorders match your search.'}
           </Alert>
         ) : (
           <Box
@@ -383,12 +323,12 @@ function PotentialCustomers() {
               gap: 3,
             }}
           >
-            {filteredPotentialCustomers.map((h: any) => (
+            {filteredExpectedReorder.map((h: any) => (
               <ShopHookCard key={h._id} hookData={h} onEdit={handleEditHook} />
             ))}
           </Box>
         )}
-        <PotentialCustomerDialog
+        <ExpectedReorderDialog
           open={open}
           setOpen={setOpen}
           isEditing={isEditing}
@@ -401,4 +341,4 @@ function PotentialCustomers() {
   );
 }
 
-export default PotentialCustomers;
+export default ExpectedReorder;

@@ -21,9 +21,9 @@ import {
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 
-const PotentialCustomers = () => {
-  // State for potentialCustomers data and pagination
-  const [potentialCustomers, setPotentialCustomers] = useState([]);
+const TargetedCustomers = () => {
+  // State for targetedCustomers data and pagination
+  const [targetedCustomers, setTargetedCustomers] = useState([]);
   const [page, setPage] = useState(0); // 0-based index
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [totalCount, setTotalCount] = useState(0);
@@ -36,37 +36,37 @@ const PotentialCustomers = () => {
   // Loading states
   const [loading, setLoading] = useState(true);
 
-  // Fetch potentialCustomers from the server
-  const fetchPotentialCustomers = async () => {
+  // Fetch targetedCustomers from the server
+  const fetchTargetedCustomers = async () => {
     setLoading(true);
     try {
       const params = {
         page,
         limit: rowsPerPage,
       };
-      const response = await axiosInstance.get(`/admin/potential_customers`, {
+      const response = await axiosInstance.get(`/admin/targeted_customers`, {
         params,
       });
-      // The backend returns: { potentialCustomers, total_count, total_pages }
+      // The backend returns: { targetedCustomers, total_count, total_pages }
       const {
-        potential_customers = [],
+        targeted_customers = [],
         total_count,
         total_pages,
       } = response.data;
-      setPotentialCustomers(potential_customers);
+      setTargetedCustomers(targeted_customers);
       setTotalCount(total_count);
       setTotalPageCount(total_pages);
     } catch (error) {
       console.error(error);
-      toast.error('Error fetching potential customers.');
+      toast.error('Error fetching targeted customers.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Re-fetch potentialCustomers when page or rowsPerPage changes
+  // Re-fetch targetedCustomers when page or rowsPerPage changes
   useEffect(() => {
-    fetchPotentialCustomers();
+    fetchTargetedCustomers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, rowsPerPage]);
 
@@ -93,12 +93,12 @@ const PotentialCustomers = () => {
   };
 
   // Opens dialog for adding a new catalogue.
-  const handleDownloadPotentialCustomers = async () => {
+  const handleDownloadTargetedCustomers = async () => {
     try {
       const params = {};
 
       const response = await axiosInstance.get(
-        '/admin/potential_customers/report',
+        '/admin/targeted_customers/report',
         {
           params,
           responseType: 'blob', // important for binary data!
@@ -109,7 +109,7 @@ const PotentialCustomers = () => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'potential_customers_report.xlsx');
+      link.setAttribute('download', 'targeted_customers_report.xlsx');
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -122,9 +122,9 @@ const PotentialCustomers = () => {
     if (!window.confirm('Are you sure you want to delete this customer?'))
       return;
     try {
-      await axiosInstance.delete(`/admin/potential_customers/${customerId}`);
+      await axiosInstance.delete(`/admin/targeted_customers/${customerId}`);
       toast.success('Customer deleted successfully.');
-      fetchPotentialCustomers();
+      fetchTargetedCustomers();
     } catch (error) {
       console.error(error);
       toast.error('Error deleting customer.');
@@ -138,12 +138,12 @@ const PotentialCustomers = () => {
   const handleSaveEdit = async () => {
     try {
       await axiosInstance.put(
-        `/admin/potential_customers/${selectedCustomer._id}`,
+        `/admin/targeted_customers/${selectedCustomer._id}`,
         editedCustomer
       );
       toast.success('Customer updated successfully.');
       setEditDialogOpen(false);
-      fetchPotentialCustomers();
+      fetchTargetedCustomers();
     } catch (error) {
       console.error(error);
       toast.error('Error updating customer.');
@@ -167,17 +167,14 @@ const PotentialCustomers = () => {
           alignItems='center'
         >
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
-            All Potential Customers
+            All Targeted Customers
           </Typography>
-          <Button
-            variant='contained'
-            onClick={handleDownloadPotentialCustomers}
-          >
-            Download Potential Customers Report
+          <Button variant='contained' onClick={handleDownloadTargetedCustomers}>
+            Download Targeted Customers Report
           </Button>
         </Box>
         <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
-          View and manage all potential customers below.
+          View and manage all targeted customers below.
         </Typography>
         {loading ? (
           <Box
@@ -192,9 +189,9 @@ const PotentialCustomers = () => {
           </Box>
         ) : (
           <>
-            {potentialCustomers.length > 0 ? (
+            {targetedCustomers.length > 0 ? (
               <>
-                {/* Potential Customers Table */}
+                {/* Targeted Customers Table */}
                 <TableContainer component={Paper}>
                   <Table>
                     <TableHead>
@@ -208,7 +205,7 @@ const PotentialCustomers = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {potentialCustomers.map((customer: any) => (
+                      {targetedCustomers.map((customer: any) => (
                         <TableRow key={customer._id}>
                           <TableCell>{customer.name}</TableCell>
                           <TableCell>{customer.address}</TableCell>
@@ -302,7 +299,7 @@ const PotentialCustomers = () => {
             ) : (
               <Box display='flex' justifyContent='center' alignItems='center'>
                 <Typography variant='h5' fontWeight='bold'>
-                  No Potential Customers
+                  No Targeted Customers
                 </Typography>
               </Box>
             )}
@@ -351,4 +348,4 @@ const PotentialCustomers = () => {
   );
 };
 
-export default PotentialCustomers;
+export default TargetedCustomers;

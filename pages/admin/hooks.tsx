@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
+import formatAddress from '../../src/util/formatAddress';
 
 const Hooks = () => {
   // State for shopHooks data and pagination
@@ -148,45 +149,7 @@ const Hooks = () => {
       setActionLoading(false);
     }
   };
-  const formatAddress = (address: any) => {
-    if (!address || typeof address !== 'object') return '';
-    const parts = [
-      address.attention,
-      address.address,
-      address.streetz,
-      address.city,
-      address.state,
-      address.zip,
-      address.country,
-    ].filter((part) => part && part.toString().trim() !== '');
-    return parts.join(', ');
-  };
-  const handleDeleteClick = async (shopHook: any) => {
-    setActionLoading(true);
-    try {
-      // Here you might want to call an endpoint that toggles the status.
-      // For simplicity, we re-use the delete endpoint (or create a new one) and assume it marks as inactive.
-      const resp = await axiosInstance.delete(`/admin/hooks/${shopHook._id}`);
-      if (resp.status === 200) {
-        toast.success(`Category deleted successfully`);
-        fetchCategories();
-      }
-    } catch (error: any) {
-      console.error(error);
-      toast.error(
-        error.response?.data?.detail || 'Error updating Category status'
-      );
-    } finally {
-      setActionLoading(false);
-    }
-  };
 
-  // Opens dialog for adding a new Category.
-  const handleAddCategory = () => {
-    setSelectedCustomerHook(null);
-    setFormData({ name: '', is_active: true });
-    setDialogOpen(true);
-  };
   const onClickViewDetails = (hook: any) => {
     setSelectedCustomerHook(hook);
     setDialogOpen(true);

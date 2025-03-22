@@ -36,6 +36,11 @@ import {
   MoreVert,
   Dashboard,
   ArrowForward,
+  Category,
+  Phishing,
+  Insights,
+  Radar,
+  Repeat,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 // import StatCard from '../../src/components/admin/StatCard';
@@ -71,6 +76,12 @@ interface Stats {
   inactive_announcements: number;
   submitted_daily_visits: number;
   updated_daily_visits: number;
+  submitted_potential_customers: number;
+  submitted_targeted_customers: number;
+  submitted_shop_hooks: number;
+  active_hook_categories: number;
+  inactive_hook_categories: number;
+  submitted_expected_reorders: number;
   last_updated?: string;
 }
 
@@ -386,7 +397,76 @@ const AdminDashboard = () => {
             },
           ],
           icon: <Checklist color='primary' />,
-          growth: 15, // Example growth value
+        },
+        {
+          label: 'Hooks Categories',
+          route: 'hooks_categories',
+          value: stats.active_hook_categories + stats.inactive_hook_categories,
+          subStats: [
+            {
+              label: 'Active Hook Categories',
+              value: stats.active_hook_categories,
+              color: 'info',
+            },
+            {
+              label: 'Updated Hooks Categories',
+              value: stats.inactive_hook_categories,
+              color: 'info',
+            },
+          ],
+          icon: <Category color='primary' />,
+        },
+        {
+          label: 'Shop Hooks (last 24 hours)',
+          route: 'hooks',
+          value: stats.submitted_shop_hooks,
+          subStats: [
+            {
+              label: 'Submitted Shop Hooks',
+              value: stats.submitted_shop_hooks,
+              color: 'info',
+            },
+          ],
+          icon: <Phishing color='primary' />,
+        },
+        {
+          label: 'Potential Customers',
+          route: 'potential_customers',
+          value: stats.submitted_potential_customers,
+          subStats: [
+            {
+              label: 'Submitted Potential Customers',
+              value: stats.submitted_potential_customers,
+              color: 'info',
+            },
+          ],
+          icon: <Insights color='primary' />,
+        },
+        {
+          label: 'Expected Reorders',
+          route: 'expected_reorders',
+          value: stats.submitted_expected_reorders,
+          subStats: [
+            {
+              label: 'Submitted Expected Reorders',
+              value: stats.submitted_expected_reorders,
+              color: 'info',
+            },
+          ],
+          icon: <Repeat color='primary' />,
+        },
+        {
+          label: 'Targeted Customers',
+          route: 'targeted_customers',
+          value: stats.submitted_targeted_customers,
+          subStats: [
+            {
+              label: 'Submitted Targeted Customers',
+              value: stats.submitted_targeted_customers,
+              color: 'info',
+            },
+          ],
+          icon: <Radar color='primary' />,
         },
       ]
     : [];

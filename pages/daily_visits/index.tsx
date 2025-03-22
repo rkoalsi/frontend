@@ -48,28 +48,9 @@ import PersonIcon from '@mui/icons-material/Person';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import StorefrontIcon from '@mui/icons-material/Storefront';
-import { Check } from '@mui/icons-material';
+import { Check, ShoppingCartOutlined } from '@mui/icons-material';
 import AddressSelection from '../../src/components/common/AddressSelection';
-
-// Helper function to format an address object into a string.
-const formatAddress = (address: any) => {
-  if (!address || typeof address !== 'object') return '';
-  const parts = [
-    address.attention,
-    address.address,
-    address.streetz,
-    address.city,
-    address.state,
-    address.zip,
-    address.country,
-  ].filter((part) => part && part.toString().trim() !== '');
-  return parts.join(', ');
-};
-
-/**
- * Memoized shop card component.
- * It only re-renders when its props (shop data or index) change.
- */
+import formatAddress from '../../src/util/formatAddress';
 const ShopCard = memo(function ShopCard({
   shop,
   index,
@@ -121,6 +102,20 @@ const ShopCard = memo(function ShopCard({
       {shop.editing ? (
         <Stack spacing={2} sx={{ mt: 2 }}>
           {/* Checkbox to mark as potential customer */}
+          <FormControlLabel
+            control={
+              <Checkbox
+                disabled={shop.potentialCustomer}
+                checked={
+                  shop.potentialCustomer ? false : shop.order_expected || false
+                }
+                onChange={(e: any) =>
+                  updateShop(index, 'order_expected', e.target.checked)
+                }
+              />
+            }
+            label='Expect an Order from Customer soon'
+          />
           <FormControlLabel
             control={
               <Checkbox
@@ -297,7 +292,13 @@ const ShopCard = memo(function ShopCard({
                 : shop.selectedCustomer}
             </Typography>
           </Box>
-
+          <Divider variant='middle' />
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <ShoppingCartOutlined color='primary' sx={{ mr: 1.5 }} />
+            <Typography variant='subtitle1' fontWeight='medium'>
+              Order Expected Soon: {shop?.order_expected ? 'Yes' : 'No'}
+            </Typography>
+          </Box>
           <Divider variant='middle' />
 
           <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
@@ -587,6 +588,7 @@ function DailyVisits() {
       } else {
         body['customer_id'] = shop.selectedCustomer._id;
         body['customer_name'] = shop.selectedCustomer.contact_name;
+        body['order_expected'] = shop?.order_expected;
       }
       return body;
     });

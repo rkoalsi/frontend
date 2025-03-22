@@ -8,7 +8,7 @@ import {
   Container,
   useMediaQuery,
 } from '@mui/material';
-import { useContext } from 'react';
+import { act, useContext } from 'react';
 import AuthContext from '../src/components/Auth';
 import { useRouter } from 'next/router';
 import {
@@ -20,6 +20,8 @@ import {
   Payment,
   Phishing,
   PlayCircle,
+  Radar,
+  Repeat,
   ShoppingCart,
 } from '@mui/icons-material';
 import axios from 'axios';
@@ -129,9 +131,21 @@ const menuItems = [
   },
   {
     icon: <Insights />,
-    text: 'Potential Customers',
-    color: '#7c4dff',
+    text: 'Potential Customers (New Customers not in Zoho)',
+    color: '#ff5252',
     action: 'potential_customers',
+  },
+  {
+    icon: <Repeat />,
+    text: 'Existing Customers Reorder',
+    color: '#4db6ac',
+    action: 'expected_reorder',
+  },
+  {
+    icon: <Radar />,
+    text: 'Targeted Customers',
+    color: '#ffa726',
+    action: 'targeted_customer',
   },
 ];
 
@@ -184,7 +198,11 @@ const Home = () => {
       case 'potential_customers':
         router.push('/potential_customers');
         break;
+      case 'expected_reorder':
+        router.push('/expected_reorder');
+        break;
       default:
+        router.push(action);
         break;
     }
   };
