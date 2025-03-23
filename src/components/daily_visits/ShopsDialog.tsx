@@ -100,6 +100,7 @@ const ShopsDialog = ({
               reason: shop.reason || '',
               editing: false,
               customer_id: shop.customer_id || null,
+              order_expected: shop?.order_expected || false,
             };
           })
         );
@@ -191,6 +192,7 @@ const ShopsDialog = ({
         potential_customer_tier: shop.potential_customer_tier,
         address: shop.address,
         reason: shop.reason,
+        order_expected: shop.order_expected,
       }));
       formData.append('shops', JSON.stringify(shopsData));
       formData.append('uploaded_by', user?.data?._id);
@@ -327,6 +329,26 @@ const ShopsDialog = ({
                 <Divider sx={{ my: 1 }} />
                 {shop.editing ? (
                   <Box display='flex' gap='16px' flexDirection='column'>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          disabled={shop.potentialCustomer}
+                          checked={
+                            shop.potentialCustomer
+                              ? false
+                              : shop.order_expected || false
+                          }
+                          onChange={(e: any) =>
+                            updateShop(
+                              index,
+                              'order_expected',
+                              e.target.checked
+                            )
+                          }
+                        />
+                      }
+                      label='Expect an Order from Customer soon'
+                    />
                     <FormControlLabel
                       control={
                         <Checkbox
@@ -483,15 +505,21 @@ const ShopsDialog = ({
                         </Typography>
                       </>
                     )}
+                    <Typography variant='body2' color='text.secondary'>
+                      <strong>Reason:</strong>
+                    </Typography>
+                    <Typography variant='body2' mb={1}>
+                      {shop.reason || 'No reason provided'}
+                    </Typography>
                     <Typography
                       variant='body2'
                       color='text.secondary'
                       gutterBottom
                     >
-                      <strong>Reason:</strong>
+                      <strong>Order Expected Soon:</strong>
                     </Typography>
                     <Typography variant='body2'>
-                      {shop.reason || 'No reason provided'}
+                      {shop?.order_expected ? 'Yes' : 'No'}
                     </Typography>
                   </Box>
                 )}

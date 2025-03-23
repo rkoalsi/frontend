@@ -772,7 +772,11 @@ function DailyVisits() {
                             </Typography>
                           </Box>
                           <Box
-                            sx={{ display: 'flex', alignItems: 'flex-start' }}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              mb: 1,
+                            }}
                           >
                             <DescriptionIcon
                               color='action'
@@ -781,6 +785,19 @@ function DailyVisits() {
                             />
                             <Typography variant='body2'>
                               {shop.reason}
+                            </Typography>
+                          </Box>
+                          <Box
+                            sx={{ display: 'flex', alignItems: 'flex-start' }}
+                          >
+                            <ShoppingCartOutlined
+                              color='action'
+                              fontSize='small'
+                              sx={{ mr: 1, mt: 0.3 }}
+                            />
+                            <Typography variant='body2'>
+                              Order Expected Soon:{' '}
+                              {shop?.order_expected ? 'Yes' : 'No'}
                             </Typography>
                           </Box>
                         </Box>
