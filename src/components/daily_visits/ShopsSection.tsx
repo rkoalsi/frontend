@@ -10,27 +10,13 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import { Phishing } from '@mui/icons-material';
+import formatAddress from '../../util/formatAddress';
 
 interface ShopsSectionProps {
   shops: any[];
   onEditShops: () => void;
   onHookUpdate: any;
 }
-
-// Helper to format the address object
-const formatAddress = (address: any) => {
-  if (!address || typeof address !== 'object') return '';
-  const parts = [
-    address.attention,
-    address.address,
-    address.streetz,
-    address.city,
-    address.state,
-    address.zip,
-    address.country,
-  ].filter((part) => part && part.toString().trim() !== '');
-  return parts.join(', ');
-};
 
 // Helper to get customer name from object or string (used for display in view mode)
 const getCustomerName = (customer: any) => {

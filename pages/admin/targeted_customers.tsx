@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import {
   Typography,
   Box,
@@ -20,53 +20,74 @@ import {
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
+import CustomerSearchBar from '../../src/components/OrderForm/CustomerSearchBar';
+import AddressSelection from '../../src/components/common/AddressSelection';
+import SalesPersonSelection from '../../src/components/common/SalesPersonSelection';
+import formatAddress from '../../src/util/formatAddress';
+import axios from 'axios';
+import AuthContext from '../../src/components/Auth';
 
-const PotentialCustomers = () => {
-  // State for potentialCustomers data and pagination
-  const [potentialCustomers, setPotentialCustomers] = useState([]);
+const TargetedCustomers = () => {
+  // State for targetedCustomers data and pagination
+  const { user }: any = useContext(AuthContext);
+  const [targetedCustomers, setTargetedCustomers] = useState([]);
   const [page, setPage] = useState(0); // 0-based index
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPagesCount, setTotalPageCount] = useState(0);
   const [skipPage, setSkipPage] = useState('');
+  const [editingId, setEditingId] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer]: any = useState(null);
   const [editedCustomer, setEditedCustomer]: any = useState({});
+  const [salesPeople, setSalesPeople] = useState<any[]>([]);
+
+  const fetchSalesPeople = async () => {
+    try {
+      const { data = {} } = await axiosInstance.get(`/admin/salespeople`);
+      setSalesPeople(data.users || []);
+    } catch (error) {
+      console.error('Error fetching sales people:', error);
+    }
+  };
+  useEffect(() => {
+    fetchSalesPeople();
+  }, []);
 
   // Loading states
   const [loading, setLoading] = useState(true);
 
-  // Fetch potentialCustomers from the server
-  const fetchPotentialCustomers = async () => {
+  // Fetch targetedCustomers from the server
+  const fetchTargetedCustomers = async () => {
     setLoading(true);
     try {
       const params = {
         page,
         limit: rowsPerPage,
       };
-      const response = await axiosInstance.get(`/admin/potential_customers`, {
+      const response = await axiosInstance.get(`/admin/targeted_customers`, {
         params,
       });
-      // The backend returns: { potentialCustomers, total_count, total_pages }
+      // The backend returns: { targetedCustomers, total_count, total_pages }
       const {
-        potential_customers = [],
+        targeted_customers = [],
         total_count,
         total_pages,
       } = response.data;
-      setPotentialCustomers(potential_customers);
+      setTargetedCustomers(targeted_customers);
       setTotalCount(total_count);
       setTotalPageCount(total_pages);
     } catch (error) {
       console.error(error);
-      toast.error('Error fetching potential customers.');
+      toast.error('Error fetching targeted customers.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Re-fetch potentialCustomers when page or rowsPerPage changes
+  // Re-fetch targetedCustomers when page or rowsPerPage changes
   useEffect(() => {
-    fetchPotentialCustomers();
+    fetchTargetedCustomers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, rowsPerPage]);
 
@@ -93,60 +114,64 @@ const PotentialCustomers = () => {
   };
 
   // Opens dialog for adding a new catalogue.
-  const handleDownloadPotentialCustomers = async () => {
-    try {
-      const params = {};
-
-      const response = await axiosInstance.get(
-        '/admin/potential_customers/report',
-        {
-          params,
-          responseType: 'blob', // important for binary data!
-        }
-      );
-
-      // Create a URL and trigger a download
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'potential_customers_report.xlsx');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
-      console.error(error);
-      toast.error('Error downloading report.');
-    }
+  const handleDownloadTargetedCustomers = async () => {
+    setEditedCustomer({ customer: '', address: '', sales_people: [] });
+    setEditDialogOpen(true);
   };
   const handleDelete = async (customerId: any) => {
     if (!window.confirm('Are you sure you want to delete this customer?'))
       return;
     try {
-      await axiosInstance.delete(`/admin/potential_customers/${customerId}`);
+      await axiosInstance.delete(`/admin/targeted_customers/${customerId}`);
       toast.success('Customer deleted successfully.');
-      fetchPotentialCustomers();
+      fetchTargetedCustomers();
     } catch (error) {
       console.error(error);
       toast.error('Error deleting customer.');
     }
   };
-  const handleEdit = (customer: any) => {
-    setSelectedCustomer(customer);
-    setEditedCustomer({ ...customer });
+  const handleEdit = async (targetCustomer: any) => {
+    const { data = {} } = await axios.get(
+      `${process.env.api_url}/customers/${targetCustomer.customer_id}`
+    );
+    const { customer: fetchedCustomer = {} } = data;
+    setSelectedCustomer(fetchedCustomer);
+    setEditedCustomer({ ...targetCustomer, customer: fetchedCustomer });
+    setEditingId(fetchedCustomer._id);
     setEditDialogOpen(true);
   };
   const handleSaveEdit = async () => {
     try {
-      await axiosInstance.put(
-        `/admin/potential_customers/${selectedCustomer._id}`,
-        editedCustomer
-      );
-      toast.success('Customer updated successfully.');
+      let action = '';
+      if (editingId !== '') {
+        action = 'updated';
+        await axiosInstance.put(
+          `/admin/targeted_customers/${editedCustomer.customer._id}`,
+          {
+            _id: editedCustomer._id,
+            customer_id: editedCustomer.customer._id,
+            customer_name: selectedCustomer.contact_name,
+            address: editedCustomer.address,
+            sales_people: editedCustomer.sales_people,
+            created_by: user?.data?._id,
+          }
+        );
+      } else {
+        action = 'created';
+        await axiosInstance.post(`/admin/targeted_customers`, {
+          customer_id: editedCustomer.customer._id,
+          customer_name: selectedCustomer.contact_name,
+          address: editedCustomer.address,
+          sales_people: editedCustomer.sales_people,
+          created_by: user?.data?._id,
+        });
+      }
+      toast.success(`Customer ${action} successfully.`);
       setEditDialogOpen(false);
-      fetchPotentialCustomers();
+      fetchTargetedCustomers();
     } catch (error) {
       console.error(error);
-      toast.error('Error updating customer.');
+      toast.error('Error creating/updating customer.');
     }
   };
 
@@ -167,17 +192,14 @@ const PotentialCustomers = () => {
           alignItems='center'
         >
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
-            All Potential Customers
+            All Targeted Customers
           </Typography>
-          <Button
-            variant='contained'
-            onClick={handleDownloadPotentialCustomers}
-          >
-            Download Potential Customers Report
+          <Button variant='contained' onClick={handleDownloadTargetedCustomers}>
+            Target Customer
           </Button>
         </Box>
         <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
-          View and manage all potential customers below.
+          View and manage all targeted customers below.
         </Typography>
         {loading ? (
           <Box
@@ -192,28 +214,32 @@ const PotentialCustomers = () => {
           </Box>
         ) : (
           <>
-            {potentialCustomers.length > 0 ? (
+            {targetedCustomers.length > 0 ? (
               <>
-                {/* Potential Customers Table */}
+                {/* Targeted Customers Table */}
                 <TableContainer component={Paper}>
                   <Table>
                     <TableHead>
                       <TableRow>
                         <TableCell>Name</TableCell>
                         <TableCell>Address</TableCell>
-                        <TableCell>Tier</TableCell>
-                        <TableCell>Mobile</TableCell>
+                        <TableCell>Sales People</TableCell>
                         <TableCell>Created By</TableCell>
                         <TableCell>Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {potentialCustomers.map((customer: any) => (
+                      {targetedCustomers.map((customer: any) => (
                         <TableRow key={customer._id}>
-                          <TableCell>{customer.name}</TableCell>
-                          <TableCell>{customer.address}</TableCell>
-                          <TableCell>{customer.tier}</TableCell>
-                          <TableCell>{customer?.mobile || '-'}</TableCell>
+                          <TableCell>{customer.customer_name}</TableCell>
+                          <TableCell>
+                            {formatAddress(customer.address)}
+                          </TableCell>
+                          <TableCell>
+                            {customer.sales_people_info
+                              .map((sp: any) => sp.name)
+                              .join(', ')}
+                          </TableCell>
                           <TableCell>
                             {customer?.created_by_info?.name}
                           </TableCell>
@@ -302,48 +328,73 @@ const PotentialCustomers = () => {
             ) : (
               <Box display='flex' justifyContent='center' alignItems='center'>
                 <Typography variant='h5' fontWeight='bold'>
-                  No Potential Customers
+                  No Targeted Customers
                 </Typography>
               </Box>
             )}
           </>
         )}
       </Paper>
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
-        <DialogTitle>Edit Potential Customer</DialogTitle>
+      <Dialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        fullWidth
+        maxWidth='sm'
+      >
+        <DialogTitle sx={{ fontWeight: 'bold', textAlign: 'center' }}>
+          Target Customer
+        </DialogTitle>
         <DialogContent>
-          <TextField
-            label='Name'
-            fullWidth
-            margin='dense'
-            value={editedCustomer.name || ''}
-            onChange={(e) =>
-              setEditedCustomer({ ...editedCustomer, name: e.target.value })
-            }
-          />
-          <TextField
-            label='Address'
-            fullWidth
-            margin='dense'
-            value={editedCustomer.address || ''}
-            onChange={(e) =>
-              setEditedCustomer({ ...editedCustomer, address: e.target.value })
-            }
-          />
-          <TextField
-            label='Tier'
-            fullWidth
-            margin='dense'
-            value={editedCustomer.tier || ''}
-            onChange={(e) =>
-              setEditedCustomer({ ...editedCustomer, tier: e.target.value })
-            }
-          />
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}>
+            <CustomerSearchBar
+              ref_no={false}
+              label='Select Customer'
+              onChange={(value) => {
+                setEditedCustomer({ ...editedCustomer, customer: value });
+                setSelectedCustomer(value);
+              }}
+              initialValue={editedCustomer.customer}
+              value={editedCustomer.customer}
+            />
+            <AddressSelection
+              shop={{ selectedCustomer: editedCustomer.customer }}
+              selectedAddressId={editedCustomer?.address?.address_id}
+              handleAddressChange={(e: any) => {
+                const address_id = e.target.value;
+                const selectedAddress = editedCustomer.customer.addresses.find(
+                  (a: any) => a.address_id === address_id
+                );
+                if (selectedAddress) {
+                  setEditedCustomer({
+                    ...editedCustomer,
+                    address: selectedAddress,
+                  });
+                }
+              }}
+            />
+            <SalesPersonSelection
+              salesPeople={salesPeople}
+              selectedSalesPeople={editedCustomer?.sales_people || []}
+              handleSalesPeopleChange={(selectedIds) => {
+                setEditedCustomer({
+                  ...editedCustomer,
+                  sales_people: selectedIds,
+                });
+                console.log(selectedIds);
+              }}
+            />
+          </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button variant='contained' onClick={handleSaveEdit}>
-            Save
+        <DialogActions sx={{ justifyContent: 'space-between', p: 2 }}>
+          <Button
+            onClick={() => setEditDialogOpen(false)}
+            color='error'
+            variant='outlined'
+          >
+            Cancel
+          </Button>
+          <Button variant='contained' color='primary' onClick={handleSaveEdit}>
+            Save Changes
           </Button>
         </DialogActions>
       </Dialog>
@@ -351,4 +402,4 @@ const PotentialCustomers = () => {
   );
 };
 
-export default PotentialCustomers;
+export default TargetedCustomers;

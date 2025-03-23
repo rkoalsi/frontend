@@ -32,6 +32,8 @@ import {
   Shop,
   Category,
   Insights,
+  Radar,
+  Repeat,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -113,6 +115,18 @@ const menuItems = [
     text: 'Potential Customers',
     icon: <Insights />,
     path: '/admin/potential_customers',
+    allowedRoles: ['admin', 'sales_admin'],
+  },
+  {
+    text: 'Existing Customers Reorder',
+    icon: <Repeat />,
+    path: '/admin/expected_reorders',
+    allowedRoles: ['admin', 'sales_admin'],
+  },
+  {
+    text: 'Targeted Customers',
+    icon: <Radar />,
+    path: '/admin/targeted_customers',
     allowedRoles: ['admin', 'sales_admin'],
   },
 ];
