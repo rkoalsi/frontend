@@ -9,16 +9,13 @@ import {
   Alert,
   Container,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import Header from '../../src/components/common/Header';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import AuthContext from '../../src/components/Auth';
-import EditIcon from '@mui/icons-material/Edit';
-import ExpectedReorderDialog from '../../src/components/daily_visits/ExpectedReorderDialog';
 import formatAddress from '../../src/util/formatAddress';
 
-const ShopHookCard = ({ hookData, onEdit }: any) => {
+const ShopHookCard = ({ hookData }: any) => {
   return (
     <Card
       sx={{
@@ -74,42 +71,25 @@ const ShopHookCard = ({ hookData, onEdit }: any) => {
               {formatAddress(hookData.address)}
             </Typography>
           </div>
-        </div>
-
-        {/* Edit Button */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            marginTop: 16,
-          }}
-        >
-          <Button
-            variant='contained'
-            color='primary'
-            startIcon={<EditIcon />}
-            onClick={() => onEdit(hookData)}
-            sx={{
-              textTransform: 'none',
-              borderRadius: 2,
-              px: 3,
-              py: 1,
-            }}
-          >
-            Edit Details
-          </Button>
+          <div>
+            <Typography variant='body2' color='textSecondary'>
+              Created At
+            </Typography>
+            <Typography variant='subtitle1' fontWeight='bold'>
+              {new Date(hookData.created_at).toDateString()}
+            </Typography>
+          </div>
         </div>
       </CardContent>
     </Card>
   );
 };
 
-// ---------- ExpectedReorder Component ----------
+// ---------- TargetedCustomer Component ----------
 
-function ExpectedReorder() {
+function TargetedCustomer() {
   const { user }: any = useContext(AuthContext);
-  const [open, setOpen] = useState(false);
-  const [customersReorder, setExpectedReorder] = useState<any[]>([]);
+  const [customersReorder, setTargetedCustomer] = useState<any[]>([]);
   const [formData, setFormData]: any = useState({
     customer: '',
   });
@@ -117,12 +97,15 @@ function ExpectedReorder() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(''); // New state for search query
 
-  const fetchExpectedReorder = async () => {
+  const fetchTargetedCustomer = async () => {
     try {
-      const resp = await axios.get(`${process.env.api_url}/expected_reorders`, {
-        params: { created_by: user?.data?._id },
-      });
-      setExpectedReorder(resp.data);
+      const resp = await axios.get(
+        `${process.env.api_url}/targeted_customers`,
+        {
+          params: { user: user?.data?._id },
+        }
+      );
+      setTargetedCustomer(resp.data);
     } catch (err) {
       console.error(err);
       toast.error('Failed to fetch expected reorders');
@@ -131,11 +114,11 @@ function ExpectedReorder() {
 
   // Fetch hook categories and potential_customers on mount.
   useEffect(() => {
-    fetchExpectedReorder();
+    fetchTargetedCustomer();
   }, []);
 
   // Compute filtered potential_customers based on search query.
-  const filteredExpectedReorder = customersReorder.filter(
+  const filteredTargetedCustomer = customersReorder.filter(
     (potentialCustomer: any) =>
       potentialCustomer.customer_name
         .toLowerCase()
@@ -148,62 +131,6 @@ function ExpectedReorder() {
         ...prev,
         [key]: value,
       }));
-    }
-  };
-
-  const handleEditHook = async (hookData: any) => {
-    const { data = {} } = await axios.get(
-      `${process.env.api_url}/customers/${hookData.customer_id}`
-    );
-    const { customer = {} } = data;
-    setFormData({
-      _id: hookData._id,
-      customer: customer,
-      address: hookData.address,
-    });
-    setEditingId(hookData._id);
-    setIsEditing(true);
-    setOpen(true);
-  };
-
-  const handleSubmit = async (e: any) => {
-    e.preventDefault();
-    console.log(editingId);
-    if (!formData.customer) {
-      toast.error('Please enter a customer');
-      return;
-    }
-    const payload = {
-      _id: formData._id,
-      customer_id: formData?.customer?._id,
-      customer_name: formData?.customer?.contact_name,
-      address: formData?.address,
-    };
-
-    try {
-      if (isEditing && editingId) {
-        await axios.put(
-          `${process.env.api_url}/expected_reorders/${editingId}`,
-          payload
-        );
-        toast.success('Hook details updated successfully');
-      } else {
-        await axios.post(`${process.env.api_url}/expected_reorders`, {
-          ...payload,
-          created_by: user?.data?._id,
-        });
-        toast.success('Hook details submitted successfully');
-      }
-      setFormData({
-        customer: '',
-      });
-      setOpen(false);
-      setIsEditing(false);
-      setEditingId(null);
-      await fetchExpectedReorder();
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to submit hook details');
     }
   };
 
@@ -224,10 +151,9 @@ function ExpectedReorder() {
             alignItems: 'center',
           }}
         >
-          <Header title='Customers Reorder' showBackButton />
+          <Header title='Targeted Customers' showBackButton />
           <Alert color='info'>
-            This is for Existing Customers In Zoho that are expected to place
-            orders soon
+            This is for existing customers that need to be targeted.
           </Alert>
         </Container>
         {/* Search Field */}
@@ -269,39 +195,7 @@ function ExpectedReorder() {
           />
         </Box>
 
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            mb: 4,
-          }}
-        >
-          <Button
-            variant='contained'
-            color='primary'
-            size='large'
-            startIcon={<AddIcon />}
-            sx={{
-              borderRadius: 3,
-              px: 4,
-              py: 1.5,
-            }}
-            onClick={() => {
-              setFormData({
-                selectedCustomer: null,
-                customerAddress: '',
-                hookEntries: [],
-              });
-              setIsEditing(false);
-              setEditingId(null);
-              setOpen(true);
-            }}
-          >
-            Create Expected Reorder
-          </Button>
-        </Box>
-
-        {filteredExpectedReorder.length === 0 ? (
+        {filteredTargetedCustomer.length === 0 ? (
           <Alert
             severity='info'
             variant='outlined'
@@ -311,9 +205,9 @@ function ExpectedReorder() {
               borderRadius: 3,
             }}
           >
-            {filteredExpectedReorder.length === 0
-              ? 'No Expected Reorders found.'
-              : 'No Expected Reorders match your search.'}
+            {filteredTargetedCustomer.length === 0
+              ? 'No Targeted Customers found.'
+              : 'No Targeted Customers match your search.'}
           </Alert>
         ) : (
           <Box
@@ -323,22 +217,14 @@ function ExpectedReorder() {
               gap: 3,
             }}
           >
-            {filteredExpectedReorder.map((h: any) => (
-              <ShopHookCard key={h._id} hookData={h} onEdit={handleEditHook} />
+            {filteredTargetedCustomer.map((h: any) => (
+              <ShopHookCard key={h._id} hookData={h} />
             ))}
           </Box>
         )}
-        <ExpectedReorderDialog
-          open={open}
-          setOpen={setOpen}
-          isEditing={isEditing}
-          formData={formData}
-          handleSubmit={handleSubmit}
-          handleChange={handleChange}
-        />
       </Container>
     </Container>
   );
 }
 
-export default ExpectedReorder;
+export default TargetedCustomer;
