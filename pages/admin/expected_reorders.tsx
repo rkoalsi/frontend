@@ -20,10 +20,11 @@ import {
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
+import formatAddress from '../../src/util/formatAddress';
 
-const PotentialCustomers = () => {
-  // State for potentialCustomers data and pagination
-  const [potentialCustomers, setPotentialCustomers] = useState([]);
+const ExpectedReorders = () => {
+  // State for expectedReorders data and pagination
+  const [expectedReorders, setExpectedReorders] = useState([]);
   const [page, setPage] = useState(0); // 0-based index
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [totalCount, setTotalCount] = useState(0);
@@ -36,37 +37,37 @@ const PotentialCustomers = () => {
   // Loading states
   const [loading, setLoading] = useState(true);
 
-  // Fetch potentialCustomers from the server
-  const fetchPotentialCustomers = async () => {
+  // Fetch expectedReorders from the server
+  const fetchExpectedReorders = async () => {
     setLoading(true);
     try {
       const params = {
         page,
         limit: rowsPerPage,
       };
-      const response = await axiosInstance.get(`/admin/potential_customers`, {
+      const response = await axiosInstance.get(`/admin/expected_reorders`, {
         params,
       });
-      // The backend returns: { potentialCustomers, total_count, total_pages }
+      // The backend returns: { expectedReorders, total_count, total_pages }
       const {
-        potential_customers = [],
+        expected_reorders = [],
         total_count,
         total_pages,
       } = response.data;
-      setPotentialCustomers(potential_customers);
+      setExpectedReorders(expected_reorders);
       setTotalCount(total_count);
       setTotalPageCount(total_pages);
     } catch (error) {
       console.error(error);
-      toast.error('Error fetching potential customers.');
+      toast.error('Error fetching expected reorders.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Re-fetch potentialCustomers when page or rowsPerPage changes
+  // Re-fetch expectedReorders when page or rowsPerPage changes
   useEffect(() => {
-    fetchPotentialCustomers();
+    fetchExpectedReorders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, rowsPerPage]);
 
@@ -93,12 +94,12 @@ const PotentialCustomers = () => {
   };
 
   // Opens dialog for adding a new catalogue.
-  const handleDownloadPotentialCustomers = async () => {
+  const handleDownloadExpectedReorders = async () => {
     try {
       const params = {};
 
       const response = await axiosInstance.get(
-        '/admin/potential_customers/report',
+        '/admin/expected_reorders/report',
         {
           params,
           responseType: 'blob', // important for binary data!
@@ -109,44 +110,13 @@ const PotentialCustomers = () => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'potential_customers_report.xlsx');
+      link.setAttribute('download', 'expected_reorders_report.xlsx');
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (error) {
       console.error(error);
       toast.error('Error downloading report.');
-    }
-  };
-  const handleDelete = async (customerId: any) => {
-    if (!window.confirm('Are you sure you want to delete this customer?'))
-      return;
-    try {
-      await axiosInstance.delete(`/admin/potential_customers/${customerId}`);
-      toast.success('Customer deleted successfully.');
-      fetchPotentialCustomers();
-    } catch (error) {
-      console.error(error);
-      toast.error('Error deleting customer.');
-    }
-  };
-  const handleEdit = (customer: any) => {
-    setSelectedCustomer(customer);
-    setEditedCustomer({ ...customer });
-    setEditDialogOpen(true);
-  };
-  const handleSaveEdit = async () => {
-    try {
-      await axiosInstance.put(
-        `/admin/potential_customers/${selectedCustomer._id}`,
-        editedCustomer
-      );
-      toast.success('Customer updated successfully.');
-      setEditDialogOpen(false);
-      fetchPotentialCustomers();
-    } catch (error) {
-      console.error(error);
-      toast.error('Error updating customer.');
     }
   };
 
@@ -167,17 +137,14 @@ const PotentialCustomers = () => {
           alignItems='center'
         >
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
-            All Potential Customers
+            All Expected Reorders
           </Typography>
-          <Button
-            variant='contained'
-            onClick={handleDownloadPotentialCustomers}
-          >
-            Download Potential Customers Report
+          <Button variant='contained' onClick={handleDownloadExpectedReorders}>
+            Download Expected Reorders Report
           </Button>
         </Box>
         <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
-          View and manage all potential customers below.
+          View and manage all expected reorders below.
         </Typography>
         {loading ? (
           <Box
@@ -192,52 +159,31 @@ const PotentialCustomers = () => {
           </Box>
         ) : (
           <>
-            {potentialCustomers.length > 0 ? (
+            {expectedReorders.length > 0 ? (
               <>
-                {/* Potential Customers Table */}
+                {/* Expected Reorders Table */}
                 <TableContainer component={Paper}>
                   <Table>
                     <TableHead>
                       <TableRow>
+                        <TableCell>Created At</TableCell>
                         <TableCell>Name</TableCell>
                         <TableCell>Address</TableCell>
-                        <TableCell>Tier</TableCell>
-                        <TableCell>Mobile</TableCell>
                         <TableCell>Created By</TableCell>
-                        <TableCell>Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {potentialCustomers.map((customer: any) => (
+                      {expectedReorders.map((customer: any) => (
                         <TableRow key={customer._id}>
-                          <TableCell>{customer.name}</TableCell>
-                          <TableCell>{customer.address}</TableCell>
-                          <TableCell>{customer.tier}</TableCell>
-                          <TableCell>{customer?.mobile || '-'}</TableCell>
                           <TableCell>
-                            {customer?.created_by_info?.name}
+                            {new Date(customer?.created_at).toLocaleString()}
+                          </TableCell>
+                          <TableCell>{customer.customer_name}</TableCell>
+                          <TableCell>
+                            {formatAddress(customer.address)}
                           </TableCell>
                           <TableCell>
-                            <Box
-                              display={'flex'}
-                              flexDirection={'row'}
-                              gap={'8px'}
-                            >
-                              <Button
-                                variant='outlined'
-                                color={'info'}
-                                onClick={() => handleEdit(customer)}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant='outlined'
-                                color={'error'}
-                                onClick={() => handleDelete(customer._id)}
-                              >
-                                Delete
-                              </Button>
-                            </Box>
+                            {customer?.created_by_info?.name}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -302,53 +248,15 @@ const PotentialCustomers = () => {
             ) : (
               <Box display='flex' justifyContent='center' alignItems='center'>
                 <Typography variant='h5' fontWeight='bold'>
-                  No Potential Customers
+                  No Expected Reorders
                 </Typography>
               </Box>
             )}
           </>
         )}
       </Paper>
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
-        <DialogTitle>Edit Potential Customer</DialogTitle>
-        <DialogContent>
-          <TextField
-            label='Name'
-            fullWidth
-            margin='dense'
-            value={editedCustomer.name || ''}
-            onChange={(e) =>
-              setEditedCustomer({ ...editedCustomer, name: e.target.value })
-            }
-          />
-          <TextField
-            label='Address'
-            fullWidth
-            margin='dense'
-            value={editedCustomer.address || ''}
-            onChange={(e) =>
-              setEditedCustomer({ ...editedCustomer, address: e.target.value })
-            }
-          />
-          <TextField
-            label='Tier'
-            fullWidth
-            margin='dense'
-            value={editedCustomer.tier || ''}
-            onChange={(e) =>
-              setEditedCustomer({ ...editedCustomer, tier: e.target.value })
-            }
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button variant='contained' onClick={handleSaveEdit}>
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };
 
-export default PotentialCustomers;
+export default ExpectedReorders;

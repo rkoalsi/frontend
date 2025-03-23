@@ -14,10 +14,12 @@ import {
   Select,
   TextField,
 } from '@mui/material';
+import CustomerSearchBar from '../OrderForm/CustomerSearchBar';
+import AddressSelection from '../common/AddressSelection';
 
 // Import your custom components (adjust paths as necessary)
 
-interface PotentialCustomerDialogProps {
+interface ExpectedReorderDialogProps {
   open: boolean;
   setOpen: (open: boolean) => void;
   isEditing: boolean;
@@ -26,7 +28,7 @@ interface PotentialCustomerDialogProps {
   handleChange: any;
 }
 
-const PotentialCustomerDialog: React.FC<PotentialCustomerDialogProps> = ({
+const ExpectedReorderDialog: React.FC<ExpectedReorderDialogProps> = ({
   open,
   setOpen,
   isEditing,
@@ -51,51 +53,41 @@ const PotentialCustomerDialog: React.FC<PotentialCustomerDialogProps> = ({
           py: 2,
         }}
       >
-        {isEditing ? 'Edit Potential Customer' : 'Create Potential Customer'}
+        {isEditing ? 'Edit Expected Reorder' : 'Create Expected Reorder'}
       </DialogTitle>
       <DialogContent dividers>
         <Box component='form' onSubmit={handleSubmit}>
           <Typography variant='h6' gutterBottom>
-            Potential Customer Details
+            Expected Reorder Details
           </Typography>
           <Grid container spacing={2} direction='column'>
             <Grid item xs={12} sm={6}>
-              <TextField
-                label='Enter Customer Name'
-                fullWidth
-                value={formData.name}
-                onChange={(e) => handleChange('name', e.target.value)}
+              <CustomerSearchBar
+                ref_no={false}
+                label='Select Customer'
+                onChange={(value) => {
+                  handleChange('customer', value);
+                }}
+                initialValue={formData.customer}
+                value={formData.customer}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                label='Enter Customer Address'
-                fullWidth
-                value={formData.address}
-                onChange={(e) => handleChange('address', e.target.value)}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Customer Tier</InputLabel>
-                <Select
-                  value={formData.tier}
-                  onChange={(e: any) => handleChange('tier', e.target.value)}
-                >
-                  <MenuItem value='A'>A</MenuItem>
-                  <MenuItem value='B'>B</MenuItem>
-                  <MenuItem value='C'>C</MenuItem>
-                  <MenuItem value='D'>D</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label='Enter Customer Phone'
-                fullWidth
-                value={formData.mobile || ''}
-                onChange={(e) => handleChange('mobile', e.target.value)}
-              />
+              {formData.customer && (
+                <AddressSelection
+                  shop={{ selectedCustomer: formData.customer }}
+                  selectedAddressId={formData?.address?.address_id}
+                  handleAddressChange={(e: any) => {
+                    const address_id = e.target.value;
+                    const selectedAddress = formData.customer.addresses.find(
+                      (a: any) => a.address_id === address_id
+                    );
+                    if (selectedAddress) {
+                      handleChange('address', selectedAddress);
+                    }
+                  }}
+                />
+              )}
             </Grid>
           </Grid>
           <DialogActions sx={{ mt: 2 }}>
@@ -108,8 +100,8 @@ const PotentialCustomerDialog: React.FC<PotentialCustomerDialogProps> = ({
             </Button>
             <Button type='submit' variant='contained' color='primary'>
               {isEditing
-                ? 'Update Potential Customer Details'
-                : 'Submit Potential Customer Details'}
+                ? 'Update Expected Reorder Details'
+                : 'Submit Expected Reorder Details'}
             </Button>
           </DialogActions>
         </Box>
@@ -118,4 +110,4 @@ const PotentialCustomerDialog: React.FC<PotentialCustomerDialogProps> = ({
   );
 };
 
-export default PotentialCustomerDialog;
+export default ExpectedReorderDialog;
