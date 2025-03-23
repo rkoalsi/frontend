@@ -132,6 +132,12 @@ const ShopsSection = ({
                   </>
                 )}
                 <Typography variant='body2' color='text.secondary' gutterBottom>
+                  <strong>Order Expected Soon:</strong>
+                </Typography>
+                <Typography variant='body2' sx={{ flex: 1 }}>
+                  {shop?.order_expected ? 'Yes' : 'No'}
+                </Typography>
+                <Typography variant='body2' color='text.secondary' gutterBottom>
                   <strong>Reason:</strong>
                 </Typography>
                 <Typography variant='body2' sx={{ flex: 1 }}>

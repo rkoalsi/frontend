@@ -225,6 +225,7 @@ const TargetedCustomers = () => {
                         <TableCell>Address</TableCell>
                         <TableCell>Sales People</TableCell>
                         <TableCell>Created By</TableCell>
+                        <TableCell>Notes</TableCell>
                         <TableCell>Actions</TableCell>
                       </TableRow>
                     </TableHead>
@@ -242,6 +243,16 @@ const TargetedCustomers = () => {
                           </TableCell>
                           <TableCell>
                             {customer?.created_by_info?.name}
+                          </TableCell>
+                          <TableCell>
+                            {customer?.notes?.map(
+                              (n: any, index: number) =>
+                                `${index + 1}. ${'\t'} ${n.note} - ${
+                                  customer.sales_people_info.filter(
+                                    (sp: any) => sp._id === n.created_by
+                                  )[0]?.name
+                                }`
+                            )}
                           </TableCell>
                           <TableCell>
                             <Box
