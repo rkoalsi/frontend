@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -15,7 +15,6 @@ import axios from 'axios';
 import AuthContext from '../../src/components/Auth';
 
 const Checkin = () => {
-  // Simulating AuthContext - replace with your actual context
   const { user }: any = useContext(AuthContext);
 
   const theme = useTheme();
@@ -23,6 +22,28 @@ const Checkin = () => {
 
   const [checkedIn, setCheckedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchAttendanceStatus = async () => {
+      if (!user?.data?.phone) return;
+
+      try {
+        const response = await axios.get(
+          `${process.env.api_url}/attendance/status`,
+          { params: { phone: user.data.phone } }
+        );
+
+        if (response.status === 200) {
+          setCheckedIn(response.data.checked_in);
+        }
+      } catch (error) {
+        console.error('Error fetching attendance status:', error);
+        toast.error('Could not fetch attendance status');
+      }
+    };
+
+    fetchAttendanceStatus();
+  }, [user]);
 
   const handleAttendance = async () => {
     setIsLoading(true);
