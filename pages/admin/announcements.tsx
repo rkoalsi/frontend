@@ -62,7 +62,7 @@ const Announcements = () => {
   const audioRef = useRef(new Audio());
 
   // Fetch announcements from the server
-  const fetchTrainings = async () => {
+  const fetchAnnouncements = async () => {
     setLoading(true);
     try {
       const params = {
@@ -87,7 +87,7 @@ const Announcements = () => {
 
   // Re-fetch announcements when page or rowsPerPage changes
   useEffect(() => {
-    fetchTrainings();
+    fetchAnnouncements();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, rowsPerPage, actionLoading]);
 
@@ -158,6 +158,20 @@ const Announcements = () => {
 
     setDialogOpen(true);
   };
+  const handleDelete = async (announcement: any) => {
+    try {
+      const { data = {} } = await axiosInstance.delete(
+        `${process.env.api_url}/admin/announcements/${announcement._id}`
+      );
+      if (data) {
+        toast.success(`Announcement Deleted Successfully`);
+        fetchAnnouncements();
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error('Error Deleting Announcement');
+    }
+  };
 
   // Handler for saving an announcement (update if editing, add if creating new)
   const handleSave = async () => {
@@ -204,7 +218,7 @@ const Announcements = () => {
         toast.success('Announcement added successfully');
       }
 
-      fetchTrainings();
+      fetchAnnouncements();
       setDialogOpen(false);
       resetAudioState();
     } catch (error) {
@@ -241,7 +255,7 @@ const Announcements = () => {
             !announcement.is_active ? 'Active' : 'Inactive'
           } successfully`
         );
-        fetchTrainings();
+        fetchAnnouncements();
       }
     } catch (error: any) {
       console.error(error);
@@ -455,6 +469,11 @@ const Announcements = () => {
                                 onClick={() => handleEditClick(announcement)}
                               >
                                 <Edit />
+                              </IconButton>
+                              <IconButton
+                                onClick={() => handleDelete(announcement)}
+                              >
+                                <Delete />
                               </IconButton>
                             </Box>
                           </TableCell>
