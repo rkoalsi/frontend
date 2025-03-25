@@ -14,6 +14,7 @@ import { useRouter } from 'next/router';
 import {
   CalendarMonth,
   Campaign,
+  Check,
   History,
   Insights,
   MenuBook,
@@ -98,6 +99,12 @@ const menuItems = [
     text: 'Payments Due',
     color: '#ff5252',
     action: 'paymentsDue',
+  },
+  {
+    icon: <Check />,
+    text: 'Greythr Login',
+    color: '#7986cb',
+    action: 'check_in',
   },
   {
     icon: <MenuBook />,
