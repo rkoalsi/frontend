@@ -91,7 +91,7 @@ const menuItems = [
     text: 'Announcements',
     icon: <Campaign />,
     path: '/admin/announcements',
-    allowedRoles: ['admin', 'sales_admin'],
+    allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
   },
   {
     text: 'Daily Visits',
@@ -136,7 +136,8 @@ const getAllowedRoles = (path: string): string[] => {
   if (
     path === '/admin' ||
     path === '/admin/products' ||
-    path === '/admin/catalogues'
+    path === '/admin/catalogues' ||
+    path === '/admin/announcements'
   ) {
     return ['admin', 'sales_admin', 'catalogue_manager'];
   }
