@@ -335,14 +335,14 @@ const DailyVisits = () => {
                       {update.images && update.images.length > 0 && (
                         <Grid container spacing={2} sx={{ mt: 1 }}>
                           {update.images.map((img: any, idx: number) => (
-                            <Grid item xs={6} key={idx} component='div'>
+                            <Box>
                               <img
                                 onClick={() => handleImageClick(img.url)}
                                 src={img.url}
                                 alt={`Update Image ${idx + 1}`}
                                 style={{ width: '100%', borderRadius: '8px' }}
                               />
-                            </Grid>
+                            </Box>
                           ))}
                         </Grid>
                       )}
