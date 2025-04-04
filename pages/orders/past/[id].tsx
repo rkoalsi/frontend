@@ -210,6 +210,9 @@ const OrderDetails = () => {
               <AddToPhotos fontSize='medium' />
             </IconButton>
             <IconButton
+              disabled={['declined', 'accepted', 'invoiced'].includes(
+                orderData?.status?.toLowerCase()
+              )}
               onClick={() => router.push(`/orders/new/${orderData._id || id}`)}
             >
               <Edit fontSize='medium' />
