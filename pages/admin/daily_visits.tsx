@@ -335,7 +335,7 @@ const DailyVisits = () => {
                       {update.images && update.images.length > 0 && (
                         <Grid container spacing={2} sx={{ mt: 1 }}>
                           {update.images.map((img: any, idx: number) => (
-                            <Grid xs={6} key={idx}>
+                            <Grid item xs={6} key={idx} component='div'>
                               <img
                                 onClick={() => handleImageClick(img.url)}
                                 src={img.url}
