@@ -14,13 +14,12 @@ import {
   Button,
   TablePagination,
   TextField,
+  Grid,
   Drawer,
-  Container,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
-import Grid from '@mui/material/Grid';
 
 const DailyVisits = () => {
   // State for daily visits data and pagination
@@ -336,7 +335,7 @@ const DailyVisits = () => {
                       {update.images && update.images.length > 0 && (
                         <Grid container spacing={2} sx={{ mt: 1 }}>
                           {update.images.map((img: any, idx: number) => (
-                            <Grid item xs={6} key={idx}>
+                            <Grid xs={6} key={idx}>
                               <img
                                 onClick={() => handleImageClick(img.url)}
                                 src={img.url}
