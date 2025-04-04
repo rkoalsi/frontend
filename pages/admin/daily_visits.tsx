@@ -15,12 +15,12 @@ import {
   TablePagination,
   TextField,
   Drawer,
-  Grid,
   Container,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
+import Grid from '@mui/material/Grid';
 
 const DailyVisits = () => {
   // State for daily visits data and pagination
