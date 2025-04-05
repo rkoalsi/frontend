@@ -15,7 +15,7 @@
     "@emotion/server": "latest",
     "@emotion/styled": "latest",
     "@mui/icons-material": "latest",
-    "@mui/material": "latest",
+    "@mui/material": "5.0.6",
     "@mui/material-nextjs": "latest",
     "axios": "^1.7.9",
     "clsx": "latest",
