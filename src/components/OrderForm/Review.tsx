@@ -336,7 +336,7 @@ const Review: React.FC<Props> = React.memo((props) => {
           {!isMobile ? (
             // Desktop/Grid View
             <Box sx={{ mt: 2 }}>
-              <Grid container spacing={2}>
+              <Grid container spacing={3}>
                 {products.length > 0 ? (
                   products.map((product, index) => {
                     const isActive = product.status === 'active';
@@ -346,9 +346,17 @@ const Review: React.FC<Props> = React.memo((props) => {
                       calculatePrices(product);
 
                     return (
-                      <Grid>
+                      <Grid
+                        minWidth={'100%'}
+                        mt={1}
+                        mb={2}
+                        display={'flex'}
+                        justifyContent={'center'}
+                        alignItems={'center'}
+                      >
                         <Card
                           sx={{
+                            minWidth: '100%',
                             display: 'flex',
                             p: 2,
                             backgroundColor: !isActive ? '#f0f0f0' : 'inherit',
