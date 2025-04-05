@@ -59,7 +59,7 @@ const PotentialCustomerDialog: React.FC<PotentialCustomerDialogProps> = ({
             Potential Customer Details
           </Typography>
           <Grid container spacing={2} direction='column'>
-            <Grid item xs={12} sm={6}>
+            <Grid>
               <TextField
                 label='Enter Customer Name'
                 fullWidth
@@ -67,7 +67,7 @@ const PotentialCustomerDialog: React.FC<PotentialCustomerDialogProps> = ({
                 onChange={(e) => handleChange('name', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid>
               <TextField
                 label='Enter Customer Address'
                 fullWidth
@@ -75,7 +75,7 @@ const PotentialCustomerDialog: React.FC<PotentialCustomerDialogProps> = ({
                 onChange={(e) => handleChange('address', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid>
               <FormControl fullWidth>
                 <InputLabel>Customer Tier</InputLabel>
                 <Select
@@ -89,7 +89,7 @@ const PotentialCustomerDialog: React.FC<PotentialCustomerDialogProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid>
               <TextField
                 label='Enter Customer Phone'
                 fullWidth

@@ -27,7 +27,7 @@ function NewAddress(props: Props) {
         Add New {type} Address
       </Typography>
       <Grid container spacing={2}>
-        <Grid item xs={12}>
+        <Grid>
           <TextField
             label='Attention'
             fullWidth
@@ -35,7 +35,7 @@ function NewAddress(props: Props) {
             onChange={(e) => handleInputChange('attention', e.target.value)}
           />
         </Grid>
-        <Grid item xs={12}>
+        <Grid>
           <TextField
             label='Address'
             fullWidth
@@ -43,7 +43,7 @@ function NewAddress(props: Props) {
             onChange={(e) => handleInputChange('address', e.target.value)}
           />
         </Grid>
-        <Grid item xs={12}>
+        <Grid>
           <TextField
             label='Street 2'
             fullWidth
@@ -51,7 +51,7 @@ function NewAddress(props: Props) {
             onChange={(e) => handleInputChange('street2', e.target.value)}
           />
         </Grid>
-        <Grid item xs={6}>
+        <Grid>
           <TextField
             label='City'
             fullWidth
@@ -59,7 +59,7 @@ function NewAddress(props: Props) {
             onChange={(e) => handleInputChange('city', e.target.value)}
           />
         </Grid>
-        <Grid item xs={6}>
+        <Grid>
           <TextField
             label='State'
             fullWidth
@@ -67,7 +67,7 @@ function NewAddress(props: Props) {
             onChange={(e) => handleInputChange('state', e.target.value)}
           />
         </Grid>
-        <Grid item xs={6}>
+        <Grid>
           <TextField
             label='State Code'
             fullWidth
@@ -75,7 +75,7 @@ function NewAddress(props: Props) {
             onChange={(e) => handleInputChange('state_code', e.target.value)}
           />
         </Grid>
-        <Grid item xs={6}>
+        <Grid>
           <TextField
             label='Zip'
             fullWidth
@@ -83,7 +83,7 @@ function NewAddress(props: Props) {
             onChange={(e) => handleInputChange('zip', e.target.value)}
           />
         </Grid>
-        <Grid item xs={6}>
+        <Grid>
           <TextField
             label='Country'
             fullWidth
@@ -91,7 +91,7 @@ function NewAddress(props: Props) {
             onChange={(e) => handleInputChange('country', e.target.value)}
           />
         </Grid>
-        <Grid item xs={6}>
+        <Grid>
           <TextField
             label='Country Code'
             fullWidth
@@ -99,7 +99,7 @@ function NewAddress(props: Props) {
             onChange={(e) => handleInputChange('country_code', e.target.value)}
           />
         </Grid>
-        <Grid item xs={12}>
+        <Grid>
           <TextField
             label='Phone'
             fullWidth

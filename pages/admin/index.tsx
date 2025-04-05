@@ -495,7 +495,7 @@ const AdminDashboard = () => {
   const renderSkeletons = () => (
     <Grid container spacing={3}>
       {[1, 2, 3, 4, 5, 6].map((item) => (
-        <Grid item xs={12} sm={6} md={4} key={item}>
+        <Box>
           <Paper
             elevation={2}
             sx={{
@@ -516,7 +516,7 @@ const AdminDashboard = () => {
             </Box>
             <Skeleton variant='rectangular' height={100} />
           </Paper>
-        </Grid>
+        </Box>
       ))}
     </Grid>
   );

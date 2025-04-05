@@ -104,7 +104,7 @@ function Catalogue(props: Props) {
         <Grid container spacing={3} justifyContent='center'>
           {brands.length > 0 ? (
             brands.map((b: any, index: number) => (
-              <Grid item xs={12} sm={6} md={4} key={index}>
+              <Box>
                 <motion.div
                   variants={itemVariants}
                   whileHover={{ scale: 1.03 }}
@@ -131,7 +131,7 @@ function Catalogue(props: Props) {
                     </Box>
                   </StyledCard>
                 </motion.div>
-              </Grid>
+              </Box>
             ))
           ) : (
             <Typography

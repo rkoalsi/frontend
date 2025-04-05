@@ -33,7 +33,7 @@ const ProductDialog = ({
           <Box sx={{ mt: 2 }}>
             <Grid container spacing={2}>
               {/* Image Section */}
-              <Grid item xs={12} md={4}>
+              <Box>
                 <Typography
                   variant='subtitle2'
                   color='textSecondary'
@@ -71,13 +71,13 @@ const ProductDialog = ({
                   onImageUpload={handleImageUpload}
                   updating={updating}
                 />
-              </Grid>
+              </Box>
 
               {/* Details Section */}
-              <Grid item xs={12} md={8}>
+              <Grid>
                 <Grid container spacing={2}>
                   {/* Item Name (Read-only) */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid>
                     <Typography variant='subtitle2' color='textSecondary'>
                       Item Name
                     </Typography>
@@ -87,7 +87,7 @@ const ProductDialog = ({
                   </Grid>
 
                   {/* Category (Editable) */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid>
                     <Typography variant='subtitle2' color='textSecondary'>
                       Category
                     </Typography>
@@ -102,7 +102,7 @@ const ProductDialog = ({
                   </Grid>
 
                   {/* Sub Category (Editable) */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid>
                     <Typography variant='subtitle2' color='textSecondary'>
                       Sub Category
                     </Typography>
@@ -117,7 +117,7 @@ const ProductDialog = ({
                   </Grid>
 
                   {/* Series (Editable) */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid>
                     <Typography variant='subtitle2' color='textSecondary'>
                       Series
                     </Typography>
@@ -132,7 +132,7 @@ const ProductDialog = ({
                   </Grid>
 
                   {/* UPC/EAN (Read-only) */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid>
                     <Typography variant='subtitle2' color='textSecondary'>
                       UPC/EAN
                     </Typography>
@@ -147,7 +147,7 @@ const ProductDialog = ({
                   </Grid>
 
                   {/* SKU (Read-only) */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid>
                     <Typography variant='subtitle2' color='textSecondary'>
                       SKU
                     </Typography>
@@ -157,7 +157,7 @@ const ProductDialog = ({
                   </Grid>
 
                   {/* Manufacture Code (Read-only) */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid>
                     <Typography variant='subtitle2' color='textSecondary'>
                       Manufacture Code
                     </Typography>
@@ -167,7 +167,7 @@ const ProductDialog = ({
                   </Grid>
 
                   {/* Price (Read-only) */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid>
                     <Typography variant='subtitle2' color='textSecondary'>
                       Price
                     </Typography>
@@ -177,7 +177,7 @@ const ProductDialog = ({
                   </Grid>
 
                   {/* Stock (Read-only) */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid>
                     <Typography variant='subtitle2' color='textSecondary'>
                       Stock
                     </Typography>
@@ -187,7 +187,7 @@ const ProductDialog = ({
                   </Grid>
 
                   {/* Status (Read-only) */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid>
                     <Typography variant='subtitle2' color='textSecondary'>
                       Status
                     </Typography>
@@ -208,7 +208,7 @@ const ProductDialog = ({
                   </Grid>
 
                   {/* Brand (Editable) */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid>
                     <Typography variant='subtitle2' color='textSecondary'>
                       Brand
                     </Typography>
@@ -223,7 +223,7 @@ const ProductDialog = ({
                   </Grid>
 
                   {/* Catalogue Order (Editable) */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid>
                     <Typography variant='subtitle2' color='textSecondary'>
                       Catalogue Order
                     </Typography>
@@ -238,7 +238,7 @@ const ProductDialog = ({
                   </Grid>
 
                   {/* Catalogue Page (Editable) */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid>
                     <Typography variant='subtitle2' color='textSecondary'>
                       Catalogue Page
                     </Typography>
@@ -253,7 +253,7 @@ const ProductDialog = ({
                   </Grid>
 
                   {/* HSN/SAC (Read-only) */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid>
                     <Typography variant='subtitle2' color='textSecondary'>
                       HSN/SAC
                     </Typography>

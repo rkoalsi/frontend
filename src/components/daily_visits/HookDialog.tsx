@@ -72,7 +72,7 @@ const HookDialog: React.FC<HookDialogProps> = ({
             Customer Details
           </Typography>
           <Grid container spacing={2} direction='column'>
-            <Grid item xs={12} sm={6}>
+            <Grid>
               <CustomerSearchBar
                 ref_no={false}
                 label='Select Customer'
@@ -81,7 +81,7 @@ const HookDialog: React.FC<HookDialogProps> = ({
                 value={formData.selectedCustomer}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid>
               {formData.selectedCustomer &&
                 addresses &&
                 addresses.length > 0 && (

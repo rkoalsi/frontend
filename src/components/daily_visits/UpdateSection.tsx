@@ -130,7 +130,7 @@ const UpdateSection = ({
             {upd.images && upd.images.length > 0 && (
               <Grid container spacing={2}>
                 {upd.images.map((img: any, idx: number) => (
-                  <Grid item xs={6} sm={4} md={3} key={idx}>
+                  <Grid>
                     <Box
                       onClick={() => onClickImage(img.url)}
                       sx={{

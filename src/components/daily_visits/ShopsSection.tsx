@@ -59,7 +59,7 @@ const ShopsSection = ({
       {shops && shops.length > 0 ? (
         <Grid container spacing={2}>
           {shops.map((shop: any, idx: number) => (
-            <Grid item xs={12} sm={12} md={12} key={idx}>
+            <Grid>
               <Paper
                 elevation={2}
                 sx={{

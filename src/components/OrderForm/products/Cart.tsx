@@ -117,7 +117,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                     spacing={2}
                     alignItems={isMobile ? 'center' : 'flex-end'}
                   >
-                    <Grid item xs={12} sm={8}>
+                    <Grid>
                       <Box
                         display='flex'
                         justifyContent='center'
