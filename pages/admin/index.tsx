@@ -677,12 +677,12 @@ const AdminDashboard = () => {
               <Grid container spacing={3}>
                 {filteredCards.map((card, idx) => (
                   <Grid
-                    item
-                    xs={12}
-                    sm={card.subStats && card.subStats.length > 2 ? 12 : 6}
-                    md={card.subStats && card.subStats.length > 2 ? 6 : 4}
-                    lg={card.subStats && card.subStats.length > 2 ? 4 : 3}
-                    key={idx}
+                  // item
+                  // xs={12}
+                  // sm={card.subStats && card.subStats.length > 2 ? 12 : 6}
+                  // md={card.subStats && card.subStats.length > 2 ? 6 : 4}
+                  // lg={card.subStats && card.subStats.length > 2 ? 4 : 3}
+                  // key={idx}
                   >
                     <Paper
                       elevation={2}
@@ -758,14 +758,14 @@ const AdminDashboard = () => {
                             <Grid container spacing={1}>
                               {card.subStats.map((subStat, sidx) => (
                                 <Grid
-                                  item
-                                  xs={12}
-                                  md={
-                                    card.subStats && card.subStats.length > 3
-                                      ? 6
-                                      : 12
-                                  }
-                                  key={sidx}
+                                // item
+                                // xs={12}
+                                // md={
+                                //   card.subStats && card.subStats.length > 3
+                                //     ? 6
+                                //     : 12
+                                // }
+                                // key={sidx}
                                 >
                                   <Box
                                     sx={{
