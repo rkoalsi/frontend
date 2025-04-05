@@ -246,10 +246,10 @@ const UpdateDialog = ({
               <Grid container spacing={2}>
                 {existingImages.map((img, idx) => (
                   <Grid
-                    item
-                    xs={6}
-                    md={4}
-                    key={idx}
+                    // item
+                    // xs={6}
+                    // md={4}
+                    // key={idx}
                     sx={{ position: 'relative' }}
                   >
                     <img

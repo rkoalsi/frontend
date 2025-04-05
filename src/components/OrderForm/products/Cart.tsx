@@ -100,9 +100,9 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
               );
               return (
                 <Grid
-                  item
-                  xs={12}
-                  key={productId}
+                  // item
+                  // xs={12}
+                  // key={productId}
                   sx={{
                     border: 1,
                     borderColor: 'divider',
@@ -113,7 +113,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                   }}
                 >
                   <Grid
-                    container
+                    // container
                     spacing={2}
                     alignItems={isMobile ? 'center' : 'flex-end'}
                   >
