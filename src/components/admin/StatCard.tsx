@@ -64,7 +64,7 @@ const StatCard: React.FC<CardProps> = ({
         {subStats ? (
           <Grid container spacing={2}>
             {subStats.map((sub, idx) => (
-              <Grid item xs={6} key={idx}>
+              <Box>
                 <Box textAlign='center'>
                   <Typography variant='body2' color='textSecondary'>
                     {sub.label}
@@ -77,7 +77,7 @@ const StatCard: React.FC<CardProps> = ({
                     {sub.value}
                   </Typography>
                 </Box>
-              </Grid>
+              </Box>
             ))}
           </Grid>
         ) : (

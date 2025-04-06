@@ -661,7 +661,7 @@ function DailyVisits() {
         <Box sx={{ width: '100%', p: 2 }}>
           <Grid container spacing={3}>
             {dailyVisits.map((visit: any) => (
-              <Grid item xs={12} sm={6} md={4} key={visit._id}>
+              <Grid minWidth={'100%'} mt={2}>
                 <Card
                   onClick={() => router.push(`/daily_visits/${visit._id}`)}
                   sx={{

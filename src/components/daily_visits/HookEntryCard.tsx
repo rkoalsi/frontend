@@ -50,7 +50,7 @@ const HookEntryCard = memo(function HookEntryCard({
     >
       {entry.editing ? (
         <Grid container spacing={2} alignItems='center'>
-          <Grid item xs={12} sm={4}>
+          <Grid>
             <FormControl fullWidth variant='outlined'>
               <InputLabel>Category</InputLabel>
               <Select
@@ -68,7 +68,7 @@ const HookEntryCard = memo(function HookEntryCard({
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={6} sm={3}>
+          <Grid>
             <TextField
               label='Hooks Available'
               type='number'
@@ -80,7 +80,7 @@ const HookEntryCard = memo(function HookEntryCard({
               }
             />
           </Grid>
-          <Grid item xs={6} sm={3}>
+          <Grid>
             <TextField
               label='Total Hooks'
               type='number'
@@ -90,7 +90,7 @@ const HookEntryCard = memo(function HookEntryCard({
               onChange={(e) => updateEntry(index, 'totalHooks', e.target.value)}
             />
           </Grid>
-          <Grid item xs={12} sm={2}>
+          <Grid>
             <Stack direction='row' spacing={1}>
               <Tooltip title='Done Editing'>
                 <IconButton onClick={() => toggleEditEntry(index)}>

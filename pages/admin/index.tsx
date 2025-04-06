@@ -481,7 +481,7 @@ const AdminDashboard = () => {
     !userRoles.includes('sales_admin')
   ) {
     filteredCards = allCards.filter((card) =>
-      ['products', 'catalogues'].includes(card.route)
+      ['products', 'catalogues', 'announcements'].includes(card.route)
     );
   }
 
@@ -495,7 +495,7 @@ const AdminDashboard = () => {
   const renderSkeletons = () => (
     <Grid container spacing={3}>
       {[1, 2, 3, 4, 5, 6].map((item) => (
-        <Grid item xs={12} sm={6} md={4} key={item}>
+        <Box>
           <Paper
             elevation={2}
             sx={{
@@ -516,9 +516,152 @@ const AdminDashboard = () => {
             </Box>
             <Skeleton variant='rectangular' height={100} />
           </Paper>
-        </Grid>
+        </Box>
       ))}
     </Grid>
+  );
+
+  // Render card component
+  const renderCard = (card: CardProps, idx: number) => (
+    <Box
+      key={idx}
+      sx={{
+        flex:
+          card.subStats && card.subStats.length > 3 ? '1 1 380px' : '1 1 280px',
+        maxWidth: {
+          xs: '100%',
+          sm: card.subStats && card.subStats.length > 3 ? '480px' : '380px',
+        },
+        minWidth: { xs: '100%', sm: '280px' },
+      }}
+    >
+      <Paper
+        elevation={2}
+        sx={{
+          height: '100%',
+          borderRadius: 2,
+          transition: 'transform 0.2s, box-shadow 0.2s',
+          '&:hover': {
+            transform: 'translateY(-4px)',
+            boxShadow: 6,
+          },
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <Box sx={{ p: 3, flexGrow: 1 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 2,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box
+                sx={{
+                  mr: 1.5,
+                  p: 1,
+                  borderRadius: '12px',
+                  backgroundColor: `${theme.palette.primary.main}15`,
+                }}
+              >
+                {card.icon}
+              </Box>
+              <Typography variant='h6' fontWeight='medium' noWrap>
+                {card.label}
+              </Typography>
+            </Box>
+
+            {/* {card.growth !== undefined && (
+              <Chip
+                size='small'
+                icon={<TrendingUp fontSize='small' />}
+                label={`${card.growth > 0 ? '+' : ''}${card.growth}%`}
+                color={
+                  card.growth > 0
+                    ? 'success'
+                    : card.growth < 0
+                    ? 'error'
+                    : 'default'
+                }
+                variant='outlined'
+              />
+            )} */}
+          </Box>
+
+          {card.value !== undefined && (
+            <Typography variant='h4' sx={{ mb: 2, fontWeight: 'bold' }}>
+              {card.value.toLocaleString()}
+            </Typography>
+          )}
+
+          {card.subStats && (
+            <Box sx={{ mb: 2 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 1,
+                }}
+              >
+                {card.subStats.map((subStat, sidx) => (
+                  <Box
+                    key={sidx}
+                    sx={{
+                      flex:
+                        card.subStats && card.subStats.length > 3
+                          ? '1 1 45%'
+                          : '1 1 100%',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      p: 1,
+                      borderRadius: 1,
+                      backgroundColor: `${
+                        theme?.palette[subStat.color]?.main
+                      }10`,
+                    }}
+                  >
+                    <Typography variant='body2' color='text.secondary'>
+                      {subStat.label}
+                    </Typography>
+                    <Typography
+                      variant='body2'
+                      fontWeight='medium'
+                      color={`${subStat.color}.main`}
+                    >
+                      {subStat.value.toLocaleString()}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
+        </Box>
+
+        <Divider />
+
+        <Box sx={{ p: 1 }}>
+          <Button
+            onClick={() => router.push(`/admin/${card.route}`)}
+            endIcon={<ArrowForward />}
+            size='small'
+            sx={{
+              width: '100%',
+              justifyContent: 'space-between',
+              color: theme.palette.text.secondary,
+              '&:hover': {
+                backgroundColor: theme.palette.action.hover,
+                color: theme.palette.primary.main,
+              },
+            }}
+          >
+            View details
+          </Button>
+        </Box>
+      </Paper>
+    </Box>
   );
 
   return (
@@ -606,7 +749,6 @@ const AdminDashboard = () => {
           {!loading && !error && stats && (
             <Box sx={{ mt: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
               <Chip
-                // icon={<Dashboard fontSize='small' color='secondary' />}
                 label={`Last updated: ${format(lastRefreshed, 'h:mm a')}`}
                 sx={{
                   backgroundColor: 'rgba(255,255,255,0.15)',
@@ -631,7 +773,7 @@ const AdminDashboard = () => {
         {/* Main content */}
         <Box
           sx={{
-            padding: { xs: 2, md: 4 },
+            padding: { xs: 2, sm: 3, md: 4 },
             backgroundColor: theme.palette.background.default,
           }}
         >
@@ -673,157 +815,17 @@ const AdminDashboard = () => {
                 )}
               </Box>
 
-              {/* Cards Grid */}
-              <Grid container spacing={3}>
-                {filteredCards.map((card, idx) => (
-                  <Grid
-                    item
-                    xs={12}
-                    sm={card.subStats && card.subStats.length > 2 ? 12 : 6}
-                    md={card.subStats && card.subStats.length > 2 ? 6 : 4}
-                    lg={card.subStats && card.subStats.length > 2 ? 4 : 3}
-                    key={idx}
-                  >
-                    <Paper
-                      elevation={2}
-                      sx={{
-                        p: 0,
-                        height: '100%',
-                        borderRadius: 2,
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                        '&:hover': {
-                          transform: 'translateY(-4px)',
-                          boxShadow: 6,
-                        },
-                      }}
-                    >
-                      <Box sx={{ p: 3 }}>
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            mb: 2,
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Box
-                              sx={{
-                                mr: 1.5,
-                                p: 1,
-                                borderRadius: '12px',
-                                backgroundColor: `${theme.palette.primary.main}15`,
-                              }}
-                            >
-                              {card.icon}
-                            </Box>
-                            <Typography variant='h6' fontWeight='medium' noWrap>
-                              {card.label}
-                            </Typography>
-                          </Box>
-
-                          {/* <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            {card.growth !== undefined && (
-                              <Chip
-                                size='small'
-                                icon={<TrendingUp fontSize='small' />}
-                                label={`${card.growth > 0 ? '+' : ''}${
-                                  card.growth
-                                }%`}
-                                color={
-                                  card.growth > 0
-                                    ? 'success'
-                                    : card.growth < 0
-                                    ? 'error'
-                                    : 'default'
-                                }
-                                variant='outlined'
-                                sx={{ mr: 1 }}
-                              />
-                            )}
-                          </Box> */}
-                        </Box>
-
-                        {card.value !== undefined && (
-                          <Typography
-                            variant='h4'
-                            sx={{ mb: 2, fontWeight: 'bold' }}
-                          >
-                            {card.value.toLocaleString()}
-                          </Typography>
-                        )}
-
-                        {card.subStats && (
-                          <Box sx={{ mb: 2 }}>
-                            <Grid container spacing={1}>
-                              {card.subStats.map((subStat, sidx) => (
-                                <Grid
-                                  item
-                                  xs={12}
-                                  md={
-                                    card.subStats && card.subStats.length > 3
-                                      ? 6
-                                      : 12
-                                  }
-                                  key={sidx}
-                                >
-                                  <Box
-                                    sx={{
-                                      display: 'flex',
-                                      justifyContent: 'space-between',
-                                      p: 1,
-                                      borderRadius: 1,
-                                      backgroundColor: `${
-                                        theme?.palette[subStat.color]?.main
-                                      }10`,
-                                      mb: 0.5,
-                                    }}
-                                  >
-                                    <Typography
-                                      variant='body2'
-                                      color='text.secondary'
-                                    >
-                                      {subStat.label}
-                                    </Typography>
-                                    <Typography
-                                      variant='body2'
-                                      fontWeight='medium'
-                                      color={`${subStat.color}.main`}
-                                    >
-                                      {subStat.value.toLocaleString()}
-                                    </Typography>
-                                  </Box>
-                                </Grid>
-                              ))}
-                            </Grid>
-                          </Box>
-                        )}
-                      </Box>
-
-                      <Divider />
-
-                      <Box sx={{ p: 1 }}>
-                        <Button
-                          onClick={() => router.push(`/admin/${card.route}`)}
-                          endIcon={<ArrowForward />}
-                          size='small'
-                          sx={{
-                            width: '100%',
-                            justifyContent: 'space-between',
-                            color: theme.palette.text.secondary,
-                            '&:hover': {
-                              backgroundColor: theme.palette.action.hover,
-                              color: theme.palette.primary.main,
-                            },
-                          }}
-                        >
-                          View details
-                        </Button>
-                      </Box>
-                    </Paper>
-                  </Grid>
-                ))}
-              </Grid>
+              {/* Cards Flex Container */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 3,
+                  justifyContent: { xs: 'center', sm: 'flex-start' },
+                }}
+              >
+                {filteredCards.map((card, idx) => renderCard(card, idx))}
+              </Box>
             </>
           )}
         </Box>

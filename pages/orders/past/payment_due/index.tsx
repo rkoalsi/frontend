@@ -188,12 +188,12 @@ const PaymentDue = () => {
 
                   return (
                     <Grid
-                      item
-                      xs={12}
-                      sm={6}
-                      md={4}
-                      lg={3}
-                      key={_id}
+                      // item
+                      // xs={12}
+                      // sm={6}
+                      // md={4}
+                      // lg={3}
+                      // key={_id}
                       onClick={() => handleOrderClick(_id)}
                       sx={{ cursor: 'pointer' }}
                     >

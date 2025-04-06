@@ -61,7 +61,7 @@ const ExpectedReorderDialog: React.FC<ExpectedReorderDialogProps> = ({
             Expected Reorder Details
           </Typography>
           <Grid container spacing={2} direction='column'>
-            <Grid item xs={12} sm={6}>
+            <Grid>
               <CustomerSearchBar
                 ref_no={false}
                 label='Select Customer'
@@ -72,7 +72,7 @@ const ExpectedReorderDialog: React.FC<ExpectedReorderDialogProps> = ({
                 value={formData.customer}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid>
               {formData.customer && (
                 <AddressSelection
                   shop={{ selectedCustomer: formData.customer }}

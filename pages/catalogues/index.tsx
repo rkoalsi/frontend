@@ -7,6 +7,7 @@ import {
   useTheme,
   useMediaQuery,
   styled,
+  Stack,
 } from '@mui/material';
 import CustomButton from '../../src/components/common/Button';
 import { useEffect, useState } from 'react';
@@ -104,7 +105,7 @@ function Catalogue(props: Props) {
         <Grid container spacing={3} justifyContent='center'>
           {brands.length > 0 ? (
             brands.map((b: any, index: number) => (
-              <Grid item xs={12} sm={6} md={4} key={index}>
+              <Stack spacing={2}>
                 <motion.div
                   variants={itemVariants}
                   whileHover={{ scale: 1.03 }}
@@ -131,7 +132,7 @@ function Catalogue(props: Props) {
                     </Box>
                   </StyledCard>
                 </motion.div>
-              </Grid>
+              </Stack>
             ))
           ) : (
             <Typography
