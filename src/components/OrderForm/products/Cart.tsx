@@ -166,10 +166,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                       </Typography>
                     </Grid>
                     <Grid
-                      item
-                      xs={12}
-                      sm={4}
-                      container
+                      // item
+                      // xs={12}
+                      // sm={4}
+                      // container
                       direction={isMobile ? 'row' : 'column'}
                       justifyContent={isMobile ? 'space-between' : 'flex-end'}
                       alignItems={isMobile ? 'center' : 'flex-end'}
