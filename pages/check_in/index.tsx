@@ -48,55 +48,52 @@ const Checkin = () => {
 
     return () => clearInterval(timer);
   }, []);
+  const fetchAttendanceData = async () => {
+    if (!userData.phone) return;
 
-  useEffect(() => {
-    const fetchAttendanceStatus = async () => {
-      if (!userData.phone) return;
+    try {
+      setLoading(true);
+      const response = await axios.get(
+        `${process.env.api_url}/attendance/employee_attendance`,
+        { params: { phone: userData.phone } }
+      );
 
-      try {
-        setIsLoading(true);
-        const response = await axios.get(
-          `${process.env.api_url}/attendance/status`,
-          { params: { phone: userData.phone } }
-        );
-
-        if (response.status === 200) {
-          setCheckedIn(response.data.checked_in);
-        }
-      } catch (error) {
-        console.error('Error fetching attendance status:', error);
-      } finally {
-        setIsLoading(false);
+      if (response.status === 200) {
+        const data = response.data.attendance || [];
+        setAttendanceData(data);
       }
-    };
+    } catch (error) {
+      console.error('Error fetching attendance data:', error);
+      toast.error('Could not fetch attendance history');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const fetchAttendanceStatus = async () => {
+    if (!userData.phone) return;
 
-    fetchAttendanceStatus();
+    try {
+      setIsLoading(true);
+      const response = await axios.get(
+        `${process.env.api_url}/attendance/status`,
+        { params: { phone: userData.phone } }
+      );
+
+      if (response.status === 200) {
+        setCheckedIn(response.data.checked_in);
+      }
+    } catch (error) {
+      console.error('Error fetching attendance status:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  useEffect(() => {
+    fetchAttendanceData();
   }, [userData]);
   useEffect(() => {
-    const fetchAttendanceData = async () => {
-      if (!user?.data?.phone) return;
-
-      try {
-        setLoading(true);
-        const response = await axios.get(
-          `${process.env.api_url}/attendance/employee_attendance`,
-          { params: { phone: user?.data?.phone } }
-        );
-
-        if (response.status === 200) {
-          const data = response.data.attendance || [];
-          setAttendanceData(data);
-        }
-      } catch (error) {
-        console.error('Error fetching attendance data:', error);
-        toast.error('Could not fetch attendance history');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAttendanceData();
-  }, [user, animation]);
+    fetchAttendanceStatus();
+  }, [userData]);
   const handleAttendance = async () => {
     setIsLoading(true);
     const payload = {
@@ -116,7 +113,7 @@ const Checkin = () => {
           setCheckedIn(!checkedIn);
           setAnimation(false);
         }, 500);
-
+        await fetchAttendanceData();
         const { message = '', is_check_in } = response.data;
         toast.success(
           is_check_in
