@@ -57,7 +57,7 @@ const UpdateDialog = ({
         }
         return (
           update.customer_id === shop.customer_id &&
-          update.address.address_id === shop.address.address_id // Properly compare stringified addresses
+          update?.address?.address_id === shop?.address?.address_id // Properly compare stringified addresses
         );
       });
       return !hasExistingUpdate;

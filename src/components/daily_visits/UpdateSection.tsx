@@ -7,6 +7,7 @@ import {
   IconButton,
   Tooltip,
   Alert,
+  Container,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -125,7 +126,7 @@ const UpdateSection = ({
                   Customer: {upd.customer_name}
                 </Typography>
                 <Typography variant='subtitle2' sx={{ mb: 1 }}>
-                  Address: {upd.address.address}
+                  Address: {upd?.address?.address}
                 </Typography>
               </>
             )}
@@ -133,7 +134,7 @@ const UpdateSection = ({
               {upd.text}
             </Typography>
             {upd.images && upd.images.length > 0 && (
-              <Grid container spacing={2}>
+              <Container>
                 {upd.images.map((img: any, idx: number) => (
                   <Grid>
                     <Box
@@ -164,7 +165,7 @@ const UpdateSection = ({
                     </Box>
                   </Grid>
                 ))}
-              </Grid>
+              </Container>
             )}
           </Paper>
         ))
