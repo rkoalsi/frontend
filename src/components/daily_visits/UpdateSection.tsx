@@ -120,9 +120,14 @@ const UpdateSection = ({
                 Customer: {upd.potential_customer_name}
               </Typography>
             ) : (
-              <Typography variant='subtitle2' sx={{ mb: 1 }}>
-                Customer: {upd.customer_name}
-              </Typography>
+              <>
+                <Typography variant='subtitle2' sx={{ mb: 1 }}>
+                  Customer: {upd.customer_name}
+                </Typography>
+                <Typography variant='subtitle2' sx={{ mb: 1 }}>
+                  Address: {upd.address.address}
+                </Typography>
+              </>
             )}
             <Typography variant='body1' sx={{ mb: 2, whiteSpace: 'pre-line' }}>
               {upd.text}

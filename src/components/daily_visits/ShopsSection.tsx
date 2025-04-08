@@ -1,7 +1,6 @@
 import {
   Box,
   Typography,
-  Grid,
   Paper,
   IconButton,
   Tooltip,
@@ -33,63 +32,84 @@ const ShopsSection = ({
   onHookUpdate,
 }: ShopsSectionProps) => {
   return (
-    <Box sx={{ mb: 3 }}>
+    <Box sx={{ mb: 4 }}>
       <Box
         sx={{
           display: 'flex',
           alignItems: 'center',
-          mb: 2,
-          pb: 1,
+          justifyContent: 'space-between',
+          mb: 2.5,
+          pb: 1.5,
           borderBottom: '1px solid',
           borderColor: 'divider',
         }}
       >
-        <Typography variant='h6'>Shops</Typography>
+        <Typography variant='h6' fontWeight='medium'>
+          Shops
+        </Typography>
         <Tooltip title='Edit Shops'>
-          <IconButton
-            onClick={onEditShops}
-            size='small'
-            sx={{ ml: 1 }}
-            color='primary'
-          >
+          <IconButton onClick={onEditShops} size='small' color='primary'>
             <EditIcon />
           </IconButton>
         </Tooltip>
       </Box>
+
       {shops && shops.length > 0 ? (
-        <Grid container spacing={2}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 3,
+          }}
+        >
           {shops.map((shop: any, idx: number) => (
-            <Grid>
-              <Paper
-                elevation={2}
-                sx={{
-                  p: 2,
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderLeft: '4px solid',
-                  borderColor: 'primary.main',
-                }}
+            <Paper
+              key={idx}
+              elevation={2}
+              sx={{
+                p: 3,
+                flex: '1 1 300px',
+                maxWidth: '400px',
+                minWidth: '280px',
+                display: 'flex',
+                flexDirection: 'column',
+                borderLeft: '4px solid',
+                borderColor: 'primary.main',
+                borderRadius: 1,
+                '&:hover': {
+                  boxShadow: 3,
+                },
+              }}
+            >
+              <Box
+                display='flex'
+                flexDirection='row'
+                alignItems='center'
+                justifyContent='space-between'
+                width='100%'
+                mb={1.5}
               >
-                <Box
-                  display={'flex'}
-                  flexDirection={'row'}
-                  justifyContent={'space-between'}
-                  width={'100%'}
+                <Typography
+                  variant='subtitle1'
+                  fontWeight='bold'
+                  sx={{ mr: 1 }}
                 >
-                  <Typography
-                    variant='subtitle1'
-                    fontWeight='bold'
-                    gutterBottom
-                  >
-                    {idx + 1}.{' '}
-                    {shop?.potential_customer
-                      ? shop?.potential_customer_name
-                      : shop?.customer_name
-                      ? shop?.customer_name
-                      : getCustomerName(shop.selectedCustomer)}
-                  </Typography>
-                  {!shop.potential_customer && (
+                  {idx + 1}.{' '}
+                  {shop?.potential_customer
+                    ? shop?.potential_customer_name
+                    : shop?.customer_name
+                    ? shop?.customer_name
+                    : getCustomerName(shop.selectedCustomer)}
+                </Typography>
+                <Box display='flex' alignItems='center'>
+                  {shop?.potential_customer ? (
+                    <Chip
+                      size='small'
+                      label='Potential Customer'
+                      color='primary'
+                      variant='outlined'
+                    />
+                  ) : (
                     <Tooltip title='Set Hook'>
                       <IconButton
                         onClick={() => onHookUpdate(shop)}
@@ -100,55 +120,69 @@ const ShopsSection = ({
                       </IconButton>
                     </Tooltip>
                   )}
-                  {shop?.potential_customer && (
-                    <Chip
-                      size='small'
-                      label={`Potential Customer`}
-                      color='primary'
-                      variant='outlined'
-                    />
-                  )}
                 </Box>
-                <Typography variant='body2' color='text.secondary' gutterBottom>
-                  <strong>Address:</strong>
+              </Box>
+
+              <Box sx={{ mt: 1.5 }}>
+                <Typography
+                  variant='body2'
+                  color='text.secondary'
+                  fontWeight='medium'
+                >
+                  Address:
                 </Typography>
-                <Typography variant='body2' paragraph>
+                <Typography variant='body2' sx={{ mt: 0.5, mb: 2 }}>
                   {shop?.potential_customer
                     ? shop?.potential_customer_address
                     : formatAddress(shop.address) || 'No address provided'}
                 </Typography>
-                {shop?.potential_customer && (
-                  <>
-                    <Typography
-                      variant='body2'
-                      color='text.secondary'
-                      gutterBottom
-                    >
-                      <strong>Tier:</strong>
-                    </Typography>
-                    <Typography variant='body2' paragraph>
-                      {shop?.potential_customer_tier}
-                    </Typography>
-                  </>
-                )}
-                <Typography variant='body2' color='text.secondary' gutterBottom>
-                  <strong>Order Expected Soon:</strong>
+              </Box>
+
+              {shop?.potential_customer && (
+                <Box sx={{ mt: 0.5, mb: 1.5 }}>
+                  <Typography
+                    variant='body2'
+                    color='text.secondary'
+                    fontWeight='medium'
+                  >
+                    Tier:
+                  </Typography>
+                  <Typography variant='body2' sx={{ mt: 0.5, mb: 1 }}>
+                    {shop?.potential_customer_tier}
+                  </Typography>
+                </Box>
+              )}
+
+              <Box sx={{ mt: 0.5 }}>
+                <Typography
+                  variant='body2'
+                  color='text.secondary'
+                  fontWeight='medium'
+                >
+                  Order Expected Soon:
                 </Typography>
-                <Typography variant='body2' sx={{ flex: 1 }}>
+                <Typography variant='body2' sx={{ mt: 0.5, mb: 2 }}>
                   {shop?.order_expected ? 'Yes' : 'No'}
                 </Typography>
-                <Typography variant='body2' color='text.secondary' gutterBottom>
-                  <strong>Reason:</strong>
+              </Box>
+
+              <Box sx={{ mt: 'auto', pt: 1 }}>
+                <Typography
+                  variant='body2'
+                  color='text.secondary'
+                  fontWeight='medium'
+                >
+                  Reason:
                 </Typography>
-                <Typography variant='body2' sx={{ flex: 1 }}>
+                <Typography variant='body2' sx={{ mt: 0.5 }}>
                   {shop.reason || 'No reason provided'}
                 </Typography>
-              </Paper>
-            </Grid>
+              </Box>
+            </Paper>
           ))}
-        </Grid>
+        </Box>
       ) : (
-        <Alert severity='info'>
+        <Alert severity='info' sx={{ mt: 2 }}>
           No shops available. Click the edit button to add shops.
         </Alert>
       )}
