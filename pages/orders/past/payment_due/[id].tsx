@@ -13,8 +13,20 @@ import {
   useTheme,
   useMediaQuery,
   IconButton,
+  Collapse,
+  Container,
+  Card,
+  CardContent,
+  Badge,
+  Chip,
+  Tooltip,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
+import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -22,27 +34,30 @@ import ImagePopupDialog from '../../../../src/components/common/ImagePopUp';
 import AuthContext from '../../../../src/components/Auth';
 
 const OrderDetails = () => {
-  const [invoiceData, setInvoiceData] = useState<any>(null);
+  const [invoiceData, setInvoiceData]: any = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [additionalInfo, setAdditionalInfo] = useState('');
   // New images selected in the current session (File objects)
-  const [uploadedImages, setUploadedImages] = useState<any[]>([]);
+  const [uploadedImages, setUploadedImages] = useState([]);
   // Preview URLs for new images
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [previewUrls, setPreviewUrls] = useState([]);
   // Already saved images from the backend (assumed to be array of string identifiers/URLs)
-  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   // noteData will store any existing invoice note from the backend
-  const [noteData, setNoteData] = useState<any>(null);
+  const [noteData, setNoteData]: any = useState(null);
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
+  const [itemsExpanded, setItemsExpanded] = useState(false);
+
   const router = useRouter();
   const { id } = router.query;
   const theme = useTheme();
   const { user }: any = useContext(AuthContext);
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const handleImageClick = useCallback((src: string) => {
+
+  const handleImageClick = useCallback((src: any) => {
     setPopupImageSrc(src);
     setOpenImagePopup(true);
   }, []);
@@ -50,6 +65,11 @@ const OrderDetails = () => {
   const handleClosePopup = useCallback(() => {
     setOpenImagePopup(false);
   }, []);
+
+  const toggleItemsExpanded = () => {
+    setItemsExpanded(!itemsExpanded);
+  };
+
   /**
    * Fetch invoice details from the API
    */
@@ -58,7 +78,6 @@ const OrderDetails = () => {
       setLoading(true);
       const response = await axios.get(`${process.env.api_url}/invoices/${id}`);
       setInvoiceData(response.data);
-      console.log(response.data);
     } catch (err) {
       setError('Failed to load invoice details. Please try again.');
       console.error(err);
@@ -70,7 +89,7 @@ const OrderDetails = () => {
   /**
    * Fetch any existing invoice note for the given invoice_number
    */
-  const fetchInvoiceNote = async (invoice_number: string) => {
+  const fetchInvoiceNote = async (invoice_number: any) => {
     try {
       if (invoice_number !== '') {
         const response = await axios.get(
@@ -89,7 +108,7 @@ const OrderDetails = () => {
       }
     } catch (err) {
       console.error('Error fetching invoice note:', err);
-      // It’s fine if no note exists; we’ll leave noteData as null.
+      // It's fine if no note exists; we'll leave noteData as null.
     }
   };
 
@@ -112,23 +131,23 @@ const OrderDetails = () => {
    */
   useEffect(() => {
     if (uploadedImages.length > 0) {
-      const urls = uploadedImages.map((file: any) => URL.createObjectURL(file));
+      const urls: any = uploadedImages.map((file) => URL.createObjectURL(file));
       setPreviewUrls(urls);
       // Clean up: revoke object URLs when images change or component unmounts.
       return () => {
-        urls.forEach((url) => URL.revokeObjectURL(url));
+        urls.forEach((url: any) => URL.revokeObjectURL(url));
       };
     } else {
       setPreviewUrls([]);
     }
   }, [uploadedImages]);
 
-  const handleRemoveNewImage = (index: number) => {
+  const handleRemoveNewImage = (index: any) => {
     setUploadedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Remove an existing image by calling the DELETE endpoint.
-  const handleRemoveExistingImage = async (index: number) => {
+  const handleRemoveExistingImage = async (index: any) => {
     const image_url = existingImages[index];
     try {
       await axios.delete(`${process.env.api_url}/invoices/notes/image`, {
@@ -159,7 +178,9 @@ const OrderDetails = () => {
       uploadedImages.length === 0 &&
       existingImages.length === 0
     ) {
-      alert('Please provide additional text or select at least one image.');
+      toast.warning(
+        'Please provide additional text or select at least one image.'
+      );
       return;
     }
     try {
@@ -203,6 +224,7 @@ const OrderDetails = () => {
       setSubmitting(false);
     }
   };
+
   const downloadAsPDF = async (invoice: any) => {
     try {
       const resp = await axios.get(
@@ -240,21 +262,25 @@ const OrderDetails = () => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      toast.success('PDF downloaded successfully');
     } catch (error: any) {
       console.error('Error downloading PDF:', error);
       toast.error(error.message || 'Failed to download PDF');
     }
   };
+
   /**
    * Handle Loading State
    */
   if (loading) {
     return (
-      <Box sx={{ padding: 3, maxWidth: '600px', margin: '0 auto' }}>
-        <Skeleton variant='rectangular' height={40} sx={{ mb: 2 }} />
-        <Skeleton variant='rectangular' height={200} sx={{ mb: 2 }} />
-        <Skeleton variant='rectangular' height={40} />
-      </Box>
+      <Container maxWidth='md' sx={{ py: 3 }}>
+        <Paper elevation={3} sx={{ p: 3, borderRadius: '12px' }}>
+          <Skeleton variant='rectangular' height={40} sx={{ mb: 2 }} />
+          <Skeleton variant='rectangular' height={200} sx={{ mb: 2 }} />
+          <Skeleton variant='rectangular' height={40} />
+        </Paper>
+      </Container>
     );
   }
 
@@ -263,46 +289,37 @@ const OrderDetails = () => {
    */
   if (error || !invoiceData) {
     return (
-      <Box sx={{ padding: 3, textAlign: 'center' }}>
-        <Typography variant='h6' color='error'>
-          {error || 'No order details available.'}
-        </Typography>
-        <Button
-          variant='contained'
-          color='secondary'
-          sx={{ mt: 2 }}
-          onClick={() => router.push('/orders/past')}
+      <Container maxWidth='md' sx={{ py: 3 }}>
+        <Paper
+          elevation={3}
+          sx={{ p: 3, borderRadius: '12px', textAlign: 'center' }}
         >
-          Back to Orders
-        </Button>
-      </Box>
-    );
-  }
-
-  /**
-   * Main UI for Order Details
-   */
-  if (!invoiceData) {
-    return (
-      <Box sx={{ padding: 3 }}>
-        <Skeleton variant='rectangular' height={40} sx={{ mb: 2 }} />
-        <Skeleton variant='rectangular' height={200} sx={{ mb: 2 }} />
-        <Skeleton variant='rectangular' height={40} />
-      </Box>
+          <Typography variant='h6' color='error'>
+            {error || 'No order details available.'}
+          </Typography>
+          <Button
+            variant='contained'
+            color='secondary'
+            sx={{ mt: 2 }}
+            onClick={() => router.push('/orders/past')}
+          >
+            Back to Orders
+          </Button>
+        </Paper>
+      </Container>
     );
   }
 
   return (
-    <Box
-      sx={{ padding: isMobile ? 1 : 3, maxWidth: '600px', margin: '0 auto' }}
-    >
+    <Container maxWidth='md' disableGutters={isMobile} sx={{ py: 2 }}>
       <Paper
         elevation={3}
         sx={{
-          padding: 3,
+          padding: { xs: 2, sm: 3 },
           borderRadius: '12px',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-          marginX: { xs: 2, sm: 'auto' },
+          mx: { xs: 1, sm: 'auto' },
+          width: '96%',
         }}
       >
         {/* Order Header */}
@@ -310,8 +327,9 @@ const OrderDetails = () => {
           display='flex'
           alignItems='center'
           width={'100%'}
-          gap={'16px'}
+          gap={'12px'}
           justifyContent={'space-between'}
+          flexWrap='wrap'
         >
           <Typography variant='h5' fontWeight='bold' gutterBottom>
             {invoiceData?.invoice_number}
@@ -319,78 +337,152 @@ const OrderDetails = () => {
           <Button
             color='primary'
             variant='contained'
+            startIcon={<PictureAsPdfIcon />}
+            size={isMobile ? 'small' : 'medium'}
             onClick={() => downloadAsPDF(invoiceData)}
+            sx={{ borderRadius: '8px' }}
           >
-            Download as PDF
+            Download PDF
           </Button>
         </Box>
-        <Divider sx={{ mb: 2 }} />
+        <Divider sx={{ mt: 2, mb: 2 }} />
 
         {/* Order Details */}
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          <strong>Customer Name:</strong> {invoiceData?.customer_name || 'N/A'}
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          <strong>Date:</strong>{' '}
-          {new Date(invoiceData.date).toLocaleDateString()}
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          <strong>Due Date:</strong>{' '}
-          {new Date(invoiceData.due_date).toLocaleDateString()}
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          <strong>Status:</strong>{' '}
-          {invoiceData?.status.split('_').join(' ') || 'N/A'}
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          <strong>Amount:</strong> ₹{invoiceData?.total || '0'}
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 2 }}>
-          <strong>Balance:</strong> ₹{invoiceData?.balance || '0'}
-        </Typography>
-        <Divider sx={{ my: 2 }} />
+        <Box sx={{ mb: 2 }}>
+          <Typography variant='body1' sx={{ mb: 1 }}>
+            <strong>Customer Name:</strong>{' '}
+            {invoiceData?.customer_name || 'N/A'}
+          </Typography>
+          <Typography variant='body1' sx={{ mb: 1 }}>
+            <strong>Date:</strong>{' '}
+            {new Date(invoiceData.date).toLocaleDateString()}
+          </Typography>
+          <Typography variant='body1' sx={{ mb: 1 }}>
+            <strong>Due Date:</strong>{' '}
+            {new Date(invoiceData.due_date).toLocaleDateString()}
+          </Typography>
+          <Typography variant='body1' sx={{ mb: 1 }}>
+            <strong>Status:</strong>{' '}
+            <Chip
+              size='small'
+              label={invoiceData?.status.split('_').join(' ') || 'N/A'}
+              color={
+                invoiceData?.status.includes('overdue') ? 'error' : 'primary'
+              }
+              sx={{ textTransform: 'capitalize', ml: 1 }}
+            />
+          </Typography>
+          <Typography variant='body1' sx={{ mb: 1 }}>
+            <strong>Amount:</strong> ₹{invoiceData?.total || '0'}
+          </Typography>
+          <Typography variant='body1' sx={{ mb: 1 }}>
+            <strong>Balance:</strong> ₹{invoiceData?.balance || '0'}
+          </Typography>
+        </Box>
 
-        {/* Product List */}
-        <Typography variant='h6' fontWeight='bold' gutterBottom>
-          Ordered Items
-        </Typography>
-        <List
+        {/* Collapsible Product List */}
+        <Card
+          elevation={1}
           sx={{
-            maxHeight: isMobile ? 'none' : '300px',
-            overflowY: isMobile ? 'visible' : 'auto',
-            p: 0,
+            mb: 2,
+            borderRadius: '8px',
+            border: `1px solid ${theme.palette.divider}`,
+            backgroundColor: theme.palette.background.paper,
           }}
         >
-          {invoiceData.line_items?.map((item: any, index: number) => (
-            <ListItem key={index} sx={{ padding: '8px 0' }}>
-              <ListItemText
-                primary={
-                  <Typography variant='body1'>
-                    {item.name} (x{item.quantity})
-                  </Typography>
-                }
-                secondary={
-                  <Typography variant='body2' color='textSecondary'>
-                    Price: ₹{item.rate}
-                  </Typography>
-                }
+          <Box
+            onClick={toggleItemsExpanded}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              p: 2,
+              cursor: 'pointer',
+              backgroundColor: theme.palette.action.hover,
+              borderRadius: '8px 8px 0 0',
+            }}
+          >
+            <Box display='flex' alignItems='center'>
+              <ShoppingBagIcon
+                sx={{ mr: 1, color: theme.palette.primary.main }}
               />
-            </ListItem>
-          ))}
-        </List>
-        {invoiceData.products?.length === 0 && (
-          <Typography variant='body2' color='textSecondary'>
-            No products found in this order.
-          </Typography>
-        )}
+              <Typography variant='h6' fontWeight='bold'>
+                Ordered Items
+              </Typography>
+              <Badge
+                badgeContent={invoiceData.line_items?.length || 0}
+                color='primary'
+                sx={{ ml: 2 }}
+              />
+            </Box>
+            {itemsExpanded ? (
+              <ExpandLessIcon color='action' />
+            ) : (
+              <ExpandMoreIcon color='action' />
+            )}
+          </Box>
+
+          <Collapse in={itemsExpanded}>
+            <CardContent sx={{ p: 0 }}>
+              {invoiceData.line_items?.length > 0 ? (
+                <List dense={isMobile} disablePadding>
+                  {invoiceData.line_items?.map((item: any, index: number) => (
+                    <React.Fragment key={index}>
+                      <ListItem sx={{ py: 1.5, px: 2 }}>
+                        <ListItemText
+                          primary={
+                            <Typography variant='body1' fontWeight={500}>
+                              {item.name}{' '}
+                              <Typography
+                                component='span'
+                                variant='body2'
+                                color='text.secondary'
+                              >
+                                (x{item.quantity})
+                              </Typography>
+                            </Typography>
+                          }
+                          secondary={
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                mt: 0.5,
+                              }}
+                            >
+                              <Typography variant='body2' color='textSecondary'>
+                                Price: ₹{item.rate} per unit
+                              </Typography>
+                              <Typography variant='body2' fontWeight={500}>
+                                Total: ₹{item.rate * item.quantity}
+                              </Typography>
+                            </Box>
+                          }
+                          secondaryTypographyProps={{ component: 'div' }}
+                        />
+                      </ListItem>
+                      {index < invoiceData.line_items.length - 1 && <Divider />}
+                    </React.Fragment>
+                  ))}
+                </List>
+              ) : (
+                <Box sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography variant='body2' color='textSecondary'>
+                    No products found in this order.
+                  </Typography>
+                </Box>
+              )}
+            </CardContent>
+          </Collapse>
+        </Card>
 
         {/* Additional Information Section */}
-        <Divider sx={{ my: 2 }} />
         <Paper
           elevation={1}
           sx={{
             p: 2,
-            backgroundColor: '#f9f9f9',
+            backgroundColor: theme.palette.background.default,
             borderRadius: '8px',
             mb: 2,
           }}
@@ -403,31 +495,44 @@ const OrderDetails = () => {
           <TextField
             label='Enter additional details'
             multiline
-            rows={4}
+            rows={3}
             variant='outlined'
             fullWidth
             value={additionalInfo}
             onChange={(e) => setAdditionalInfo(e.target.value)}
+            sx={{ mb: 2 }}
           />
-          <Box mt={2} display='flex' flexDirection='column' alignItems='center'>
-            <input
-              accept='image/*'
-              style={{ display: 'none' }}
-              id='upload-image'
-              type='file'
-              multiple
-              onChange={(e: any) =>
-                setUploadedImages(Array.from(e.target.files))
-              }
-            />
+
+          <Box display='flex' flexDirection='column' gap={2}>
             <Box
               display='flex'
-              alignItems='center'
+              flexDirection={isMobile ? 'column' : 'row'}
+              alignItems={isMobile ? 'stretch' : 'center'}
               justifyContent='space-between'
-              width='100%'
+              gap={1}
             >
-              <label htmlFor='upload-image'>
-                <Button variant='contained' color='secondary' component='span'>
+              <input
+                accept='image/*'
+                style={{ display: 'none' }}
+                id='upload-image'
+                type='file'
+                multiple
+                onChange={(e: any) =>
+                  setUploadedImages(Array.from(e.target.files))
+                }
+              />
+              <label
+                htmlFor='upload-image'
+                style={{ width: isMobile ? '100%' : 'auto' }}
+              >
+                <Button
+                  variant='outlined'
+                  color='primary'
+                  component='span'
+                  startIcon={<AddPhotoAlternateIcon />}
+                  fullWidth={isMobile}
+                  sx={{ borderRadius: '8px' }}
+                >
                   Upload Images
                 </Button>
               </label>
@@ -436,107 +541,169 @@ const OrderDetails = () => {
                 color='primary'
                 onClick={handleSubmit}
                 disabled={submitting}
+                fullWidth={isMobile}
+                sx={{ borderRadius: '8px' }}
               >
-                {submitting ? 'Submitting...' : 'Submit'}
+                {submitting ? 'Submitting...' : 'Submit Note'}
               </Button>
             </Box>
-            {/* Display Existing Images (from backend) with remove option */}
-            {existingImages && existingImages.length > 0 && (
-              <Box display='flex' flexWrap='wrap' mt={1}>
-                {existingImages.map((img, index) => (
-                  <Box
-                    key={index}
-                    position='relative'
-                    mr={1}
-                    mb={1}
-                    width={100}
-                    height={100}
-                  >
-                    <img
-                      onClick={() => handleImageClick(img)}
-                      src={img} // Assuming img is a valid URL; adjust if needed.
-                      alt={`existing-${index}`}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        borderRadius: 4,
-                      }}
-                    />
-                    <IconButton
-                      size='small'
-                      onClick={() => handleRemoveExistingImage(index)}
+
+            {/* Image Previews Section */}
+            {(existingImages.length > 0 || previewUrls.length > 0) && (
+              <Box
+                sx={{
+                  mt: 2,
+                  p: 1,
+                  borderRadius: '8px',
+                  backgroundColor: theme.palette.background.paper,
+                  border: `1px dashed ${theme.palette.divider}`,
+                }}
+              >
+                <Typography variant='subtitle2' mb={1} color='text.secondary'>
+                  {existingImages.length + previewUrls.length} image
+                  {existingImages.length + previewUrls.length !== 1
+                    ? 's'
+                    : ''}{' '}
+                  attached
+                </Typography>
+
+                {/* Display Existing Images (from backend) with remove option */}
+                <Box
+                  display='flex'
+                  flexWrap='wrap'
+                  gap={1}
+                  sx={{
+                    '&::-webkit-scrollbar': {
+                      height: '6px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      backgroundColor: 'rgba(0,0,0,0.05)',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      backgroundColor: 'rgba(0,0,0,0.15)',
+                      borderRadius: '3px',
+                    },
+                  }}
+                >
+                  {existingImages.map((img, index) => (
+                    <Box
+                      key={index}
+                      position='relative'
                       sx={{
-                        position: 'absolute',
-                        top: 0,
-                        right: 0,
-                        backgroundColor: 'rgba(255,255,255,0.7)',
+                        width: '80px',
+                        height: '80px',
+                        flexShrink: 0,
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                       }}
                     >
-                      <DeleteIcon fontSize='small' />
-                    </IconButton>
-                  </Box>
-                ))}
-              </Box>
-            )}
-            {/* Display New Image Previews with remove option */}
-            {previewUrls && previewUrls.length > 0 && (
-              <Box display='flex' flexWrap='wrap' mt={1}>
-                {previewUrls.map((url, index) => (
-                  <Box
-                    key={index}
-                    position='relative'
-                    mr={1}
-                    mb={1}
-                    width={100}
-                    height={100}
-                  >
-                    <img
-                      src={url}
-                      alt={`preview-${index}`}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        borderRadius: 4,
-                      }}
-                    />
-                    <IconButton
-                      size='small'
-                      onClick={() => handleRemoveNewImage(index)}
+                      <img
+                        onClick={() => handleImageClick(img)}
+                        src={img}
+                        alt={`existing-${index}`}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                        }}
+                      />
+                      <Tooltip title='Remove image'>
+                        <IconButton
+                          size='small'
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveExistingImage(index);
+                          }}
+                          sx={{
+                            position: 'absolute',
+                            top: 2,
+                            right: 2,
+                            backgroundColor: 'rgba(255,255,255,0.8)',
+                            width: '24px',
+                            height: '24px',
+                            '&:hover': {
+                              backgroundColor: 'rgba(255,255,255,0.95)',
+                            },
+                          }}
+                        >
+                          <DeleteIcon fontSize='small' />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  ))}
+
+                  {/* Display New Image Previews with remove option */}
+                  {previewUrls.map((url, index) => (
+                    <Box
+                      key={`new-${index}`}
+                      position='relative'
                       sx={{
-                        position: 'absolute',
-                        top: 0,
-                        right: 0,
-                        backgroundColor: 'rgba(255,255,255,0.7)',
+                        width: '80px',
+                        height: '80px',
+                        flexShrink: 0,
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        border: `2px solid ${theme.palette.primary.main}`,
                       }}
                     >
-                      <DeleteIcon fontSize='small' />
-                    </IconButton>
-                  </Box>
-                ))}
+                      <img
+                        src={url}
+                        alt={`preview-${index}`}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                      <Tooltip title='Remove image'>
+                        <IconButton
+                          size='small'
+                          onClick={() => handleRemoveNewImage(index)}
+                          sx={{
+                            position: 'absolute',
+                            top: 2,
+                            right: 2,
+                            backgroundColor: 'rgba(255,255,255,0.8)',
+                            width: '24px',
+                            height: '24px',
+                            '&:hover': {
+                              backgroundColor: 'rgba(255,255,255,0.95)',
+                            },
+                          }}
+                        >
+                          <DeleteIcon fontSize='small' />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  ))}
+                </Box>
               </Box>
             )}
           </Box>
         </Paper>
 
         {/* Footer Navigation */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
           <Button
             variant='contained'
             color='primary'
             onClick={() => router.push('/orders/past/payment_due')}
+            sx={{ borderRadius: '8px', minWidth: '180px' }}
           >
             Back to Payments Due
           </Button>
         </Box>
       </Paper>
+
       <ImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}
         imageSrc={popupImageSrc}
       />
-    </Box>
+    </Container>
   );
 };
 
