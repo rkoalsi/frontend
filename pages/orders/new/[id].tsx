@@ -806,7 +806,7 @@ const NewOrder: React.FC = () => {
                       !billingAddress ||
                       !shippingAddress ||
                       selectedProducts.length === 0 ||
-                      !totals.totalAmount ||
+                      // !totals.totalAmount ||
                       loading ||
                       (!isShared &&
                         !['deleted', 'draft', 'sent'].includes(
