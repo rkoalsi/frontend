@@ -42,7 +42,7 @@ const formatDate = (dateString: any) =>
 
 const AttendanceDataDisplay = ({ attendanceData, loading }: any) => {
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -134,7 +134,7 @@ const AttendanceDataDisplay = ({ attendanceData, loading }: any) => {
         </TableBody>
       </Table>
       <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
+        rowsPerPageOptions={[10, 20, 50, 100]}
         component='div'
         count={attendanceData.length}
         rowsPerPage={rowsPerPage}
@@ -224,7 +224,7 @@ const AttendanceDataDisplay = ({ attendanceData, loading }: any) => {
         ))}
       <Box sx={{ mt: 2 }}>
         <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
+          rowsPerPageOptions={[10, 20, 50, 100]}
           component='div'
           count={attendanceData.length}
           rowsPerPage={rowsPerPage}
@@ -232,6 +232,7 @@ const AttendanceDataDisplay = ({ attendanceData, loading }: any) => {
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
           sx={{
+            color: 'white',
             '.MuiTablePagination-toolbar': {
               flexWrap: 'wrap',
               justifyContent: 'center',
