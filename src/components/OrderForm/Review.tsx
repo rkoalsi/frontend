@@ -1,5 +1,4 @@
-// Review.tsx
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
   Box,
   Divider,
@@ -9,10 +8,6 @@ import {
   Card,
   CardContent,
   Button,
-  TextField,
-  Dialog,
-  DialogContent,
-  IconButton,
   Grid,
   Badge,
   CardMedia,
@@ -20,8 +15,16 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Fab,
+  Zoom,
+  useScrollTrigger,
 } from '@mui/material';
-import { Close, Edit, ExpandMore } from '@mui/icons-material';
+import {
+  Edit,
+  ExpandMore,
+  KeyboardArrowUp,
+  KeyboardArrowDown,
+} from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import QuantitySelector from './QuantitySelector'; // Adjust the path as necessary
@@ -66,6 +69,16 @@ const Review: React.FC<Props> = React.memo((props) => {
 
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
+
+  // Page navigation refs
+  const pageTopRef = useRef<HTMLDivElement>(null);
+  const pageBottomRef = useRef<HTMLDivElement>(null);
+
+  // Scroll trigger for showing/hiding navigation buttons
+  const trigger = useScrollTrigger({
+    disableHysteresis: true,
+    threshold: 0,
+  });
 
   // PDF Download Ref & Logic
   const componentRef = useRef<HTMLDivElement>(null);
@@ -157,6 +170,15 @@ const Review: React.FC<Props> = React.memo((props) => {
     setOpenImagePopup(false);
   }, []);
 
+  // Page navigation handlers
+  const scrollToTop = useCallback(() => {
+    pageTopRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    pageBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
   if (!customer) {
     return <Typography>This is content for Review</Typography>;
   }
@@ -184,7 +206,10 @@ const Review: React.FC<Props> = React.memo((props) => {
   };
 
   return (
-    <Box sx={{ p: isMobile ? 0 : 3, flex: 1 }}>
+    <Box sx={{ p: isMobile ? 0 : 3, flex: 1, position: 'relative' }}>
+      {/* Reference for top of page */}
+      <div ref={pageTopRef} />
+
       {/* Header */}
       <Box
         display='flex'
@@ -739,12 +764,55 @@ const Review: React.FC<Props> = React.memo((props) => {
             </Box>
           )}
         </Paper>
+
+        {/* Reference for bottom of page */}
+        <div ref={pageBottomRef} />
+
         <ImagePopupDialog
           open={openImagePopup}
           onClose={handleClosePopup}
           imageSrc={popupImageSrc}
         />
       </Box>
+
+      {/* Navigation Buttons */}
+      <Zoom in={trigger}>
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: isMobile ? 4 : 16,
+            right: isMobile ? 4 : 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
+            zIndex: 1000,
+          }}
+          className='no-pdf'
+        >
+          <Tooltip title='Go to Top'>
+            <Fab
+              color='primary'
+              size={isMobile ? 'small' : 'medium'}
+              aria-label='scroll to top'
+              onClick={scrollToTop}
+              sx={{ opacity: 0.9 }}
+            >
+              <KeyboardArrowUp />
+            </Fab>
+          </Tooltip>
+          <Tooltip title='Go to Bottom'>
+            <Fab
+              color='primary'
+              size={isMobile ? 'small' : 'medium'}
+              aria-label='scroll to bottom'
+              onClick={scrollToBottom}
+              sx={{ opacity: 0.9 }}
+            >
+              <KeyboardArrowDown />
+            </Fab>
+          </Tooltip>
+        </Box>
+      </Zoom>
     </Box>
   );
 });

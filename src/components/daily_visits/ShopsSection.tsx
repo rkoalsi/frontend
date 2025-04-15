@@ -10,6 +10,8 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import { Phishing } from '@mui/icons-material';
 import formatAddress from '../../util/formatAddress';
+import { useEffect } from 'react';
+import axios from 'axios';
 
 interface ShopsSectionProps {
   shops: any[];
