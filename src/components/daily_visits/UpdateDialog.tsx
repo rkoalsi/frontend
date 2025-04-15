@@ -184,17 +184,17 @@ const UpdateDialog = ({
                   key={
                     shop.potential_customer
                       ? shop.potential_customer_name
-                      : `${shop.customer_id}|${shop.address.address_id}`
+                      : `${shop.customer_id}|${shop?.address?.address_id}`
                   }
                   value={
                     shop.potential_customer
                       ? shop.potential_customer_name
-                      : `${shop.customer_id}|${shop.address.address_id}`
+                      : `${shop.customer_id}|${shop?.address?.address_id}`
                   }
                 >
                   {shop.potential_customer
                     ? `${shop.potential_customer_name} (Potential)`
-                    : `${shop.customer_name} - ${shop.address.address}`}
+                    : `${shop.customer_name} - ${shop?.address?.address}`}
                 </MenuItem>
               ))}
             </Select>

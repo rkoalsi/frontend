@@ -197,7 +197,7 @@ function PotentialCustomers() {
   // Compute filtered potential_customers based on search query.
   const filteredPotentialCustomers = potentialCustomers.filter(
     (potentialCustomer: any) =>
-      potentialCustomer.name.toLowerCase().includes(searchQuery.toLowerCase())
+      potentialCustomer?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleChange = (key: string, value: any) => {
