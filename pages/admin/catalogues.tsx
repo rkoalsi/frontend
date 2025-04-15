@@ -22,14 +22,10 @@ import {
   Switch,
 } from '@mui/material';
 import { toast } from 'react-toastify';
-import { Delete, Edit } from '@mui/icons-material';
-import { useRouter } from 'next/router';
+import { Campaign, Edit } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
 
 const Catalogues = () => {
-  const router = useRouter();
-
-  // State for catalogues data and pagination
   const [catalogues, setCatalogues] = useState([]);
   const [page, setPage] = useState(0); // 0-based index
   const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -111,6 +107,17 @@ const Catalogues = () => {
       is_active: catalog.is_active !== undefined ? catalog.is_active : true,
     });
     setDialogOpen(true);
+  };
+  const handleAnnouncement = async () => {
+    try {
+      await axiosInstance.post(
+        `${process.env.api_url}/admin/catalogues/notify_salespeople`
+      );
+      toast.success(`Successfully Notified Sales People`);
+    } catch (error) {
+      console.log(error);
+      toast.error(`Error Notifying Sales People`);
+    }
   };
 
   // Handler for saving a catalogue (update if editing, add if creating new)
@@ -275,6 +282,11 @@ const Catalogues = () => {
                                 onClick={() => handleEditClick(catalog)}
                               >
                                 <Edit />
+                              </IconButton>
+                              <IconButton
+                                onClick={async () => await handleAnnouncement()}
+                              >
+                                <Campaign />
                               </IconButton>
                               {/* You could add a delete icon if needed */}
                             </Box>
