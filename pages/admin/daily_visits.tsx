@@ -1,5 +1,5 @@
 // pages/admin/daily_visits.tsx
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Typography,
   Box,
@@ -20,6 +20,10 @@ import {
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 const DailyVisits = () => {
   // State for daily visits data and pagination
@@ -30,6 +34,10 @@ const DailyVisits = () => {
   const [totalPagesCount, setTotalPagesCount] = useState(0);
   const [skipPage, setSkipPage] = useState('');
 
+  // Date filter state
+  const [startDate, setStartDate] = useState<dayjs.Dayjs | null>(null);
+  const [endDate, setEndDate] = useState<dayjs.Dayjs | null>(null);
+
   // Loading states
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -39,11 +47,23 @@ const DailyVisits = () => {
   const [selectedVisit, setSelectedVisit] = useState<any>(null);
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
+
   // Fetch daily visits from server
   const fetchDailyVisits = async () => {
     setLoading(true);
     try {
-      const params = { page, limit: rowsPerPage };
+      const params: any = { page, limit: rowsPerPage };
+
+      // Add date filters if they exist
+      if (startDate) {
+        params.start_date = startDate.format('YYYY-MM-DD'); // Format: YYYY-MM-DD
+      }
+      if (endDate) {
+        // Add one day to include the end date in results
+        const nextDay = endDate.add(1, 'day');
+        params.end_date = nextDay.format('YYYY-MM-DD');
+      }
+
       const response = await axiosInstance.get('/admin/daily_visits', {
         params,
       });
@@ -66,6 +86,23 @@ const DailyVisits = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, rowsPerPage, actionLoading]);
 
+  // Apply date filter when user clicks on filter button
+  const handleApplyDateFilter = () => {
+    setPage(0); // Reset to first page
+    fetchDailyVisits();
+  };
+
+  // Clear date filters
+  const handleClearDateFilter = () => {
+    setStartDate(null);
+    setEndDate(null);
+    setPage(0);
+    // Fetch data automatically after clearing
+    setTimeout(() => {
+      fetchDailyVisits();
+    }, 0);
+  };
+
   const handleImageClick = useCallback((src: string) => {
     setPopupImageSrc(src);
     setOpenImagePopup(true);
@@ -74,6 +111,7 @@ const DailyVisits = () => {
   const handleClosePopup = useCallback(() => {
     setOpenImagePopup(false);
   }, []);
+
   // Pagination handlers
   const handleChangePage = (event: any, newPage: number) => {
     setPage(newPage);
@@ -106,9 +144,20 @@ const DailyVisits = () => {
     setDrawerOpen(false);
     setSelectedVisit(null);
   };
+
   const handleDownload = async () => {
     try {
-      const params = {};
+      const params: any = {};
+
+      // Add date filters to the report download if they exist
+      if (startDate) {
+        params.start_date = startDate.format('YYYY-MM-DD');
+      }
+      if (endDate) {
+        // Add one day to include the end date in results
+        const nextDay = endDate.add(1, 'day');
+        params.end_date = nextDay.format('YYYY-MM-DD');
+      }
 
       const response = await axiosInstance.get('/admin/daily_visits/report', {
         params,
@@ -119,7 +168,23 @@ const DailyVisits = () => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'daily_visits_report.xlsx');
+
+      // Add date range to filename if dates are selected
+      let filename = 'daily_visits_report';
+      if (startDate && endDate) {
+        const startDateStr = startDate.format('YYYY-MM-DD');
+        const endDateStr = endDate.format('YYYY-MM-DD');
+        filename += `_${startDateStr}_to_${endDateStr}`;
+      } else if (startDate) {
+        const startDateStr = startDate.format('YYYY-MM-DD');
+        filename += `_from_${startDateStr}`;
+      } else if (endDate) {
+        const endDateStr = endDate.format('YYYY-MM-DD');
+        filename += `_until_${endDateStr}`;
+      }
+      filename += '.xlsx';
+
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -128,6 +193,7 @@ const DailyVisits = () => {
       toast.error('Error downloading report.');
     }
   };
+
   return (
     <Box sx={{ padding: 3 }}>
       <Paper
@@ -143,6 +209,52 @@ const DailyVisits = () => {
         <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
           View all daily visits from sales people below.
         </Typography>
+
+        {/* Date Filter Section */}
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <Box
+            sx={{
+              mb: 3,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 2,
+              alignItems: 'center',
+            }}
+          >
+            <DatePicker
+              label='Start Date'
+              value={startDate}
+              onChange={(newValue) => setStartDate(newValue)}
+              slotProps={{ textField: { size: 'small' } }}
+              disableFuture
+            />
+            <DatePicker
+              label='End Date'
+              value={endDate}
+              onChange={(newValue) => setEndDate(newValue)}
+              slotProps={{ textField: { size: 'small' } }}
+              minDate={startDate || undefined}
+              disableFuture
+            />
+            <Button
+              variant='contained'
+              color='primary'
+              onClick={handleApplyDateFilter}
+              disabled={!startDate && !endDate}
+            >
+              Apply Filter
+            </Button>
+            <Button
+              variant='outlined'
+              color='secondary'
+              onClick={handleClearDateFilter}
+              disabled={!startDate && !endDate}
+            >
+              Clear Filter
+            </Button>
+          </Box>
+        </LocalizationProvider>
+
         {loading ? (
           <Box
             sx={{
@@ -335,7 +447,7 @@ const DailyVisits = () => {
                       {update.images && update.images.length > 0 && (
                         <Grid container spacing={2} sx={{ mt: 1 }}>
                           {update.images.map((img: any, idx: number) => (
-                            <Box>
+                            <Box key={idx}>
                               <img
                                 onClick={() => handleImageClick(img.url)}
                                 src={img.url}

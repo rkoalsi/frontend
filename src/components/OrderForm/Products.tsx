@@ -39,6 +39,8 @@ import {
   Switch,
 } from '@mui/material';
 import {
+  ArrowDownward,
+  ArrowUpward,
   Close as CloseIcon,
   ShoppingCart as ShoppingCartIcon,
   Sort,
@@ -1361,6 +1363,46 @@ const Products: React.FC<ProductsProps> = ({
             </Table>
           </TableContainer>
         )}
+      </Box>
+      <Box
+        sx={{
+          position: 'fixed',
+          bottom: isMobile || isTablet ? theme.spacing(20) : theme.spacing(12),
+          right: isMobile || isTablet ? theme.spacing(2) : theme.spacing(4),
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
+          zIndex: 1000,
+        }}
+      >
+        <IconButton
+          color='primary'
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          sx={{
+            backgroundColor: 'background.paper',
+            boxShadow: 3,
+            '&:hover': { backgroundColor: 'background.default' },
+          }}
+        >
+          <ArrowUpward fontSize={isMobile ? 'medium' : 'large'} />
+        </IconButton>
+
+        <IconButton
+          color='primary'
+          onClick={() =>
+            window.scrollTo({
+              top: document.documentElement.scrollHeight,
+              behavior: 'smooth',
+            })
+          }
+          sx={{
+            backgroundColor: 'background.paper',
+            boxShadow: 3,
+            '&:hover': { backgroundColor: 'background.default' },
+          }}
+        >
+          <ArrowDownward fontSize={isMobile ? 'medium' : 'large'} />
+        </IconButton>
       </Box>
 
       {/* Cart Icon */}
