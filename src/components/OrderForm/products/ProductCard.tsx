@@ -77,6 +77,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
             overflow: 'hidden',
             backgroundColor: 'background.paper',
             mt: index === 0 ? '16px' : undefined,
+            mb: '16px',
           }}
         >
           <Box sx={{ position: 'relative' }}>
