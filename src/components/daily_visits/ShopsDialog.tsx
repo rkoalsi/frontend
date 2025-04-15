@@ -20,6 +20,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Autocomplete,
 } from '@mui/material';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
@@ -48,6 +49,22 @@ interface Shop {
   reason: string;
   editing: boolean;
   customer_id?: string | null;
+  potential_customer?: boolean;
+  potential_customer_id?: string | null;
+  potential_customer_name?: string | null;
+  potential_customer_address?: string | null;
+  potential_customer_tier?: string | null;
+  potential_customer_mobile?: string | null;
+  order_expected?: boolean;
+}
+
+interface PotentialCustomer {
+  _id: string;
+  name: string;
+  address: string;
+  tier: string;
+  mobile?: string;
+  created_by: string;
 }
 
 const ShopsDialog = ({
@@ -60,6 +77,32 @@ const ShopsDialog = ({
   const [shopsForm, setShopsForm] = useState<Shop[]>([]);
   const [shopsSubmitting, setShopsSubmitting] = useState<boolean>(false);
   const [initialLoaded, setInitialLoaded] = useState(false);
+  const [potentialCustomers, setPotentialCustomers] = useState<
+    PotentialCustomer[]
+  >([]);
+  const [loadingPotentialCustomers, setLoadingPotentialCustomers] =
+    useState<boolean>(false);
+
+  // Fetch potential customers created by the user
+  useEffect(() => {
+    if (open && user?.data?._id) {
+      const fetchPotentialCustomers = async () => {
+        setLoadingPotentialCustomers(true);
+        try {
+          const { data } = await axios.get(
+            `${process.env.api_url}/potential_customers?created_by=${user.data._id}`
+          );
+          setPotentialCustomers(data || []);
+        } catch (err) {
+          console.error('Error fetching potential customers:', err);
+          toast.error('Failed to load potential customers');
+        } finally {
+          setLoadingPotentialCustomers(false);
+        }
+      };
+      fetchPotentialCustomers();
+    }
+  }, [open, user?.data?._id]);
 
   // Only load initial shops data once when the dialog opens
   useEffect(() => {
@@ -95,6 +138,9 @@ const ShopsDialog = ({
                 : null,
               potential_customer_tier: shop.potential_customer
                 ? shop.potential_customer_tier
+                : null,
+              potential_customer_mobile: shop.potential_customer
+                ? shop.potential_customer_mobile
                 : null,
               address: !shop.potential_customer ? shop.address : {},
               reason: shop.reason || '',
@@ -172,6 +218,34 @@ const ShopsDialog = ({
     setShopsForm((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleSelectPotentialCustomer = (
+    index: number,
+    potentialCustomer: PotentialCustomer | null
+  ) => {
+    if (potentialCustomer) {
+      updateShop(index, 'potential_customer_id', potentialCustomer._id);
+      updateShop(index, 'potential_customer_name', potentialCustomer.name);
+      updateShop(
+        index,
+        'potential_customer_address',
+        potentialCustomer.address
+      );
+      updateShop(index, 'potential_customer_tier', potentialCustomer.tier);
+      updateShop(
+        index,
+        'potential_customer_mobile',
+        potentialCustomer.mobile || ''
+      );
+    } else {
+      // Clear potential customer fields if selection is removed
+      updateShop(index, 'potential_customer_id', null);
+      updateShop(index, 'potential_customer_name', '');
+      updateShop(index, 'potential_customer_address', '');
+      updateShop(index, 'potential_customer_tier', '');
+      updateShop(index, 'potential_customer_mobile', '');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setShopsSubmitting(true);
@@ -180,16 +254,15 @@ const ShopsDialog = ({
       const shopsData = shopsForm.map((shop: any) => ({
         id: shop._id,
         customer_id: shop.selectedCustomer?._id || shop.selectedCustomer?.id,
-        customer_name:
-          shop.customer_name ||
-          (shop.selectedCustomer
-            ? shop.selectedCustomer.contact_name || shop.selectedCustomer.name
-            : null),
+        customer_name: shop.selectedCustomer
+          ? shop.selectedCustomer.contact_name || shop.selectedCustomer.name
+          : null,
         potential_customer: shop.potential_customer,
         potential_customer_id: shop.potential_customer_id,
         potential_customer_name: shop.potential_customer_name,
         potential_customer_address: shop.potential_customer_address,
         potential_customer_tier: shop.potential_customer_tier,
+        potential_customer_mobile: shop.potential_customer_mobile,
         address: shop.address,
         reason: shop.reason,
         order_expected: shop.order_expected,
@@ -332,9 +405,9 @@ const ShopsDialog = ({
                     <FormControlLabel
                       control={
                         <Checkbox
-                          disabled={shop.potentialCustomer}
+                          disabled={shop.potential_customer}
                           checked={
-                            shop.potentialCustomer
+                            shop.potential_customer
                               ? false
                               : shop.order_expected || false
                           }
@@ -354,21 +427,49 @@ const ShopsDialog = ({
                         <Checkbox
                           disabled={shop.selectedCustomer}
                           checked={shop.potential_customer || false}
-                          onChange={(e: any) =>
+                          onChange={(e: any) => {
                             updateShop(
                               index,
                               'potential_customer',
                               e.target.checked
-                            )
-                          }
+                            );
+                            // Clear potential customer fields if unchecked
+                            if (!e.target.checked) {
+                              handleSelectPotentialCustomer(index, null);
+                            }
+                          }}
                         />
                       }
                       label='Potential Customer'
                     />
                     {shop.potential_customer ? (
                       <>
+                        <Autocomplete
+                          options={potentialCustomers}
+                          getOptionLabel={(option) => option.name}
+                          loading={loadingPotentialCustomers}
+                          onChange={(_, value) =>
+                            handleSelectPotentialCustomer(index, value)
+                          }
+                          value={
+                            shop.potential_customer_id
+                              ? potentialCustomers.find(
+                                  (pc) => pc._id === shop.potential_customer_id
+                                ) || null
+                              : null
+                          }
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label='Select Existing Potential Customer'
+                              variant='outlined'
+                              fullWidth
+                              helperText='Leave empty to create a new potential customer'
+                            />
+                          )}
+                        />
                         <TextField
-                          label='Enter Customer Name'
+                          label='Customer Name'
                           fullWidth
                           value={shop.potential_customer_name || ''}
                           onChange={(e) =>
@@ -378,9 +479,10 @@ const ShopsDialog = ({
                               e.target.value
                             )
                           }
+                          required
                         />
                         <TextField
-                          label='Enter Customer Address'
+                          label='Customer Address'
                           fullWidth
                           value={shop.potential_customer_address || ''}
                           onChange={(e) =>
@@ -390,8 +492,9 @@ const ShopsDialog = ({
                               e.target.value
                             )
                           }
+                          required
                         />
-                        <FormControl fullWidth>
+                        <FormControl fullWidth required>
                           <InputLabel>Customer Tier</InputLabel>
                           <Select
                             value={shop.potential_customer_tier || ''}
@@ -410,7 +513,7 @@ const ShopsDialog = ({
                           </Select>
                         </FormControl>
                         <TextField
-                          label='Enter Customer Phone'
+                          label='Customer Phone'
                           fullWidth
                           value={shop.potential_customer_mobile || ''}
                           onChange={(e) =>
@@ -435,7 +538,7 @@ const ShopsDialog = ({
                         />
                         <AddressSelection
                           shop={shop}
-                          selectedAddressId={shop.address.address_id}
+                          selectedAddressId={shop?.address?.address_id}
                           handleAddressChange={(e: any) => {
                             const address_id = e.target.value;
                             const selectedAddress =
@@ -453,13 +556,13 @@ const ShopsDialog = ({
                       <Typography variant='body2' gutterBottom>
                         Reason for Visit
                       </Typography>
-                      <input
-                        type='text'
+                      <TextField
+                        fullWidth
+                        placeholder='Enter reason for visit'
                         value={shop.reason}
                         onChange={(e) =>
                           updateShop(index, 'reason', e.target.value)
                         }
-                        style={{ width: '100%', padding: '8px' }}
                         required
                       />
                     </Box>
@@ -503,6 +606,20 @@ const ShopsDialog = ({
                         <Typography variant='body2' paragraph>
                           {shop.potential_customer_tier}
                         </Typography>
+                        {shop.potential_customer_mobile && (
+                          <>
+                            <Typography
+                              variant='body2'
+                              color='text.secondary'
+                              gutterBottom
+                            >
+                              <strong>Phone:</strong>
+                            </Typography>
+                            <Typography variant='body2' paragraph>
+                              {shop.potential_customer_mobile}
+                            </Typography>
+                          </>
+                        )}
                       </>
                     )}
                     <Typography variant='body2' color='text.secondary'>
@@ -535,7 +652,12 @@ const ShopsDialog = ({
             <Button onClick={onClose} color='secondary'>
               Cancel
             </Button>
-            <Button type='submit' variant='contained' color='primary'>
+            <Button
+              type='submit'
+              variant='contained'
+              color='primary'
+              disabled={shopsSubmitting}
+            >
               {shopsSubmitting ? 'Saving...' : 'Save Shops'}
             </Button>
           </DialogActions>
