@@ -3,11 +3,14 @@ import {
   Typography,
   Button,
   Paper,
-  Grid,
   IconButton,
   Tooltip,
   Alert,
   Container,
+  ImageList,
+  ImageListItem,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -31,6 +34,9 @@ const UpdateSection = ({
   onDeleteUpdate,
   onClickImage,
 }: UpdateSectionProps) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
     <Box sx={{ mb: 3 }}>
       <Box
@@ -42,6 +48,8 @@ const UpdateSection = ({
           pb: 1,
           borderBottom: '1px solid',
           borderColor: 'divider',
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? 2 : 0,
         }}
       >
         <Typography variant='h6'>Updates & Information</Typography>
@@ -51,6 +59,7 @@ const UpdateSection = ({
           startIcon={<AddIcon />}
           onClick={onAddUpdate}
           size='small'
+          fullWidth={isMobile}
         >
           Add Update
         </Button>
@@ -64,11 +73,22 @@ const UpdateSection = ({
               mb: 2,
               borderLeft: '4px solid',
               borderColor: 'secondary.main',
+              transition: 'transform 0.2s',
+              '&:hover': {
+                boxShadow: 4,
+                borderColor: 'primary.main',
+              },
             }}
             elevation={2}
           >
             <Box
-              sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                mb: 1,
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: isMobile ? 1 : 0,
+              }}
             >
               <Typography variant='subtitle1' sx={{ fontWeight: 'medium' }}>
                 Shop {index + 1} Update:
@@ -83,7 +103,12 @@ const UpdateSection = ({
                   </Typography>
                 )}
               </Typography>
-              <Box>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: isMobile ? 'flex-end' : 'flex-start',
+                }}
+              >
                 {!upd.potential_customer && (
                   <Tooltip title='Set Hook'>
                     <IconButton
@@ -116,55 +141,73 @@ const UpdateSection = ({
               </Box>
             </Box>
             {/* Display customer information if available */}
-            {upd.potential_customer ? (
-              <Typography variant='subtitle2' sx={{ mb: 1 }}>
-                Customer: {upd.potential_customer_name}
-              </Typography>
-            ) : (
-              <>
-                <Typography variant='subtitle2' sx={{ mb: 1 }}>
-                  Customer: {upd.customer_name}
+            <Box
+              sx={{
+                p: 1,
+                mb: 2,
+                bgcolor: 'background.paper',
+                borderRadius: 1,
+                border: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              {upd.potential_customer ? (
+                <Typography variant='subtitle2'>
+                  Customer: {upd.potential_customer_name}
                 </Typography>
-                <Typography variant='subtitle2' sx={{ mb: 1 }}>
-                  Address: {upd?.address?.address}
-                </Typography>
-              </>
-            )}
+              ) : (
+                <>
+                  <Typography variant='subtitle2'>
+                    Customer: {upd.customer_name}
+                  </Typography>
+                  <Typography variant='subtitle2'>
+                    Address: {upd?.address?.address}
+                  </Typography>
+                </>
+              )}
+            </Box>
             <Typography variant='body1' sx={{ mb: 2, whiteSpace: 'pre-line' }}>
               {upd.text}
             </Typography>
             {upd.images && upd.images.length > 0 && (
-              <Container>
-                {upd.images.map((img: any, idx: number) => (
-                  <Grid>
-                    <Box
-                      onClick={() => onClickImage(img.url)}
-                      sx={{
-                        position: 'relative',
-                        paddingTop: '75%',
-                        overflow: 'hidden',
-                        borderRadius: 1,
-                        cursor: 'pointer',
-                        transition: 'transform 0.2s',
-                        '&:hover': { transform: 'scale(1.05)' },
-                      }}
-                    >
+              <Container disableGutters>
+                <ImageList
+                  cols={isMobile ? 1 : Math.min(upd.images.length, 3)}
+                  gap={8}
+                  sx={{ mt: 2, overflow: 'visible' }}
+                >
+                  {upd.images.map((img: any, idx: number) => (
+                    <ImageListItem key={idx}>
                       <Box
-                        component='img'
-                        src={img.url}
-                        alt={`Update Image ${idx + 1}`}
+                        onClick={() => onClickImage(img.url)}
                         sx={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
+                          position: 'relative',
+                          paddingTop: '75%',
+                          overflow: 'hidden',
+                          borderRadius: 1,
+                          cursor: 'pointer',
+                          transition: 'transform 0.2s',
+                          '&:hover': { transform: 'scale(1.05)' },
+                          boxShadow: 2,
                         }}
-                      />
-                    </Box>
-                  </Grid>
-                ))}
+                      >
+                        <Box
+                          component='img'
+                          src={img.url}
+                          alt={`Update Image ${idx + 1}`}
+                          sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                          }}
+                        />
+                      </Box>
+                    </ImageListItem>
+                  ))}
+                </ImageList>
               </Container>
             )}
           </Paper>
