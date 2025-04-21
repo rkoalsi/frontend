@@ -164,6 +164,7 @@ function TargetedCustomer() {
           justifyContent: 'center',
           flexDirection: 'column',
           mb: 4,
+          mt: 2,
         }}
       >
         <Header title='Targeted Customers' showBackButton />
@@ -203,7 +204,7 @@ function TargetedCustomer() {
         />
       </Box>
       {filteredTargetedCustomer.length === 0 ? (
-        <Alert severity='info' variant='outlined'>
+        <Alert severity='info' variant='outlined' sx={{ color: 'white' }}>
           No Targeted Customers found.
         </Alert>
       ) : (
