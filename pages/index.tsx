@@ -24,6 +24,7 @@ import {
   Radar,
   Repeat,
   ShoppingCart,
+  WorkHistory,
 } from '@mui/icons-material';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -153,6 +154,12 @@ const menuItems = [
     text: 'Targeted Customers',
     color: '#ffa726',
     action: 'targeted_customer',
+  },
+  {
+    icon: <WorkHistory />,
+    text: 'Customer Margins',
+    color: '#4dd0e1',
+    action: 'customer_margins',
   },
 ];
 
