@@ -17,10 +17,17 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  IconButton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Drawer,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import formatAddress from '../../src/util/formatAddress';
+import { FilterAlt } from '@mui/icons-material';
 
 const ExpectedReorders = () => {
   // State for expectedReorders data and pagination
@@ -30,13 +37,53 @@ const ExpectedReorders = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [totalPagesCount, setTotalPageCount] = useState(0);
   const [skipPage, setSkipPage] = useState('');
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer]: any = useState(null);
-  const [editedCustomer, setEditedCustomer]: any = useState({});
+  const [openFilterModal, setOpenFilterModal] = useState(false);
+  const [filterSalesPerson, setFilterSalesPerson] = useState<string>('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  const [salesPeople, setSalesPeople] = useState<string[]>([
+    'SP1',
+    'SP2',
+    'SP3',
+    'SP4',
+    'SP5',
+    'SP6',
+    'SP7',
+    'SP8',
+    'SP9',
+    'SP10',
+    'SP11',
+    'SP12',
+    'SP13',
+    'SP14',
+    'SP15',
+    'SP16',
+    'SP17',
+    'SP18',
+    'SP19',
+    'SP20',
+    'SP21',
+  ]);
+  useEffect(() => {
+    const fetchSalesPeople = async () => {
+      try {
+        const response = await axiosInstance.get(`/admin/sales-people`);
+        setSalesPeople(response.data.sales_people);
+      } catch (error) {
+        console.error(error);
+        toast.error('Error fetching sales people.');
+      }
+    };
 
+    fetchSalesPeople();
+  }, []);
   // Loading states
   const [loading, setLoading] = useState(true);
-
+  const applyFilters = () => {
+    setPage(0); // reset page
+    setOpenFilterModal(false);
+    fetchExpectedReorders(); // fetch with new filters
+  };
   // Fetch expectedReorders from the server
   const fetchExpectedReorders = async () => {
     setLoading(true);
@@ -44,6 +91,9 @@ const ExpectedReorders = () => {
       const params = {
         page,
         limit: rowsPerPage,
+        code: filterSalesPerson,
+        ...(filterStartDate && { start_date: filterStartDate }),
+        ...(filterEndDate && { end_date: filterEndDate }),
       };
       const response = await axiosInstance.get(`/admin/expected_reorders`, {
         params,
@@ -96,7 +146,11 @@ const ExpectedReorders = () => {
   // Opens dialog for adding a new catalogue.
   const handleDownloadExpectedReorders = async () => {
     try {
-      const params = {};
+      const params = {
+        code: filterSalesPerson,
+        ...(filterStartDate && { start_date: filterStartDate }),
+        ...(filterEndDate && { end_date: filterEndDate }),
+      };
 
       const response = await axiosInstance.get(
         '/admin/expected_reorders/report',
@@ -139,9 +193,22 @@ const ExpectedReorders = () => {
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
             All Expected Reorders
           </Typography>
-          <Button variant='contained' onClick={handleDownloadExpectedReorders}>
-            Download Expected Reorders Report
-          </Button>
+          <Box
+            display='flex'
+            flexDirection='row'
+            justifyContent='space-between'
+            alignItems='center'
+          >
+            <Button
+              variant='contained'
+              onClick={handleDownloadExpectedReorders}
+            >
+              Download Expected Reorders Report
+            </Button>
+            <IconButton onClick={() => setOpenFilterModal(true)}>
+              <FilterAlt />
+            </IconButton>
+          </Box>
         </Box>
         <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
           View and manage all expected reorders below.
@@ -255,6 +322,83 @@ const ExpectedReorders = () => {
           </>
         )}
       </Paper>
+      <Drawer
+        anchor='right'
+        open={openFilterModal}
+        onClose={() => setOpenFilterModal(false)}
+        sx={{
+          '& .MuiDrawer-paper': {
+            width: 300,
+            padding: 3,
+          },
+        }}
+      >
+        <Box>
+          <Typography variant='h6' gutterBottom>
+            Filter Orders
+          </Typography>
+
+          {/* Sales Person Filter */}
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel id='sales-person-filter-label'>Sales Person</InputLabel>
+            <Select
+              labelId='sales-person-filter-label'
+              id='sales-person-filter'
+              value={filterSalesPerson}
+              label='Sales Person'
+              onChange={(e) => setFilterSalesPerson(e.target.value)}
+            >
+              <MenuItem value=''>All</MenuItem>
+              {salesPeople.map((person: any) => (
+                <MenuItem key={person} value={person}>
+                  {person}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            label='Start Date'
+            type='date'
+            fullWidth
+            value={filterStartDate}
+            onChange={(e) => setFilterStartDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ mt: 2 }}
+          />
+
+          {/* End Date Picker */}
+          <TextField
+            label='End Date'
+            type='date'
+            fullWidth
+            value={filterEndDate}
+            onChange={(e) => setFilterEndDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ mt: 2 }}
+          />
+          {/* Apply Filters Button */}
+          <Box sx={{ mt: 3 }}>
+            <Button variant='contained' fullWidth onClick={applyFilters}>
+              Apply Filters
+            </Button>
+          </Box>
+
+          {/* Reset Filters Button */}
+          <Box sx={{ mt: 2 }}>
+            <Button
+              variant='contained'
+              fullWidth
+              onClick={() => {
+                // setFilterStatus('');
+                setFilterSalesPerson('');
+                // setFilterEstimatesCreated(false);
+              }}
+            >
+              Reset Filters
+            </Button>
+          </Box>
+        </Box>
+      </Drawer>
     </Box>
   );
 };
