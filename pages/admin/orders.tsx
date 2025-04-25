@@ -89,6 +89,9 @@ const Orders = () => {
   ]);
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
+  const [searchEstimateNumber, setSearchEstimateNumber] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
   useEffect(() => {
     const fetchSalesPeople = async () => {
       try {
@@ -106,7 +109,38 @@ const Orders = () => {
     setPopupImageSrc(src);
     setOpenImagePopup(true);
   }, []);
+  const handleDownloadXLSX = async () => {
+    try {
+      const params: any = {
+        ...(filterStartDate && { start_date: filterStartDate }),
+        ...(filterEndDate && { end_date: filterEndDate }),
+        ...(searchEstimateNumber && { estimate_number: searchEstimateNumber }),
+      };
 
+      if (filterStatus) params.status = filterStatus;
+      if (filterSalesPerson) params.sales_person = filterSalesPerson;
+      if (filterEstimatesCreated)
+        params.estimate_created = filterEstimatesCreated;
+      if (filterEstimatesGreaterThanZero) params.amount = true;
+      console.log(params);
+      const response = await axiosInstance.get('/admin/orders/export', {
+        params,
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `orders_${new Date().toISOString()}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading XLSX:', error);
+      toast.error('Failed to download XLSX file.');
+    }
+  };
   const handleClosePopup = useCallback(() => {
     setOpenImagePopup(false);
   }, []);
@@ -123,6 +157,9 @@ const Orders = () => {
       const params: any = {
         page,
         limit: rowsPerPage,
+        ...(filterStartDate && { start_date: filterStartDate }),
+        ...(filterEndDate && { end_date: filterEndDate }),
+        ...(searchEstimateNumber && { estimate_number: searchEstimateNumber }),
       };
 
       if (filterStatus) params.status = filterStatus;
@@ -301,7 +338,26 @@ const Orders = () => {
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
             All Orders
           </Typography>
-          <FilterAlt onClick={() => setOpenFilterModal(true)} />
+          <Box display='flex' alignItems='center' gap={2}>
+            <TextField
+              label='Search Estimate Number'
+              variant='outlined'
+              size='small'
+              value={searchEstimateNumber}
+              onChange={(e) => setSearchEstimateNumber(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && fetchOrders()}
+            />
+            <Button
+              variant='contained'
+              startIcon={<Download />}
+              onClick={handleDownloadXLSX}
+            >
+              Export
+            </Button>
+            <IconButton onClick={() => setOpenFilterModal(true)}>
+              <FilterAlt />
+            </IconButton>
+          </Box>
         </Box>
         <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
           View and manage all orders below.
@@ -798,7 +854,26 @@ const Orders = () => {
                 <MenuItem value='invoiced'>Invoiced</MenuItem>
               </Select>
             </FormControl>
+            <TextField
+              label='Start Date'
+              type='date'
+              fullWidth
+              value={filterStartDate}
+              onChange={(e) => setFilterStartDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ mt: 2 }}
+            />
 
+            {/* End Date Picker */}
+            <TextField
+              label='End Date'
+              type='date'
+              fullWidth
+              value={filterEndDate}
+              onChange={(e) => setFilterEndDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ mt: 2 }}
+            />
             {/* Sales Person Filter */}
             <FormControl fullWidth sx={{ mt: 2 }}>
               <InputLabel id='sales-person-filter-label'>

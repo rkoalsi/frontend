@@ -17,12 +17,23 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  IconButton,
+  Drawer,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
+import { FilterAlt } from '@mui/icons-material';
 
 const PotentialCustomers = () => {
   // State for potentialCustomers data and pagination
+  const [openFilterModal, setOpenFilterModal] = useState(false);
+  const [filterSalesPerson, setFilterSalesPerson] = useState<string>('');
   const [potentialCustomers, setPotentialCustomers] = useState([]);
   const [page, setPage] = useState(0); // 0-based index
   const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -32,10 +43,50 @@ const PotentialCustomers = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer]: any = useState(null);
   const [editedCustomer, setEditedCustomer]: any = useState({});
+  const [salesPeople, setSalesPeople] = useState<string[]>([
+    'SP1',
+    'SP2',
+    'SP3',
+    'SP4',
+    'SP5',
+    'SP6',
+    'SP7',
+    'SP8',
+    'SP9',
+    'SP10',
+    'SP11',
+    'SP12',
+    'SP13',
+    'SP14',
+    'SP15',
+    'SP16',
+    'SP17',
+    'SP18',
+    'SP19',
+    'SP20',
+    'SP21',
+  ]);
 
+  useEffect(() => {
+    const fetchSalesPeople = async () => {
+      try {
+        const response = await axiosInstance.get(`/admin/sales-people`);
+        setSalesPeople(response.data.sales_people);
+      } catch (error) {
+        console.error(error);
+        toast.error('Error fetching sales people.');
+      }
+    };
+
+    fetchSalesPeople();
+  }, []);
   // Loading states
   const [loading, setLoading] = useState(true);
-
+  const applyFilters = () => {
+    setPage(0); // reset page
+    setOpenFilterModal(false);
+    fetchPotentialCustomers(); // fetch with new filters
+  };
   // Fetch potentialCustomers from the server
   const fetchPotentialCustomers = async () => {
     setLoading(true);
@@ -43,6 +94,7 @@ const PotentialCustomers = () => {
       const params = {
         page,
         limit: rowsPerPage,
+        code: filterSalesPerson,
       };
       const response = await axiosInstance.get(`/admin/potential_customers`, {
         params,
@@ -95,7 +147,9 @@ const PotentialCustomers = () => {
   // Opens dialog for adding a new catalogue.
   const handleDownloadPotentialCustomers = async () => {
     try {
-      const params = {};
+      const params = {
+        code: filterSalesPerson,
+      };
 
       const response = await axiosInstance.get(
         '/admin/potential_customers/report',
@@ -169,12 +223,22 @@ const PotentialCustomers = () => {
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
             All Potential Customers
           </Typography>
-          <Button
-            variant='contained'
-            onClick={handleDownloadPotentialCustomers}
+          <Box
+            display='flex'
+            flexDirection='row'
+            justifyContent='space-between'
+            alignItems='center'
           >
-            Download Potential Customers Report
-          </Button>
+            <Button
+              variant='contained'
+              onClick={handleDownloadPotentialCustomers}
+            >
+              Download Potential Customers Report
+            </Button>
+            <IconButton onClick={() => setOpenFilterModal(true)}>
+              <FilterAlt />
+            </IconButton>
+          </Box>
         </Box>
         <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
           View and manage all potential customers below.
@@ -347,6 +411,64 @@ const PotentialCustomers = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      <Drawer
+        anchor='right'
+        open={openFilterModal}
+        onClose={() => setOpenFilterModal(false)}
+        sx={{
+          '& .MuiDrawer-paper': {
+            width: 300,
+            padding: 3,
+          },
+        }}
+      >
+        <Box>
+          <Typography variant='h6' gutterBottom>
+            Filter Orders
+          </Typography>
+
+          {/* Sales Person Filter */}
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel id='sales-person-filter-label'>Sales Person</InputLabel>
+            <Select
+              labelId='sales-person-filter-label'
+              id='sales-person-filter'
+              value={filterSalesPerson}
+              label='Sales Person'
+              onChange={(e) => setFilterSalesPerson(e.target.value)}
+            >
+              <MenuItem value=''>All</MenuItem>
+              {salesPeople.map((person: any) => (
+                <MenuItem key={person} value={person}>
+                  {person}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* Apply Filters Button */}
+          <Box sx={{ mt: 3 }}>
+            <Button variant='contained' fullWidth onClick={applyFilters}>
+              Apply Filters
+            </Button>
+          </Box>
+
+          {/* Reset Filters Button */}
+          <Box sx={{ mt: 2 }}>
+            <Button
+              variant='contained'
+              fullWidth
+              onClick={() => {
+                // setFilterStatus('');
+                setFilterSalesPerson('');
+                // setFilterEstimatesCreated(false);
+              }}
+            >
+              Reset Filters
+            </Button>
+          </Box>
+        </Box>
+      </Drawer>
     </Box>
   );
 };
