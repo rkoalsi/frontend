@@ -84,10 +84,7 @@ const AddressSelection = ({
                     <ListItemText primary='City' secondary={address.city} />
                   </ListItem>
                   <ListItem>
-                    <ListItemText
-                      primary='State'
-                      secondary={`${address.state} (${address.state_code})`}
-                    />
+                    <ListItemText primary='State' secondary={address.state} />
                   </ListItem>
                   <ListItem>
                     <ListItemText primary='ZIP' secondary={address.zip} />
@@ -95,7 +92,7 @@ const AddressSelection = ({
                   <ListItem>
                     <ListItemText
                       primary='Country'
-                      secondary={`${address.country} (${address.country_code})`}
+                      secondary={address.country}
                     />
                   </ListItem>
                   {address.phone && (
@@ -138,8 +135,7 @@ const AddressSelection = ({
                   </div>
                   <div style={{ flex: '1 1 50%', padding: '8px' }}>
                     <Typography variant='body2'>
-                      <strong>State:</strong> {address.state} (
-                      {address.state_code})
+                      <strong>State:</strong> {address.state}
                     </Typography>
                   </div>
                   <div style={{ flex: '1 1 50%', padding: '8px' }}>
@@ -149,8 +145,7 @@ const AddressSelection = ({
                   </div>
                   <div style={{ flex: '1 1 50%', padding: '8px' }}>
                     <Typography variant='body2'>
-                      <strong>Country:</strong> {address.country} (
-                      {address.country_code})
+                      <strong>Country:</strong> {address.country}
                     </Typography>
                   </div>
                   {address.phone && (

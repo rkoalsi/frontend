@@ -184,9 +184,23 @@ const ShopsDialog = ({
 
   const toggleEditShop = (index: number) => {
     setShopsForm((prev) =>
-      prev.map((shop, i) =>
-        i === index ? { ...shop, editing: !shop.editing } : shop
-      )
+      prev.map((shop, i) => {
+        if (i === index) {
+          if (shop.editing) {
+            // Validate when exiting edit mode
+            if (
+              !shop.potential_customer &&
+              (!shop.address || Object.keys(shop.address).length === 0)
+            ) {
+              toast.error('Please select an address for this customer');
+              return { ...shop, editing: true }; // Stay in edit mode
+            }
+            return { ...shop, editing: false };
+          }
+          return { ...shop, editing: true };
+        }
+        return shop;
+      })
     );
   };
 
@@ -248,6 +262,24 @@ const ShopsDialog = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Validate all shops
+    const invalidShops = shopsForm.filter(
+      (shop) =>
+        !shop.potential_customer &&
+        (!shop.address || Object.keys(shop.address).length === 0)
+    );
+
+    if (invalidShops.length > 0) {
+      invalidShops.forEach((shop, index) => {
+        toast.error(
+          `Shop ${index + 1}: Please select a customer address for ${
+            shop.selectedCustomer.contact_name
+          }`
+        );
+      });
+      return;
+    }
+
     setShopsSubmitting(true);
     try {
       const formData = new FormData();
