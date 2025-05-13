@@ -20,9 +20,20 @@ import {
   DialogTitle,
   DialogContent,
   Switch,
+  Avatar,
 } from '@mui/material';
 import { toast } from 'react-toastify';
-import { Delete, Edit, Mic, Stop, PlayArrow, Pause } from '@mui/icons-material';
+import {
+  Delete,
+  Edit,
+  Mic,
+  Stop,
+  PlayArrow,
+  Pause,
+  Image,
+  PhotoCamera,
+  DeleteOutline,
+} from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
 
@@ -50,6 +61,7 @@ const Announcements = () => {
     description: '',
     is_active: true,
     audio_file: null,
+    image_file: null,
   });
 
   // Audio recording states
@@ -60,6 +72,12 @@ const Announcements = () => {
   const mediaRecorderRef: any = useRef(null);
   const audioChunksRef: any = useRef([]);
   const audioRef = useRef(new Audio());
+
+  // Image state
+  const [imageBlob, setImageBlob]: any = useState(null);
+  const [imageURL, setImageURL] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch announcements from the server
   const fetchAnnouncements = async () => {
@@ -97,12 +115,15 @@ const Announcements = () => {
       if (audioURL) {
         URL.revokeObjectURL(audioURL);
       }
+      if (imageURL && !imageURL.startsWith('http')) {
+        URL.revokeObjectURL(imageURL);
+      }
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = '';
       }
     };
-  }, [audioURL]);
+  }, [audioURL, imageURL]);
 
   // Handle audio playback state changes
   useEffect(() => {
@@ -145,6 +166,7 @@ const Announcements = () => {
       is_active:
         announcement.is_active !== undefined ? announcement.is_active : true,
       audio_file: null,
+      image_file: null,
     });
 
     // If there's an existing audio URL from the server
@@ -156,8 +178,18 @@ const Announcements = () => {
       setAudioBlob(null);
     }
 
+    // If there's an existing image URL from the server
+    if (announcement.image_url) {
+      setImageURL(announcement.image_url);
+      setImageBlob(null); // We don't have the blob, just the URL
+    } else {
+      setImageURL('');
+      setImageBlob(null);
+    }
+
     setDialogOpen(true);
   };
+
   const handleDelete = async (announcement: any) => {
     try {
       const { data = {} } = await axiosInstance.delete(
@@ -196,6 +228,11 @@ const Announcements = () => {
         formDataToSend.append('audio_file', audioFile);
       }
 
+      // Append image file if it exists
+      if (imageBlob) {
+        formDataToSend.append('image_file', imageBlob);
+      }
+
       if (selectedTraining) {
         // Update existing announcement
         await axiosInstance.put(
@@ -220,7 +257,7 @@ const Announcements = () => {
 
       fetchAnnouncements();
       setDialogOpen(false);
-      resetAudioState();
+      resetMediaState();
     } catch (error) {
       console.error(error);
       toast.error('Error saving announcement');
@@ -229,8 +266,9 @@ const Announcements = () => {
     }
   };
 
-  // Reset audio recording state
-  const resetAudioState = () => {
+  // Reset audio and image state
+  const resetMediaState = () => {
+    // Reset audio
     setAudioBlob(null);
     setAudioURL('');
     setIsRecording(false);
@@ -240,6 +278,10 @@ const Announcements = () => {
       mediaRecorderRef.current.onstop = null;
       mediaRecorderRef.current = null;
     }
+
+    // Reset image
+    setImageBlob(null);
+    setImageURL('');
   };
 
   // Handler for toggling active/inactive status
@@ -275,8 +317,9 @@ const Announcements = () => {
       description: '',
       is_active: true,
       audio_file: null,
+      image_file: null,
     });
-    resetAudioState();
+    resetMediaState();
     setDialogOpen(true);
   };
 
@@ -338,6 +381,22 @@ const Announcements = () => {
     }
   };
 
+  // Handle file upload for image
+  const handleImageUpload = (event: any) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Check if file is an image
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please upload an image file');
+        return;
+      }
+
+      const imageUrl = URL.createObjectURL(file);
+      setImageBlob(file);
+      setImageURL(imageUrl);
+    }
+  };
+
   // Handle audio playback in the form
   const togglePlayback = (url = null) => {
     // If a specific URL is provided (from the table), use that
@@ -363,7 +422,7 @@ const Announcements = () => {
 
   // Clear the audio recording
   const clearAudio = () => {
-    if (audioURL) {
+    if (audioURL && !audioURL.startsWith('http')) {
       URL.revokeObjectURL(audioURL);
     }
     setAudioBlob(null);
@@ -374,6 +433,15 @@ const Announcements = () => {
       audioRef.current.src = '';
       setIsPlaying(false);
     }
+  };
+
+  // Clear the image
+  const clearImage = () => {
+    if (imageURL && !imageURL.startsWith('http')) {
+      URL.revokeObjectURL(imageURL);
+    }
+    setImageBlob(null);
+    setImageURL('');
   };
 
   return (
@@ -423,6 +491,7 @@ const Announcements = () => {
                     <TableHead>
                       <TableRow>
                         <TableCell>Title</TableCell>
+                        <TableCell>Image</TableCell>
                         <TableCell>Audio</TableCell>
                         <TableCell>Status</TableCell>
                         <TableCell>Actions</TableCell>
@@ -432,6 +501,23 @@ const Announcements = () => {
                       {announcements.map((announcement: any) => (
                         <TableRow key={announcement._id}>
                           <TableCell>{announcement.title}</TableCell>
+                          <TableCell>
+                            {announcement.image_url ? (
+                              <Avatar
+                                src={announcement.image_url}
+                                alt={announcement.title}
+                                variant='rounded'
+                                sx={{ width: 60, height: 60 }}
+                              />
+                            ) : (
+                              <Typography
+                                variant='body2'
+                                color='text.secondary'
+                              >
+                                No image
+                              </Typography>
+                            )}
+                          </TableCell>
                           <TableCell>
                             {announcement.audio_url ? (
                               <IconButton
@@ -597,6 +683,53 @@ const Announcements = () => {
               label='Active'
             />
 
+            {/* Image Upload Section */}
+            <Typography variant='h6' sx={{ mt: 2 }}>
+              Image
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                <Button
+                  variant='outlined'
+                  component='label'
+                  startIcon={<PhotoCamera />}
+                >
+                  Upload Image
+                  <input
+                    type='file'
+                    accept='image/*'
+                    hidden
+                    ref={imageInputRef}
+                    onChange={handleImageUpload}
+                  />
+                </Button>
+
+                {/* Clear Image Button - only show if we have an image */}
+                {imageURL && (
+                  <Button
+                    variant='outlined'
+                    color='error'
+                    onClick={clearImage}
+                    startIcon={<DeleteOutline />}
+                  >
+                    Clear Image
+                  </Button>
+                )}
+              </Box>
+
+              {/* Image Preview */}
+              {imageURL && (
+                <Box sx={{ mt: 1, display: 'flex', justifyContent: 'center' }}>
+                  <Avatar
+                    src={imageURL}
+                    alt='Announcement image preview'
+                    variant='rounded'
+                    sx={{ width: 200, height: 200 }}
+                  />
+                </Box>
+              )}
+            </Box>
+
             {/* Audio Recording Section */}
             <Typography variant='h6' sx={{ mt: 2 }}>
               Voice Recording
@@ -636,13 +769,19 @@ const Announcements = () => {
                     type='file'
                     accept='audio/*'
                     hidden
+                    ref={fileInputRef}
                     onChange={handleFileUpload}
                   />
                 </Button>
 
                 {/* Clear Audio Button - only show if we have audio */}
                 {audioURL && (
-                  <Button variant='outlined' color='error' onClick={clearAudio}>
+                  <Button
+                    variant='outlined'
+                    color='error'
+                    onClick={clearAudio}
+                    startIcon={<DeleteOutline />}
+                  >
                     Clear Audio
                   </Button>
                 )}

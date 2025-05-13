@@ -260,7 +260,39 @@ function Announcements() {
                     >
                       {announcement.description}
                     </Typography>
-
+                    {/* Image display section */}
+                    {announcement.image_url && (
+                      <Box
+                        sx={{
+                          mt: 2,
+                          mb: 2,
+                          width: '100%',
+                          display: 'flex',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Box
+                          component='img'
+                          src={announcement.image_url}
+                          alt={announcement.title}
+                          sx={{
+                            maxWidth: '100%',
+                            maxHeight: '300px',
+                            objectFit: 'contain',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          }}
+                          onError={(e: any) => {
+                            e.target.onerror = null;
+                            e.target.style.display = 'none';
+                            console.error(
+                              'Error loading image:',
+                              announcement.image_url
+                            );
+                          }}
+                        />
+                      </Box>
+                    )}
                     {/* Enhanced audio player if audio_url exists */}
                     {announcement.audio_url &&
                       audioStates[announcement._id] && (
