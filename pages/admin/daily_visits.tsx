@@ -24,6 +24,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
+import formatAddress from '../../src/util/formatAddress';
 
 const DailyVisits = () => {
   // State for daily visits data and pagination
@@ -416,6 +417,67 @@ const DailyVisits = () => {
                   />
                 </Box>
               )}
+              <Box sx={{ mt: 3 }}>
+                <Typography variant='h6'>Shops:</Typography>
+                {selectedVisit.shops && selectedVisit.shops.length > 0 ? (
+                  selectedVisit.shops.map((shop: any, index: number) => (
+                    <Paper key={shop._id} sx={{ p: 2, my: 1 }}>
+                      <Typography
+                        variant='subtitle1'
+                        style={{ whiteSpace: 'pre-line' }}
+                      >
+                        <strong>
+                          {shop.potential_customer
+                            ? 'Potential Customer:'
+                            : 'Customer Name:'}
+                        </strong>{' '}
+                        {shop.potential_customer
+                          ? shop.potential_customer_name
+                          : shop.customer_name}
+                      </Typography>
+                      <Typography
+                        variant='subtitle1'
+                        style={{ whiteSpace: 'pre-line' }}
+                      >
+                        <strong>
+                          {shop.potential_customer
+                            ? 'Potential Customer Address:'
+                            : 'Customer Address:'}
+                        </strong>{' '}
+                        {shop.potential_customer
+                          ? shop.potential_customer_address
+                          : formatAddress(shop.address)}
+                      </Typography>
+                      {shop.potential_customer && (
+                        <Typography
+                          variant='subtitle1'
+                          style={{ whiteSpace: 'nowrap' }}
+                        >
+                          <strong>Potential Customer Number: </strong>{' '}
+                          {shop.potential_customer_mobile}
+                        </Typography>
+                      )}
+                      {shop.potential_customer && (
+                        <Typography
+                          variant='subtitle1'
+                          style={{ whiteSpace: 'nowrap' }}
+                        >
+                          <strong>Potential Customer Tier: </strong>{' '}
+                          {shop.potential_customer_tier}
+                        </Typography>
+                      )}
+                      <Typography
+                        variant='subtitle1'
+                        style={{ whiteSpace: 'nowrap' }}
+                      >
+                        <strong>Reason: </strong> {shop.reason}
+                      </Typography>
+                    </Paper>
+                  ))
+                ) : (
+                  <Typography variant='body2'>No updates available.</Typography>
+                )}
+              </Box>
               <Box sx={{ mt: 3 }}>
                 <Typography variant='h6'>Updates:</Typography>
                 {selectedVisit.updates && selectedVisit.updates.length > 0 ? (

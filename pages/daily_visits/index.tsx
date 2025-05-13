@@ -30,6 +30,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Autocomplete,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -62,7 +63,59 @@ const ShopCard = memo(function ShopCard({
   isMobile,
   setLoading,
   totalShops,
+  user,
 }: any) {
+  const [potentialCustomers, setPotentialCustomers] = useState([]);
+  const [loadingPotentialCustomers, setLoadingPotentialCustomers] =
+    useState(false);
+
+  // Fetch potential customers created by the user
+  useEffect(() => {
+    if (shop.editing && shop.potentialCustomer && user?.data?._id) {
+      const fetchPotentialCustomers = async () => {
+        setLoadingPotentialCustomers(true);
+        try {
+          const { data } = await axios.get(
+            `${process.env.api_url}/potential_customers?created_by=${user.data._id}`
+          );
+          setPotentialCustomers(data || []);
+        } catch (err) {
+          console.error('Error fetching potential customers:', err);
+          toast.error('Failed to load potential customers');
+        } finally {
+          setLoadingPotentialCustomers(false);
+        }
+      };
+      fetchPotentialCustomers();
+    }
+  }, [shop.editing, shop.potentialCustomer, user?.data?._id]);
+
+  // Handle selection of an existing potential customer
+  const handleSelectPotentialCustomer = (potentialCustomer: any) => {
+    if (potentialCustomer) {
+      updateShop(index, 'potential_customer_id', potentialCustomer._id);
+      updateShop(index, 'potential_customer_name', potentialCustomer.name);
+      updateShop(
+        index,
+        'potential_customer_address',
+        potentialCustomer.address
+      );
+      updateShop(index, 'potential_customer_tier', potentialCustomer.tier);
+      updateShop(
+        index,
+        'potential_customer_mobile',
+        potentialCustomer.mobile || ''
+      );
+    } else {
+      // Clear potential customer fields if selection is removed
+      updateShop(index, 'potential_customer_id', null);
+      updateShop(index, 'potential_customer_name', '');
+      updateShop(index, 'potential_customer_address', '');
+      updateShop(index, 'potential_customer_tier', '');
+      updateShop(index, 'potential_customer_mobile', '');
+    }
+  };
+
   return (
     <Paper
       variant='outlined'
@@ -101,7 +154,6 @@ const ShopCard = memo(function ShopCard({
 
       {shop.editing ? (
         <Stack spacing={2} sx={{ mt: 2 }}>
-          {/* Checkbox to mark as potential customer */}
           <FormControlLabel
             control={
               <Checkbox
@@ -109,7 +161,7 @@ const ShopCard = memo(function ShopCard({
                 checked={
                   shop.potentialCustomer ? false : shop.order_expected || false
                 }
-                onChange={(e: any) =>
+                onChange={(e) =>
                   updateShop(index, 'order_expected', e.target.checked)
                 }
               />
@@ -121,14 +173,56 @@ const ShopCard = memo(function ShopCard({
               <Checkbox
                 disabled={shop.selectedCustomer}
                 checked={shop.potentialCustomer || false}
-                onChange={(e: any) =>
-                  updateShop(index, 'potentialCustomer', e.target.checked)
-                }
+                onChange={(e) => {
+                  updateShop(index, 'potentialCustomer', e.target.checked);
+                  // Clear potential customer fields if unchecked
+                  if (!e.target.checked) {
+                    handleSelectPotentialCustomer(null);
+                  }
+                }}
               />
             }
             label='Potential Customer'
           />
-          {/* If potential, show TextField for customer name, otherwise use the search bar */}
+
+          {/* Potential Customer Selection (NEW) */}
+          {shop.potentialCustomer && (
+            <Autocomplete
+              options={potentialCustomers}
+              getOptionLabel={(option: any) => option.name}
+              loading={loadingPotentialCustomers}
+              onChange={(_, value) => handleSelectPotentialCustomer(value)}
+              value={
+                shop.potential_customer_id
+                  ? potentialCustomers.find(
+                      (pc: any) => pc._id === shop.potential_customer_id
+                    ) || null
+                  : null
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label='Select Existing Potential Customer'
+                  variant='outlined'
+                  fullWidth
+                  helperText='Leave empty to create a new potential customer'
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {loadingPotentialCustomers ? (
+                          <CircularProgress color='inherit' size={20} />
+                        ) : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
+            />
+          )}
+
+          {/* If potential customer, show TextField for customer name */}
           {shop.potentialCustomer && (
             <TextField
               label='Enter Customer Name'
@@ -137,8 +231,11 @@ const ShopCard = memo(function ShopCard({
               onChange={(e) =>
                 updateShop(index, 'potential_customer_name', e.target.value)
               }
+              required
             />
           )}
+
+          {/* If not potential customer, use the customer search bar */}
           {!shop.potentialCustomer && (
             <CustomerSearchBar
               ref_no={false}
@@ -152,6 +249,8 @@ const ShopCard = memo(function ShopCard({
               value={shop.selectedCustomer}
             />
           )}
+
+          {/* Potential Customer Address */}
           {shop.potentialCustomer && (
             <TextField
               label='Enter Customer Address'
@@ -160,10 +259,13 @@ const ShopCard = memo(function ShopCard({
               onChange={(e) =>
                 updateShop(index, 'potential_customer_address', e.target.value)
               }
+              required
             />
           )}
+
+          {/* Potential Customer Tier */}
           {shop.potentialCustomer && (
-            <FormControl fullWidth>
+            <FormControl fullWidth required>
               <InputLabel>Customer Tier</InputLabel>
               <Select
                 value={shop.potential_customer_tier || ''}
@@ -178,6 +280,8 @@ const ShopCard = memo(function ShopCard({
               </Select>
             </FormControl>
           )}
+
+          {/* Potential Customer Mobile */}
           {shop.potentialCustomer && (
             <TextField
               label='Enter Customer Mobile Number'
@@ -188,8 +292,9 @@ const ShopCard = memo(function ShopCard({
               }
             />
           )}
-          {/* Render address component if potential customer OR when a customer is selected */}
-          {shop.selectedCustomer && (
+
+          {/* Render address component if not potential customer AND when a customer is selected */}
+          {shop.selectedCustomer && !shop.potentialCustomer && (
             <AddressSelection
               shop={shop}
               selectedAddressId={shop?.address?.address_id}
@@ -204,6 +309,8 @@ const ShopCard = memo(function ShopCard({
               }}
             />
           )}
+
+          {/* Reason for Visit */}
           <TextField
             label='Reason for Visit'
             fullWidth
@@ -217,6 +324,8 @@ const ShopCard = memo(function ShopCard({
               startAdornment: <DescriptionIcon color='action' sx={{ mr: 1 }} />,
             }}
           />
+
+          {/* Bottom Action Buttons */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
             <Box>
               <Tooltip title='Move Up'>
@@ -291,6 +400,14 @@ const ShopCard = memo(function ShopCard({
                 ? shop.selectedCustomer?.contact_name
                 : shop.selectedCustomer}
             </Typography>
+            {shop.potentialCustomer && (
+              <Chip
+                size='small'
+                label='Potential'
+                color='secondary'
+                sx={{ ml: 1 }}
+              />
+            )}
           </Box>
           <Divider variant='middle' />
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -319,6 +436,34 @@ const ShopCard = memo(function ShopCard({
                 : formatAddress(shop.address)}
             </Typography>
           </Box>
+
+          {shop.potentialCustomer && shop.potential_customer_tier && (
+            <>
+              <Divider variant='middle' />
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant='subtitle1' fontWeight='bold'>
+                  Tier:
+                </Typography>
+                <Typography variant='body1' sx={{ ml: 1 }}>
+                  {shop.potential_customer_tier}
+                </Typography>
+              </Box>
+            </>
+          )}
+
+          {shop.potentialCustomer && shop.potential_customer_mobile && (
+            <>
+              <Divider variant='middle' />
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant='subtitle1' fontWeight='bold'>
+                  Phone:
+                </Typography>
+                <Typography variant='body1' sx={{ ml: 1 }}>
+                  {shop.potential_customer_mobile}
+                </Typography>
+              </Box>
+            </>
+          )}
 
           <Divider variant='middle' />
 
@@ -871,6 +1016,7 @@ function DailyVisits() {
             </Box>
             {shops.map((shop: any, index: number) => (
               <ShopCard
+                user={user}
                 key={shop.id}
                 shop={shop}
                 index={index}
