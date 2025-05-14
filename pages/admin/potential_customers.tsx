@@ -66,7 +66,8 @@ const PotentialCustomers = () => {
     'SP20',
     'SP21',
   ]);
-
+  const [filterStartDate, setFilterStartDate] = useState<string>('');
+  const [filterEndDate, setFilterEndDate] = useState<string>('');
   useEffect(() => {
     const fetchSalesPeople = async () => {
       try {
@@ -91,11 +92,19 @@ const PotentialCustomers = () => {
   const fetchPotentialCustomers = async () => {
     setLoading(true);
     try {
-      const params = {
+      const params: any = {
         page,
         limit: rowsPerPage,
         code: filterSalesPerson,
       };
+      if (filterStartDate) {
+        params.startDate = filterStartDate;
+      }
+      if (filterEndDate) {
+        // Optional: Add time to end date to include the whole day
+        // params.endDate = `${filterEndDate}T23:59:59.999Z`;
+        params.endDate = filterEndDate;
+      }
       const response = await axiosInstance.get(`/admin/potential_customers`, {
         params,
       });
@@ -147,10 +156,17 @@ const PotentialCustomers = () => {
   // Opens dialog for adding a new catalogue.
   const handleDownloadPotentialCustomers = async () => {
     try {
-      const params = {
+      const params: any = {
         code: filterSalesPerson,
       };
-
+      if (filterStartDate) {
+        params.startDate = filterStartDate;
+      }
+      if (filterEndDate) {
+        // Optional: Add time to end date to include the whole day
+        // params.endDate = `${filterEndDate}T23:59:59.999Z`;
+        params.endDate = filterEndDate;
+      }
       const response = await axiosInstance.get(
         '/admin/potential_customers/report',
         {
@@ -263,6 +279,7 @@ const PotentialCustomers = () => {
                   <Table>
                     <TableHead>
                       <TableRow>
+                        <TableCell>Created At</TableCell>
                         <TableCell>Name</TableCell>
                         <TableCell>Address</TableCell>
                         <TableCell>Tier</TableCell>
@@ -274,6 +291,11 @@ const PotentialCustomers = () => {
                     <TableBody>
                       {potentialCustomers.map((customer: any) => (
                         <TableRow key={customer._id}>
+                          <TableCell>
+                            {new Date(
+                              customer?.created_at
+                            ).toLocaleDateString()}
+                          </TableCell>
                           <TableCell>{customer.name}</TableCell>
                           <TableCell>{customer.address}</TableCell>
                           <TableCell>{customer.tier}</TableCell>
@@ -446,6 +468,31 @@ const PotentialCustomers = () => {
             </Select>
           </FormControl>
 
+          <TextField
+            label='Start Date'
+            type='date'
+            fullWidth
+            value={filterStartDate}
+            onChange={(e) => setFilterStartDate(e.target.value)}
+            sx={{ mt: 2 }}
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+
+          {/* End Date Filter */}
+          <TextField
+            label='End Date'
+            type='date'
+            fullWidth
+            value={filterEndDate}
+            onChange={(e) => setFilterEndDate(e.target.value)}
+            sx={{ mt: 2 }}
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+
           {/* Apply Filters Button */}
           <Box sx={{ mt: 3 }}>
             <Button variant='contained' fullWidth onClick={applyFilters}>
@@ -461,6 +508,8 @@ const PotentialCustomers = () => {
               onClick={() => {
                 // setFilterStatus('');
                 setFilterSalesPerson('');
+                setFilterStartDate('');
+                setFilterEndDate('');
                 // setFilterEstimatesCreated(false);
               }}
             >
