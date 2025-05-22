@@ -13,16 +13,13 @@ import {
   Button,
   TablePagination,
   TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   IconButton,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   Drawer,
+  Switch,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -38,10 +35,11 @@ const ExpectedReorders = () => {
   const [totalPagesCount, setTotalPageCount] = useState(0);
   const [skipPage, setSkipPage] = useState('');
   const [openFilterModal, setOpenFilterModal] = useState(false);
-  const [filterSalesPerson, setFilterSalesPerson] = useState<string>('');
+  const [filterSalesPerson, setFilterSalesPerson] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
-  const [salesPeople, setSalesPeople] = useState<string[]>([
+  const [filterOrderStatus, setFilterOrderStatus] = useState(''); // New state for order status filter
+  const [salesPeople, setSalesPeople] = useState([
     'SP1',
     'SP2',
     'SP3',
@@ -64,6 +62,10 @@ const ExpectedReorders = () => {
     'SP20',
     'SP21',
   ]);
+  // Loading states
+  const [loading, setLoading] = useState(true);
+  const [updatingOrder, setUpdatingOrder] = useState(false);
+
   useEffect(() => {
     const fetchSalesPeople = async () => {
       try {
@@ -77,13 +79,13 @@ const ExpectedReorders = () => {
 
     fetchSalesPeople();
   }, []);
-  // Loading states
-  const [loading, setLoading] = useState(true);
+
   const applyFilters = () => {
     setPage(0); // reset page
     setOpenFilterModal(false);
     fetchExpectedReorders(); // fetch with new filters
   };
+
   // Fetch expectedReorders from the server
   const fetchExpectedReorders = async () => {
     setLoading(true);
@@ -94,6 +96,9 @@ const ExpectedReorders = () => {
         code: filterSalesPerson,
         ...(filterStartDate && { start_date: filterStartDate }),
         ...(filterEndDate && { end_date: filterEndDate }),
+        ...(filterOrderStatus !== '' && {
+          has_ordered: filterOrderStatus === 'true',
+        }),
       };
       const response = await axiosInstance.get(`/admin/expected_reorders`, {
         params,
@@ -143,6 +148,31 @@ const ExpectedReorders = () => {
     setSkipPage('');
   };
 
+  // Update has_ordered status
+  const handleOrderStatusChange = async (customerId: any, newStatus: any) => {
+    setUpdatingOrder(true);
+    try {
+      await axiosInstance.put(`/admin/expected_reorders/${customerId}`, {
+        has_ordered: newStatus,
+        customer_id: customerId,
+      });
+      // Update local state to reflect change
+      setExpectedReorders(
+        expectedReorders.map((customer: any) =>
+          customer._id === customerId
+            ? { ...customer, has_ordered: newStatus }
+            : customer
+        ) as any
+      );
+      toast.success('Order status updated successfully');
+    } catch (error) {
+      console.error(error);
+      toast.error('Error updating order status.');
+    } finally {
+      setUpdatingOrder(false);
+    }
+  };
+
   // Opens dialog for adding a new catalogue.
   const handleDownloadExpectedReorders = async () => {
     try {
@@ -150,6 +180,9 @@ const ExpectedReorders = () => {
         code: filterSalesPerson,
         ...(filterStartDate && { start_date: filterStartDate }),
         ...(filterEndDate && { end_date: filterEndDate }),
+        ...(filterOrderStatus !== '' && {
+          has_ordered: filterOrderStatus === 'true',
+        }),
       };
 
       const response = await axiosInstance.get(
@@ -237,6 +270,7 @@ const ExpectedReorders = () => {
                         <TableCell>Name</TableCell>
                         <TableCell>Address</TableCell>
                         <TableCell>Created By</TableCell>
+                        <TableCell>Has Ordered</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -251,6 +285,19 @@ const ExpectedReorders = () => {
                           </TableCell>
                           <TableCell>
                             {customer?.created_by_info?.name}
+                          </TableCell>
+                          <TableCell>
+                            <Switch
+                              checked={customer.has_ordered === true}
+                              onChange={(e) =>
+                                handleOrderStatusChange(
+                                  customer._id,
+                                  e.target.checked
+                                )
+                              }
+                              disabled={updatingOrder}
+                              color='primary'
+                            />
                           </TableCell>
                         </TableRow>
                       ))}
@@ -333,7 +380,7 @@ const ExpectedReorders = () => {
           },
         }}
       >
-        <Box>
+        <Box sx={{ p: 3 }}>
           <Typography variant='h6' gutterBottom>
             Filter Orders
           </Typography>
@@ -349,13 +396,31 @@ const ExpectedReorders = () => {
               onChange={(e) => setFilterSalesPerson(e.target.value)}
             >
               <MenuItem value=''>All</MenuItem>
-              {salesPeople.map((person: any) => (
+              {salesPeople.map((person) => (
                 <MenuItem key={person} value={person}>
                   {person}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
+
+          {/* Order Status Filter */}
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel id='order-status-filter-label'>Order Status</InputLabel>
+            <Select
+              labelId='order-status-filter-label'
+              id='order-status-filter'
+              value={filterOrderStatus}
+              label='Order Status'
+              onChange={(e) => setFilterOrderStatus(e.target.value)}
+            >
+              <MenuItem value=''>All</MenuItem>
+              <MenuItem value='true'>Has Ordered</MenuItem>
+              <MenuItem value='false'>Has Not Ordered</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* Date Filters */}
           <TextField
             label='Start Date'
             type='date'
@@ -366,7 +431,6 @@ const ExpectedReorders = () => {
             sx={{ mt: 2 }}
           />
 
-          {/* End Date Picker */}
           <TextField
             label='End Date'
             type='date'
@@ -376,6 +440,7 @@ const ExpectedReorders = () => {
             InputLabelProps={{ shrink: true }}
             sx={{ mt: 2 }}
           />
+
           {/* Apply Filters Button */}
           <Box sx={{ mt: 3 }}>
             <Button variant='contained' fullWidth onClick={applyFilters}>
@@ -389,9 +454,11 @@ const ExpectedReorders = () => {
               variant='contained'
               fullWidth
               onClick={() => {
-                // setFilterStatus('');
                 setFilterSalesPerson('');
-                // setFilterEstimatesCreated(false);
+                setFilterStartDate('');
+                setFilterEndDate('');
+                setFilterOrderStatus('');
+                applyFilters();
               }}
             >
               Reset Filters
