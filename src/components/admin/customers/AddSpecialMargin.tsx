@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -33,6 +33,14 @@ interface SpecialMargin {
   name: string;
 }
 
+interface ProductSelection {
+  selected: boolean;
+  margin: string;
+  originalMargin?: string;
+  name: string;
+  isModified: boolean;
+}
+
 interface AddSpecialMarginDialogProps {
   open: boolean;
   onClose: () => void;
@@ -40,6 +48,17 @@ interface AddSpecialMarginDialogProps {
   onMarginsUpdated?: () => void;
   existingSpecialMargins?: SpecialMargin[];
 }
+
+// Utility functions for margin handling
+const normalizeMargin = (margin: string): string => {
+  if (!margin) return '';
+  const numeric = margin.replace('%', '').trim();
+  return numeric ? `${numeric}%` : '';
+};
+
+const getMarginNumeric = (margin: string): string => {
+  return margin.replace('%', '').trim();
+};
 
 const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
   open,
@@ -55,180 +74,234 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
   const [dialogPage, setDialogPage] = useState(0);
   const [dialogRowsPerPage, setDialogRowsPerPage] = useState(25);
   const [dialogSearchQuery, setDialogSearchQuery] = useState('');
-  // globalSelections stores per-product selection, current margin, original margin, and name.
-  const [globalSelections, setGlobalSelections] = useState<Record<string, any>>(
-    {}
-  );
-  // allSelected means “all products matching this query” are selected (across pages)
-  const [allSelected, setAllSelected] = useState(false);
+
+  // Single source of truth for all selections
+  const [selections, setSelections] = useState<
+    Record<string, ProductSelection>
+  >({});
+
+  // Bulk selection state
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [bulkMargin, setBulkMargin] = useState('');
   const [totalCount, setTotalCount] = useState(0);
-  // Global margin value used for brand-level updates.
-  // This state will store just the numeric portion (e.g. "40") without the "%" sign.
-  const [globalMargin, setGlobalMargin] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // When dialog opens, prefill globalSelections from existing special margins.
+  // Reset state when dialog opens/closes
   useEffect(() => {
-    if (open && existingSpecialMargins.length > 0) {
-      const prefill: Record<string, any> = {};
+    if (open) {
+      // Initialize selections from existing margins
+      const initialSelections: Record<string, ProductSelection> = {};
       existingSpecialMargins.forEach((item) => {
-        prefill[item.product_id] = {
+        const normalizedMargin = normalizeMargin(item.margin);
+        initialSelections[item.product_id] = {
           selected: true,
-          margin: item.margin, // assumes margin is stored as a string with "%" already
-          originalMargin: item.margin,
+          margin: normalizedMargin,
+          originalMargin: normalizedMargin,
           name: item.name,
+          isModified: false,
         };
       });
-      setGlobalSelections(prefill);
+      setSelections(initialSelections);
+      setIsBulkMode(false);
+      setBulkMargin('');
+      setDialogPage(0);
+    } else {
+      // Reset state when closing
+      setSelections({});
+      setSelectedBrand('');
+      setDialogSearchQuery('');
+      setIsBulkMode(false);
+      setBulkMargin('');
     }
   }, [open, existingSpecialMargins]);
 
-  // Fetch brands when dialog opens.
+  // Fetch brands when dialog opens
   useEffect(() => {
     if (open) {
-      (async () => {
-        try {
-          const response = await axiosInstance.get(`/admin/brands`);
-          setBrands(response.data.brands || []);
-        } catch (error) {
-          toast.error('Error fetching brands');
-        }
-      })();
+      fetchBrands();
     }
   }, [open]);
 
-  // Fetch paginated products for the dialog.
-  // Note: We removed globalMargin from dependencies so that typing in it doesn't re-fetch products.
-  const fetchDialogProducts = async (brand?: string) => {
+  const fetchBrands = async () => {
+    try {
+      const response = await axiosInstance.get(`/admin/brands`);
+      setBrands(response.data.brands || []);
+    } catch (error) {
+      toast.error('Error fetching brands');
+    }
+  };
+
+  // Fetch products with proper dependency management
+  const fetchDialogProducts = useCallback(async () => {
+    if (!open) return;
+
     setDialogLoading(true);
     try {
-      const effectiveBrand = brand || selectedBrand;
       const response = await axiosInstance.get(
-        `/admin/products?search=${dialogSearchQuery}&page=${dialogPage}&limit=${dialogRowsPerPage}&brand=${effectiveBrand}&status=active`
+        `/admin/products?search=${dialogSearchQuery}&page=${dialogPage}&limit=${dialogRowsPerPage}&brand=${selectedBrand}&status=active`
       );
       const { products, total_count } = response.data;
       setTotalCount(total_count);
-      // Merge products with selection info from globalSelections.
-      const mapped = products.map((p: any) => ({
-        ...p,
-        selected: allSelected || globalSelections[p._id]?.selected || false,
-        customMargin: allSelected
-          ? `${globalMargin}%`
-          : globalSelections[p._id]?.margin || '',
-      }));
-      setDialogProducts(mapped);
+      setDialogProducts(products);
     } catch (error) {
       toast.error('Error fetching products');
     } finally {
       setDialogLoading(false);
     }
+  }, [open, dialogPage, dialogRowsPerPage, dialogSearchQuery, selectedBrand]);
+
+  useEffect(() => {
+    fetchDialogProducts();
+  }, [fetchDialogProducts]);
+
+  // Get display data for a product
+  const getProductDisplayData = (product: any) => {
+    const selection = selections[product._id];
+
+    if (isBulkMode) {
+      return {
+        selected: true,
+        margin: normalizeMargin(bulkMargin),
+      };
+    }
+
+    return {
+      selected: selection?.selected || false,
+      margin: selection?.margin || '',
+    };
   };
 
-  // Re-fetch products on dependency changes.
-  useEffect(() => {
-    if (open) {
-      fetchDialogProducts();
+  // Handle bulk mode toggle
+  const handleBulkModeToggle = (enabled: boolean) => {
+    setIsBulkMode(enabled);
+    if (!enabled) {
+      setBulkMargin('');
     }
-  }, [
-    open,
-    dialogPage,
-    dialogRowsPerPage,
-    dialogSearchQuery,
-    selectedBrand,
-    allSelected,
-    // globalMargin removed from dependency array to avoid re-fetch on every key stroke
-  ]);
+  };
 
-  // When the user toggles "Select All", update the global flag.
-  const handleSelectAll = (isChecked: boolean) => {
-    setAllSelected(isChecked);
-    const updated = { ...globalSelections };
-    dialogProducts.forEach((p) => {
-      updated[p._id] = {
-        ...updated[p._id],
-        selected: isChecked,
-        name: updated[p._id]?.name || p.name,
-        margin: isChecked ? `${globalMargin}%` : updated[p._id]?.margin || '',
+  // Handle individual product selection
+  const handleProductSelection = (
+    productId: string,
+    selected: boolean,
+    productName: string
+  ) => {
+    setSelections((prev) => {
+      const current = prev[productId] || {
+        selected: false,
+        margin: '',
+        name: productName,
+        isModified: false,
+      };
+
+      const updated = {
+        ...current,
+        selected,
+        name: productName,
+        isModified: true,
+      };
+
+      // If deselecting, turn off bulk mode
+      if (!selected && isBulkMode) {
+        setIsBulkMode(false);
+        setBulkMargin('');
+      }
+
+      return {
+        ...prev,
+        [productId]: updated,
       };
     });
-    setGlobalSelections(updated);
   };
 
-  // Handler for individual product selection.
-  const handleSelectProduct = (prodId: string, newSelected: boolean) => {
-    if (allSelected && !newSelected) {
-      setAllSelected(false);
+  // Handle margin change for individual product
+  const handleMarginChange = (
+    productId: string,
+    value: string,
+    productName: string
+  ) => {
+    const normalizedMargin = normalizeMargin(value);
+
+    setSelections((prev) => {
+      const current = prev[productId] || {
+        selected: false,
+        margin: '',
+        name: productName,
+        isModified: false,
+      };
+
+      return {
+        ...prev,
+        [productId]: {
+          ...current,
+          selected: true,
+          margin: normalizedMargin,
+          name: productName,
+          isModified: true,
+        },
+      };
+    });
+
+    // Turn off bulk mode when individual margin is changed
+    if (isBulkMode) {
+      setIsBulkMode(false);
+      setBulkMargin('');
     }
-    setGlobalSelections((prev) => ({
-      ...prev,
-      [prodId]: {
-        ...prev[prodId],
-        selected: newSelected,
-      },
-    }));
-    setDialogProducts((prev) =>
-      prev.map((p) => (p._id === prodId ? { ...p, selected: newSelected } : p))
-    );
   };
 
-  // Handler for margin change on an individual product.
-  const handleMarginChange = (prodId: string, value: string) => {
-    // Remove any "%" that the user may type and then append it.
-    const numericValue = value.replace('%', '').trim();
-    const marginWithPercent = numericValue + '%';
-    setAllSelected(false);
-    setGlobalSelections((prev) => ({
-      ...prev,
-      [prodId]: {
-        ...prev[prodId],
-        selected: true,
-        margin: marginWithPercent,
-        name: prev[prodId]?.name || '',
-        originalMargin: prev[prodId]?.originalMargin || marginWithPercent,
-      },
-    }));
-    setDialogProducts((prev) =>
-      prev.map((p) =>
-        p._id === prodId ? { ...p, customMargin: marginWithPercent } : p
-      )
-    );
+  // Clear selection for a product
+  const handleClearProduct = (productId: string) => {
+    setSelections((prev) => {
+      const newSelections = { ...prev };
+      delete newSelections[productId];
+      return newSelections;
+    });
   };
 
-  // Bulk save margins to backend.
-  const handleBulkSaveMargins = async () => {
+  // Save margins to backend
+  const handleSave = async () => {
     if (!customer?._id) return;
+
     setSaving(true);
     try {
-      if (allSelected && selectedBrand && globalMargin.trim() !== '') {
-        const marginWithPercent = `${globalMargin.trim()}%`;
+      if (isBulkMode && selectedBrand && bulkMargin.trim()) {
+        // Handle bulk brand update
+        const normalizedMargin = normalizeMargin(bulkMargin);
         await axiosInstance.post(
           `/admin/customer/special_margins/brand/${customer._id}`,
           {
             brand: selectedBrand,
-            margin: marginWithPercent,
+            margin: normalizedMargin,
           }
         );
+        toast.success(
+          `Special margins updated for all ${selectedBrand} products.`
+        );
       } else {
-        const selectedItems = Object.entries(globalSelections)
-          .filter(
-            ([, value]) =>
-              value.selected &&
-              (!value.originalMargin || value.margin !== value.originalMargin)
-          )
-          .map(([key, value]) => ({
-            product_id: key,
-            name: value.name,
-            margin: value.margin,
+        // Handle individual product updates
+        const itemsToUpdate = Object.entries(selections)
+          .filter(([_, selection]) => {
+            return (
+              selection.selected &&
+              selection.isModified &&
+              selection.margin &&
+              selection.margin !== selection.originalMargin
+            );
+          })
+          .map(([productId, selection]) => ({
+            product_id: productId,
+            name: selection.name,
+            margin: selection.margin,
           }));
 
-        if (selectedItems.length === 0) {
-          toast.info('No changes to update.');
+        if (itemsToUpdate.length === 0) {
+          toast.info('No changes to save.');
           setSaving(false);
           return;
         }
 
-        if (selectedItems.length === 1) {
-          const item = selectedItems[0];
+        // Use appropriate endpoint based on number of items
+        if (itemsToUpdate.length === 1) {
+          const item = itemsToUpdate[0];
           await axiosInstance.put(
             `/admin/customer/special_margins/${customer._id}/product/${item.product_id}`,
             {
@@ -237,11 +310,13 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
             }
           );
         } else {
+          // Process in chunks to avoid overwhelming the server
           const chunkSize = 100;
           const chunks = [];
-          for (let i = 0; i < selectedItems.length; i += chunkSize) {
-            chunks.push(selectedItems.slice(i, i + chunkSize));
+          for (let i = 0; i < itemsToUpdate.length; i += chunkSize) {
+            chunks.push(itemsToUpdate.slice(i, i + chunkSize));
           }
+
           await Promise.all(
             chunks.map((chunk) =>
               axiosInstance.post(
@@ -251,15 +326,17 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
             )
           );
         }
+
+        toast.success(`Updated ${itemsToUpdate.length} special margin(s).`);
       }
-      toast.success('Special margins updated successfully.');
-      setSelectedBrand('');
-      setGlobalSelections({});
-      setAllSelected(false);
-      setGlobalMargin('');
+
+      // Reset and close
       onClose();
-      if (onMarginsUpdated) onMarginsUpdated();
+      if (onMarginsUpdated) {
+        onMarginsUpdated();
+      }
     } catch (error) {
+      console.error('Save error:', error);
       toast.error('Failed to update special margins.');
     } finally {
       setSaving(false);
@@ -277,7 +354,6 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
             onChange={(e) => {
               setSelectedBrand(e.target.value as string);
               setDialogPage(0);
-              fetchDialogProducts(e.target.value as string);
             }}
           >
             <MenuItem value=''>All Brands</MenuItem>
@@ -288,6 +364,7 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
             ))}
           </Select>
         </FormControl>
+
         <TextField
           label='Search by Name or SKU'
           variant='outlined'
@@ -296,6 +373,7 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
           onChange={(e) => setDialogSearchQuery(e.target.value)}
           sx={{ mb: 3 }}
         />
+
         {selectedBrand && (
           <Box
             sx={{
@@ -303,32 +381,36 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
               alignItems: 'center',
               justifyContent: 'space-between',
               mb: 2,
+              p: 2,
+              border: '1px solid #e0e0e0',
+              borderRadius: 1,
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <Checkbox
-                checked={allSelected}
-                onChange={(e) => handleSelectAll(e.target.checked)}
+                checked={isBulkMode}
+                onChange={(e) => handleBulkModeToggle(e.target.checked)}
               />
-              <Typography>Select All (across pages)</Typography>
+              <Typography>
+                Apply same margin to all {selectedBrand} products
+              </Typography>
             </Box>
             <TextField
-              label='Global Margin'
+              label='Margin for all products'
               placeholder='Enter margin'
               variant='outlined'
               size='small'
-              disabled={!allSelected}
-              value={globalMargin}
-              onChange={(e) =>
-                // Store only numeric value (remove % if present)
-                setGlobalMargin(e.target.value.replace('%', ''))
-              }
+              disabled={!isBulkMode}
+              value={getMarginNumeric(bulkMargin)}
+              onChange={(e) => setBulkMargin(e.target.value)}
               InputProps={{
                 endAdornment: <InputAdornment position='end'>%</InputAdornment>,
               }}
+              sx={{ width: 200 }}
             />
           </Box>
         )}
+
         {dialogLoading ? (
           <Box
             sx={{
@@ -356,58 +438,77 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {dialogProducts.map((prod) => (
-                    <TableRow key={prod._id}>
-                      <TableCell>
-                        <Checkbox
-                          checked={
-                            prod.selected ||
-                            !!globalSelections[prod._id]?.margin
-                          }
-                          onChange={() =>
-                            handleSelectProduct(prod._id, !prod.selected)
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <img
-                          src={prod.image_url || '/placeholder.png'}
-                          alt={prod.name}
-                          style={{
-                            width: '60px',
-                            height: '60px',
-                            borderRadius: '4px',
-                            objectFit: 'cover',
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>{prod.name}</TableCell>
-                      <TableCell>{prod.cf_sku_code}</TableCell>
-                      <TableCell>₹{prod.rate}</TableCell>
-                      <TableCell>
-                        <TextField
-                          placeholder='e.g., 40%'
-                          value={
-                            !allSelected
-                              ? prod.customMargin ||
-                                globalSelections[prod._id]?.margin
-                              : `${globalMargin}%`
-                          }
-                          onChange={(e) =>
-                            handleMarginChange(prod._id, e.target.value)
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Button variant='contained' size='small'>
-                          Clear
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {dialogProducts.map((product) => {
+                    const displayData = getProductDisplayData(product);
+                    return (
+                      <TableRow key={product._id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={displayData.selected}
+                            disabled={isBulkMode}
+                            onChange={(e) =>
+                              handleProductSelection(
+                                product._id,
+                                e.target.checked,
+                                product.name
+                              )
+                            }
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <img
+                            src={product.image_url || '/placeholder.png'}
+                            alt={product.name}
+                            style={{
+                              width: '60px',
+                              height: '60px',
+                              borderRadius: '4px',
+                              objectFit: 'cover',
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>{product.name}</TableCell>
+                        <TableCell>{product.cf_sku_code}</TableCell>
+                        <TableCell>₹{product.rate}</TableCell>
+                        <TableCell>
+                          <TextField
+                            placeholder='e.g., 40'
+                            disabled={isBulkMode}
+                            value={getMarginNumeric(displayData.margin)}
+                            onChange={(e) =>
+                              handleMarginChange(
+                                product._id,
+                                e.target.value,
+                                product.name
+                              )
+                            }
+                            InputProps={{
+                              endAdornment: (
+                                <InputAdornment position='end'>
+                                  %
+                                </InputAdornment>
+                              ),
+                            }}
+                            size='small'
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant='outlined'
+                            size='small'
+                            onClick={() => handleClearProduct(product._id)}
+                            disabled={isBulkMode}
+                          >
+                            Clear
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
+
             <Box display='flex' justifyContent='flex-end' mt={2}>
               <TablePagination
                 component='div'
@@ -425,20 +526,11 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
         )}
       </DialogContent>
       <DialogActions>
-        <Button
-          variant='contained'
-          color='secondary'
-          onClick={onClose}
-          disabled={saving}
-        >
+        <Button variant='outlined' onClick={onClose} disabled={saving}>
           Cancel
         </Button>
-        <Button
-          variant='contained'
-          onClick={handleBulkSaveMargins}
-          disabled={saving}
-        >
-          {saving ? <CircularProgress size={24} /> : 'Save'}
+        <Button variant='contained' onClick={handleSave} disabled={saving}>
+          {saving ? <CircularProgress size={24} /> : 'Save Changes'}
         </Button>
       </DialogActions>
     </Dialog>
