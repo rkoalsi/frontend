@@ -8,6 +8,10 @@ import {
   CardContent,
   Alert,
   Container,
+  Badge,
+  Chip,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import Header from '../../src/components/common/Header';
@@ -17,6 +21,7 @@ import AuthContext from '../../src/components/Auth';
 import EditIcon from '@mui/icons-material/Edit';
 import ExpectedReorderDialog from '../../src/components/daily_visits/ExpectedReorderDialog';
 import formatAddress from '../../src/util/formatAddress';
+import { CheckCircle } from '@mui/icons-material';
 
 const ShopHookCard = ({ hookData, onEdit }: any) => {
   return (
@@ -28,8 +33,29 @@ const ShopHookCard = ({ hookData, onEdit }: any) => {
         borderRadius: 2,
         boxShadow: 3,
         transition: 'transform 0.2s ease-in-out',
+        position: 'relative',
       }}
     >
+      {/* Order Status Badge */}
+      {hookData.has_ordered && (
+        <Badge
+          sx={{
+            position: 'absolute',
+            top: 68,
+            left: 4,
+            zIndex: 1,
+          }}
+        >
+          <Chip
+            icon={<CheckCircle />}
+            label='Ordered'
+            color='success'
+            size='small'
+            sx={{ fontWeight: 'bold' }}
+          />
+        </Badge>
+      )}
+
       {/* Header Section */}
       <div
         style={{
@@ -115,7 +141,8 @@ function ExpectedReorder() {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState(''); // New state for search query
+  const [searchQuery, setSearchQuery] = useState(''); // State for search query
+  const [filterStatus, setFilterStatus] = useState('all'); // New state for filter status
 
   const fetchExpectedReorder = async () => {
     try {
@@ -134,13 +161,21 @@ function ExpectedReorder() {
     fetchExpectedReorder();
   }, []);
 
-  // Compute filtered potential_customers based on search query.
-  const filteredExpectedReorder = customersReorder.filter(
-    (potentialCustomer: any) =>
-      potentialCustomer.customer_name
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase())
-  );
+  // Filter based on both search query and order status
+  const filteredExpectedReorder = customersReorder.filter((customer: any) => {
+    const matchesSearch = customer.customer_name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+
+    if (filterStatus === 'ordered') {
+      return matchesSearch && customer.has_ordered;
+    } else if (filterStatus === 'not_ordered') {
+      return matchesSearch && !customer.has_ordered;
+    }
+
+    // Default 'all' filter - only apply search query
+    return matchesSearch;
+  });
 
   const handleChange = (key: string, value: any) => {
     if (value) {
@@ -160,6 +195,7 @@ function ExpectedReorder() {
       _id: hookData._id,
       customer: customer,
       address: hookData.address,
+      has_ordered: hookData.has_ordered,
     });
     setEditingId(hookData._id);
     setIsEditing(true);
@@ -168,7 +204,6 @@ function ExpectedReorder() {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    console.log(editingId);
     if (!formData.customer) {
       toast.error('Please enter a customer');
       return;
@@ -178,6 +213,7 @@ function ExpectedReorder() {
       customer_id: formData?.customer?._id,
       customer_name: formData?.customer?.contact_name,
       address: formData?.address,
+      has_ordered: formData?.has_ordered || false,
     };
 
     try {
@@ -207,6 +243,15 @@ function ExpectedReorder() {
     }
   };
 
+  const handleFilterChange = (
+    event: React.MouseEvent<HTMLElement>,
+    newFilter: string
+  ) => {
+    if (newFilter !== null) {
+      setFilterStatus(newFilter);
+    }
+  };
+
   return (
     <Container maxWidth='lg'>
       <Container
@@ -230,14 +275,45 @@ function ExpectedReorder() {
             orders soon
           </Alert>
         </Container>
-        {/* Search Field */}
+
+        {/* Filter and Search Controls */}
         <Box
           sx={{
             display: 'flex',
+            flexDirection: 'column',
             justifyContent: 'center',
+            alignItems: 'center',
+            gap: 2,
             mb: 4,
+            width: '100%',
           }}
         >
+          {/* Filter Toggle */}
+          <ToggleButtonGroup
+            color='primary'
+            value={filterStatus}
+            exclusive
+            onChange={handleFilterChange}
+            aria-label='Order Status Filter'
+            sx={{
+              backgroundColor: 'rgba(255, 255, 255, 0.12)',
+              borderRadius: 2,
+              '& .MuiToggleButton-root': {
+                color: 'white',
+                borderColor: 'rgba(255, 255, 255, 0.23)',
+                '&.Mui-selected': {
+                  backgroundColor: 'rgba(144, 202, 249, 0.16)',
+                  color: '#90caf9',
+                },
+              },
+            }}
+          >
+            <ToggleButton value='all'>All Customers</ToggleButton>
+            <ToggleButton value='ordered'>Has Ordered</ToggleButton>
+            <ToggleButton value='not_ordered'>Not Ordered</ToggleButton>
+          </ToggleButtonGroup>
+
+          {/* Search Field */}
           <TextField
             label='Search by Customer Name'
             variant='outlined'
@@ -291,6 +367,7 @@ function ExpectedReorder() {
                 selectedCustomer: null,
                 customerAddress: '',
                 hookEntries: [],
+                has_ordered: false,
               });
               setIsEditing(false);
               setEditingId(null);
@@ -311,15 +388,19 @@ function ExpectedReorder() {
               borderRadius: 3,
             }}
           >
-            {filteredExpectedReorder.length === 0
+            {customersReorder.length === 0
               ? 'No Expected Reorders found.'
-              : 'No Expected Reorders match your search.'}
+              : 'No Expected Reorders match your current filters.'}
           </Alert>
         ) : (
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'repeat(auto-fill, minmax(300px, 1fr))',
+                md: 'repeat(auto-fill, minmax(300px, 1fr))',
+              },
               gap: 3,
             }}
           >

@@ -221,6 +221,7 @@ const TargetedCustomers = () => {
                   <Table>
                     <TableHead>
                       <TableRow>
+                        <TableCell>Created At</TableCell>
                         <TableCell>Name</TableCell>
                         <TableCell>Address</TableCell>
                         <TableCell>Sales People</TableCell>
@@ -232,6 +233,9 @@ const TargetedCustomers = () => {
                     <TableBody>
                       {targetedCustomers.map((customer: any) => (
                         <TableRow key={customer._id}>
+                          <TableCell>
+                            {new Date(customer.created_at).toLocaleDateString()}
+                          </TableCell>
                           <TableCell>{customer.customer_name}</TableCell>
                           <TableCell>
                             {formatAddress(customer.address)}
