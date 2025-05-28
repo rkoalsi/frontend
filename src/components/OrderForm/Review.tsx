@@ -517,6 +517,18 @@ const Review: React.FC<Props> = React.memo((props) => {
                                 >
                                   <strong>Stock:</strong> {product.stock}
                                 </Typography>
+                                <Typography
+                                  variant='body2'
+                                  color='textSecondary'
+                                >
+                                  <strong>GST:</strong>{' '}
+                                  {
+                                    product.item_tax_preferences[
+                                      product?.item_tax_preferences.length - 1
+                                    ].tax_percentage
+                                  }
+                                  %
+                                </Typography>
                               </AccordionDetails>
                             </Accordion>
 
