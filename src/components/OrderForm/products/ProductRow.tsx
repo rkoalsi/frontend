@@ -20,6 +20,7 @@ interface SearchResult {
   rate: number;
   stock: number;
   new?: boolean;
+  item_tax_preferences: any;
 }
 
 interface ProductRowProps {
@@ -60,7 +61,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
     const isDisabled =
       orderStatus?.toLowerCase().includes('accepted') ||
       orderStatus?.toLowerCase().includes('declined');
-
+    console.log(product);
     return (
       <TableRow key={productId}>
         <TableCell>
@@ -99,6 +100,14 @@ const ProductRow: React.FC<ProductRowProps> = memo(
             : customerMargin}
         </TableCell>
         <TableCell>₹{sellingPrice}</TableCell>
+        <TableCell>
+          {
+            product.item_tax_preferences[
+              product?.item_tax_preferences.length - 1
+            ].tax_percentage
+          }
+          %
+        </TableCell>
         <TableCell style={{ padding: 0 }}>
           <QuantitySelector
             quantity={quantity}

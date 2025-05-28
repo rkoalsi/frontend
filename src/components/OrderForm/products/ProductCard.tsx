@@ -23,6 +23,7 @@ interface SearchResult {
   rate: number;
   stock: number;
   new?: boolean;
+  item_tax_preferences: any;
 }
 
 interface ProductCardProps {
@@ -193,6 +194,21 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 Selling Price
               </Typography>
               <Typography variant='body2'>₹{sellingPrice}</Typography>
+              <Typography
+                variant='body2'
+                color='text.secondary'
+                sx={{ fontWeight: 500 }}
+              >
+                GST
+              </Typography>
+              <Typography variant='body2'>
+                {
+                  product?.item_tax_preferences[
+                    product?.item_tax_preferences.length - 1
+                  ].tax_percentage
+                }
+                %
+              </Typography>
               {selectedProduct && (
                 <>
                   <Typography
