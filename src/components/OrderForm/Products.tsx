@@ -65,6 +65,7 @@ interface SearchResult {
   rate: number;
   stock: number;
   new?: boolean;
+  item_tax_preferences: any;
 }
 
 interface ProductsProps {
@@ -1269,6 +1270,7 @@ const Products: React.FC<ProductsProps> = ({
                     'Stock',
                     'Margin',
                     'Selling Price',
+                    'GST',
                     'Quantity',
                     'Total',
                     'Action',
@@ -1296,7 +1298,7 @@ const Products: React.FC<ProductsProps> = ({
               <TableBody>
                 {displayedProducts.length > 0 ? (
                   <>
-                    {displayedProducts.map((product) => (
+                    {displayedProducts.map((product: any) => (
                       <ProductRow
                         key={product._id}
                         product={product}
