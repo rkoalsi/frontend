@@ -34,6 +34,7 @@ import {
   Insights,
   Radar,
   Repeat,
+  DeliveryDining,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -127,6 +128,12 @@ const menuItems = [
     text: 'Targeted Customers',
     icon: <Radar />,
     path: '/admin/targeted_customers',
+    allowedRoles: ['admin', 'sales_admin'],
+  },
+  {
+    text: 'Delivery Partners',
+    icon: <DeliveryDining />,
+    path: '/admin/delivery_partners',
     allowedRoles: ['admin', 'sales_admin'],
   },
 ];
