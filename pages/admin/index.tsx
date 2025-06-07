@@ -4,7 +4,6 @@ import { type JSX, useContext, useEffect, useState, useCallback } from 'react';
 import {
   Typography,
   Box,
-  Grid,
   CircularProgress,
   Alert,
   Container,
@@ -19,6 +18,7 @@ import {
   Chip,
   Divider,
   Tooltip,
+  Stack,
 } from '@mui/material';
 import AuthContext from '../../src/components/Auth';
 import {
@@ -41,6 +41,7 @@ import {
   Insights,
   Radar,
   Repeat,
+  DeliveryDining,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 // import StatCard from '../../src/components/admin/StatCard';
@@ -78,6 +79,7 @@ interface Stats {
   updated_daily_visits: number;
   submitted_potential_customers: number;
   submitted_targeted_customers: number;
+  delivery_partners: number;
   submitted_shop_hooks: number;
   active_hook_categories: number;
   inactive_hook_categories: number;
@@ -468,10 +470,23 @@ const AdminDashboard = () => {
           ],
           icon: <Radar color='primary' />,
         },
+        {
+          label: 'Delivery Partners',
+          route: 'delivery_partners',
+          value: stats.delivery_partners,
+          subStats: [
+            {
+              label: 'All Delivery Partners',
+              value: stats.delivery_partners,
+              color: 'info',
+            },
+          ],
+          icon: <DeliveryDining color='primary' />,
+        },
       ]
     : [];
 
-  // Now filter the cards based on the user's role.
+  // Filter cards based on user's role
   const userRoles: string[] = user?.data?.role || [];
   let filteredCards = allCards;
 
@@ -485,218 +500,348 @@ const AdminDashboard = () => {
     );
   }
 
-  // Get top 3 performing cards based on value
-  const topPerformingCards = filteredCards
-    .filter((card) => card.value !== undefined && card.growth !== undefined)
-    .sort((a, b) => (b.growth || 0) - (a.growth || 0))
-    .slice(0, 3);
+  // Separate cards for smart grouping
+  const compactCards = filteredCards.filter(
+    (card) => !card.subStats || card.subStats.length <= 1
+  );
+
+  const detailedCards = filteredCards.filter(
+    (card) => card.subStats && card.subStats.length > 1
+  );
+
+  // Group compact cards into sets of 4 for square layout
+  const compactCardGroups = [];
+  for (let i = 0; i < compactCards.length; i += 4) {
+    compactCardGroups.push(compactCards.slice(i, i + 4));
+  }
 
   // Render loading skeletons
   const renderSkeletons = () => (
-    <Grid container spacing={3}>
-      {[1, 2, 3, 4, 5, 6].map((item) => (
-        <Box>
+    <Box>
+      <Skeleton variant='text' width={200} height={32} sx={{ mb: 3 }} />
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 3,
+          justifyContent: 'flex-start',
+        }}
+      >
+        {[1, 2, 3, 4, 5, 6].map((item) => (
           <Paper
-            elevation={2}
+            key={item}
+            elevation={1}
             sx={{
+              flex: {
+                xs: '1 1 100%',
+                sm: '1 1 calc(50% - 12px)',
+                md: '1 1 calc(33.333% - 16px)',
+              },
+              minWidth: '250px',
+              maxWidth: '400px',
               p: 3,
-              height: '100%',
-              borderRadius: 2,
-              background: theme.palette.background.default,
+              borderRadius: 3,
+              border: `1px solid ${theme.palette.divider}`,
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Skeleton
                 variant='circular'
-                width={40}
-                height={40}
+                width={48}
+                height={48}
                 sx={{ mr: 2 }}
               />
-              <Skeleton variant='text' width='70%' height={24} />
+              <Skeleton variant='text' width='60%' height={24} />
             </Box>
-            <Skeleton variant='rectangular' height={100} />
+            <Skeleton variant='text' width='40%' height={40} sx={{ mb: 2 }} />
+            <Skeleton variant='rectangular' height={80} />
           </Paper>
-        </Box>
-      ))}
-    </Grid>
+        ))}
+      </Box>
+    </Box>
   );
 
-  // Render card component
-  const renderCard = (card: CardProps, idx: number) => (
-    <Box
+  // Render compact card for square grouping
+  const renderCompactCard = (card: CardProps, idx: number) => (
+    <Paper
       key={idx}
+      elevation={1}
       sx={{
-        flex:
-          card.subStats && card.subStats.length > 3 ? '1 1 380px' : '1 1 280px',
-        maxWidth: {
-          xs: '100%',
-          sm: card.subStats && card.subStats.length > 3 ? '480px' : '380px',
+        flex: '1 1 calc(50% - 8px)',
+        borderRadius: 2,
+        border: `1px solid ${theme.palette.divider}`,
+        transition: 'all 0.2s ease',
+        cursor: 'pointer',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: theme.shadows[3],
+          borderColor: theme.palette.primary.main,
         },
-        minWidth: { xs: '100%', sm: '280px' },
       }}
+      onClick={() => router.push(`/admin/${card.route}`)}
     >
-      <Paper
-        elevation={2}
-        sx={{
-          height: '100%',
-          borderRadius: 2,
-          transition: 'transform 0.2s, box-shadow 0.2s',
-          '&:hover': {
-            transform: 'translateY(-4px)',
-            boxShadow: 6,
-          },
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <Box sx={{ p: 3, flexGrow: 1 }}>
+      <Box sx={{ p: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
           <Box
             sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              mb: 2,
+              mr: 1.5,
+              p: 0.8,
+              borderRadius: '10px',
+              backgroundColor: `${theme.palette.primary.main}08`,
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{
-                  mr: 1.5,
-                  p: 1,
-                  borderRadius: '12px',
-                  backgroundColor: `${theme.palette.primary.main}15`,
-                }}
-              >
-                {card.icon}
-              </Box>
-              <Typography variant='h6' fontWeight='medium' noWrap>
-                {card.label}
-              </Typography>
-            </Box>
-
-            {/* {card.growth !== undefined && (
-              <Chip
-                size='small'
-                icon={<TrendingUp fontSize='small' />}
-                label={`${card.growth > 0 ? '+' : ''}${card.growth}%`}
-                color={
-                  card.growth > 0
-                    ? 'success'
-                    : card.growth < 0
-                    ? 'error'
-                    : 'default'
-                }
-                variant='outlined'
-              />
-            )} */}
+            {card.icon}
           </Box>
+          <Typography
+            variant='caption'
+            fontWeight={600}
+            sx={{
+              color: theme.palette.text.primary,
+              fontSize: '0.8rem',
+              lineHeight: 1.2,
+            }}
+          >
+            {card.label}
+          </Typography>
+        </Box>
 
-          {card.value !== undefined && (
-            <Typography variant='h4' sx={{ mb: 2, fontWeight: 'bold' }}>
-              {card.value.toLocaleString()}
+        {card.value !== undefined && (
+          <Typography
+            variant='h5'
+            sx={{
+              fontWeight: 700,
+              color: theme.palette.primary.main,
+              mb: 0.5,
+            }}
+          >
+            {card.value.toLocaleString()}
+          </Typography>
+        )}
+
+        {card.subStats && card.subStats[0] && (
+          <Typography
+            variant='body2'
+            sx={{
+              color: theme.palette.text.secondary,
+              fontSize: '0.7rem',
+            }}
+          >
+            {card.subStats[0].label}
+          </Typography>
+        )}
+      </Box>
+    </Paper>
+  );
+  const renderDetailedCard = (card: CardProps, idx: number) => (
+    <Paper
+      key={idx}
+      elevation={1}
+      sx={{
+        flex: {
+          xs: '1 1 100%',
+          sm: '1 1 calc(100% - 12px)',
+          md: '1 1 calc(50% - 16px)',
+          lg: '1 1 calc(50% - 18px)',
+        },
+        minWidth: { xs: '100%', sm: '350px' },
+        maxWidth: { xs: '100%', lg: '600px' },
+        borderRadius: 3,
+        border: `1px solid ${theme.palette.divider}`,
+        transition: 'all 0.3s ease',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: theme.shadows[4],
+          borderColor: theme.palette.primary.main,
+        },
+        overflow: 'hidden',
+      }}
+    >
+      {/* Card Header */}
+      <Box sx={{ p: 3, pb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Box
+            sx={{
+              mr: 2,
+              p: 1.5,
+              borderRadius: '16px',
+              backgroundColor: `${theme.palette.primary.main}08`,
+              border: `1px solid ${theme.palette.primary.main}20`,
+            }}
+          >
+            {card.icon}
+          </Box>
+          <Box sx={{ flex: 1 }}>
+            <Typography
+              variant='h6'
+              fontWeight={600}
+              sx={{
+                color: theme.palette.text.primary,
+                lineHeight: 1.2,
+              }}
+            >
+              {card.label}
             </Typography>
-          )}
+          </Box>
+        </Box>
 
-          {card.subStats && (
-            <Box sx={{ mb: 2 }}>
+        {card.value !== undefined && (
+          <Typography
+            variant='h3'
+            sx={{
+              fontWeight: 700,
+              color: theme.palette.primary.main,
+              mb: 3,
+            }}
+          >
+            {card.value.toLocaleString()}
+          </Typography>
+        )}
+
+        {/* Sub Stats */}
+        {card.subStats && (
+          <Stack spacing={1.5}>
+            {card.subStats.map((subStat, sidx) => (
               <Box
+                key={sidx}
                 sx={{
                   display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: 1,
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  p: 1.5,
+                  borderRadius: 2,
+                  backgroundColor: `${theme?.palette[subStat.color]?.main}08`,
+                  border: `1px solid ${theme?.palette[subStat.color]?.main}20`,
                 }}
               >
-                {card.subStats.map((subStat, sidx) => (
-                  <Box
-                    key={sidx}
-                    sx={{
-                      flex:
-                        card.subStats && card.subStats.length > 3
-                          ? '1 1 45%'
-                          : '1 1 100%',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      p: 1,
-                      borderRadius: 1,
-                      backgroundColor: `${
-                        theme?.palette[subStat.color]?.main
-                      }10`,
-                    }}
-                  >
-                    <Typography variant='body2' color='text.secondary'>
-                      {subStat.label}
-                    </Typography>
-                    <Typography
-                      variant='body2'
-                      fontWeight='medium'
-                      color={`${subStat.color}.main`}
-                    >
-                      {subStat.value.toLocaleString()}
-                    </Typography>
-                  </Box>
-                ))}
+                <Typography
+                  variant='body2'
+                  sx={{
+                    color: theme.palette.text.secondary,
+                    fontWeight: 500,
+                  }}
+                >
+                  {subStat.label}
+                </Typography>
+                <Typography
+                  variant='body1'
+                  fontWeight={600}
+                  sx={{ color: `${subStat.color}.main` }}
+                >
+                  {subStat.value.toLocaleString()}
+                </Typography>
               </Box>
-            </Box>
-          )}
-        </Box>
+            ))}
+          </Stack>
+        )}
+      </Box>
 
-        <Divider />
-
-        <Box sx={{ p: 1 }}>
-          <Button
-            onClick={() => router.push(`/admin/${card.route}`)}
-            endIcon={<ArrowForward />}
-            size='small'
-            sx={{
-              width: '100%',
-              justifyContent: 'space-between',
-              color: theme.palette.text.secondary,
-              '&:hover': {
+      {/* Card Footer */}
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <Button
+          onClick={() => router.push(`/admin/${card.route}`)}
+          endIcon={<ArrowForward />}
+          size='small'
+          sx={{
+            width: '100%',
+            justifyContent: 'space-between',
+            color: theme.palette.text.secondary,
+            textTransform: 'none',
+            fontWeight: 500,
+            py: 1,
+            '&:hover': {
+              backgroundColor: theme.palette.action.hover,
+              color: theme.palette.primary.main,
+            },
+          }}
+        >
+          View details
+        </Button>
+      </Box>
+    </Paper>
+  );
+  // Render compact card group (2x2 square)
+  const renderCompactCardGroup = (cardGroup: CardProps[], groupIdx: number) => (
+    <Box
+      key={`group-${groupIdx}`}
+      sx={{
+        flex: {
+          xs: '1 1 100%',
+          sm: '1 1 calc(50% - 12px)',
+          md: '1 1 calc(50% - 16px)',
+          lg: '1 1 calc(33.333% - 18px)',
+        },
+        minWidth: { xs: '100%', sm: '300px' },
+        maxWidth: { xs: '100%', md: '400px' },
+      }}
+    >
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 1.5,
+          p: 2,
+          backgroundColor: theme.palette.background.paper,
+          borderRadius: 3,
+          border: `1px solid ${theme.palette.divider}`,
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            boxShadow: theme.shadows[2],
+          },
+        }}
+      >
+        {cardGroup.map((card, idx) => renderCompactCard(card, idx))}
+        {/* Fill empty slots if less than 4 cards */}
+        {cardGroup.length < 4 &&
+          Array.from({ length: 4 - cardGroup.length }).map((_, idx) => (
+            <Box
+              key={`empty-${idx}`}
+              sx={{
+                flex: '1 1 calc(50% - 8px)',
+                minHeight: '100px',
+                borderRadius: 2,
+                border: `1px dashed ${theme.palette.divider}`,
                 backgroundColor: theme.palette.action.hover,
-                color: theme.palette.primary.main,
-              },
-            }}
-          >
-            View details
-          </Button>
-        </Box>
-      </Paper>
+                opacity: 0.3,
+              }}
+            />
+          ))}
+      </Box>
     </Box>
   );
 
   return (
     <Container maxWidth='xl' sx={{ py: { xs: 2, md: 4 } }}>
       <Paper
-        elevation={3}
+        elevation={0}
         sx={{
           backgroundColor: 'background.paper',
           borderRadius: 4,
           overflow: 'hidden',
           minHeight: '80vh',
-          position: 'relative',
+          border: `1px solid ${theme.palette.divider}`,
         }}
       >
         {/* Header section */}
         <Box
           sx={{
-            backgroundColor: theme.palette.primary.main,
+            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
             color: 'white',
             padding: { xs: 3, md: 4 },
             position: 'relative',
             overflow: 'hidden',
           }}
         >
-          {/* Background pattern - subtle grid */}
+          {/* Background decoration */}
           <Box
             sx={{
               position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              opacity: 0.1,
-              backgroundImage: `repeating-linear-gradient(0deg, ${theme.palette.primary.light}, ${theme.palette.primary.light} 1px, transparent 1px, transparent 20px),
-                               repeating-linear-gradient(90deg, ${theme.palette.primary.light}, ${theme.palette.primary.light} 1px, transparent 1px, transparent 20px)`,
+              top: -50,
+              right: -50,
+              width: 200,
+              height: 200,
+              borderRadius: '50%',
+              backgroundColor: 'rgba(255,255,255,0.05)',
             }}
           />
 
@@ -713,59 +858,55 @@ const AdminDashboard = () => {
               <Typography
                 variant={isMobile ? 'h5' : 'h4'}
                 gutterBottom
-                sx={{ fontWeight: 'bold' }}
+                sx={{ fontWeight: 700, mb: 1 }}
               >
-                Welcome, {user?.data?.first_name || 'User'}
+                Welcome back, {user?.data?.first_name || 'User'}
               </Typography>
-              <Typography variant='body1'>
-                {format(new Date(), 'PPPP')} • Your central admin hub
+              <Typography
+                variant='body1'
+                sx={{
+                  opacity: 0.9,
+                  fontWeight: 400,
+                }}
+              >
+                {format(new Date(), 'PPPP')} • Your dashboard overview
               </Typography>
             </Box>
 
-            <Box>
-              <Tooltip title='Refresh data'>
-                <IconButton
-                  color='inherit'
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  sx={{
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255,255,255,0.2)',
-                    },
-                  }}
-                >
-                  {refreshing ? (
-                    <CircularProgress size={24} color='inherit' />
-                  ) : (
-                    <Refresh />
-                  )}
-                </IconButton>
-              </Tooltip>
-            </Box>
+            <Tooltip title='Refresh data'>
+              <IconButton
+                color='inherit'
+                onClick={handleRefresh}
+                disabled={refreshing}
+                sx={{
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                  backdropFilter: 'blur(10px)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                  },
+                }}
+              >
+                {refreshing ? (
+                  <CircularProgress size={24} color='inherit' />
+                ) : (
+                  <Refresh />
+                )}
+              </IconButton>
+            </Tooltip>
           </Box>
 
-          {/* Quick Stats Summary */}
-          {!loading && !error && stats && (
-            <Box sx={{ mt: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          {/* Status chip */}
+          {!loading && !error && (
+            <Box sx={{ mt: 3 }}>
               <Chip
                 label={`Last updated: ${format(lastRefreshed, 'h:mm a')}`}
                 sx={{
                   backgroundColor: 'rgba(255,255,255,0.15)',
                   color: 'white',
+                  fontWeight: 500,
+                  backdropFilter: 'blur(10px)',
                 }}
               />
-
-              {/* {topPerformingCards.map((card, idx) => (
-                <Chip
-                  key={idx}
-                  icon={card.icon}
-                  label={`${card.label}: ${card.growth}%`}
-                  color={(card.growth || 0) > 0 ? 'success' : 'error'}
-                  variant='filled'
-                  sx={{ fontWeight: 'medium' }}
-                />
-              ))} */}
             </Box>
           )}
         </Box>
@@ -773,7 +914,7 @@ const AdminDashboard = () => {
         {/* Main content */}
         <Box
           sx={{
-            padding: { xs: 2, sm: 3, md: 4 },
+            p: { xs: 3, md: 4 },
             backgroundColor: theme.palette.background.default,
           }}
         >
@@ -782,9 +923,17 @@ const AdminDashboard = () => {
           ) : error ? (
             <Alert
               severity='error'
-              sx={{ mt: 2 }}
+              sx={{
+                borderRadius: 2,
+                border: `1px solid ${theme.palette.error.light}`,
+              }}
               action={
-                <Button color='inherit' size='small' onClick={handleRefresh}>
+                <Button
+                  color='inherit'
+                  size='small'
+                  onClick={handleRefresh}
+                  sx={{ fontWeight: 600 }}
+                >
                   Retry
                 </Button>
               }
@@ -792,41 +941,48 @@ const AdminDashboard = () => {
               {error}
             </Alert>
           ) : (
-            <>
-              {/* Dashboard Header */}
-              <Box
+            <Box>
+              <Typography
+                variant='h6'
+                fontWeight={600}
                 sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
                   mb: 3,
+                  color: theme.palette.text.primary,
                 }}
               >
-                <Typography variant='h6' fontWeight='medium'>
-                  Dashboard Overview
-                </Typography>
-                {refreshing && (
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <CircularProgress size={20} sx={{ mr: 1 }} />
-                    <Typography variant='body2' color='text.secondary'>
-                      Refreshing data...
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
+                Dashboard Overview
+              </Typography>
 
-              {/* Cards Flex Container */}
+              {refreshing && (
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <CircularProgress size={16} sx={{ mr: 1 }} />
+                  <Typography variant='body2' color='text.secondary'>
+                    Refreshing data...
+                  </Typography>
+                </Box>
+              )}
+
+              {/* Mixed layout with square-grouped compact cards and detailed cards */}
               <Box
                 sx={{
                   display: 'flex',
                   flexWrap: 'wrap',
                   gap: 3,
-                  justifyContent: { xs: 'center', sm: 'flex-start' },
+                  justifyContent: 'flex-start',
+                  alignItems: 'flex-start',
                 }}
               >
-                {filteredCards.map((card, idx) => renderCard(card, idx))}
+                {/* Render detailed cards */}
+                {detailedCards.map((card, idx) =>
+                  renderDetailedCard(card, idx)
+                )}
+
+                {/* Render compact card groups (2x2 squares) */}
+                {compactCardGroups.map((cardGroup, groupIdx) =>
+                  renderCompactCardGroup(cardGroup, groupIdx)
+                )}
               </Box>
-            </>
+            </Box>
           )}
         </Box>
       </Paper>
