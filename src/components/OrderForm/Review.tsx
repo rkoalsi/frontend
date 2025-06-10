@@ -792,12 +792,12 @@ const Review: React.FC<Props> = React.memo((props) => {
         <Box
           sx={{
             position: 'fixed',
-            bottom: isMobile ? 4 : 16,
+            bottom: isMobile ? 350 : 16, // Move higher on mobile
             right: isMobile ? 4 : 16,
             display: 'flex',
             flexDirection: 'column',
             gap: 1,
-            zIndex: 1000,
+            zIndex: 9999,
           }}
           className='no-pdf'
         >
