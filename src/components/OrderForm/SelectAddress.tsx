@@ -17,6 +17,7 @@ interface Props {
   type: string;
   selectedAddress: any;
   id: any;
+  addNewAddress?: boolean;
   setLoading: any;
 }
 
@@ -28,6 +29,7 @@ function Address(props: Props) {
     type,
     selectedAddress,
     id,
+    addNewAddress = true,
     setLoading,
   } = props;
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -115,19 +117,21 @@ function Address(props: Props) {
         />
       ) : (
         <>
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              mb: 2,
-            }}
-          >
-            <Typography variant='h6'>Select {type} Address</Typography>
-            <Button variant='contained' onClick={() => setIsAddingNew(true)}>
-              Add New Address
-            </Button>
-          </Box>
+          {addNewAddress ?? (
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 2,
+              }}
+            >
+              <Typography variant='h6'>Select {type} Address</Typography>
+              <Button variant='contained' onClick={() => setIsAddingNew(true)}>
+                Add New Address
+              </Button>
+            </Box>
+          )}
           <Box
             sx={{
               maxHeight: isMobile ? null : '380px',

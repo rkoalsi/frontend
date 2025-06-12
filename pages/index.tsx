@@ -17,6 +17,7 @@ import {
   Check,
   History,
   Insights,
+  KeyboardReturn,
   MenuBook,
   Payment,
   Phishing,
@@ -160,6 +161,12 @@ const menuItems = [
     text: 'Customer Margins',
     color: '#4dd0e1',
     action: 'customer_margins',
+  },
+  {
+    icon: <KeyboardReturn />,
+    text: 'Return Orders',
+    color: '#4dd0e1',
+    action: 'return_orders',
   },
 ];
 

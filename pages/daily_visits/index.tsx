@@ -683,10 +683,10 @@ function DailyVisits() {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     console.log(shops);
-    if (!selfie) {
-      toast.error('Please upload a selfie');
-      return;
-    }
+    // if (!selfie) {
+    //   toast.error('Please upload a selfie');
+    //   return;
+    // }
     for (let shop of shops) {
       if (shop.editing) {
         toast.error(
