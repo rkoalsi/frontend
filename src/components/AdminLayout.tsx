@@ -35,6 +35,7 @@ import {
   Radar,
   Repeat,
   DeliveryDining,
+  KeyboardReturn,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -134,6 +135,12 @@ const menuItems = [
     text: 'Delivery Partners',
     icon: <DeliveryDining />,
     path: '/admin/delivery_partners',
+    allowedRoles: ['admin', 'sales_admin'],
+  },
+  {
+    text: 'Return Orders',
+    icon: <KeyboardReturn />,
+    path: '/admin/return_orders',
     allowedRoles: ['admin', 'sales_admin'],
   },
 ];
