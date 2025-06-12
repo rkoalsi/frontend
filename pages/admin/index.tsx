@@ -42,6 +42,7 @@ import {
   Radar,
   Repeat,
   DeliveryDining,
+  KeyboardReturn,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 // import StatCard from '../../src/components/admin/StatCard';
@@ -80,6 +81,7 @@ interface Stats {
   submitted_potential_customers: number;
   submitted_targeted_customers: number;
   delivery_partners: number;
+  return_orders: number;
   submitted_shop_hooks: number;
   active_hook_categories: number;
   inactive_hook_categories: number;
@@ -482,6 +484,19 @@ const AdminDashboard = () => {
             },
           ],
           icon: <DeliveryDining color='primary' />,
+        },
+        {
+          label: 'Return Orders',
+          route: 'return_orders',
+          value: stats.return_orders,
+          subStats: [
+            {
+              label: 'All Return Orders',
+              value: stats.return_orders,
+              color: 'info',
+            },
+          ],
+          icon: <KeyboardReturn color='primary' />,
         },
       ]
     : [];
