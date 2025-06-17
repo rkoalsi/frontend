@@ -9,6 +9,7 @@ import Grid from '@mui/material/Grid';
 import Button from '@mui/material/Button';
 import {
   FormControl,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Select,
@@ -26,6 +27,7 @@ interface ExpectedReorderDialogProps {
   formData: any; // Replace with more specific types as needed
   handleSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   handleChange: any;
+  handleExpectedAmountChange: any;
 }
 
 const ExpectedReorderDialog: React.FC<ExpectedReorderDialogProps> = ({
@@ -35,6 +37,7 @@ const ExpectedReorderDialog: React.FC<ExpectedReorderDialogProps> = ({
   formData,
   handleSubmit,
   handleChange,
+  handleExpectedAmountChange,
 }) => {
   console.log(formData);
   return (
@@ -88,6 +91,23 @@ const ExpectedReorderDialog: React.FC<ExpectedReorderDialogProps> = ({
                   }}
                 />
               )}
+            </Grid>
+            <Grid>
+              <TextField
+                fullWidth
+                label='Expected Amount'
+                value={formData.expected_amount || ''}
+                onChange={handleExpectedAmountChange}
+                type='text'
+                placeholder='0.00'
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position='start'>₹</InputAdornment>
+                  ),
+                }}
+                helperText='Enter the expected reorder amount'
+                required
+              />
             </Grid>
           </Grid>
           <DialogActions sx={{ mt: 2 }}>

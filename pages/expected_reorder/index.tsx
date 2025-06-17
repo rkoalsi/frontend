@@ -100,6 +100,14 @@ const ShopHookCard = ({ hookData, onEdit }: any) => {
               {formatAddress(hookData.address)}
             </Typography>
           </div>
+          <div>
+            <Typography variant='body2' color='textSecondary'>
+              Expected Amount
+            </Typography>
+            <Typography variant='subtitle1' fontWeight='bold'>
+              {hookData?.expected_amount || 0}
+            </Typography>
+          </div>
         </div>
 
         {/* Edit Button */}
@@ -138,6 +146,7 @@ function ExpectedReorder() {
   const [customersReorder, setExpectedReorder] = useState<any[]>([]);
   const [formData, setFormData]: any = useState({
     customer: '',
+    expected_amount: 0,
   });
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -161,6 +170,15 @@ function ExpectedReorder() {
     fetchExpectedReorder();
   }, []);
 
+  const handleExpectedAmountChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const value = event.target.value;
+    // Allow only numbers and decimal points
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setFormData((prev: any) => ({ ...prev, expected_amount: value }));
+    }
+  };
   // Filter based on both search query and order status
   const filteredExpectedReorder = customersReorder.filter((customer: any) => {
     const matchesSearch = customer.customer_name
@@ -196,6 +214,7 @@ function ExpectedReorder() {
       customer: customer,
       address: hookData.address,
       has_ordered: hookData.has_ordered,
+      expected_amount: hookData?.expected_amount,
     });
     setEditingId(hookData._id);
     setIsEditing(true);
@@ -213,6 +232,7 @@ function ExpectedReorder() {
       customer_id: formData?.customer?._id,
       customer_name: formData?.customer?.contact_name,
       address: formData?.address,
+      expected_amount: formData?.expected_amount,
       has_ordered: formData?.has_ordered || false,
     };
 
@@ -414,6 +434,7 @@ function ExpectedReorder() {
           setOpen={setOpen}
           isEditing={isEditing}
           formData={formData}
+          handleExpectedAmountChange={handleExpectedAmountChange}
           handleSubmit={handleSubmit}
           handleChange={handleChange}
         />
