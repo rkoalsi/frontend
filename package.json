@@ -17,7 +17,7 @@
     "@mui/icons-material": "latest",
     "@mui/material": "latest",
     "@mui/material-nextjs": "latest",
-    "@mui/x-date-pickers": "^7.28.3",
+    "@mui/x-date-pickers": "^8.5.2",
     "axios": "^1.7.9",
     "clsx": "latest",
     "date-fns": "^4.1.0",
