@@ -36,6 +36,8 @@ import {
   Repeat,
   DeliveryDining,
   KeyboardReturn,
+  PaidOutlined,
+  PendingActionsOutlined,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -141,6 +143,18 @@ const menuItems = [
     text: 'Return Orders',
     icon: <KeyboardReturn />,
     path: '/admin/return_orders',
+    allowedRoles: ['admin', 'sales_admin'],
+  },
+  {
+    text: 'Billed Customers',
+    icon: <PaidOutlined />,
+    path: '/admin/billed_customers',
+    allowedRoles: ['admin', 'sales_admin'],
+  },
+  {
+    text: 'Unbilled Customers',
+    icon: <PendingActionsOutlined />,
+    path: '/admin/unbilled_customers',
     allowedRoles: ['admin', 'sales_admin'],
   },
 ];

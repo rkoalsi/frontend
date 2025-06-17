@@ -36,8 +36,8 @@ const DailyVisits = () => {
   const [skipPage, setSkipPage] = useState('');
 
   // Date filter state
-  const [startDate, setStartDate] = useState<dayjs.Dayjs | null>(null);
-  const [endDate, setEndDate] = useState<dayjs.Dayjs | null>(null);
+  const [startDate, setStartDate]: any = useState<dayjs.Dayjs | null>(null);
+  const [endDate, setEndDate]: any = useState<dayjs.Dayjs | null>(null);
 
   // Loading states
   const [loading, setLoading] = useState(true);

@@ -1,5 +1,4 @@
 'use client';
-
 import { type JSX, useContext, useEffect, useState, useCallback } from 'react';
 import {
   Typography,
@@ -32,9 +31,6 @@ import {
   Campaign,
   Checklist,
   Refresh,
-  TrendingUp,
-  MoreVert,
-  Dashboard,
   ArrowForward,
   Category,
   Phishing,
@@ -43,9 +39,10 @@ import {
   Repeat,
   DeliveryDining,
   KeyboardReturn,
+  PaidOutlined,
+  PendingActionsOutlined,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
-// import StatCard from '../../src/components/admin/StatCard';
 import axiosInstance from '../../src/util/axios';
 import { format } from 'date-fns';
 
@@ -86,6 +83,8 @@ interface Stats {
   active_hook_categories: number;
   inactive_hook_categories: number;
   submitted_expected_reorders: number;
+  total_unbilled_customers_6_months: number;
+  total_billed_customers_6_months: number;
   last_updated?: string;
 }
 
@@ -434,45 +433,6 @@ const AdminDashboard = () => {
           icon: <Phishing color='primary' />,
         },
         {
-          label: 'Potential Customers',
-          route: 'potential_customers',
-          value: stats.submitted_potential_customers,
-          subStats: [
-            {
-              label: 'Submitted Potential Customers',
-              value: stats.submitted_potential_customers,
-              color: 'info',
-            },
-          ],
-          icon: <Insights color='primary' />,
-        },
-        {
-          label: 'Expected Reorders',
-          route: 'expected_reorders',
-          value: stats.submitted_expected_reorders,
-          subStats: [
-            {
-              label: 'Submitted Expected Reorders',
-              value: stats.submitted_expected_reorders,
-              color: 'info',
-            },
-          ],
-          icon: <Repeat color='primary' />,
-        },
-        {
-          label: 'Targeted Customers',
-          route: 'targeted_customers',
-          value: stats.submitted_targeted_customers,
-          subStats: [
-            {
-              label: 'Submitted Targeted Customers',
-              value: stats.submitted_targeted_customers,
-              color: 'info',
-            },
-          ],
-          icon: <Radar color='primary' />,
-        },
-        {
           label: 'Delivery Partners',
           route: 'delivery_partners',
           value: stats.delivery_partners,
@@ -497,6 +457,73 @@ const AdminDashboard = () => {
             },
           ],
           icon: <KeyboardReturn color='primary' />,
+        },
+
+        {
+          label: 'Expected Reorders',
+          route: 'expected_reorders',
+          value: stats.submitted_expected_reorders,
+          subStats: [
+            {
+              label: 'Submitted Expected Reorders',
+              value: stats.submitted_expected_reorders,
+              color: 'info',
+            },
+          ],
+          icon: <Repeat color='primary' />,
+        },
+        {
+          label: 'Potential Customers',
+          route: 'potential_customers',
+          value: stats.submitted_potential_customers,
+          subStats: [
+            {
+              label: 'Submitted Potential Customers',
+              value: stats.submitted_potential_customers,
+              color: 'info',
+            },
+          ],
+          icon: <Insights color='primary' />,
+        },
+        {
+          label: 'Targeted Customers',
+          route: 'targeted_customers',
+          value: stats.submitted_targeted_customers,
+          subStats: [
+            {
+              label: 'Submitted Targeted Customers',
+              value: stats.submitted_targeted_customers,
+              color: 'info',
+            },
+          ],
+          icon: <Radar color='primary' />,
+        },
+
+        {
+          label: 'Billed Customers',
+          route: 'billed_customers',
+          value: stats.total_billed_customers_6_months,
+          subStats: [
+            {
+              label: 'All Billed Customers Last 6 Months',
+              value: stats.total_billed_customers_6_months,
+              color: 'info',
+            },
+          ],
+          icon: <PaidOutlined color='primary' />,
+        },
+        {
+          label: 'Unbilled Customers',
+          route: 'unbilled_customers',
+          value: stats.total_unbilled_customers_6_months,
+          subStats: [
+            {
+              label: 'All Unbilled Customers Last 6 Months',
+              value: stats.total_unbilled_customers_6_months,
+              color: 'info',
+            },
+          ],
+          icon: <PendingActionsOutlined color='primary' />,
         },
       ]
     : [];

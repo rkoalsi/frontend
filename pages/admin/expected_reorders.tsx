@@ -269,6 +269,7 @@ const ExpectedReorders = () => {
                         <TableCell>Created At</TableCell>
                         <TableCell>Name</TableCell>
                         <TableCell>Address</TableCell>
+                        <TableCell>Amount</TableCell>
                         <TableCell>Created By</TableCell>
                         <TableCell>Has Ordered</TableCell>
                       </TableRow>
@@ -282,6 +283,9 @@ const ExpectedReorders = () => {
                           <TableCell>{customer.customer_name}</TableCell>
                           <TableCell>
                             {formatAddress(customer.address)}
+                          </TableCell>
+                          <TableCell>
+                            {customer?.expected_amount || 0}
                           </TableCell>
                           <TableCell>
                             {customer?.created_by_info?.name}

@@ -16,14 +16,20 @@ import {
   TablePagination,
   TextField,
   Checkbox,
-  RadioGroup,
   FormControlLabel,
-  Radio,
   MenuItem,
   FormControl,
   InputLabel,
   Select,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
@@ -92,6 +98,12 @@ const Orders = () => {
   const [searchEstimateNumber, setSearchEstimateNumber] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+
+  const [changeCreatorDialogOpen, setChangeCreatorDialogOpen] =
+    useState<boolean>(false);
+  const [loadingCreatorUpdate, setLoadingCreatorUpdate] =
+    useState<boolean>(false);
+
   useEffect(() => {
     const fetchSalesPeople = async () => {
       try {
@@ -105,6 +117,32 @@ const Orders = () => {
 
     fetchSalesPeople();
   }, []);
+
+  const handleChangeCreator = useCallback(
+    async (newCreator: any) => {
+      setLoadingCreatorUpdate(true);
+      try {
+        console.log(newCreator);
+        await axiosInstance.put(`/orders/${selectedOrder._id}`, {
+          created_by: newCreator._id,
+        });
+        setSelectedOrder((prev: any) => ({
+          ...prev,
+          created_by_info: newCreator,
+        }));
+
+        setChangeCreatorDialogOpen(false);
+        toast.success('Order creator updated successfully');
+        await fetchOrders();
+      } catch (error) {
+        console.error('Error updating order creator:', error);
+        toast.error('Failed to update order creator');
+      } finally {
+        setLoadingCreatorUpdate(false);
+      }
+    },
+    [selectedOrder]
+  );
   const handleImageClick = useCallback((src: string) => {
     setPopupImageSrc(src);
     setOpenImagePopup(true);
@@ -753,7 +791,18 @@ const Orders = () => {
                       : ''}
                   </Typography>
                 </Box>
-
+                <Typography>
+                  <strong>Created By:</strong>{' '}
+                  {selectedOrder.created_by_info?.name || 'Unknown'}
+                </Typography>
+                <Button
+                  variant='outlined'
+                  size='small'
+                  onClick={() => setChangeCreatorDialogOpen(true)}
+                  sx={{ mt: 1, mb: 2 }}
+                >
+                  Change Creator
+                </Button>
                 {/* Products Section */}
                 <Typography
                   variant='h6'
@@ -944,6 +993,59 @@ const Orders = () => {
           </Box>
         </Drawer>
       </Paper>
+      {/* Change Creator Dialog */}
+      <Dialog
+        open={changeCreatorDialogOpen}
+        onClose={() => setChangeCreatorDialogOpen(false)}
+        maxWidth='sm'
+        fullWidth
+      >
+        <DialogTitle>
+          <Typography variant='h6' fontWeight='bold'>
+            Change Order Creator
+          </Typography>
+          {selectedOrder?.created_by_info && (
+            <Typography variant='body2' color='textSecondary'>
+              Current: {selectedOrder.created_by_info?.name}
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent>
+          {loadingCreatorUpdate ? (
+            <Box display='flex' justifyContent='center' padding='20px'>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <List>
+              {salesPeople.map((person: any) => (
+                <ListItem key={person._id} disablePadding>
+                  <ListItemButton
+                    onClick={() => handleChangeCreator(person)}
+                    selected={
+                      selectedOrder?.created_by_info?._id === person._id
+                    }
+                  >
+                    {person.code}
+                  </ListItemButton>
+                </ListItem>
+              ))}
+              {salesPeople.length === 0 && (
+                <ListItem>
+                  <ListItemText primary='No sales people found' />
+                </ListItem>
+              )}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setChangeCreatorDialogOpen(false)}
+            sx={{ textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
       <ImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}

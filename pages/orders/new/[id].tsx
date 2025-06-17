@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useRef,
   useCallback,
+  useContext,
 } from 'react';
 import {
   Box,
@@ -31,6 +32,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { ContentCopy } from '@mui/icons-material';
 import useDebounce from '../../../src/util/useDebounce';
+import AuthContext from '../../../src/components/Auth';
 
 // Create an Axios instance
 const api = axios.create({
@@ -55,7 +57,8 @@ const NewOrder: React.FC = () => {
   const router = useRouter();
   const { id, shared } = router.query;
   const isShared = shared === 'true';
-
+  const { user }: any = useContext(AuthContext);
+  const isAdmin = user?.data?.role.includes('admin');
   // States
   const [customer, setCustomer] = useState<any>(null);
   const [referenceNumber, setReferenceNumber] = useState('');
@@ -729,7 +732,7 @@ const NewOrder: React.FC = () => {
                     Save As Draft
                   </Button>
                 )}
-                {activeStep === steps.length - 1 && !isShared && (
+                {activeStep === steps.length - 1 && !isShared && isAdmin && (
                   <Button
                     variant='contained'
                     color='error'
@@ -753,7 +756,7 @@ const NewOrder: React.FC = () => {
                     Decline
                   </Button>
                 )}
-                {activeStep === steps.length - 1 && !isShared ? (
+                {activeStep === steps.length - 1 && !isShared && isAdmin ? (
                   <Button
                     variant='contained'
                     color='primary'
