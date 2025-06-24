@@ -300,11 +300,13 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                   </Box>
                 )}
               >
-                {salesPeople.map((sp) => (
-                  <MenuItem key={sp} value={sp}>
-                    {sp}
-                  </MenuItem>
-                ))}
+                {salesPeople
+                  .filter((sp: any) => sp.name !== '-')
+                  .map((sp: any) => (
+                    <MenuItem key={sp._id} value={sp.code}>
+                      {sp.name} ({sp.code})
+                    </MenuItem>
+                  ))}
               </Select>
             </FormControl>
           </Box>
