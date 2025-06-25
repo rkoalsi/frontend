@@ -809,6 +809,9 @@ const BilledCustomersComponent = () => {
                     <TableCell align='right'>
                       <strong>Total Quantity</strong>
                     </TableCell>
+                    <TableCell align='right'>
+                      <strong>Sales Person</strong>
+                    </TableCell>
                     {viewType === 'summary' && (
                       <>
                         <TableCell align='right'>
@@ -856,6 +859,15 @@ const BilledCustomersComponent = () => {
                             color='success.main'
                           >
                             {customer.total_quantity}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align='right'>
+                          <Typography
+                            variant='body2'
+                            fontWeight='bold'
+                            color='success.main'
+                          >
+                            {customer.sales_person}
                           </Typography>
                         </TableCell>
                         {viewType === 'summary' && (
