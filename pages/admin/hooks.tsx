@@ -222,6 +222,7 @@ const Hooks = () => {
                   <Table>
                     <TableHead>
                       <TableRow>
+                        <TableCell>Created At</TableCell>
                         <TableCell>Customer Name</TableCell>
                         <TableCell>Address</TableCell>
                         <TableCell>City</TableCell>
@@ -234,6 +235,9 @@ const Hooks = () => {
                     <TableBody>
                       {shopHooks.map((shopHook: any) => (
                         <TableRow key={shopHook._id}>
+                          <TableCell>
+                            {new Date(shopHook.created_at).toLocaleDateString()}
+                          </TableCell>
                           <TableCell>{shopHook.customer_name}</TableCell>
                           <TableCell>
                             {formatAddress(shopHook?.customer_address)}
