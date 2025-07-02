@@ -16,6 +16,8 @@ import {
   TextField,
   Grid,
   Drawer,
+  LinearProgress,
+  Chip,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -519,6 +521,66 @@ const DailyVisits = () => {
                             </Box>
                           ))}
                         </Grid>
+                      )}
+                      {update.shop_hooks && (
+                        <Box sx={{ mt: 2, mb: 2 }}>
+                          <Typography
+                            variant='h6'
+                            sx={{
+                              mb: 2,
+                              fontWeight: 500,
+                            }}
+                          >
+                            Shop Hooks
+                          </Typography>
+
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 1.5,
+                            }}
+                          >
+                            {update.shop_hooks.map((h: any, index: number) => (
+                              <Box
+                                key={index}
+                                sx={{
+                                  p: 2,
+                                  borderRadius: 1,
+                                  border: '1px solid',
+                                  borderColor: 'divider',
+                                  backgroundColor: 'background.paper',
+                                }}
+                              >
+                                <Typography
+                                  variant='subtitle1'
+                                  sx={{
+                                    fontWeight: 500,
+                                    mb: 1,
+                                  }}
+                                >
+                                  {h.category_name}
+                                </Typography>
+
+                                <Box sx={{ display: 'flex', gap: 3 }}>
+                                  <Typography
+                                    variant='body2'
+                                    color='text.secondary'
+                                  >
+                                    Available:{' '}
+                                    <strong>{h.hooksAvailable}</strong>
+                                  </Typography>
+                                  <Typography
+                                    variant='body2'
+                                    color='text.secondary'
+                                  >
+                                    Total: <strong>{h.totalHooks}</strong>
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            ))}
+                          </Box>
+                        </Box>
                       )}
                     </Paper>
                   ))
