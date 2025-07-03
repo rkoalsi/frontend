@@ -369,6 +369,21 @@ const ProductDialog = ({
                       </Box>
                     </Box>
                   </Box>
+                  {/* Manufacturer  */}
+                  {selectedProduct.manufacturer && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        color='textSecondary'
+                        fontWeight={500}
+                      >
+                        Manufacturer
+                      </Typography>
+                      <Typography variant='body1' sx={{ mt: 0.5 }}>
+                        {selectedProduct.manufacturer}
+                      </Typography>
+                    </Box>
+                  )}
 
                   {/* Catalogue Information Section */}
                   <Box sx={{ mt: 3 }}>
