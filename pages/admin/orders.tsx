@@ -936,9 +936,9 @@ const Orders = () => {
                 onChange={(e) => setFilterSalesPerson(e.target.value)}
               >
                 <MenuItem value=''>All</MenuItem>
-                {salesPeople.map((person) => (
-                  <MenuItem key={person} value={person}>
-                    {person}
+                {salesPeople.map((person: any) => (
+                  <MenuItem key={person._id} value={person.code}>
+                    {person.code}
                   </MenuItem>
                 ))}
               </Select>
