@@ -37,6 +37,11 @@ import {
   Checkbox,
   FormControlLabel,
   Switch,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import {
   ArrowDownward,
@@ -136,6 +141,8 @@ const Products: React.FC<ProductsProps> = ({
   const [cataloguePage, setCataloguePage]: any = useState();
   const [cataloguePages, setCataloguePages] = useState([]);
   const [catalogueEnabled, setCatalogueEnabled] = useState<boolean>(false);
+
+  const [confirmModalOpen, setConfirmModalOpen] = useState<boolean>(false);
   const [link, setLink] = useState(
     order?.spreadsheet_created ? order?.spreadsheet_url : ''
   );
@@ -570,11 +577,20 @@ const Products: React.FC<ProductsProps> = ({
       setSelectedProducts([]);
       setOptions([]);
       debouncedSuccess('Cart cleared successfully.');
+      setConfirmModalOpen(false); // Close modal after successful clear
     } catch (error) {
       debouncedError('Failed to clear the cart.');
+      setConfirmModalOpen(false); // Close modal even on error
     }
   }, [id, setSelectedProducts, debouncedSuccess, debouncedError]);
 
+  const handleOpenConfirmModal = () => {
+    setConfirmModalOpen(true);
+  };
+
+  const handleCloseConfirmModal = () => {
+    setConfirmModalOpen(false);
+  };
   const handleImageClick = useCallback((src: string) => {
     setPopupImageSrc(src);
     setOpenImagePopup(true);
@@ -772,24 +788,73 @@ const Products: React.FC<ProductsProps> = ({
           <Typography variant='h5' sx={{ fontWeight: 'bold' }}>
             Add Products
           </Typography>
-          <Button
-            variant='contained'
-            color='primary'
-            onClick={handleClearCart}
-            disabled={
-              selectedProducts.length === 0 ||
-              !['draft', 'sent'].includes(
-                order?.status?.toLowerCase() as string
-              )
-            }
-            sx={{
-              textTransform: 'none',
-              fontWeight: 'bold',
-              borderRadius: '24px',
-            }}
+          <Box
+            display='flex'
+            justifyContent='space-between'
+            alignItems='center'
+            sx={{ mb: 2 }}
           >
-            Clear Cart
-          </Button>
+            <Button
+              variant='contained'
+              color='primary'
+              onClick={handleOpenConfirmModal} // Changed to open modal instead
+              disabled={
+                selectedProducts.length === 0 ||
+                !['draft', 'sent'].includes(
+                  order?.status?.toLowerCase() as string
+                )
+              }
+              sx={{
+                textTransform: 'none',
+                fontWeight: 'bold',
+                borderRadius: '24px',
+              }}
+            >
+              Clear Cart
+            </Button>
+          </Box>
+          <Dialog
+            open={confirmModalOpen}
+            onClose={handleCloseConfirmModal}
+            aria-labelledby='clear-cart-dialog-title'
+            aria-describedby='clear-cart-dialog-description'
+            maxWidth='sm'
+            fullWidth
+          >
+            <DialogTitle id='clear-cart-dialog-title'>Clear Cart</DialogTitle>
+            <DialogContent>
+              <DialogContentText id='clear-cart-dialog-description'>
+                Are you sure you want to clear all items from the cart? This
+                action cannot be undone.
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions sx={{ p: 2, gap: 1 }}>
+              <Button
+                onClick={handleCloseConfirmModal}
+                variant='outlined'
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  borderRadius: '24px',
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleClearCart}
+                variant='contained'
+                color='error'
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  borderRadius: '24px',
+                }}
+                autoFocus
+              >
+                Clear Cart
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Box>
         <Autocomplete
           freeSolo
