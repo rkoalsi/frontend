@@ -57,6 +57,7 @@ import ProductRow from './products/ProductRow';
 import ProductCard from './products/ProductCard';
 import CartDrawer from './products/Cart';
 import ImagePopupDialog from '../common/ImagePopUp';
+import Image from 'next/image';
 
 interface SearchResult {
   id?: number;
@@ -908,8 +909,33 @@ const Products: React.FC<ProductsProps> = ({
                     label='Brand'
                     disabled={searchTerm !== ''}
                     onChange={(e) => handleTabChange(e.target.value)}
+                    renderValue={(selected) => {
+                      const selectedBrand: any = brandList.find(
+                        (b) => b.brand === selected
+                      );
+                      return (
+                        <Box display='flex' alignItems='center' gap={1}>
+                          {selectedBrand?.image && (
+                            <Box
+                              component='img'
+                              src={selectedBrand.image}
+                              alt={selectedBrand.brand}
+                              sx={{
+                                width: 64,
+                                height: 64,
+                                objectFit: 'contain',
+                                borderRadius: '4px',
+                              }}
+                            />
+                          )}
+                          <Typography variant='h6'>
+                            {selectedBrand?.brand}
+                          </Typography>
+                        </Box>
+                      );
+                    }}
                   >
-                    {brandList.map((b) => {
+                    {brandList.map((b: any) => {
                       const brandCount = productCounts[b.brand]
                         ? Object.values(productCounts[b.brand]).reduce(
                             (a, b) => a + b,
@@ -918,8 +944,36 @@ const Products: React.FC<ProductsProps> = ({
                         : 0;
                       return (
                         <MenuItem key={b.brand} value={b.brand}>
-                          <Box display='flex' alignItems='center'>
-                            {b.brand} ({brandCount})
+                          <Box
+                            display='flex'
+                            alignItems='center'
+                            gap={1.5}
+                            width='100%'
+                          >
+                            {b.image && (
+                              <Image
+                                src={b.image}
+                                alt={b.brand}
+                                width={80}
+                                height={80}
+                                style={{
+                                  objectFit: 'contain',
+                                  borderRadius: '6px',
+                                  flexShrink: 0,
+                                }}
+                              />
+                            )}
+                            <Box display='flex' flexDirection='column' flex={1}>
+                              <Typography variant='h6' fontWeight='medium'>
+                                {b.brand}
+                              </Typography>
+                              <Typography
+                                variant='caption'
+                                color='text.secondary'
+                              >
+                                {brandCount} products
+                              </Typography>
+                            </Box>
                           </Box>
                         </MenuItem>
                       );
@@ -940,12 +994,29 @@ const Products: React.FC<ProductsProps> = ({
                       '.MuiTab-root': {
                         textTransform: 'none',
                         fontWeight: 'bold',
-                        padding: '10px 20px',
+                        padding: '12px 20px',
+                        minHeight: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 1,
+                        transition: 'all 0.2s ease-in-out',
+                        '&:hover': {
+                          backgroundColor: 'action.hover',
+                          transform: 'translateY(-2px)',
+                        },
                       },
-                      '.Mui-selected': { color: 'primary.main' },
+                      '.Mui-selected': {
+                        color: 'primary.main',
+                        '& .brand-image': {
+                          border: '2px solid',
+                          borderColor: 'primary.main',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        },
+                      },
                     }}
                   >
-                    {brandList.map((b) => {
+                    {brandList.map((b: any) => {
                       const brandCount = productCounts[b.brand]
                         ? Object.values(productCounts[b.brand]).reduce(
                             (a, b) => a + b,
@@ -956,7 +1027,55 @@ const Products: React.FC<ProductsProps> = ({
                         <Tab
                           key={b.brand}
                           value={b.brand}
-                          label={`${b.brand} (${brandCount})`}
+                          label={
+                            <Box
+                              display='flex'
+                              flexDirection='column'
+                              alignItems='center'
+                              gap={1}
+                            >
+                              {b.image && (
+                                <Image
+                                  src={b.image}
+                                  alt={b.brand}
+                                  className='brand-image'
+                                  width={80}
+                                  height={80}
+                                  style={{
+                                    objectFit: 'contain',
+                                    borderRadius: '8px',
+                                    border: '2px solid transparent',
+                                    transition: 'all 0.2s ease-in-out',
+                                    backgroundColor: 'background.paper',
+                                    padding: '4px',
+                                  }}
+                                />
+                              )}
+                              <Box textAlign='center'>
+                                <Typography
+                                  variant='body2'
+                                  fontWeight='bold'
+                                  sx={{
+                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                    lineHeight: 1.2,
+                                  }}
+                                >
+                                  {b.brand}
+                                </Typography>
+                                <Typography
+                                  variant='caption'
+                                  color='text.secondary'
+                                  sx={{
+                                    fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                                    display: 'block',
+                                    mt: 0.5,
+                                  }}
+                                >
+                                  ({brandCount})
+                                </Typography>
+                              </Box>
+                            </Box>
+                          }
                         />
                       );
                     })}
@@ -965,7 +1084,6 @@ const Products: React.FC<ProductsProps> = ({
               )}
             </>
           )}
-
           {/* Category Controls */}
           {sortOrder !== 'catalogue' && (
             <Box>

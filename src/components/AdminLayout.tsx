@@ -38,6 +38,7 @@ import {
   KeyboardReturn,
   PaidOutlined,
   PendingActionsOutlined,
+  BrandingWatermark,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -59,6 +60,12 @@ const menuItems = [
     text: 'Products',
     icon: <ProductsIcon />,
     path: '/admin/products',
+    allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
+  },
+  {
+    text: 'Brands',
+    icon: <BrandingWatermark />,
+    path: '/admin/brands',
     allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
   },
   {

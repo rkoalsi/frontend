@@ -41,6 +41,7 @@ import {
   KeyboardReturn,
   PaidOutlined,
   PendingActionsOutlined,
+  BrandingWatermark,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
@@ -85,6 +86,7 @@ interface Stats {
   submitted_expected_reorders: number;
   total_unbilled_customers_6_months: number;
   total_billed_customers_6_months: number;
+  brands: number;
   last_updated?: string;
 }
 
@@ -524,6 +526,19 @@ const AdminDashboard = () => {
             },
           ],
           icon: <PendingActionsOutlined color='primary' />,
+        },
+        {
+          label: 'Brands',
+          route: 'brands',
+          value: stats.brands,
+          subStats: [
+            {
+              label: 'All Active Brands',
+              value: stats.brands,
+              color: 'info',
+            },
+          ],
+          icon: <BrandingWatermark color='primary' />,
         },
       ]
     : [];
