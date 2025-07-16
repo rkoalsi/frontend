@@ -230,6 +230,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
           <Typography>
             <strong>GST Number:</strong> {customer.gst_no || 'N/A'}
           </Typography>
+          <Typography>
+            <strong>Whatsapp Group:</strong> {customer.cf_whatsapp_group || '-'}
+          </Typography>
           <Box sx={{ mt: 2 }}>
             <FormControl fullWidth sx={{ mt: 2 }}>
               <InputLabel id='status-filter-label'>Tier</InputLabel>
