@@ -60,6 +60,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
               <TableCell>Tier</TableCell>
               <TableCell>Margin</TableCell>
               <TableCell>GST Treatment</TableCell>
+              <TableCell>Whatsapp Group</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
@@ -86,6 +87,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
                   </TableCell>
                   <TableCell>{cust.cf_margin || '40%'}</TableCell>
                   <TableCell>{cust.cf_in_ex || 'Exclusive'}</TableCell>
+                  <TableCell>{cust.cf_whatsapp_group || '-'}</TableCell>
                   <TableCell>
                     <Switch
                       checked={cust.status === 'active'}
