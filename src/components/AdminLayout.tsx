@@ -178,7 +178,8 @@ const getAllowedRoles = (path: string): string[] => {
     path === '/admin' ||
     path === '/admin/products' ||
     path === '/admin/catalogues' ||
-    path === '/admin/announcements'
+    path === '/admin/announcements' ||
+    path === '/admin/external_links'
   ) {
     return ['admin', 'sales_admin', 'catalogue_manager'];
   }
