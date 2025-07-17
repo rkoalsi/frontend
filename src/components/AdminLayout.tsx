@@ -29,7 +29,6 @@ import {
   Campaign,
   Checklist,
   Phishing,
-  Shop,
   Category,
   Insights,
   Radar,
@@ -39,6 +38,7 @@ import {
   PaidOutlined,
   PendingActionsOutlined,
   BrandingWatermark,
+  Link,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -163,6 +163,12 @@ const menuItems = [
     icon: <PendingActionsOutlined />,
     path: '/admin/unbilled_customers',
     allowedRoles: ['admin', 'sales_admin'],
+  },
+  {
+    text: 'External Links',
+    icon: <Link />,
+    path: '/admin/external_links',
+    allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
   },
 ];
 
