@@ -568,7 +568,9 @@ const AdminDashboard = () => {
     !userRoles.includes('sales_admin')
   ) {
     filteredCards = allCards.filter((card) =>
-      ['products', 'catalogues', 'announcements'].includes(card.route)
+      ['products', 'catalogues', 'announcements', 'external_links'].includes(
+        card.route
+      )
     );
   }
 
