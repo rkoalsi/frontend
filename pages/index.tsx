@@ -26,6 +26,7 @@ import {
   Repeat,
   ShoppingCart,
   WorkHistory,
+  Link,
 } from '@mui/icons-material';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -165,8 +166,14 @@ const menuItems = [
   {
     icon: <KeyboardReturn />,
     text: 'Return Orders',
-    color: '#4dd0e1',
+    color: '#7c4dff',
     action: 'return_orders',
+  },
+  {
+    icon: <Link />,
+    text: 'External Links',
+    color: '#ff5252',
+    action: 'external_links',
   },
 ];
 
