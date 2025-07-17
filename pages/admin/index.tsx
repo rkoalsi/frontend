@@ -42,6 +42,7 @@ import {
   PaidOutlined,
   PendingActionsOutlined,
   BrandingWatermark,
+  Link,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
@@ -87,6 +88,7 @@ interface Stats {
   total_unbilled_customers_6_months: number;
   total_billed_customers_6_months: number;
   brands: number;
+  external_links: number;
   last_updated?: string;
 }
 
@@ -539,6 +541,19 @@ const AdminDashboard = () => {
             },
           ],
           icon: <BrandingWatermark color='primary' />,
+        },
+        {
+          label: 'External Links',
+          route: 'external_links',
+          value: stats.external_links,
+          subStats: [
+            {
+              label: 'All Active Links',
+              value: stats.external_links,
+              color: 'info',
+            },
+          ],
+          icon: <Link color='primary' />,
         },
       ]
     : [];
