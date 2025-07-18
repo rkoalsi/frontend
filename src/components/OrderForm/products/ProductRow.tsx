@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import { AddShoppingCart, RemoveShoppingCart } from '@mui/icons-material';
 import QuantitySelector from '../QuantitySelector';
+import ImageCarousel from './ImageCarousel';
 
 interface SearchResult {
   _id: string;
@@ -71,20 +72,9 @@ const ProductRow: React.FC<ProductRowProps> = memo(
             overlap='rectangular'
             anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
           >
-            <img
-              src={product.image_url || '/placeholder.png'}
-              alt={product.name}
-              loading='lazy'
-              style={{
-                width: '100px',
-                height: '100px',
-                borderRadius: '4px',
-                objectFit: 'cover',
-                cursor: 'pointer',
-              }}
-              onClick={() =>
-                handleImageClick(product.image_url || '/placeholder.png')
-              }
+            <ImageCarousel
+              product={product}
+              handleImageClick={handleImageClick}
             />
           </Badge>
         </TableCell>
