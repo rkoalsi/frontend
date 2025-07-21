@@ -43,6 +43,7 @@ import {
 import axiosInstance from '../../src/util/axios';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
 import axios from 'axios';
+import SingleImagePopupDialog from '../../src/components/common/SingleImagePopUp';
 
 const Orders = () => {
   const router = useRouter();
@@ -1046,7 +1047,7 @@ const Orders = () => {
           </Button>
         </DialogActions>
       </Dialog>
-      <ImagePopupDialog
+      <SingleImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}
         imageSrc={popupImageSrc}

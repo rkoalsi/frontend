@@ -27,6 +27,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import formatAddress from '../../src/util/formatAddress';
+import SingleImagePopupDialog from '../../src/components/common/SingleImagePopUp';
 
 const DailyVisits = () => {
   // State for daily visits data and pagination
@@ -597,7 +598,7 @@ const DailyVisits = () => {
           )}
         </Box>
       </Drawer>
-      <ImagePopupDialog
+      <SingleImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}
         imageSrc={popupImageSrc}
