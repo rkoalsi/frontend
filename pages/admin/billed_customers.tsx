@@ -606,7 +606,6 @@ const BilledCustomersComponent = () => {
 
               <Box sx={{ minWidth: 200 }}>
                 <DatePicker
-                  enableAccessibleFieldDOMStructure={false}
                   label='Start Date'
                   format='dd-MM-yyyy'
                   value={startDate}
@@ -625,7 +624,6 @@ const BilledCustomersComponent = () => {
 
               <Box sx={{ minWidth: 200 }}>
                 <DatePicker
-                  enableAccessibleFieldDOMStructure={false}
                   label='End Date'
                   format='dd-MM-yyyy'
                   value={endDate}
