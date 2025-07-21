@@ -27,8 +27,10 @@
     "lodash.debounce": "^4.0.8",
     "next": "^15.0.0",
     "react": "^19.0.0",
+    "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^19.0.0",
     "react-dropzone": "^14.3.5",
+    "react-material-ui-carousel": "^3.4.2",
     "react-signature-canvas": "^1.0.7",
     "react-toastify": "^11.0.3",
     "react-window": "^1.8.11"
@@ -37,6 +39,7 @@
     "@types/lodash.debounce": "^4.0.9",
     "@types/node": "latest",
     "@types/react": "^19.0.0",
+    "@types/react-beautiful-dnd": "^13.1.8",
     "@types/react-signature-canvas": "^1.0.6",
     "@types/react-window": "^1.8.8",
     "eslint": "latest",
