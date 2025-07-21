@@ -35,7 +35,7 @@ import ReturnOrderStepper from '../../src/components/common/ReturnOrderStepper';
 import Image from 'next/image';
 import capitalize from '../../src/util/capitalize';
 import formatAddress from '../../src/util/formatAddress';
-import { LocationPin } from '@mui/icons-material';
+import { LocationOn } from '@mui/icons-material';
 
 const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
   const theme = useTheme();
@@ -186,7 +186,7 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
         {returnOrder.pickup_address && (
           <Box mb={2}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <LocationPin color='primary' fontSize='small' />
+              <LocationOn color='primary' fontSize='small' />
               <Typography variant='body2' color='textSecondary'>
                 Pickup Address
               </Typography>

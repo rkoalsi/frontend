@@ -5,7 +5,7 @@ import { Box, Paper, TextField, Typography } from '@mui/material';
 import { Download, FilterAlt, Refresh } from '@mui/icons-material';
 import BrandTable from '../../src/components/admin/brands/BrandTable';
 import BrandDialog from '../../src/components/admin/brands/BrandDialog';
-import ImagePopupDialog from '../../src/components/common/ImagePopUp';
+import SingleImagePopupDialog from '../../src/components/common/SingleImagePopUp';
 
 const Brands = () => {
   // States for brands, pagination, filtering, editing, etc.
@@ -249,7 +249,7 @@ const Brands = () => {
         handleImageUpload={handleImageUpload}
       />
 
-      <ImagePopupDialog
+      <SingleImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}
         imageSrc={popupImageSrc}
