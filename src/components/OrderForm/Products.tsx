@@ -109,7 +109,8 @@ const Products: React.FC<ProductsProps> = ({
     [key: string]: number;
   }>({});
   const [openImagePopup, setOpenImagePopup] = useState<boolean>(false);
-  const [popupImageSrc, setPopupImageSrc] = useState<string>('');
+  const [popupImageSrc, setPopupImageSrc]: any = useState([]);
+  const [popupImageIndex, setPopupImageIndex]: any = useState(0);
   const [options, setOptions] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [paginationState, setPaginationState] = useState<{
@@ -592,8 +593,10 @@ const Products: React.FC<ProductsProps> = ({
   const handleCloseConfirmModal = () => {
     setConfirmModalOpen(false);
   };
-  const handleImageClick = useCallback((src: string) => {
-    setPopupImageSrc(src);
+  const handleImageClick = useCallback((srcList: string[], index: number) => {
+    const formattedImages = srcList.map((src) => ({ src }));
+    setPopupImageSrc(formattedImages);
+    setPopupImageIndex(index);
     setOpenImagePopup(true);
   }, []);
 
@@ -1439,7 +1442,7 @@ const Products: React.FC<ProductsProps> = ({
             )}
           </Box>
         ) : (
-          <TableContainer component={Paper}>
+          <TableContainer component={Paper} style={{ width: 'fit-content' }}>
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
@@ -1633,11 +1636,14 @@ const Products: React.FC<ProductsProps> = ({
         isMobile={isMobile}
       />
 
-      {/* Image Popup Dialog */}
       <ImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}
-        imageSrc={popupImageSrc}
+        imageSources={popupImageSrc}
+        initialSlide={popupImageIndex}
+        setIndex={(newIndex: number) => {
+          setPopupImageIndex(newIndex);
+        }}
       />
     </Box>
   );

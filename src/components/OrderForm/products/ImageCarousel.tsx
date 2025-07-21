@@ -3,19 +3,21 @@ import {
   ChevronRight,
   FiberManualRecord,
 } from '@mui/icons-material';
-import { Box, IconButton } from '@mui/material';
+import { Box, IconButton, useMediaQuery, useTheme } from '@mui/material';
 import React, { useState } from 'react';
 
 interface Props {
   product: any;
   handleImageClick: any;
+  small?: boolean;
 }
 
 function ImageCarousel(props: Props) {
-  const { product, handleImageClick } = props;
+  const { product, handleImageClick, small = false } = props;
   const images = product.images || [product.image_url];
   const hasMultipleImages = images.length > 1;
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const theme = useTheme();
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
@@ -29,11 +31,13 @@ function ImageCarousel(props: Props) {
   const handleDotClick = (index: number) => {
     setCurrentImageIndex(index);
   };
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
     <Box
       sx={{
         position: 'relative',
-        width: '180px',
+        width: isMobile ? '100%' : small ? '140px' : '180px',
         overflow: 'hidden',
       }}
     >
@@ -50,7 +54,7 @@ function ImageCarousel(props: Props) {
           transition: 'transform 0.3s ease-in-out',
           '&:hover': { transform: 'scale(1.03)' },
         }}
-        onClick={() => handleImageClick(images[currentImageIndex])}
+        onClick={() => handleImageClick(images, currentImageIndex)}
       />
 
       {/* Navigation Arrows - Only show if multiple images */}

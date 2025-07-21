@@ -41,7 +41,7 @@ interface ProductCardProps {
   customerMargin: string;
   orderStatus?: string;
   getSellingPrice: any;
-  handleImageClick: (src: string) => void;
+  handleImageClick: any;
   handleQuantityChange: (id: string, newQuantity: number) => void;
   handleAddOrRemove: (product: SearchResult) => void;
   index: number;

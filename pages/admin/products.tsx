@@ -8,9 +8,32 @@ import FilterDrawerComponent from '../../src/components/admin/products/FilterDra
 import ProductDialog from '../../src/components/admin/products/ProductDialog';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
 
+// Define a more complete Product interface to ensure type safety for images
+interface Product {
+  _id: string;
+  item_id: string; // Crucial for S3 filename in backend
+  item_name: string;
+  images: string[]; // This is the new array of image URLs
+  status: 'active' | 'inactive';
+  category: string;
+  sub_category: string;
+  series: string;
+  brand: string;
+  rate: number;
+  cf_sku_code: string;
+  upc_code: string;
+  cf_item_code: string;
+  stock: number;
+  hsn_or_sac: string;
+  manufacturer?: string;
+  catalogue_order?: number;
+  catalogue_page?: number;
+  // Add other product fields as needed from your API response
+}
+
 const Products = () => {
   // States for products, pagination, filtering, editing, etc.
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<Product[]>([]); // Type assertion
   const [totalCount, setTotalCount] = useState(0);
   const [totalPageCount, setTotalPageCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -41,7 +64,7 @@ const Products = () => {
   const [openImagePopup, setOpenImagePopup] = useState(false);
 
   // States for the currently selected product and its editable fields
-  const [selectedProduct, setSelectedProduct]: any = useState(null);
+  const [selectedProduct, setSelectedProduct]: any = useState<any>(null); // Type assertion
   const [editableFields, setEditableFields] = useState({
     category: '',
     sub_category: '',
@@ -51,8 +74,9 @@ const Products = () => {
     catalogue_order: '',
     catalogue_page: '',
   });
-  const [updating, setUpdating] = useState(false);
-  const [popupImageSrc, setPopupImageSrc] = useState('');
+  const [updating, setUpdating] = useState(false); // Indicates an ongoing API call for any action
+  const [popupImageSrc, setPopupImageSrc]: any = useState([]);
+  const [popupImageIndex, setPopupImageIndex] = useState(0);
 
   /* ----------------------- Fetch Filter Options ----------------------- */
   useEffect(() => {
@@ -124,14 +148,22 @@ const Products = () => {
     filterBrand,
     filterCategory,
     filterSubCategory,
+    filterSortBy, // Added filterSortBy to dependencies
+    missingInfoProducts, // Added missingInfoProducts to dependencies
   ]);
 
-  const handleSearch = (e: any) => setSearchQuery(e.target.value);
-  const handleChangePage = (event: any, newPage: any) => {
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setSearchQuery(e.target.value);
+  const handleChangePage = (
+    event: React.MouseEvent<HTMLButtonElement> | null,
+    newPage: number
+  ) => {
     setPage(newPage);
     setSkipPage('');
   };
-  const handleChangeRowsPerPage = (event: any) => {
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
     setSkipPage('');
@@ -152,11 +184,13 @@ const Products = () => {
   };
 
   /* ----------------------- Toggle & Edit Handlers ----------------------- */
-  const handleToggleActive = async (product: any) => {
+  const handleToggleActive = async (product: Product) => {
     try {
+      setUpdating(true); // Set updating true for this action
       const newStatus = product.status === 'active' ? 'inactive' : 'active';
       const updatedFields = { status: newStatus };
-      await axiosInstance.put(`/products/${product._id}`, updatedFields);
+      // Assuming you have a specific endpoint for updating product status or details
+      await axiosInstance.put(`/admin/products/${product._id}`, updatedFields); // Assuming a PUT to product ID to update fields
 
       setProducts((prev: any) =>
         prev.map((p: any) =>
@@ -167,17 +201,19 @@ const Products = () => {
         setSelectedProduct({ ...selectedProduct, ...updatedFields });
       }
       toast.success(
-        `Product ${product.name} marked as ${
+        `Product ${product.item_name} marked as ${
           newStatus === 'active' ? 'Active' : 'Inactive'
         }`
       );
     } catch (error) {
       console.error(error);
       toast.error('Failed to update product status.');
+    } finally {
+      setUpdating(false); // Reset updating
     }
   };
 
-  const handleOpenEditModal = (product: any) => {
+  const handleOpenEditModal = (product: Product) => {
     setSelectedProduct(product);
     setOpenEditModal(true);
     setEditableFields({
@@ -186,8 +222,8 @@ const Products = () => {
       series: product.series || '',
       upc_code: product?.upc_code || '',
       brand: product?.brand || '',
-      catalogue_order: product?.catalogue_order || '',
-      catalogue_page: product?.catalogue_page || '',
+      catalogue_order: product?.catalogue_order?.toString() || '', // Convert to string for TextField
+      catalogue_page: product?.catalogue_page?.toString() || '', // Convert to string for TextField
     });
   };
 
@@ -203,45 +239,217 @@ const Products = () => {
       catalogue_order: '',
       catalogue_page: '',
     });
+    // Re-fetch products to ensure latest image changes are reflected in the table
+    getData();
   };
 
-  const handleImageUpload = async (file: any) => {
-    if (!selectedProduct) return;
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('product_id', selectedProduct._id);
-    try {
-      setUpdating(true);
-      const response = await axiosInstance.post(
-        '/admin/upload-image',
-        formData,
-        {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        }
-      );
-      const newImageUrl = response.data.image_url;
-      await axiosInstance.put(`/products/${selectedProduct._id}`, {
-        image_url: newImageUrl,
-      });
+  // --- NEW: handleImageUpload now expects an array of files ---
+  const handleImageUpload = async (files: File[]) => {
+    if (!selectedProduct || files.length === 0) {
+      toast.error('No product selected or no files provided.');
+      return;
+    }
 
-      setProducts((prev: any) =>
-        prev.map((p: any) =>
-          p._id === selectedProduct._id ? { ...p, image_url: newImageUrl } : p
+    setUpdating(true);
+    const formData = new FormData();
+    formData.append('product_id', selectedProduct._id);
+
+    try {
+      let response;
+      if (files.length === 1) {
+        // Single file upload
+        formData.append('file', files[0]); // 'file' matches backend @router.post("/upload-image")
+        response = await axiosInstance.post('/admin/upload-image', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } else {
+        // Multiple file upload
+        files.forEach((file) => {
+          formData.append('files', file); // 'files' matches backend @router.post("/upload-multiple-images")
+        });
+        response = await axiosInstance.post(
+          '/admin/upload-multiple-images',
+          formData,
+          {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          }
+        );
+      }
+
+      const responseData = response.data;
+
+      // Update the selected product's images array with the new set of images
+      // The backend endpoints now return the complete updated `images` array
+      setSelectedProduct((prev: any) =>
+        prev ? { ...prev, images: responseData.images } : prev
+      );
+
+      // Also update the product in the main products list if it's there
+      setProducts((prevProducts) =>
+        prevProducts.map((p) =>
+          p._id === selectedProduct._id
+            ? { ...p, images: responseData.images }
+            : p
         )
       );
-      setSelectedProduct((prev: any) =>
-        prev ? { ...prev, image_url: newImageUrl } : prev
+      toast.success(responseData.message || 'Image(s) uploaded successfully.');
+    } catch (error: any) {
+      console.error(
+        'Error uploading image(s):',
+        error.response?.data?.detail || error.message
       );
-      toast.success('Image updated successfully.');
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to upload image.');
+      toast.error(error.response?.data?.detail || 'Failed to upload image(s).');
     } finally {
       setUpdating(false);
     }
   };
 
-  const handleEditableFieldChange = (e: any) => {
+  // --- NEW: handleImageReorder ---
+  const handleImageReorder = async (reorderedImages: string[]) => {
+    if (!selectedProduct) return;
+
+    setUpdating(true);
+    const formData = new FormData();
+    formData.append('product_id', selectedProduct._id);
+    formData.append('images', JSON.stringify(reorderedImages)); // Backend expects JSON string
+
+    try {
+      const response = await axiosInstance.post(
+        '/admin/reorder-images',
+        formData,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        }
+      );
+      const responseData = response.data;
+
+      setSelectedProduct((prev: any) =>
+        prev ? { ...prev, images: responseData.images } : prev
+      );
+      setProducts((prevProducts) =>
+        prevProducts.map((p) =>
+          p._id === selectedProduct._id
+            ? { ...p, images: responseData.images }
+            : p
+        )
+      );
+      toast.success(responseData.message || 'Images reordered successfully!');
+    } catch (error: any) {
+      console.error(
+        'Error reordering images:',
+        error.response?.data?.detail || error.message
+      );
+      toast.error(error.response?.data?.detail || 'Failed to reorder images.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // --- NEW: handleImageDelete ---
+  const handleImageDelete = async (indexToDelete: number) => {
+    if (!selectedProduct || !selectedProduct.images) return;
+
+    const imageUrlToDelete = selectedProduct.images[indexToDelete];
+    if (!imageUrlToDelete) {
+      toast.error('Image URL not found.');
+      return;
+    }
+
+    if (
+      !window.confirm(
+        'Are you sure you want to delete this image? This action cannot be undone.'
+      )
+    ) {
+      return;
+    }
+
+    setUpdating(true);
+    const formData = new FormData();
+    formData.append('product_id', selectedProduct._id);
+    formData.append('image_url', imageUrlToDelete);
+
+    try {
+      const response = await axiosInstance.delete('/admin/delete-image', {
+        // DELETE method for axios
+        data: formData, // Axios sends FormData with DELETE via 'data' property
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const responseData = response.data;
+
+      setSelectedProduct((prev: any) =>
+        prev ? { ...prev, images: responseData.images } : prev
+      );
+      setProducts((prevProducts) =>
+        prevProducts.map((p) =>
+          p._id === selectedProduct._id
+            ? { ...p, images: responseData.images }
+            : p
+        )
+      );
+      toast.success(responseData.message || 'Image deleted successfully!');
+    } catch (error: any) {
+      console.error(
+        'Error deleting image:',
+        error.response?.data?.detail || error.message
+      );
+      toast.error(error.response?.data?.detail || 'Failed to delete image.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // --- NEW: handleMakePrimary ---
+  const handleMakePrimary = async (indexToMakePrimary: number) => {
+    if (!selectedProduct || !selectedProduct.images) return;
+
+    const imageUrlToMakePrimary = selectedProduct.images[indexToMakePrimary];
+    if (!imageUrlToMakePrimary) {
+      toast.error('Image URL not found to make primary.');
+      return;
+    }
+
+    setUpdating(true);
+    const formData = new FormData();
+    formData.append('product_id', selectedProduct._id);
+    formData.append('image_url', imageUrlToMakePrimary);
+
+    try {
+      const response = await axiosInstance.post(
+        '/admin/make-primary-image',
+        formData,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        }
+      );
+      const responseData = response.data;
+
+      setSelectedProduct((prev: any) =>
+        prev ? { ...prev, images: responseData.images } : prev
+      );
+      setProducts((prevProducts) =>
+        prevProducts.map((p) =>
+          p._id === selectedProduct._id
+            ? { ...p, images: responseData.images }
+            : p
+        )
+      );
+      toast.success(responseData.message || 'Image set as primary!');
+    } catch (error: any) {
+      console.error(
+        'Error making image primary:',
+        error.response?.data?.detail || error.message
+      );
+      toast.error(
+        error.response?.data?.detail || 'Failed to set primary image.'
+      );
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleEditableFieldChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const { name, value } = e.target;
     setEditableFields((prev) => ({ ...prev, [name]: value }));
   };
@@ -265,26 +473,51 @@ const Products = () => {
         series: series.trim(),
         upc_code: upc_code.trim(),
         brand: brand.trim(),
-        catalogue_order: parseInt(catalogue_order),
-        catalogue_page: parseInt(catalogue_page),
+        // Parse numbers from string fields
+        catalogue_order: catalogue_order
+          ? parseInt(catalogue_order)
+          : undefined,
+        catalogue_page: catalogue_page ? parseInt(catalogue_page) : undefined,
       };
+
+      // Only include fields that have changed or are being set for the first time
+      const finalUpdatedFields: { [key: string]: any } = {};
+      for (const key in updatedFields) {
+        if (
+          updatedFields[key as keyof typeof updatedFields] !==
+          (selectedProduct as any)[key]
+        ) {
+          finalUpdatedFields[key] =
+            updatedFields[key as keyof typeof updatedFields];
+        }
+      }
+
+      if (Object.keys(finalUpdatedFields).length === 0) {
+        toast.info('No changes to save.');
+        setUpdating(false);
+        handleCloseEditModal();
+        return;
+      }
+
       await axiosInstance.put(
-        `/products/${selectedProduct._id}`,
-        updatedFields
+        `/admin/products/${selectedProduct._id}`, // Assuming /admin/products/:id is for updating details
+        finalUpdatedFields
       );
-      setProducts((prev: any) =>
-        prev.map((p: any) =>
-          p._id === selectedProduct._id ? { ...p, ...updatedFields } : p
+      setProducts((prev) =>
+        prev.map((p) =>
+          p._id === selectedProduct._id ? { ...p, ...finalUpdatedFields } : p
         )
       );
       setSelectedProduct((prev: any) =>
-        prev ? { ...prev, ...updatedFields } : prev
+        prev ? { ...prev, ...finalUpdatedFields } : prev
       );
       toast.success('Product details updated successfully.');
       handleCloseEditModal();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Failed to update product details.');
+      toast.error(
+        error.response?.data?.detail || 'Failed to update product details.'
+      );
     } finally {
       setUpdating(false);
     }
@@ -305,6 +538,7 @@ const Products = () => {
       if (filterBrand) params.brand = filterBrand;
       if (filterCategory) params.category = filterCategory;
       if (filterSubCategory) params.sub_category = filterSubCategory;
+      if (filterSortBy) params.sort_by = filterSortBy; // Ensure sort_by is included for downloads too
 
       const response = await axiosInstance.get('/admin/products/download', {
         params,
@@ -335,8 +569,10 @@ const Products = () => {
     }
   };
 
-  const handleImageClick = useCallback((src: any) => {
-    setPopupImageSrc(src);
+  const handleImageClick = useCallback((srcList: string[], index: number) => {
+    const formattedImages = srcList.map((src) => ({ src }));
+    setPopupImageSrc(formattedImages);
+    setPopupImageIndex(index);
     setOpenImagePopup(true);
   }, []);
 
@@ -364,8 +600,14 @@ const Products = () => {
             alignItems='end'
             gap='16px'
           >
-            <Download onClick={handleDownloadProducts} />
-            <FilterAlt onClick={() => setOpenFilterModal(true)} />
+            <Download
+              onClick={handleDownloadProducts}
+              sx={{ cursor: 'pointer' }}
+            />
+            <FilterAlt
+              onClick={() => setOpenFilterModal(true)}
+              sx={{ cursor: 'pointer' }}
+            />
           </Box>
         </Box>
         <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
@@ -438,6 +680,7 @@ const Products = () => {
           setFilterCategory('');
           setFilterSubCategory('');
           setMissingInfoProducts(false);
+          setFilterSortBy(''); // Reset sort by as well
         }}
       />
 
@@ -452,12 +695,19 @@ const Products = () => {
         handleToggleActive={handleToggleActive}
         handleImageClick={handleImageClick}
         handleImageUpload={handleImageUpload}
+        handleImageReorder={handleImageReorder} // NEW PROP
+        handleImageDelete={handleImageDelete} // NEW PROP
+        handleMakePrimary={handleMakePrimary} // NEW PROP
       />
 
       <ImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}
-        imageSrc={popupImageSrc}
+        imageSources={popupImageSrc}
+        initialSlide={popupImageIndex}
+        setIndex={(newIndex: number) => {
+          setPopupImageIndex(newIndex);
+        }}
       />
     </Box>
   );
