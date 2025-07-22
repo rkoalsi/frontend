@@ -42,17 +42,19 @@ const ImagePopupDialog: React.FC<ImagePopupDialogProps> = ({
       aria-labelledby='image-popup-dialog'
       PaperProps={{
         sx: {
-          backgroundColor: 'rgba(0,0,0,0.92)',
-          pointerEvents: 'auto',
+          backgroundColor: 'rgba(107, 106, 106, 0.833)',
+          maxHeight: { xs: '50vh', md: '90vh' },
+          margin: { xs: '8px', md: '32px' },
         },
       }}
     >
       <DialogContent
         sx={{
           position: 'relative',
-          minHeight: { xs: '70vh', md: 480 },
+          minHeight: { xs: '50vh', md: 480 },
           minWidth: { xs: '90vw', md: 600 },
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
@@ -79,7 +81,43 @@ const ImagePopupDialog: React.FC<ImagePopupDialogProps> = ({
           imageSources={imageSources}
           initialSlide={initialSlide}
           onIndexChange={setIndex} // Pass setIndex directly to onIndexChange
+          showIndicators={false}
         />
+        {imageSources && imageSources.length > 1 && (
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 0.5,
+              justifyContent: 'center',
+              paddingBottom: 1,
+            }}
+          >
+            {imageSources.map((_, index) => (
+              <IconButton
+                key={index}
+                onClick={() => setIndex(index)}
+                sx={{
+                  padding: 0.5,
+                  minWidth: 'auto',
+                  color:
+                    index === initialSlide
+                      ? 'white'
+                      : 'rgba(255, 255, 255, 0.5)',
+                }}
+                size='small'
+              >
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: 'currentColor',
+                  }}
+                />
+              </IconButton>
+            ))}
+          </Box>
+        )}
       </DialogContent>
     </Dialog>
   );

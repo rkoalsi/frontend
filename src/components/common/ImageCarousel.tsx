@@ -292,7 +292,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
         )}
 
         {/* Indicators */}
-        {showIndicators && maxSteps > 1 && !isMobile && (
+        {showIndicators && maxSteps > 1 && (
           <Box
             sx={{
               position: 'absolute',
@@ -340,44 +340,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           </Box>
         )}
       </Card>
-
-      {/* Mobile Touch Indicators (Below carousel) */}
-      <Box
-        sx={{
-          display: { xs: 'flex', md: 'none' },
-          justifyContent: 'center',
-          mt: 2,
-          gap: 0.5,
-        }}
-      >
-        {maxSteps > 1 &&
-          imageSources.map((_, index) => (
-            <IconButton
-              key={index}
-              onClick={() => handleStepChange(index)}
-              size='small'
-              sx={{
-                p: 0,
-                minWidth: 'auto',
-                width: 20,
-                height: 20,
-                color:
-                  activeIndex === index
-                    ? theme.palette.primary.main
-                    : theme.palette.grey[400],
-                '&:hover': {
-                  color:
-                    activeIndex === index
-                      ? theme.palette.primary.dark
-                      : theme.palette.grey[600],
-                },
-              }}
-              aria-label={`Go to slide ${index + 1}`}
-            >
-              <FiberManualRecordIcon sx={{ fontSize: 8 }} />
-            </IconButton>
-          ))}
-      </Box>
     </Box>
   );
 };
