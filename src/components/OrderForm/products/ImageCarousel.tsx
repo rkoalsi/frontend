@@ -56,7 +56,6 @@ function ImageCarousel(props: Props) {
         }}
         onClick={() => handleImageClick(images, currentImageIndex)}
       />
-
       {/* Navigation Arrows - Only show if multiple images */}
       {hasMultipleImages && (
         <>
@@ -99,8 +98,7 @@ function ImageCarousel(props: Props) {
           </IconButton>
         </>
       )}
-
-      {/* Dots Indicator - Only show if multiple images */}
+      {/* Dots Indicator - Only show if multiple images
       {hasMultipleImages && (
         <Box
           sx={{
@@ -131,8 +129,7 @@ function ImageCarousel(props: Props) {
             </IconButton>
           ))}
         </Box>
-      )}
-
+      )} */}
       {/* Image Counter */}
       {hasMultipleImages && (
         <Box

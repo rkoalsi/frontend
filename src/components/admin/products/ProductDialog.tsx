@@ -23,7 +23,7 @@ import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import DeleteIcon from '@mui/icons-material/Delete';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'; // Changed import
 
 const ProductDialog = ({
   open,
@@ -144,7 +144,7 @@ const ProductDialog = ({
                             {selectedProduct.images.map(
                               (imageUrl: string, index: number) => (
                                 <Draggable
-                                  key={`image-${index}-${imageUrl.slice(-10)}`} // More stable key
+                                  key={`image-${index}-${imageUrl.slice(-10)}`}
                                   draggableId={`image-${index}-${imageUrl.slice(
                                     -10
                                   )}`}
