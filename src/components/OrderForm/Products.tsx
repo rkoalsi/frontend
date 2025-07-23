@@ -83,6 +83,7 @@ interface ProductsProps {
   specialMargins: { [key: string]: string };
   totals: { totalGST: number; totalAmount: number };
   onCheckout: () => void;
+  isShared: boolean;
 }
 
 const Products: React.FC<ProductsProps> = ({
@@ -94,7 +95,38 @@ const Products: React.FC<ProductsProps> = ({
   specialMargins = {},
   totals = { totalGST: 0, totalAmount: 0 },
   onCheckout,
+  isShared = false,
 }) => {
+  const COLUMNS = isShared
+    ? [
+        'Image',
+        'Name',
+        'Sub Category',
+        'Series',
+        'SKU',
+        'Price',
+        'Stock',
+        'Selling Price',
+        'GST',
+        'Quantity',
+        'Total',
+        'Action',
+      ]
+    : [
+        'Image',
+        'Name',
+        'Sub Category',
+        'Series',
+        'SKU',
+        'Price',
+        'Stock',
+        'Margin',
+        'Selling Price',
+        'GST',
+        'Quantity',
+        'Total',
+        'Action',
+      ];
   const router = useRouter();
   const { id = '' } = router.query;
   const theme = useTheme();
@@ -1395,6 +1427,7 @@ const Products: React.FC<ProductsProps> = ({
                         : handleAddProducts(prod)
                     }
                     index={index}
+                    isShared={isShared}
                   />
                 ))}
               </Grid>
@@ -1447,21 +1480,7 @@ const Products: React.FC<ProductsProps> = ({
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
-                  {[
-                    'Image',
-                    'Name',
-                    'Sub Category',
-                    'Series',
-                    'SKU',
-                    'Price',
-                    'Stock',
-                    'Margin',
-                    'Selling Price',
-                    'GST',
-                    'Quantity',
-                    'Total',
-                    'Action',
-                  ].map((header) => (
+                  {COLUMNS.map((header) => (
                     <TableCell
                       key={header}
                       sx={{
@@ -1502,6 +1521,7 @@ const Products: React.FC<ProductsProps> = ({
                             ? handleRemoveProduct(prod._id)
                             : handleAddProducts(prod)
                         }
+                        isShared={isShared}
                       />
                     ))}
                     {!loadingMore && noMoreProducts[productsKey] && (

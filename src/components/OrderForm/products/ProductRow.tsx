@@ -34,6 +34,7 @@ interface ProductRowProps {
   handleImageClick: (src: string) => void;
   handleQuantityChange: (id: string, newQuantity: number) => void;
   handleAddOrRemove: (product: SearchResult) => void;
+  isShared: boolean;
 }
 
 const ProductRow: React.FC<ProductRowProps> = memo(
@@ -48,6 +49,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
     handleImageClick,
     handleQuantityChange,
     handleAddOrRemove,
+    isShared = false,
   }) => {
     const productId = product._id;
     const selectedProduct: any = selectedProducts.find(
@@ -61,7 +63,6 @@ const ProductRow: React.FC<ProductRowProps> = memo(
     const isDisabled =
       orderStatus?.toLowerCase().includes('accepted') ||
       orderStatus?.toLowerCase().includes('declined');
-    console.log(product);
     return (
       <TableRow key={productId}>
         <TableCell>
@@ -94,11 +95,13 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         <TableCell>{product.cf_sku_code || '-'}</TableCell>
         <TableCell>₹{product.rate}</TableCell>
         <TableCell>{product.stock}</TableCell>
-        <TableCell>
-          {specialMargins[productId]
-            ? specialMargins[productId]
-            : customerMargin}
-        </TableCell>
+        {isShared ? null : (
+          <TableCell>
+            {specialMargins[productId]
+              ? specialMargins[productId]
+              : customerMargin}
+          </TableCell>
+        )}
         <TableCell>₹{sellingPrice}</TableCell>
         <TableCell>
           {

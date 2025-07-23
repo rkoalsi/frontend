@@ -38,6 +38,7 @@ interface ProductCardProps {
   handleQuantityChange: (id: string, newQuantity: number) => void;
   handleAddOrRemove: (product: SearchResult) => void;
   index: number;
+  isShared: boolean;
 }
 
 const ProductCard: React.FC<ProductCardProps> = memo(
@@ -53,6 +54,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
     handleQuantityChange,
     handleAddOrRemove,
     index,
+    isShared = false,
   }) => {
     const productId = product._id;
     const selectedProduct: any = selectedProducts.find(
@@ -174,18 +176,23 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 Stock
               </Typography>
               <Typography variant='body2'>{product.stock}</Typography>
-              <Typography
-                variant='body2'
-                color='text.secondary'
-                sx={{ fontWeight: 500 }}
-              >
-                Margin
-              </Typography>
-              <Typography variant='body2'>
-                {specialMargins[productId]
-                  ? specialMargins[productId]
-                  : customerMargin}
-              </Typography>
+              {isShared ? null : (
+                <>
+                  <Typography
+                    variant='body2'
+                    color='text.secondary'
+                    sx={{ fontWeight: 500 }}
+                  >
+                    Margin
+                  </Typography>
+                  <Typography variant='body2'>
+                    {specialMargins[productId]
+                      ? specialMargins[productId]
+                      : customerMargin}
+                  </Typography>
+                </>
+              )}
+
               <Typography
                 variant='body2'
                 color='text.secondary'
