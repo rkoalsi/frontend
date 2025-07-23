@@ -478,6 +478,7 @@ const NewOrder: React.FC = () => {
             specialMargins={specialMargins}
             order={order}
             onCheckout={() => setActiveStep((prev) => prev + 1)}
+            isShared={isShared}
           />
         ),
       },

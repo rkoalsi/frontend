@@ -499,12 +499,14 @@ const Review: React.FC<Props> = React.memo((props) => {
                                 >
                                   <strong>MRP:</strong> ₹{product.rate}
                                 </Typography>
-                                <Typography
-                                  variant='body2'
-                                  color='textSecondary'
-                                >
-                                  <strong>Margin:</strong> {marginPercent}%
-                                </Typography>
+                                {isShared ? null : (
+                                  <Typography
+                                    variant='body2'
+                                    color='textSecondary'
+                                  >
+                                    <strong>Margin:</strong> {marginPercent}%
+                                  </Typography>
+                                )}
                                 <Typography
                                   variant='body2'
                                   color='textSecondary'
@@ -685,8 +687,20 @@ const Review: React.FC<Props> = React.memo((props) => {
                             <Typography variant='body2' color='textSecondary'>
                               <strong>Stock:</strong> {product.stock}
                             </Typography>
+                            {isShared ? null : (
+                              <Typography variant='body2' color='textSecondary'>
+                                <strong>Margin:</strong> {marginPercent}%
+                              </Typography>
+                            )}
+
                             <Typography variant='body2' color='textSecondary'>
-                              <strong>Margin:</strong> {marginPercent}%
+                              <strong>GST:</strong>{' '}
+                              {
+                                product.item_tax_preferences[
+                                  product?.item_tax_preferences.length - 1
+                                ].tax_percentage
+                              }
+                              %
                             </Typography>
                             <Typography variant='body2' color='textSecondary'>
                               <strong>Selling Price:</strong> ₹{sellingPrice}
