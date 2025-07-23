@@ -500,6 +500,7 @@ const NewOrder: React.FC = () => {
             order={order}
             onCheckout={() => setActiveStep((prev) => prev + 1)}
             setSort={setSort}
+            isShared={isShared}
           />
         ),
       },
