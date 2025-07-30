@@ -535,7 +535,6 @@ const UnbilledCustomersComponent = () => {
 
               <Box sx={{ minWidth: 200 }}>
                 <DatePicker
-                  enableAccessibleFieldDOMStructure={false}
                   label='Start Date'
                   value={startDate}
                   onChange={(date) => setStartDate(date)}
@@ -554,7 +553,6 @@ const UnbilledCustomersComponent = () => {
 
               <Box sx={{ minWidth: 200 }}>
                 <DatePicker
-                  enableAccessibleFieldDOMStructure={false}
                   label='End Date'
                   value={endDate}
                   onChange={(date) => setEndDate(date)}

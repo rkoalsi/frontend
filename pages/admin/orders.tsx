@@ -30,6 +30,7 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
+  useTheme,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
@@ -41,11 +42,12 @@ import {
   Visibility,
 } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
-import ImagePopupDialog from '../../src/components/common/ImagePopUp';
 import axios from 'axios';
+import SingleImagePopupDialog from '../../src/components/common/SingleImagePopUp';
 
 const Orders = () => {
   const router = useRouter();
+  const theme: any = useTheme();
   // Orders data
   const [orders, setOrders] = useState([]);
 
@@ -422,6 +424,7 @@ const Orders = () => {
                       <TableRow>
                         <TableCell>Created At</TableCell>
                         <TableCell>Estimate Created</TableCell>
+                        <TableCell>Spreadsheet Created</TableCell>
                         <TableCell>Order ID</TableCell>
                         <TableCell>Customer Name</TableCell>
                         <TableCell>Status</TableCell>
@@ -440,6 +443,12 @@ const Orders = () => {
                             <Checkbox
                               disabled
                               checked={order?.estimate_created}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Checkbox
+                              disabled
+                              checked={order?.spreadsheet_created}
                             />
                           </TableCell>
                           <TableCell>
@@ -655,6 +664,26 @@ const Orders = () => {
                   <Typography>
                     <strong>Order ID:</strong> {selectedOrder._id}
                   </Typography>
+                  {selectedOrder?.spreadsheet_created && (
+                    <Typography>
+                      <strong>Spreadsheet Created:</strong>{' '}
+                      <Button
+                        variant={'text'}
+                        // variant='outlined'
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 'bold',
+                          flex: 1,
+                          color: theme.palette.primary.main,
+                        }}
+                        onClick={() =>
+                          window.open(selectedOrder?.spreadsheet_url, '_blank')
+                        }
+                      >
+                        Visit Link
+                      </Button>
+                    </Typography>
+                  )}
                   {selectedOrder?.estimate_created && (
                     <Typography>
                       <strong>Estimate Number:</strong>{' '}
@@ -1046,7 +1075,7 @@ const Orders = () => {
           </Button>
         </DialogActions>
       </Dialog>
-      <ImagePopupDialog
+      <SingleImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}
         imageSrc={popupImageSrc}

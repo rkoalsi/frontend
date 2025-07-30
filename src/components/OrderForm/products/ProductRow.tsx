@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import { AddShoppingCart, RemoveShoppingCart } from '@mui/icons-material';
 import QuantitySelector from '../QuantitySelector';
+import ImageCarousel from './ImageCarousel';
 
 interface SearchResult {
   _id: string;
@@ -31,10 +32,10 @@ interface ProductRowProps {
   customerMargin: string;
   orderStatus?: string;
   getSellingPrice: any;
-  handleImageClick: (src: string) => void;
+  handleImageClick: any;
   handleQuantityChange: (id: string, newQuantity: number) => void;
   handleAddOrRemove: (product: SearchResult) => void;
-  isShared: boolean;
+  isShared?: boolean;
 }
 
 const ProductRow: React.FC<ProductRowProps> = memo(
@@ -72,20 +73,9 @@ const ProductRow: React.FC<ProductRowProps> = memo(
             overlap='rectangular'
             anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
           >
-            <img
-              src={product.image_url || '/placeholder.png'}
-              alt={product.name}
-              loading='lazy'
-              style={{
-                width: '100px',
-                height: '100px',
-                borderRadius: '4px',
-                objectFit: 'cover',
-                cursor: 'pointer',
-              }}
-              onClick={() =>
-                handleImageClick(product.image_url || '/placeholder.png')
-              }
+            <ImageCarousel
+              product={product}
+              handleImageClick={handleImageClick}
             />
           </Badge>
         </TableCell>

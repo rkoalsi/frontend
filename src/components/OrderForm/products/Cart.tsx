@@ -32,7 +32,7 @@ interface CartDrawerProps {
   onClose: () => void;
   selectedProducts: any[];
   getSellingPrice: any;
-  handleImageClick: (src: string) => void;
+  handleImageClick: any;
   handleQuantityChange: (id: string, newQuantity: number) => void;
   handleRemoveProduct: (id: string) => void;
   totals: { totalGST: number; totalAmount: number };

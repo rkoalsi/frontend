@@ -1,22 +1,29 @@
 // ProductCard.tsx
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import {
   Card,
   CardContent,
-  CardMedia,
   Typography,
   Box,
   Grid,
   Button,
   Badge,
+  IconButton,
 } from '@mui/material';
-import { AddShoppingCart, RemoveShoppingCart } from '@mui/icons-material';
+import {
+  AddShoppingCart,
+  RemoveShoppingCart,
+  ChevronLeft,
+  ChevronRight,
+  FiberManualRecord,
+} from '@mui/icons-material';
 import QuantitySelector from '../QuantitySelector';
+import ImageCarousel from './ImageCarousel';
 
 interface SearchResult {
   _id: string;
   name: string;
-  image_url?: string;
+  images?: string[]; // Changed from image_url to image_urls array
   sub_category?: string;
   series?: string;
   cf_sku_code?: string;
@@ -34,7 +41,7 @@ interface ProductCardProps {
   customerMargin: string;
   orderStatus?: string;
   getSellingPrice: any;
-  handleImageClick: (src: string) => void;
+  handleImageClick: any;
   handleQuantityChange: (id: string, newQuantity: number) => void;
   handleAddOrRemove: (product: SearchResult) => void;
   index: number;
@@ -104,22 +111,13 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 }}
               />
             )}
-            <CardMedia
-              component='img'
-              image={product.image_url || '/placeholder.png'}
-              alt={product.name}
-              sx={{
-                width: '100%',
-                objectFit: 'cover',
-                cursor: 'pointer',
-                transition: 'transform 0.3s ease-in-out',
-                '&:hover': { transform: 'scale(1.03)' },
-              }}
-              onClick={() =>
-                handleImageClick(product.image_url || '/placeholder.png')
-              }
+
+            <ImageCarousel
+              product={product}
+              handleImageClick={handleImageClick}
             />
           </Box>
+
           <CardContent sx={{ p: 2 }}>
             <Typography variant='h6' sx={{ fontWeight: 'bold', mb: 1 }}>
               {product.name}

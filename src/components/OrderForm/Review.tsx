@@ -31,6 +31,7 @@ import QuantitySelector from './QuantitySelector'; // Adjust the path as necessa
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import ImagePopupDialog from '../common/ImagePopUp';
+import ImageCarousel from './products/ImageCarousel';
 
 interface Props {
   customer: any;
@@ -68,7 +69,8 @@ const Review: React.FC<Props> = React.memo((props) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [openImagePopup, setOpenImagePopup] = useState(false);
-  const [popupImageSrc, setPopupImageSrc] = useState('');
+  const [popupImageSrc, setPopupImageSrc]: any = useState([]);
+  const [popupImageIndex, setPopupImageIndex] = useState(0);
 
   // Page navigation refs
   const pageTopRef = useRef<HTMLDivElement>(null);
@@ -160,9 +162,10 @@ const Review: React.FC<Props> = React.memo((props) => {
     [products, setSelectedProducts]
   );
 
-  // Image Popup Handlers
-  const handleImageClick = useCallback((src: string) => {
-    setPopupImageSrc(src);
+  const handleImageClick = useCallback((srcList: string[], index: number) => {
+    const formattedImages = srcList.map((src) => ({ src }));
+    setPopupImageSrc(formattedImages);
+    setPopupImageIndex(index);
     setOpenImagePopup(true);
   }, []);
 
@@ -414,9 +417,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                                   cursor: 'pointer',
                                 }}
                                 onClick={() =>
-                                  handleImageClick(
-                                    product.image_url || '/placeholder.png'
-                                  )
+                                  handleImageClick(product.images, index)
                                 }
                               />
                             </Badge>
@@ -629,7 +630,12 @@ const Review: React.FC<Props> = React.memo((props) => {
                                 horizontal: 'right',
                               }}
                             >
-                              <CardMedia
+                              <ImageCarousel
+                                handleImageClick={handleImageClick}
+                                product={product}
+                                small={true}
+                              />
+                              {/* <CardMedia
                                 component='img'
                                 image={product.image_url || '/placeholder.png'}
                                 alt={product.name}
@@ -640,11 +646,9 @@ const Review: React.FC<Props> = React.memo((props) => {
                                   cursor: 'pointer',
                                 }}
                                 onClick={() =>
-                                  handleImageClick(
-                                    product.image_url || '/placeholder.png'
-                                  )
+                                  handleImageClick(product.images, index)
                                 }
-                              />
+                              /> */}
                             </Badge>
                           </Box>
                           {/* Details Section */}
@@ -787,7 +791,11 @@ const Review: React.FC<Props> = React.memo((props) => {
         <ImagePopupDialog
           open={openImagePopup}
           onClose={handleClosePopup}
-          imageSrc={popupImageSrc}
+          imageSources={popupImageSrc}
+          initialSlide={popupImageIndex}
+          setIndex={(newIndex: number) => {
+            setPopupImageIndex(newIndex);
+          }}
         />
       </Box>
 

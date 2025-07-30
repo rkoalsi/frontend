@@ -15,6 +15,7 @@ import {
   Button,
 } from '@mui/material';
 import { toast } from 'react-toastify';
+import ImageCarousel from '../../OrderForm/products/ImageCarousel';
 
 const ProductTable = ({
   products,
@@ -90,21 +91,10 @@ const ProductTable = ({
                           : `${index + 1}`}
                       </TableCell>
                       <TableCell>
-                        <img
-                          onClick={() =>
-                            handleImageClick(
-                              product.image_url || '/placeholder.png'
-                            )
-                          }
-                          src={product.image_url || '/placeholder.png'}
-                          alt={product.name}
-                          style={{
-                            width: '80px',
-                            height: '80px',
-                            borderRadius: '4px',
-                            objectFit: 'cover',
-                            cursor: 'pointer',
-                          }}
+                        <ImageCarousel
+                          handleImageClick={handleImageClick}
+                          product={product}
+                          small={true}
                         />
                       </TableCell>
                       <TableCell>{product.name}</TableCell>

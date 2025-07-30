@@ -78,12 +78,13 @@ interface ProductsProps {
   label: string;
   selectedProducts: SearchResult[];
   setSelectedProducts: React.Dispatch<React.SetStateAction<SearchResult[]>>;
-  customer: { cf_margin?: string; cf_in_ex?: string };
-  order: { status?: string };
+  customer: any;
+  order: any;
   specialMargins: { [key: string]: string };
   totals: { totalGST: number; totalAmount: number };
   onCheckout: () => void;
   isShared: boolean;
+  setSort: any;
 }
 
 const Products: React.FC<ProductsProps> = ({
@@ -96,6 +97,7 @@ const Products: React.FC<ProductsProps> = ({
   totals = { totalGST: 0, totalAmount: 0 },
   onCheckout,
   isShared = false,
+  setSort,
 }) => {
   const COLUMNS = isShared
     ? [
@@ -139,7 +141,8 @@ const Products: React.FC<ProductsProps> = ({
     [key: string]: number;
   }>({});
   const [openImagePopup, setOpenImagePopup] = useState<boolean>(false);
-  const [popupImageSrc, setPopupImageSrc] = useState<string>('');
+  const [popupImageSrc, setPopupImageSrc]: any = useState([]);
+  const [popupImageIndex, setPopupImageIndex]: any = useState(0);
   const [options, setOptions] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [paginationState, setPaginationState] = useState<{
@@ -175,6 +178,9 @@ const Products: React.FC<ProductsProps> = ({
 
   const [confirmModalOpen, setConfirmModalOpen] = useState<boolean>(false);
 
+  const [link, setLink] = useState(
+    order?.spreadsheet_created ? order?.spreadsheet_url : ''
+  );
   const isFetching = useRef<{ [key: string]: boolean }>({});
 
   // ------------------ Debounced Toasts ------------------
@@ -620,8 +626,10 @@ const Products: React.FC<ProductsProps> = ({
   const handleCloseConfirmModal = () => {
     setConfirmModalOpen(false);
   };
-  const handleImageClick = useCallback((src: string) => {
-    setPopupImageSrc(src);
+  const handleImageClick = useCallback((srcList: string[], index: number) => {
+    const formattedImages = srcList.map((src) => ({ src }));
+    setPopupImageSrc(formattedImages);
+    setPopupImageIndex(index);
     setOpenImagePopup(true);
   }, []);
 
@@ -630,6 +638,7 @@ const Products: React.FC<ProductsProps> = ({
   const handleSortChange = (e: any) => {
     const newSort = e.target.value as string;
     setSortOrder(newSort);
+    setSort(newSort);
     // In catalogue mode, keep the activeBrand so that tab changes fetch brand‐specific data.
     if (newSort === 'catalogue') {
       // Optionally clear the activeCategory if you don't need it
@@ -808,6 +817,8 @@ const Products: React.FC<ProductsProps> = ({
         <Box
           display='flex'
           justifyContent='space-between'
+          flexDirection={isMobile ? 'column' : 'row'}
+          gap={isMobile ? '16px' : '8px'}
           alignItems='center'
           sx={{ mb: 2 }}
         >
@@ -1302,33 +1313,22 @@ const Products: React.FC<ProductsProps> = ({
                   alignItems: 'flex-start',
                 }}
               >
-                <IconButton
-                  onClick={handleSortIconClick}
-                  style={{ display: 'flex', flexDirection: 'column' }}
-                >
-                  <Sort />
-                </IconButton>
-                <Menu
-                  id='sort-menu'
-                  anchorEl={anchorEl}
-                  open={Boolean(anchorEl)}
-                  onClose={handleSortMenuClose}
-                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                >
-                  <MenuItem onClick={() => handleSortMenuSelect('default')}>
-                    Default
-                  </MenuItem>
-                  <MenuItem onClick={() => handleSortMenuSelect('catalogue')}>
-                    Catalogue Order
-                  </MenuItem>
-                  <MenuItem onClick={() => handleSortMenuSelect('price_asc')}>
-                    Price: Low to High
-                  </MenuItem>
-                  <MenuItem onClick={() => handleSortMenuSelect('price_desc')}>
-                    Price: High to Low
-                  </MenuItem>
-                </Menu>
+                <FormControl fullWidth variant='outlined'>
+                  <InputLabel id='sort-select-label'>Sort By</InputLabel>
+                  <Select
+                    labelId='sort-select-label'
+                    id='sort-select'
+                    value={sortOrder}
+                    label='Sort By'
+                    onChange={handleSortChange}
+                  >
+                    <MenuItem value='default'>Default</MenuItem>
+                    <MenuItem value='catalogue'>Catalogue Order</MenuItem>
+                    <MenuItem value='price_asc'>Price: Low to High</MenuItem>
+                    <MenuItem value='price_desc'>Price: High to Low</MenuItem>
+                  </Select>
+                </FormControl>
+
                 {sortOrder === 'catalogue' && (
                   <>
                     <FormControlLabel
@@ -1476,7 +1476,7 @@ const Products: React.FC<ProductsProps> = ({
             )}
           </Box>
         ) : (
-          <TableContainer component={Paper}>
+          <TableContainer component={Paper} style={{ width: 'fit-content' }}>
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
@@ -1657,11 +1657,14 @@ const Products: React.FC<ProductsProps> = ({
         isMobile={isMobile}
       />
 
-      {/* Image Popup Dialog */}
       <ImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}
-        imageSrc={popupImageSrc}
+        imageSources={popupImageSrc}
+        initialSlide={popupImageIndex}
+        setIndex={(newIndex: number) => {
+          setPopupImageIndex(newIndex);
+        }}
       />
     </Box>
   );

@@ -32,6 +32,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import ImagePopupDialog from '../../../../src/components/common/ImagePopUp';
 import AuthContext from '../../../../src/components/Auth';
+import SingleImagePopupDialog from '../../../../src/components/common/SingleImagePopUp';
 
 const OrderDetails = () => {
   const [invoiceData, setInvoiceData]: any = useState(null);
@@ -698,7 +699,7 @@ const OrderDetails = () => {
         </Box>
       </Paper>
 
-      <ImagePopupDialog
+      <SingleImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}
         imageSrc={popupImageSrc}

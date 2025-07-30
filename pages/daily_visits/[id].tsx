@@ -19,6 +19,7 @@ import ShopsDialog from '../../src/components/daily_visits/ShopsDialog';
 import UpdateDialog from '../../src/components/daily_visits/UpdateDialog';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
 import HookDialog from '../../src/components/daily_visits/HookDialog';
+import SingleImagePopupDialog from '../../src/components/common/SingleImagePopUp';
 
 const DailyVisitDetail = () => {
   const router = useRouter();
@@ -381,7 +382,7 @@ const DailyVisitDetail = () => {
         toggleEditEntry={toggleEditEntry}
         addHookEntry={addHookEntry}
       />
-      <ImagePopupDialog
+      <SingleImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}
         imageSrc={popupImageSrc}

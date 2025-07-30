@@ -195,7 +195,7 @@ const PastOrders = () => {
               initial='hidden'
               animate='visible'
             >
-              {filteredOrders.map((order, index) => (
+              {filteredOrders.map((order: any, index) => (
                 <motion.div
                   key={order._id}
                   variants={cardVariants}
@@ -278,6 +278,17 @@ const PastOrders = () => {
                           color: 'black',
                         }}
                       />
+                      {order?.spreadsheet_created && (
+                        <Chip
+                          label={'XLSX Created'}
+                          color={'success'}
+                          sx={{
+                            fontWeight: 'bold',
+                            fontSize: '0.85rem',
+                            color: 'black',
+                          }}
+                        />
+                      )}
                       <Typography
                         variant='body1'
                         fontWeight='bold'
