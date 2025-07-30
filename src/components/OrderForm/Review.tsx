@@ -346,7 +346,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                       calculatePrices(product);
 
                     return (
-                      <Grid item xs={12} key={productId}>
+                      <Grid key={productId}>
                         <Card
                           sx={{
                             display: 'flex',
@@ -520,7 +520,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                     );
                   })
                 ) : (
-                  <Grid item xs={12}>
+                  <Grid>
                     <Typography variant='body1' align='center'>
                       {products.length > 0
                         ? 'Loading products...'
@@ -562,7 +562,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                       calculatePrices(product);
 
                     return (
-                      <Grid item xs={12} key={productId}>
+                      <Grid key={productId}>
                         <Card
                           sx={{
                             width: '100%',

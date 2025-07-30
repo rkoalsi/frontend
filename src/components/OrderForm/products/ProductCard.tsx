@@ -67,7 +67,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
       orderStatus?.toLowerCase().includes('declined');
 
     return (
-      <Grid item xs={12} key={productId}>
+      <Grid key={productId}>
         <Card
           sx={{
             display: 'flex',
