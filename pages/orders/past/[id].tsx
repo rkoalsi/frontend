@@ -217,6 +217,7 @@ const OrderDetails = () => {
             >
               <Edit fontSize='medium' />
             </IconButton>
+
             {orderData?.estimate_created && (
               <IconButton
                 size='small'
@@ -242,11 +243,42 @@ const OrderDetails = () => {
           <strong>Status:</strong>{' '}
           {orderData?.status.split('_').join(' ') || 'N/A'}
         </Typography>
+        {orderData?.spreadsheet_created && (
+          <Typography variant='body1' sx={{ mb: 1 }}>
+            <strong>Spreadsheet URL:</strong> {'\t'}
+            <Typography
+              component='a'
+              href={orderData?.spreadsheet_url}
+              target='_blank'
+              rel='noopener noreferrer'
+              sx={{
+                textDecoration: 'none',
+                color: 'secondary.main',
+                cursor: 'pointer',
+              }}
+            >
+              Visit Spreadsheet
+            </Typography>
+          </Typography>
+        )}
         {orderData?.estimate_created && (
           <Typography variant='body1' sx={{ mb: 1 }}>
             <strong>Estimate Number:</strong>{' '}
             {orderData?.estimate_number || 'N/A'} {'\t\t\t\t\t'}(
-            <Link href={orderData?.estimate_url}>Estimate Url</Link>)
+            <Typography
+              component='a'
+              href={orderData?.estimate_url}
+              target='_blank'
+              rel='noopener noreferrer'
+              sx={{
+                textDecoration: 'none',
+                color: 'secondary.main',
+                cursor: 'pointer',
+              }}
+            >
+              Visit Estimate Url
+            </Typography>
+            )
           </Typography>
         )}
         <Typography variant='body1' sx={{ mb: 2 }}>

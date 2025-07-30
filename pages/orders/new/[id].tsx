@@ -21,6 +21,7 @@ import {
   Snackbar,
   Alert,
   IconButton,
+  CircularProgress,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import CustomerSearchBar from '../../../src/components/OrderForm/CustomerSearchBar';
@@ -30,9 +31,10 @@ import Review from '../../../src/components/OrderForm/Review';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { ContentCopy } from '@mui/icons-material';
+import { ContentCopy, Sort } from '@mui/icons-material';
 import useDebounce from '../../../src/util/useDebounce';
 import AuthContext from '../../../src/components/Auth';
+import SheetsDisplay from '../../../src/components/OrderForm/SheetDisplay';
 
 // Create an Axios instance
 const api = axios.create({
@@ -71,6 +73,10 @@ const NewOrder: React.FC = () => {
   const [open, setOpen] = useState<boolean>(false);
   const [error, setError] = useState<any>(null);
   const [sharedLink, setSharedLink] = useState<string>('');
+  const [sort, setSort] = useState<string>('default');
+  const [link, setLink] = useState(
+    order?.spreadsheet_created ? order?.spreadsheet_url : ''
+  );
   const [linkCopied, setLinkCopied] = useState<boolean>(false);
   const [specialMargins, setSpecialMargins] = useState<{
     [key: string]: string;
@@ -113,7 +119,21 @@ const NewOrder: React.FC = () => {
       controller.abort();
     };
   }, [customer]);
-
+  const handleSortText = () => {
+    switch (sort) {
+      case 'default':
+        return 'Default';
+      case 'price_asc':
+        return 'Price Ascending';
+      case 'price_desc':
+        return 'Price Descending';
+      case 'catalogue':
+        return 'Catalogue Order';
+      default:
+        console.log(sort);
+        break;
+    }
+  };
   // ------------------ Calculate Totals ---------------------
   const totals = useMemo(() => {
     const { totalGST, totalAmount } = selectedProducts.reduce(
@@ -261,6 +281,7 @@ const NewOrder: React.FC = () => {
         setBillingAddress(resp.data.billing_address);
       if (resp.data.shipping_address)
         setShippingAddress(resp.data.shipping_address);
+      if (resp.data.spreadsheet_created) setLink(resp.data.spreadsheet_url);
       if (resp.data.products && resp.data.products.length > 0) {
         const detailedProducts = await Promise.all(
           resp.data.products.map(async (product: any) => {
@@ -479,6 +500,7 @@ const NewOrder: React.FC = () => {
             order={order}
             onCheckout={() => setActiveStep((prev) => prev + 1)}
             isShared={isShared}
+            setSort={setSort}
           />
         ),
       },
@@ -519,7 +541,44 @@ const NewOrder: React.FC = () => {
       navigator.clipboard.writeText(order.estimate_number);
     }
   };
-
+  const updateCart = async () => {
+    setLoading(true);
+    try {
+      await axios.get(`${process.env.api_url}/orders/update_cart`, {
+        params: { order_id: order._id },
+      });
+      await getOrder();
+      toast.success('Cart Successfully Updated');
+    } catch (error) {
+      console.error(error);
+      toast.error('Error updating cart. Try again Later');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleDownload = async () => {
+    setLoading(true);
+    try {
+      const { data = {} } = await axios.get(
+        `${process.env.api_url}/orders/download_order_form`,
+        {
+          params: {
+            customer_id: customer._id,
+            order_id: order._id,
+            sort,
+          },
+        }
+      );
+      const { google_sheet_url = '' } = data;
+      setLink(google_sheet_url);
+      toast.success('Sheet Successfully Created');
+    } catch (error) {
+      console.error(error);
+      toast.error('Error setting report. Try again Later');
+    } finally {
+      setLoading(false);
+    }
+  };
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'draft':
@@ -540,6 +599,7 @@ const NewOrder: React.FC = () => {
         flexDirection: 'column',
         alignItems: 'center',
         padding: isMobile ? '0px' : '8px',
+        gap: isMobile ? '12px' : '24px',
       }}
     >
       {/* Header */}
@@ -550,7 +610,7 @@ const NewOrder: React.FC = () => {
           maxWidth: isMobile ? '400px' : '100%',
           padding: '16px',
           marginTop: '16px',
-          marginBottom: isMobile ? '16px' : '24px',
+          marginBottom: '0px',
           textAlign: 'center',
           borderRadius: '8px',
           alignSelf: 'center',
@@ -611,7 +671,35 @@ const NewOrder: React.FC = () => {
           )}
         </Box>
       </Paper>
-
+      {/* Google Sheet Content if in draft */}
+      {!isShared &&
+        customer &&
+        billingAddress &&
+        shippingAddress &&
+        !['accepted', 'declined'].includes(order?.status?.toLowerCase()) &&
+        (link ? (
+          <SheetsDisplay
+            googleSheetsLink={link}
+            updateCart={updateCart}
+            loading={loading}
+            sort={handleSortText()}
+          />
+        ) : (
+          <Button
+            variant='contained'
+            color='secondary'
+            disabled={loading}
+            onClick={handleDownload}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 'bold',
+              borderRadius: '24px',
+              marginBottom: '12px',
+            }}
+          >
+            {loading ? <CircularProgress /> : 'Download Order Form'}
+          </Button>
+        ))}
       {/* Main content */}
       <Box
         sx={{
@@ -632,7 +720,13 @@ const NewOrder: React.FC = () => {
           }}
         >
           <CardContent sx={{ padding: isMobile ? '12px' : '24px' }}>
-            <Stepper activeStep={activeStep} alternativeLabel>
+            <Stepper
+              activeStep={activeStep}
+              alternativeLabel
+              sx={{
+                marginTop: isMobile ? '8px' : '0px',
+              }}
+            >
               {steps.map((step, index) => (
                 <Step key={index} onClick={() => handleStepClick(index)}>
                   <StepLabel>{step.name}</StepLabel>
