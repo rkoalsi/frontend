@@ -280,7 +280,7 @@ const PastOrders = () => {
                       />
                       {order?.spreadsheet_created && (
                         <Chip
-                          label={'Spreadsheet Created'}
+                          label={'XLSX Created'}
                           color={'success'}
                           sx={{
                             fontWeight: 'bold',
