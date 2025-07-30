@@ -42,7 +42,6 @@ import {
   Visibility,
 } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
-import ImagePopupDialog from '../../src/components/common/ImagePopUp';
 import axios from 'axios';
 import SingleImagePopupDialog from '../../src/components/common/SingleImagePopUp';
 
