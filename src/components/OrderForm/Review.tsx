@@ -460,6 +460,9 @@ const Review: React.FC<Props> = React.memo((props) => {
                               <strong>SKU:</strong> {product.cf_sku_code || '-'}
                             </Typography>
                             <Typography variant='body2' color='textSecondary'>
+                              <strong>UPC Code:</strong> {product.upc_code || '-'}
+                            </Typography>
+                            <Typography variant='body2' color='textSecondary'>
                               <strong>Category:</strong> {product.category}
                             </Typography>
                             <Typography variant='body2' color='textSecondary'>
@@ -671,6 +674,9 @@ const Review: React.FC<Props> = React.memo((props) => {
                             </Typography>
                             <Typography variant='body2' color='textSecondary'>
                               <strong>SKU:</strong> {product.cf_sku_code || '-'}
+                            </Typography>
+                            <Typography variant='body2' color='textSecondary'>
+                              <strong>UPC Code:</strong> {product.upc_code || '-'}
                             </Typography>
                             <Typography variant='body2' color='textSecondary'>
                               <strong>Price:</strong> ₹{product.rate}

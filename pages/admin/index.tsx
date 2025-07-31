@@ -111,7 +111,6 @@ const AdminDashboard = () => {
   const { user }: any = useContext(AuthContext);
   const theme: any = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);

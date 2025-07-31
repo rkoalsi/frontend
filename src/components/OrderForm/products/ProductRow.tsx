@@ -22,6 +22,7 @@ interface SearchResult {
   stock: number;
   new?: boolean;
   item_tax_preferences: any;
+  upc_code?: string;
 }
 
 interface ProductRowProps {
@@ -83,6 +84,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         <TableCell>{product.sub_category || '-'}</TableCell>
         <TableCell>{product.series || '-'}</TableCell>
         <TableCell>{product.cf_sku_code || '-'}</TableCell>
+        <TableCell>{product.upc_code}</TableCell>
         <TableCell>₹{product.rate}</TableCell>
         <TableCell>{product.stock}</TableCell>
         {isShared ? null : (
