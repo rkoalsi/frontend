@@ -26,6 +26,7 @@ const SheetsDisplay = ({
 }: any) => {
   const theme: any = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg'));
   const [copied, setCopied] = useState(false);
 
   const handleCopyToClipboard = () => {
@@ -39,6 +40,19 @@ const SheetsDisplay = ({
     window.open(googleSheetsLink, '_blank');
   };
 
+  // Responsive width logic
+  const getResponsiveWidth = () => {
+    if (isMobile) return '100%';
+    if (isTablet) return '100%';
+    return '800px';
+  };
+
+  const getResponsiveMaxWidth = () => {
+    if (isMobile) return '100%';
+    if (isTablet) return '600px';
+    return '800px';
+  };
+
   return (
     <Accordion
       sx={{
@@ -46,6 +60,7 @@ const SheetsDisplay = ({
         borderRadius: 2,
         boxShadow: 3,
         backgroundColor: theme.palette.background.paper,
+        maxWidth: '100%', // Prevent overflow
       }}
     >
       <AccordionSummary
@@ -65,15 +80,17 @@ const SheetsDisplay = ({
           </Typography>
         </Box>
       </AccordionSummary>
-      <AccordionDetails>
+      <AccordionDetails sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
         <Paper
           elevation={4}
           sx={{
-            p: 3,
-            minWidth: isMobile ? '300px' : '800px',
+            p: { xs: 2, sm: 2.5, md: 3 },
+            width: getResponsiveWidth(),
+            maxWidth: getResponsiveMaxWidth(),
             mx: 'auto',
             borderRadius: 2,
             backgroundColor: theme.palette.background.default,
+            boxSizing: 'border-box', // Include padding in width calculation
           }}
         >
           <Box display='flex' flexDirection='column' gap={3}>
@@ -103,7 +120,7 @@ const SheetsDisplay = ({
 
             <Box
               display='flex'
-              flexDirection={isMobile ? 'column' : 'row'}
+              flexDirection={isMobile ? 'column' : isTablet ? 'column' : 'row'}
               gap={2}
             >
               <Button
@@ -114,7 +131,8 @@ const SheetsDisplay = ({
                   textTransform: 'none',
                   fontWeight: 'bold',
                   borderRadius: '24px',
-                  flex: 1,
+                  flexGrow: { xs: 1, md: 1 },
+                  flexShrink: 0,
                   bgcolor: theme.palette.primary.dark,
                   color: 'white',
                 }}
@@ -129,7 +147,8 @@ const SheetsDisplay = ({
                   textTransform: 'none',
                   fontWeight: 'bold',
                   borderRadius: '24px',
-                  flex: 1,
+                  flexGrow: { xs: 1, md: 1 },
+                  flexShrink: 0,
                   borderColor: theme.palette.primary.main,
                   color: theme.palette.primary.main,
                 }}
@@ -146,7 +165,8 @@ const SheetsDisplay = ({
                   textTransform: 'none',
                   fontWeight: 'bold',
                   borderRadius: '24px',
-                  flex: 1,
+                  flexGrow: { xs: 1, md: 1 },
+                  flexShrink: 0,
                   bgcolor: theme.palette.secondary.main,
                 }}
               >

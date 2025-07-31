@@ -8,14 +8,10 @@ import {
   Grid,
   Button,
   Badge,
-  IconButton,
 } from '@mui/material';
 import {
   AddShoppingCart,
   RemoveShoppingCart,
-  ChevronLeft,
-  ChevronRight,
-  FiberManualRecord,
 } from '@mui/icons-material';
 import QuantitySelector from '../QuantitySelector';
 import ImageCarousel from './ImageCarousel';
@@ -31,6 +27,7 @@ interface SearchResult {
   stock: number;
   new?: boolean;
   item_tax_preferences: any;
+  upc_code?:string;
 }
 
 interface ProductCardProps {
@@ -157,6 +154,16 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               </Typography>
               <Typography variant='body2'>
                 {product.cf_sku_code || '-'}
+              </Typography>
+              <Typography
+                variant='body2'
+                color='text.secondary'
+                sx={{ fontWeight: 500 }}
+              >
+                UPC Code
+              </Typography>
+              <Typography variant='body2'>
+                {product.upc_code || '-'}
               </Typography>
               <Typography
                 variant='body2'
