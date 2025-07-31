@@ -32,12 +32,13 @@ function ImageCarousel(props: Props) {
     setCurrentImageIndex(index);
   };
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
   return (
     <Box
       sx={{
         position: 'relative',
-        width: isMobile ? '100%' : small ? '140px' : '180px',
+        width: isMobile || isTablet ? '100%' : small ? '140px' : '180px',
         overflow: 'hidden',
       }}
     >

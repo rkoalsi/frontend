@@ -106,6 +106,7 @@ const Products: React.FC<ProductsProps> = ({
         'Sub Category',
         'Series',
         'SKU',
+        'UPC Code',
         'Price',
         'Stock',
         'Selling Price',
@@ -120,6 +121,7 @@ const Products: React.FC<ProductsProps> = ({
         'Sub Category',
         'Series',
         'SKU',
+        'UPC Code',
         'Price',
         'Stock',
         'Margin',
@@ -1408,7 +1410,7 @@ const Products: React.FC<ProductsProps> = ({
         {isMobile || isTablet ? (
           <Box>
             {displayedProducts.length > 0 ? (
-              <Grid container spacing={2}>
+              <Box display={'flex'} flexDirection={'column'} >
                 {displayedProducts.map((product, index) => (
                   <ProductCard
                     key={product._id}
@@ -1430,7 +1432,7 @@ const Products: React.FC<ProductsProps> = ({
                     isShared={isShared}
                   />
                 ))}
-              </Grid>
+              </Box>
             ) : (
               <Box mt={2}>
                 <Typography variant='body1' align='center'>
@@ -1476,101 +1478,109 @@ const Products: React.FC<ProductsProps> = ({
             )}
           </Box>
         ) : (
-          <TableContainer component={Paper} style={{ width: 'fit-content' }}>
-            <Table stickyHeader>
+            <TableContainer
+            component={Paper}
+            sx={{
+              width: '100%',
+              maxWidth: '100vw',
+              overflowX: 'auto',
+              boxShadow: 2,
+            }}
+            >
+            <Table stickyHeader sx={{ minWidth: 1200 }}>
               <TableHead>
-                <TableRow>
-                  {COLUMNS.map((header) => (
-                    <TableCell
-                      key={header}
-                      sx={{
-                        position: 'sticky',
-                        top: 0,
-                        zIndex: 1000,
-                        backgroundColor: 'background.paper',
-                        minWidth:
-                          header === 'SKU' ||
-                          header === 'Price' ||
-                          header === 'Stock'
-                            ? '80px'
-                            : undefined,
-                      }}
-                    >
-                      {header}
-                    </TableCell>
-                  ))}
-                </TableRow>
+              <TableRow>
+                {COLUMNS.map((header) => (
+                <TableCell
+                  key={header}
+                  sx={{
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 1000,
+                  backgroundColor: 'background.paper',
+                  minWidth:
+                    header === 'UPC Code'|| header === 'Quantity' || header === 'Name' || header === 'Sub Category'
+                    ? 160
+                    : 120,
+                  fontWeight: 'bold',
+                  whiteSpace: 'nowrap',
+                  }}
+                >
+                  {header}
+                </TableCell>
+                ))}
+              </TableRow>
               </TableHead>
               <TableBody>
-                {displayedProducts.length > 0 ? (
-                  <>
-                    {displayedProducts.map((product: any) => (
-                      <ProductRow
-                        key={product._id}
-                        product={product}
-                        selectedProducts={selectedProducts}
-                        temporaryQuantities={temporaryQuantities}
-                        specialMargins={specialMargins}
-                        customerMargin={customer?.cf_margin || '40%'}
-                        orderStatus={order?.status}
-                        getSellingPrice={getSellingPrice}
-                        handleImageClick={handleImageClick}
-                        handleQuantityChange={handleQuantityChange}
-                        handleAddOrRemove={(prod: any) =>
-                          selectedProducts.some((p) => p._id === prod._id)
-                            ? handleRemoveProduct(prod._id)
-                            : handleAddProducts(prod)
-                        }
-                        isShared={isShared}
-                      />
-                    ))}
-                    {!loadingMore && noMoreProducts[productsKey] && (
-                      <TableRow>
-                        <TableCell colSpan={12} align='center'>
-                          <Typography variant='body2' color='textSecondary'>
-                            No more products for{' '}
-                            {searchTerm
-                              ? searchTerm
-                              : groupByCategory
-                              ? activeCategory
-                              : activeBrand}{' '}
-                            {searchTerm ? '' : activeCategory}.
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </>
-                ) : (
+              {displayedProducts.length > 0 ? (
+                <>
+                {displayedProducts.map((product: any) => (
+                  <ProductRow
+                  key={product._id}
+                  product={product}
+                  selectedProducts={selectedProducts}
+                  temporaryQuantities={temporaryQuantities}
+                  specialMargins={specialMargins}
+                  customerMargin={customer?.cf_margin || '40%'}
+                  orderStatus={order?.status}
+                  getSellingPrice={getSellingPrice}
+                  handleImageClick={handleImageClick}
+                  handleQuantityChange={handleQuantityChange}
+                  handleAddOrRemove={(prod: any) =>
+                    selectedProducts.some((p) => p._id === prod._id)
+                    ? handleRemoveProduct(prod._id)
+                    : handleAddProducts(prod)
+                  }
+                  isShared={isShared}
+                  />
+                ))}
+                {!loadingMore && noMoreProducts[productsKey] && (
                   <TableRow>
-                    <TableCell colSpan={12} align='center'>
-                      <Typography variant='body1'>
-                        {loading ? 'Loading products...' : 'No products found.'}
-                      </Typography>
-                    </TableCell>
+                  <TableCell colSpan={COLUMNS.length} align='center'>
+                    <Typography variant='body2' color='textSecondary'>
+                    No more products for{' '}
+                    {searchTerm
+                      ? searchTerm
+                      : groupByCategory
+                      ? activeCategory
+                      : activeBrand}{' '}
+                    {searchTerm ? '' : activeCategory}.
+                    </Typography>
+                  </TableCell>
                   </TableRow>
                 )}
-                {loadingMore && (
-                  <TableRow>
-                    <TableCell colSpan={12} align='center'>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          padding: 2,
-                        }}
-                      >
-                        <CircularProgress color='primary' />
-                        <Typography variant='body2' sx={{ mt: 1 }}>
-                          Loading more products...
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                )}
+                </>
+              ) : (
+                <TableRow>
+                <TableCell colSpan={COLUMNS.length} align='center'>
+                  <Typography variant='body1'>
+                  {loading ? 'Loading products...' : 'No products found.'}
+                  </Typography>
+                </TableCell>
+                </TableRow>
+              )}
+              {loadingMore && (
+                <TableRow>
+                <TableCell colSpan={COLUMNS.length} align='center'>
+                  <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    padding: 2,
+                  }}
+                  >
+                  <CircularProgress color='primary' />
+                  <Typography variant='body2' sx={{ mt: 1 }}>
+                    Loading more products...
+                  </Typography>
+                  </Box>
+                </TableCell>
+                </TableRow>
+              )}
               </TableBody>
             </Table>
-          </TableContainer>
+            </TableContainer>
         )}
       </Box>
       <Box
