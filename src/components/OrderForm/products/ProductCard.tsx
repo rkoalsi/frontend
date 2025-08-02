@@ -1,5 +1,5 @@
 // ProductCard.tsx
-import React, { memo, useState } from 'react';
+import React, { memo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -8,13 +8,10 @@ import {
   Grid,
   Button,
   Badge,
-} from '@mui/material';
-import {
-  AddShoppingCart,
-  RemoveShoppingCart,
-} from '@mui/icons-material';
-import QuantitySelector from '../QuantitySelector';
-import ImageCarousel from './ImageCarousel';
+} from "@mui/material";
+import { AddShoppingCart, RemoveShoppingCart } from "@mui/icons-material";
+import QuantitySelector from "../QuantitySelector";
+import ImageCarousel from "./ImageCarousel";
 
 interface SearchResult {
   _id: string;
@@ -27,7 +24,7 @@ interface SearchResult {
   stock: number;
   new?: boolean;
   item_tax_preferences: any;
-  upc_code?:string;
+  upc_code?: string;
 }
 
 interface ProductCardProps {
@@ -43,6 +40,7 @@ interface ProductCardProps {
   handleAddOrRemove: (product: SearchResult) => void;
   index: number;
   isShared: boolean;
+  showUPC: boolean;
 }
 
 const ProductCard: React.FC<ProductCardProps> = memo(
@@ -59,51 +57,52 @@ const ProductCard: React.FC<ProductCardProps> = memo(
     handleAddOrRemove,
     index,
     isShared = false,
+    showUPC = false,
   }) => {
     const productId = product._id;
     const selectedProduct: any = selectedProducts.find(
       (p) => p._id === productId
     );
     const quantity =
-      selectedProduct?.quantity || temporaryQuantities[productId] || '';
+      selectedProduct?.quantity || temporaryQuantities[productId] || "";
     const sellingPrice = getSellingPrice(product);
     const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
     const isQuantityExceedingStock = quantity > product.stock;
     const isDisabled =
-      orderStatus?.toLowerCase().includes('accepted') ||
-      orderStatus?.toLowerCase().includes('declined');
+      orderStatus?.toLowerCase().includes("accepted") ||
+      orderStatus?.toLowerCase().includes("declined");
 
     return (
       <Grid>
         <Card
           sx={{
-            display: 'flex',
-            flexDirection: 'column',
+            display: "flex",
+            flexDirection: "column",
             borderRadius: 2,
             boxShadow: 3,
-            overflow: 'hidden',
-            backgroundColor: 'background.paper',
-            mt: index === 0 ? '16px' : undefined,
-            mb: '16px',
+            overflow: "hidden",
+            backgroundColor: "background.paper",
+            mt: index === 0 ? "16px" : undefined,
+            mb: "16px",
           }}
         >
-          <Box sx={{ position: 'relative' }}>
+          <Box sx={{ position: "relative" }}>
             {product.new && (
               <Badge
-                badgeContent='New'
-                color='secondary'
-                overlap='rectangular'
-                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                badgeContent="New"
+                color="secondary"
+                overlap="rectangular"
+                anchorOrigin={{ vertical: "top", horizontal: "right" }}
                 sx={{
-                  position: 'absolute',
+                  position: "absolute",
                   top: 16,
                   right: 20,
                   zIndex: 10,
-                  '& .MuiBadge-badge': {
-                    fontSize: '0.7rem',
-                    fontWeight: 'bold',
+                  "& .MuiBadge-badge": {
+                    fontSize: "0.7rem",
+                    fontWeight: "bold",
                     borderRadius: 1,
-                    padding: '4px 6px',
+                    padding: "4px 6px",
                   },
                 }}
               />
@@ -116,81 +115,85 @@ const ProductCard: React.FC<ProductCardProps> = memo(
           </Box>
 
           <CardContent sx={{ p: 2 }}>
-            <Typography variant='h6' sx={{ fontWeight: 'bold', mb: 1 }}>
+            <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
               {product.name}
             </Typography>
             <Box
               sx={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, auto)',
+                display: "grid",
+                gridTemplateColumns: "repeat(2, auto)",
                 gap: 1,
                 mb: 1,
               }}
             >
               <Typography
-                variant='body2'
-                color='text.secondary'
+                variant="body2"
+                color="text.secondary"
                 sx={{ fontWeight: 500 }}
               >
                 Sub Category
               </Typography>
-              <Typography variant='body2'>
-                {product.sub_category || '-'}
+              <Typography variant="body2">
+                {product.sub_category || "-"}
               </Typography>
               <Typography
-                variant='body2'
-                color='text.secondary'
+                variant="body2"
+                color="text.secondary"
                 sx={{ fontWeight: 500 }}
               >
                 Series
               </Typography>
-              <Typography variant='body2'>{product.series || '-'}</Typography>
+              <Typography variant="body2">{product.series || "-"}</Typography>
               <Typography
-                variant='body2'
-                color='text.secondary'
+                variant="body2"
+                color="text.secondary"
                 sx={{ fontWeight: 500 }}
               >
                 SKU
               </Typography>
-              <Typography variant='body2'>
-                {product.cf_sku_code || '-'}
+              <Typography variant="body2">
+                {product.cf_sku_code || "-"}
               </Typography>
+              {showUPC && (
+                <>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontWeight: 500 }}
+                  >
+                    UPC Code
+                  </Typography>
+                  <Typography variant="body2">
+                    {product.upc_code || "-"}
+                  </Typography>
+                </>
+              )}
               <Typography
-                variant='body2'
-                color='text.secondary'
-                sx={{ fontWeight: 500 }}
-              >
-                UPC Code
-              </Typography>
-              <Typography variant='body2'>
-                {product.upc_code || '-'}
-              </Typography>
-              <Typography
-                variant='body2'
-                color='text.secondary'
+                variant="body2"
+                color="text.secondary"
                 sx={{ fontWeight: 500 }}
               >
                 Price
               </Typography>
-              <Typography variant='body2'>₹{product.rate}</Typography>
+              <Typography variant="body2">₹{product.rate}</Typography>
               <Typography
-                variant='body2'
-                color='text.secondary'
+                variant="body2"
+                color="text.secondary"
                 sx={{ fontWeight: 500 }}
               >
                 Stock
               </Typography>
-              <Typography variant='body2'>{product.stock}</Typography>
+              <Typography variant="body2">{product.stock}</Typography>
               {!isShared ? (
                 <>
                   <Typography
-                    variant='body2'
-                    color='text.secondary'
+                    variant="body2"
+                    color="text.secondary"
                     sx={{ fontWeight: 500 }}
                   >
                     Margin
                   </Typography>
-                  <Typography variant='body2'>
+                  <Typography variant="body2">
                     {specialMargins[productId]
                       ? specialMargins[productId]
                       : customerMargin}
@@ -198,21 +201,21 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 </>
               ) : null}
               <Typography
-                variant='body2'
-                color='text.secondary'
+                variant="body2"
+                color="text.secondary"
                 sx={{ fontWeight: 500 }}
               >
                 Selling Price
               </Typography>
-              <Typography variant='body2'>₹{sellingPrice}</Typography>
+              <Typography variant="body2">₹{sellingPrice}</Typography>
               <Typography
-                variant='body2'
-                color='text.secondary'
+                variant="body2"
+                color="text.secondary"
                 sx={{ fontWeight: 500 }}
               >
                 GST
               </Typography>
-              <Typography variant='body2'>
+              <Typography variant="body2">
                 {
                   product?.item_tax_preferences[
                     product?.item_tax_preferences.length - 1
@@ -223,13 +226,13 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               {selectedProduct && (
                 <>
                   <Typography
-                    variant='body2'
-                    color='text.secondary'
+                    variant="body2"
+                    color="text.secondary"
                     sx={{ fontWeight: 800 }}
                   >
                     Item Total
                   </Typography>
-                  <Typography variant='body2' fontWeight='bold'>
+                  <Typography variant="body2" fontWeight="bold">
                     ₹{itemTotal}
                   </Typography>
                 </>
@@ -238,9 +241,9 @@ const ProductCard: React.FC<ProductCardProps> = memo(
             <Box
               sx={{
                 mt: 2,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
               }}
             >
               <QuantitySelector
@@ -253,14 +256,14 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               />
             </Box>
             {isQuantityExceedingStock && (
-              <Typography variant='caption' color='error'>
+              <Typography variant="caption" color="error">
                 Exceeds stock!
               </Typography>
             )}
             <Box mt={2}>
               <Button
-                variant='contained'
-                color={selectedProduct ? 'error' : 'primary'}
+                variant="contained"
+                color={selectedProduct ? "error" : "primary"}
                 startIcon={
                   selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />
                 }
@@ -268,12 +271,12 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 disabled={isDisabled}
                 fullWidth
                 sx={{
-                  textTransform: 'none',
+                  textTransform: "none",
                   borderRadius: 2,
-                  fontWeight: 'bold',
+                  fontWeight: "bold",
                 }}
               >
-                {selectedProduct ? 'Remove from Cart' : 'Add to Cart'}
+                {selectedProduct ? "Remove from Cart" : "Add to Cart"}
               </Button>
             </Box>
           </CardContent>

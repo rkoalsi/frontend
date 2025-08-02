@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, IconButton, TextField } from '@mui/material';
+import { Box, IconButton, TextField, useMediaQuery,   useTheme } from '@mui/material';
 import { Add, Remove } from '@mui/icons-material';
 
 interface QuantitySelectorProps {
@@ -15,8 +15,9 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   onChange,
   disabled = false,
 }) => {
+  const theme = useTheme()
   const [inputValue, setInputValue] = useState<string>(quantity.toString());
-
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   useEffect(() => {
     setInputValue(quantity.toString());
   }, [quantity]);
@@ -86,7 +87,7 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
           inputMode: 'numeric',
           pattern: '[0-9]*',
           max: max,
-          style: { textAlign: 'center', width: '60px' },
+          style: { textAlign: 'center', width:isMobile ?'60px': '30px' },
           'aria-label': 'Quantity',
         }}
         disabled={disabled}
