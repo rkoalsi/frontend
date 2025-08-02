@@ -1,15 +1,15 @@
 // ProductRow.tsx
-import React, { memo } from 'react';
+import React, { memo } from "react";
 import {
   TableRow,
   TableCell,
   Badge,
   IconButton,
   Typography,
-} from '@mui/material';
-import { AddShoppingCart, RemoveShoppingCart } from '@mui/icons-material';
-import QuantitySelector from '../QuantitySelector';
-import ImageCarousel from './ImageCarousel';
+} from "@mui/material";
+import { AddShoppingCart, RemoveShoppingCart } from "@mui/icons-material";
+import QuantitySelector from "../QuantitySelector";
+import ImageCarousel from "./ImageCarousel";
 
 interface SearchResult {
   _id: string;
@@ -37,6 +37,7 @@ interface ProductRowProps {
   handleQuantityChange: (id: string, newQuantity: number) => void;
   handleAddOrRemove: (product: SearchResult) => void;
   isShared?: boolean;
+  showUPC?: boolean;
 }
 
 const ProductRow: React.FC<ProductRowProps> = memo(
@@ -52,13 +53,14 @@ const ProductRow: React.FC<ProductRowProps> = memo(
     handleQuantityChange,
     handleAddOrRemove,
     isShared = false,
+    showUPC = false,
   }) => {
     const productId = product._id;
     const selectedProduct: any = selectedProducts.find(
       (p) => p._id === productId
     );
     const quantity: any =
-      selectedProduct?.quantity || temporaryQuantities[productId] || '';
+      selectedProduct?.quantity || temporaryQuantities[productId] || "";
     const sellingPrice = getSellingPrice(product);
     const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
     const isQuantityExceedingStock = quantity > product.stock;
@@ -69,10 +71,10 @@ const ProductRow: React.FC<ProductRowProps> = memo(
       <TableRow key={productId}>
         <TableCell>
           <Badge
-            badgeContent={product.new ? 'New' : undefined}
-            color='secondary'
-            overlap='rectangular'
-            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            badgeContent={product.new ? "New" : undefined}
+            color="secondary"
+            overlap="rectangular"
+            anchorOrigin={{ vertical: "top", horizontal: "right" }}
           >
             <ImageCarousel
               product={product}
@@ -81,10 +83,9 @@ const ProductRow: React.FC<ProductRowProps> = memo(
           </Badge>
         </TableCell>
         <TableCell>{product.name}</TableCell>
-        <TableCell>{product.sub_category || '-'}</TableCell>
-        <TableCell>{product.series || '-'}</TableCell>
-        <TableCell>{product.cf_sku_code || '-'}</TableCell>
-        <TableCell>{product.upc_code}</TableCell>
+        <TableCell>{product.sub_category || "-"}</TableCell>
+        <TableCell>{product.series || "-"}</TableCell>
+        <TableCell>{product.cf_sku_code || "-"}</TableCell>
         <TableCell>₹{product.rate}</TableCell>
         <TableCell>{product.stock}</TableCell>
         {isShared ? null : (
@@ -113,21 +114,22 @@ const ProductRow: React.FC<ProductRowProps> = memo(
             disabled={isDisabled}
           />
           {isQuantityExceedingStock && (
-            <Typography variant='caption' color='error'>
+            <Typography variant="caption" color="error">
               Exceeds stock!
             </Typography>
           )}
         </TableCell>
-        <TableCell>{selectedProduct ? `₹${itemTotal}` : '-'}</TableCell>
+        <TableCell>{selectedProduct ? `₹${itemTotal}` : "-"}</TableCell>
         <TableCell>
           <IconButton
-            color='primary'
+            color="primary"
             disabled={isDisabled}
             onClick={() => handleAddOrRemove(product)}
           >
             {selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />}
           </IconButton>
         </TableCell>
+        {showUPC && <TableCell>{product.upc_code}</TableCell>}{" "}
       </TableRow>
     );
   }
