@@ -244,65 +244,88 @@ const Products = () => {
   };
 
   // --- NEW: handleImageUpload now expects an array of files ---
-  const handleImageUpload = async (files: File[]) => {
-    if (!selectedProduct || files.length === 0) {
-      toast.error('No product selected or no files provided.');
-      return;
-    }
+const handleImageUpload = async (files: File[] | File) => {
+  // Ensure files is always an array
+  const filesArray = Array.isArray(files) ? files : [files];
+  
+  if (!selectedProduct || filesArray.length === 0) {
+    toast.error('No product selected or no files provided.');
+    return;
+  }
 
-    setUpdating(true);
-    const formData = new FormData();
-    formData.append('product_id', selectedProduct._id);
+  setUpdating(true);
+  const formData = new FormData();
+  formData.append('product_id', selectedProduct._id);
 
-    try {
-      let response;
-      if (files.length === 1) {
-        // Single file upload
-        formData.append('file', files[0]); // 'file' matches backend @router.post("/upload-image")
-        response = await axiosInstance.post('/admin/upload-image', formData, {
+  try {
+    let response;
+    if (filesArray.length === 1) {
+      // Single file upload
+      formData.append('file', filesArray[0]); // 'file' matches backend @router.post("/upload-image")
+      response = await axiosInstance.post('/admin/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    } else {
+      // Multiple file upload
+      filesArray.forEach((file) => {
+        formData.append('files', file); // 'files' matches backend @router.post("/upload-multiple-images")
+      });
+      response = await axiosInstance.post(
+        '/admin/upload-multiple-images',
+        formData,
+        {
           headers: { 'Content-Type': 'multipart/form-data' },
-        });
-      } else {
-        // Multiple file upload
-        files.forEach((file) => {
-          formData.append('files', file); // 'files' matches backend @router.post("/upload-multiple-images")
-        });
-        response = await axiosInstance.post(
-          '/admin/upload-multiple-images',
-          formData,
-          {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          }
-        );
-      }
-
-      const responseData = response.data;
-
-      // Update the selected product's images array with the new set of images
-      // The backend endpoints now return the complete updated `images` array
-      setSelectedProduct((prev: any) =>
-        prev ? { ...prev, images: responseData.images } : prev
+        }
       );
-
-      // Also update the product in the main products list if it's there
-      setProducts((prevProducts) =>
-        prevProducts.map((p) =>
-          p._id === selectedProduct._id
-            ? { ...p, images: responseData.images }
-            : p
-        )
-      );
-      toast.success(responseData.message || 'Image(s) uploaded successfully.');
-    } catch (error: any) {
-      console.error(
-        'Error uploading image(s):',
-        error.response?.data?.detail || error.message
-      );
-      toast.error(error.response?.data?.detail || 'Failed to upload image(s).');
-    } finally {
-      setUpdating(false);
     }
-  };
+
+    const responseData = response.data;
+
+    // Handle different response formats
+    let updatedImages: string[] = [];
+    
+    if (responseData.images && Array.isArray(responseData.images)) {
+      // Standard case - backend returns images array
+      updatedImages = responseData.images;
+    } else if (responseData.image_url) {
+      // Single image upload case - construct array from current product images + new image
+      const currentImages = selectedProduct.images || [];
+      updatedImages = [...currentImages, responseData.image_url];
+    } else if (responseData.uploaded_images && Array.isArray(responseData.uploaded_images)) {
+      // Multiple upload case - construct array from current + uploaded
+      const currentImages = selectedProduct.images || [];
+      updatedImages = [...currentImages, ...responseData.uploaded_images];
+    } else {
+      // Fallback - keep existing images
+      updatedImages = selectedProduct.images || [];
+    }
+
+    // Update the selected product's images array
+    setSelectedProduct((prev: any) =>
+      prev ? { ...prev, images: updatedImages } : prev
+    );
+
+    // Also update the product in the main products list if it's there
+    setProducts((prevProducts) =>
+      prevProducts.map((p) =>
+        p._id === selectedProduct._id
+          ? { ...p, images: updatedImages }
+          : p
+      )
+    );
+
+    toast.success(responseData.message || 'Image(s) uploaded successfully.');
+  } catch (error: any) {
+    console.error(
+      'Error uploading image(s):',
+      error.response?.data?.detail || error.message
+    );
+    toast.error(error.response?.data?.detail || 'Failed to upload image(s).');
+  } finally {
+    setUpdating(false);
+  }
+};
+
 
   // --- NEW: handleImageReorder ---
   const handleImageReorder = async (reorderedImages: string[]) => {
