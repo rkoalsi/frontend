@@ -516,7 +516,7 @@ const Products: React.FC<ProductsProps> = ({
         (p) => p._id === product._id
       );
       const productId = product._id;
-      const quantity = temporaryQuantities[productId] || product.quantity || "";
+      const quantity = temporaryQuantities[productId] || product.quantity || 1;
       if (!isAlreadySelected) {
         const isShared = new URLSearchParams(window.location.search).has(
           "shared"
