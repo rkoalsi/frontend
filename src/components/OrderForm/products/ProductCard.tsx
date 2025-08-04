@@ -161,7 +161,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                     color="text.secondary"
                     sx={{ fontWeight: 500 }}
                   >
-                    UPC Code
+                    UPC/EAN Code
                   </Typography>
                   <Typography variant="body2">
                     {product.upc_code || "-"}
