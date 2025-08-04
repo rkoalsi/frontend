@@ -200,11 +200,11 @@ const Products: React.FC<ProductsProps> = ({
           "Action",
         ];
 
-    // Add UPC Code column if showUPC is true
+    // Add UPC/EAN Code column if showUPC/EAN is true
     if (showUPC) {
-      // Insert UPC Code after SKU
+      // Insert UPC/EAN Code after SKU
       const newColumns = [...baseColumns];
-      newColumns.push("UPC Code");
+      newColumns.push("UPC/EAN Code");
       return newColumns;
     }
 
@@ -1427,7 +1427,7 @@ const Products: React.FC<ProductsProps> = ({
                     const isChecked = e.target.checked;
                     setShowUPC(isChecked);
 
-                    // Scroll to UPC column when enabled
+                    // Scroll to UPC/EAN column when enabled
                     if (isChecked) {
                       setTimeout(() => {
                         upcHeaderRef.current?.scrollIntoView({
@@ -1441,7 +1441,7 @@ const Products: React.FC<ProductsProps> = ({
                   color="primary"
                 />
               }
-              label="Show UPC Code"
+              label="Show UPC/EAN Code"
             />
           </Box>
         </Box>
@@ -1533,7 +1533,7 @@ const Products: React.FC<ProductsProps> = ({
                   {COLUMNS.map((header) => (
                     <TableCell
                       key={header}
-                      ref={header === "UPC Code" ? upcHeaderRef : undefined}
+                      ref={header === "UPC/EAN Code" ? upcHeaderRef : undefined}
                       sx={{
                         position: "sticky",
                         top: 0,
