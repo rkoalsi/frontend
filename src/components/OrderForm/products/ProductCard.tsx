@@ -122,30 +122,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               />
             )}
 
-            {/* Stock Status Badge */}
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 12,
-                right: 12,
-                zIndex: 10,
-              }}
-            >
-              <Chip
-                label={`Stock: ${product.stock}`}
-                size="medium"
-                color={product.stock > 10 ? 'success' : 'error'}
-                variant={product.stock > 10 ? 'filled' : 'outlined'}
-                sx={{
-                  fontWeight: 600,
-                  fontSize: '0.65rem',
-                  backgroundColor: product.stock > 10 ? 'success.main' : 'error.light',
-                  color: 'white',
-                  boxShadow: 1,
-                }}
-              />
-            </Box>
-
+         
             <ImageCarousel
               product={product}
               handleImageClick={handleImageClick}
