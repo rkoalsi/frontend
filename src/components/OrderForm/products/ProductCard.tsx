@@ -226,7 +226,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               </Box>
 
               {/* SKU */}
-              <Box display={'flex'} gap={'8px'} alignItems={'baseline'}>
+              <Box display={'flex'} flexDirection={'column'} alignItems={'baseline'}>
                 <Typography
                   variant="caption"
                   color="text.secondary"
