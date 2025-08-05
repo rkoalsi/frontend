@@ -129,6 +129,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
             />
           </Box>
 
+          
           <CardContent sx={{ p: 3, flexGrow: 1 }}>
             {/* Product Name */}
             <Typography 
@@ -138,10 +139,8 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 mb: 2,
                 color: 'text.primary',
                 lineHeight: 1.3,
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
+                wordWrap: 'break-word',
+                wordBreak: 'break-word',
               }}
             >
               {product.name}
@@ -157,7 +156,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               }}
             >
               {/* Category */}
-              <Box>
+                  <Box>
                 <Typography
                   variant="caption"
                   color="text.secondary"
@@ -173,7 +172,17 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                     sx={{
                       borderRadius: 2,
                       fontSize: '0.78rem',
-                      height: 24,
+                      height: 'auto',
+                      minHeight: 24,
+                      maxWidth: '100%',
+                      '& .MuiChip-label': {
+                        display: 'block',
+                        whiteSpace: 'normal',
+                        wordWrap: 'break-word',
+                        wordBreak: 'break-word',
+                        padding: '6px',
+                        lineHeight: 1.2,
+                      },
                     }}
                   />
                 </Box>
@@ -196,7 +205,17 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                     sx={{
                       borderRadius: 2,
                       fontSize: '0.78rem',
-                      height: 24,
+                      height: 'auto',
+                      minHeight: 24,
+                      maxWidth: '100%',
+                      '& .MuiChip-label': {
+                        display: 'block',
+                        whiteSpace: 'normal',
+                        wordWrap: 'break-word',
+                        wordBreak: 'break-word',
+                        padding: '2px 0',
+                        lineHeight: 1.2,
+                      },
                     }}
                   />
                 </Box>
@@ -223,6 +242,10 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                     fontSize: '0.75rem',
                     display: 'inline-block',
                     color: product.cf_sku_code ? 'text.primary' : 'text.disabled',
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {product.cf_sku_code || "—"}
@@ -246,6 +269,10 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                       fontFamily: 'monospace',
                       fontSize: '0.75rem',
                       color: 'text.secondary',
+                      maxWidth: '100%',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
                     }}
                   >
                     {product.upc_code || "—"}
