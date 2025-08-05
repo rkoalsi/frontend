@@ -129,13 +129,12 @@ const ProductRow: React.FC<ProductRowProps> = memo(
           <Typography
             variant="subtitle1"
             sx={{
-              fontWeight: 600,
-              color: 'text.primary',
-              lineHeight: 1.3,
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
+             fontWeight: 600, 
+                mb: 2,
+                color: 'text.primary',
+                lineHeight: 1.3,
+                wordWrap: 'break-word',
+                wordBreak: 'break-word',
             }}
           >
             {product.name}
