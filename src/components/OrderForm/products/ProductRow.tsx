@@ -93,9 +93,13 @@ const ProductRow: React.FC<ProductRowProps> = memo(
               badgeContent={product.new ? "New" : undefined}
               color="secondary"
               overlap="rectangular"
-              anchorOrigin={{ vertical: "top", horizontal: "right" }}
               sx={{
+                
                 '& .MuiBadge-badge': {
+                  position: "absolute",
+                  top: 18,
+                  right: 24,
+                  zIndex: 10,
                   fontSize: '0.65rem',
                   height: 18,
                   minWidth: 18,
