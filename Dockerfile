@@ -7,6 +7,8 @@ WORKDIR /app
 # Cache package.json and package-lock.json to avoid re-installing dependencies if unchanged
 COPY package.json ./
 
+RUN npm cache clean --force
+
 # Install dependencies
 RUN npm install --verbose
 
