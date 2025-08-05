@@ -105,11 +105,11 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 badgeContent="New"
                 color="secondary"
                 overlap="rectangular"
-                anchorOrigin={{ vertical: "top", horizontal: "right" }}
+                // anchorOrigin={{ vertical: "top", horizontal: "right" }}
                 sx={{
                   position: "absolute",
-                  top: 12,
-                  right: 12,
+                  top: 20,
+                  right: 24,
                   zIndex: 10,
                   "& .MuiBadge-badge": {
                     fontSize: "0.65rem",
