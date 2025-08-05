@@ -679,7 +679,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                               <strong>UPC/EAN Code:</strong> {product.upc_code || '-'}
                             </Typography>
                             <Typography variant='body2' color='textSecondary'>
-                              <strong>Price:</strong> ₹{product.rate}
+                              <strong>MRP:</strong> ₹{product.rate}
                             </Typography>
                             <Typography variant='body2' color='textSecondary'>
                               <strong>Stock:</strong> {product.stock}
