@@ -264,7 +264,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                   color="text.secondary"
                   sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
                 >
-                  Base Price
+                  MRP
                 </Typography>
                 <Typography
                   variant="h6"
