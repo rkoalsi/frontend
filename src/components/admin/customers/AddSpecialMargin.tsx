@@ -348,23 +348,41 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
       <DialogTitle>Add Special Margin to Products</DialogTitle>
       <DialogContent>
         <FormControl fullWidth sx={{ mb: 3 }}>
-          <InputLabel>Filter by Brand</InputLabel>
+          <InputLabel id="brand-filter-label">Filter by Brand</InputLabel>
           <Select
+            id="brand-filter-label"
+            labelId="brand-filter-label"
+            label="Filter by Brand"
             value={selectedBrand}
             onChange={(e) => {
               setSelectedBrand(e.target.value as string);
               setDialogPage(0);
             }}
+            MenuProps={{
+              PaperProps: {
+                style: {
+                  zIndex: 1500, // Higher than Dialog z-index (typically 1300)
+                  maxHeight: 300,
+                },
+              },
+              anchorOrigin: {
+                vertical: 'bottom',
+                horizontal: 'left',
+              },
+              transformOrigin: {
+                vertical: 'top',
+                horizontal: 'left',
+              },
+            }}
           >
-            <MenuItem value=''>All Brands</MenuItem>
-            {brands.map((brand) => (
+            <MenuItem value="">All Brands</MenuItem>
+            {brands && brands.length > 0 && brands.map((brand) => (
               <MenuItem key={brand} value={brand}>
                 {brand}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
-
         <TextField
           label='Search by Name or SKU'
           variant='outlined'
