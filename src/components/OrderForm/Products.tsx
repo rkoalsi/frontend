@@ -642,10 +642,17 @@ const Products: React.FC<ProductsProps> = ({
     setConfirmModalOpen(false);
   };
   const handleImageClick = useCallback((srcList: string[], index: number) => {
-    const formattedImages = srcList.map((src) => ({ src }));
-    setPopupImageSrc(formattedImages);
-    setPopupImageIndex(index);
-    setOpenImagePopup(true);
+    if (Array.isArray(srcList)){
+      const formattedImages = srcList?.map((src) => ({ src }));
+      setPopupImageSrc(formattedImages);
+      setPopupImageIndex(index);
+      setOpenImagePopup(true);
+    } else {
+      setPopupImageSrc([{src:srcList, alt:'main_image'}]);
+      setPopupImageIndex(0);
+      setOpenImagePopup(true);
+    }
+    
   }, []);
 
   const handleClosePopup = useCallback(() => setOpenImagePopup(false), []);
