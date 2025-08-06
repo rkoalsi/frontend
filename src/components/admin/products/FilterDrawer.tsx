@@ -110,19 +110,36 @@ const FilterDrawerComponent = ({
         label='Missing Information Products'
       />
 
-      {/* Brand Filter */}
+      {/* Brand Filter - FIXED */}
       <FormControl fullWidth sx={{ mt: 2 }}>
         <InputLabel id='brand-filter-label'>Brand</InputLabel>
         <Select
+          id='brand-filter-label'
           labelId='brand-filter-label'
           label='Brand'
-          value={filterBrand}
+          value={filterBrand || ''}
           onChange={(e) => setFilterBrand(e.target.value)}
+          MenuProps={{
+            PaperProps: {
+              style: {
+                zIndex: 1400,
+                maxHeight: 200,
+              },
+            },
+            anchorOrigin: {
+              vertical: 'bottom',
+              horizontal: 'left',
+            },
+            transformOrigin: {
+              vertical: 'top',
+              horizontal: 'left',
+            },
+          }}
         >
           <MenuItem value=''>
             <em>All</em>
           </MenuItem>
-          {brandOptions.map((brand: any) => (
+          {brandOptions && brandOptions.length > 0 && brandOptions.map((brand: any) => (
             <MenuItem key={brand} value={brand}>
               {brand}
             </MenuItem>
@@ -130,19 +147,28 @@ const FilterDrawerComponent = ({
         </Select>
       </FormControl>
 
-      {/* Category Filter */}
+      {/* Category Filter - FIXED */}
       <FormControl fullWidth sx={{ mt: 2 }}>
         <InputLabel id='category-filter-label'>Category</InputLabel>
         <Select
+          id='category-filter-label'
           labelId='category-filter-label'
           label='Category'
-          value={filterCategory}
+          value={filterCategory || ''}
           onChange={(e) => setFilterCategory(e.target.value)}
+          MenuProps={{
+            PaperProps: {
+              style: {
+                zIndex: 1400,
+                maxHeight: 200,
+              },
+            },
+          }}
         >
           <MenuItem value=''>
             <em>All</em>
           </MenuItem>
-          {categoryOptions.map((cat: any) => (
+          {categoryOptions && categoryOptions.length > 0 && categoryOptions.map((cat: any) => (
             <MenuItem key={cat} value={cat}>
               {cat}
             </MenuItem>
@@ -150,19 +176,28 @@ const FilterDrawerComponent = ({
         </Select>
       </FormControl>
 
-      {/* Sub Category Filter */}
+      {/* Sub Category Filter - FIXED */}
       <FormControl fullWidth sx={{ mt: 2, mb: 2 }}>
         <InputLabel id='sub-category-filter-label'>Sub Category</InputLabel>
         <Select
+          id='sub-category-filter-label'
           labelId='sub-category-filter-label'
           label='Sub Category'
-          value={filterSubCategory}
+          value={filterSubCategory || ''}
           onChange={(e) => setFilterSubCategory(e.target.value)}
+          MenuProps={{
+            PaperProps: {
+              style: {
+                zIndex: 1400,
+                maxHeight: 200,
+              },
+            },
+          }}
         >
           <MenuItem value=''>
             <em>All</em>
           </MenuItem>
-          {subCategoryOptions.map((subCat: any) => (
+          {subCategoryOptions && subCategoryOptions.length > 0 && subCategoryOptions.map((subCat: any) => (
             <MenuItem key={subCat} value={subCat}>
               {subCat}
             </MenuItem>
