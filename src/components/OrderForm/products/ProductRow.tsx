@@ -94,7 +94,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
               color="secondary"
               overlap="rectangular"
               sx={{
-                
+
                 '& .MuiBadge-badge': {
                   position: "absolute",
                   top: 18,
@@ -134,12 +134,12 @@ const ProductRow: React.FC<ProductRowProps> = memo(
           <Typography
             variant="subtitle1"
             sx={{
-             fontWeight: 600, 
-                mb: 2,
-                color: 'text.primary',
-                lineHeight: 1.3,
-                wordWrap: 'break-word',
-                wordBreak: 'break-word',
+              fontWeight: 600,
+              mb: 2,
+              color: 'text.primary',
+              lineHeight: 1.3,
+              wordWrap: 'break-word',
+              wordBreak: 'break-word',
             }}
           >
             {product.name}
@@ -154,42 +154,65 @@ const ProductRow: React.FC<ProductRowProps> = memo(
             size="small"
             sx={{
               borderRadius: 2,
-              backgroundColor: product.sub_category ? 'action.selected' : 'action.disabled',
-              fontWeight: 500,
-              fontSize: '0.75rem',
+              fontSize: '0.78rem',
+              height: 'auto',
+              minHeight: 24,
+              maxWidth: '100%',
+              '& .MuiChip-label': {
+                display: 'block',
+                wordWrap: 'break-word',
+                wordBreak: 'break-word',
+                padding: '6px',
+                lineHeight: 1.2,
+              },
             }}
           />
         </TableCell>
 
         {/* Series */}
         <TableCell>
-          <Typography
-            variant="body2"
+          <Chip
+            label={product.series || "-"}
+            variant="outlined"
+            size="small"
             sx={{
-              color: product.series ? 'text.primary' : 'text.disabled',
-              fontWeight: product.series ? 500 : 400,
+              borderRadius: 2,
+              fontSize: '0.78rem',
+              height: 'auto',
+              minHeight: 24,
+              maxWidth: '100%',
+              '& .MuiChip-label': {
+                display: 'block',
+                wordWrap: 'break-word',
+                wordBreak: 'break-word',
+                padding: '6px',
+                lineHeight: 1.2,
+              },
             }}
-          >
-            {product.series || "—"}
-          </Typography>
+          />
         </TableCell>
 
         {/* SKU Code */}
         <TableCell>
-          <Typography
-            variant="body2"
+          <Chip
+            label={product.cf_sku_code || "-"}
+            variant="outlined"
+            size="medium"
             sx={{
-              fontFamily: 'monospace',
-              backgroundColor: 'action.selected',
-              px: 1,
-              py: 0.5,
-              borderRadius: 1,
-              fontSize: '0.75rem',
-              color: product.cf_sku_code ? 'text.primary' : 'text.disabled',
+              borderRadius: 2,
+              fontSize: '0.78rem',
+              height: 'auto',
+              minHeight: 24,
+              minWidth: 'fit-content',
+              '& .MuiChip-label': {
+                display: 'block',
+                wordWrap: 'break-word',
+                wordBreak: 'break-word',
+                padding: '6px',
+                lineHeight: 1.2,
+              },
             }}
-          >
-            {product.cf_sku_code || "—"}
-          </Typography>
+          />
         </TableCell>
 
         {/* Rate */}
@@ -224,10 +247,10 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         {!isShared && (
           <TableCell>
             <Typography
-              variant="body2"
+              variant="body1"
               sx={{
                 fontWeight: 600,
-                color: 'info',
+                color: 'black',
                 px: 1,
                 py: 0.5,
                 borderRadius: 1,
@@ -258,7 +281,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         <TableCell>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <Typography
-              variant="body2"
+              variant="body1"
               sx={{ fontWeight: 500 }}
             >
               {product.item_tax_preferences[product?.item_tax_preferences.length - 1].tax_percentage}%
@@ -316,7 +339,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
                 size="large"
                 sx={{
                   borderRadius: 2,
-                  color:'white',
+                  color: 'white',
                   border: '2px solid',
                   borderColor: selectedProduct ? 'error.main' : 'primary.main',
                   backgroundColor: selectedProduct ? 'error.light' : 'primary.light',
@@ -341,16 +364,26 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         {/* UPC Code (if shown) */}
         {showUPC && (
           <TableCell>
-            <Typography
-              variant="body2"
+            <Chip
+              label={product.upc_code || "-"}
+              variant="outlined"
+              size="small"
               sx={{
-                fontFamily: 'monospace',
-                color: 'text.secondary',
-                fontSize: '0.75rem',
+                borderRadius: 2,
+                fontSize: '0.78rem',
+                height: 'auto',
+                minHeight: 24,
+                maxWidth: '100%',
+                '& .MuiChip-label': {
+                  display: 'block',
+                  whiteSpace: 'normal',
+                  wordWrap: 'break-word',
+                  wordBreak: 'break-word',
+                  padding: '6px',
+                  lineHeight: 1.2,
+                },
               }}
-            >
-              {product.upc_code || "—"}
-            </Typography>
+            />
           </TableCell>
         )}
       </TableRow>

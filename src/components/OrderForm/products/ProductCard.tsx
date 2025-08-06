@@ -213,7 +213,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                         whiteSpace: 'normal',
                         wordWrap: 'break-word',
                         wordBreak: 'break-word',
-                        padding: '2px 0',
+                        padding: '6px',
                         lineHeight: 1.2,
                       },
                     }}
@@ -230,26 +230,28 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 >
                   SKU Code
                 </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    mt: 0.5,
-                    fontFamily: 'monospace',
-                    backgroundColor: 'action.selected',
-                    px: 1,
-                    py: 0.5,
-                    borderRadius: 1,
-                    fontSize: '0.75rem',
-                    display: 'inline-block',
-                    color: product.cf_sku_code ? 'text.primary' : 'text.disabled',
-                    maxWidth: '100%',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {product.cf_sku_code || "—"}
-                </Typography>
+               <Box sx={{ mt: 0.5 }}>
+                  <Chip
+                    label={product.cf_sku_code || "-"}
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      borderRadius: 2,
+                      fontSize: '0.78rem',
+                      height: 'auto',
+                      minHeight: 24,
+                      maxWidth: '100%',
+                      '& .MuiChip-label': {
+                        display: 'block',
+                        whiteSpace: 'normal',
+                        wordWrap: 'break-word',
+                        wordBreak: 'break-word',
+                        padding: '6px',
+                        lineHeight: 1.2,
+                      },
+                    }}
+                  />
+                </Box>
               </Box>
 
               {/* UPC (if shown) */}
@@ -262,21 +264,28 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                   >
                     UPC/EAN
                   </Typography>
-                  <Typography
-                    variant="body2"
+                 <Box sx={{ mt: 0.5 }}>
+                  <Chip
+                    label={product.upc_code || "-"}
+                    variant="outlined"
+                    size="small"
                     sx={{
-                      mt: 0.5,
-                      fontFamily: 'monospace',
-                      fontSize: '0.75rem',
-                      color: 'text.secondary',
+                      borderRadius: 2,
+                      fontSize: '0.78rem',
+                      height: 'auto',
+                      minHeight: 24,
                       maxWidth: '100%',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
+                      '& .MuiChip-label': {
+                        display: 'block',
+                        whiteSpace: 'normal',
+                        wordWrap: 'break-word',
+                        wordBreak: 'break-word',
+                        padding: '6px',
+                        lineHeight: 1.2,
+                      },
                     }}
-                  >
-                    {product.upc_code || "—"}
-                  </Typography>
+                  />
+                </Box>
                 </Box>
               )}
             </Box>
