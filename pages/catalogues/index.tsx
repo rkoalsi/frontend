@@ -163,7 +163,7 @@ function Catalogue(props: Props) {
           alignItems: 'center',
           justifyContent: 'center',
           marginTop: '12px',
-          marginBottom: '16px',
+          marginBottom: '24px',
           maxWidth: '900px',
           width: '100%',
         }}
