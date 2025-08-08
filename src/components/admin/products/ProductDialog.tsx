@@ -614,6 +614,20 @@ const ProductDialog = ({
                           {selectedProduct.hsn_or_sac}
                         </Typography>
                       </Box>
+                      {/* Item GST */}
+                      <Box sx={{ mb: 2 }}>
+                        <Typography
+                          variant='subtitle2'
+                          color='textSecondary'
+                          fontWeight={500}
+                        >
+                          GST
+                        </Typography>
+                        <Typography variant='body1' sx={{ mt: 0.5 }}>
+                          {selectedProduct?.item_tax_preferences?.[0]?.tax_percentage || 'N/A'}
+                                  %
+                        </Typography>
+                      </Box>
                     </Box>
                   </Box>
                   {/* Manufacturer  */}
