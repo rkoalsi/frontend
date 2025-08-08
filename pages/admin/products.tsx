@@ -184,35 +184,33 @@ const Products = () => {
   };
 
   /* ----------------------- Toggle & Edit Handlers ----------------------- */
-  const handleToggleActive = async (product: Product) => {
-    try {
-      setUpdating(true); // Set updating true for this action
-      const newStatus = product.status === 'active' ? 'inactive' : 'active';
-      const updatedFields = { status: newStatus };
-      // Assuming you have a specific endpoint for updating product status or details
-      await axiosInstance.put(`/admin/products/${product._id}`, updatedFields); // Assuming a PUT to product ID to update fields
-
-      setProducts((prev: any) =>
-        prev.map((p: any) =>
-          p._id === product._id ? { ...p, ...updatedFields } : p
-        )
-      );
-      if (selectedProduct && selectedProduct._id === product._id) {
-        setSelectedProduct({ ...selectedProduct, ...updatedFields });
-      }
-      toast.success(
-        `Product ${product.item_name} marked as ${
-          newStatus === 'active' ? 'Active' : 'Inactive'
-        }`
-      );
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to update product status.');
-    } finally {
-      setUpdating(false); // Reset updating
-    }
-  };
-
+ const handleToggleActive = async (product: Product) => {
+  try {
+    setUpdating(true);
+    const newStatus = product.status === 'active' ? 'inactive' : 'active';
+    
+    // Create FormData instead of JSON object
+    const formData = new FormData();
+    formData.append('status', newStatus);
+    
+    const resp = await axiosInstance.put(`/admin/products/${product._id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    
+    // Rest of your code remains the same...
+    setProducts((prev: any) =>
+      prev.map((p: any) =>
+        p._id === product._id ? { ...p, status: newStatus } : p
+      )
+    );
+    // ... rest of the function
+  } catch (error) {
+    console.error(error);
+    toast.error('Failed to update product status.');
+  } finally {
+    setUpdating(false);
+  }
+};
   const handleOpenEditModal = (product: Product) => {
     setSelectedProduct(product);
     setOpenEditModal(true);
@@ -478,73 +476,84 @@ const handleImageUpload = async (files: File[] | File) => {
   };
 
   const handleSaveEdit = async () => {
-    if (!selectedProduct) return;
-    const {
-      category,
-      sub_category,
-      series,
-      upc_code,
-      brand,
-      catalogue_order,
-      catalogue_page,
-    } = editableFields;
-    try {
-      setUpdating(true);
-      const updatedFields = {
-        category: category.trim(),
-        sub_category: sub_category.trim(),
-        series: series.trim(),
-        upc_code: upc_code.trim(),
-        brand: brand.trim(),
-        // Parse numbers from string fields
-        catalogue_order: catalogue_order
-          ? parseInt(catalogue_order)
-          : undefined,
-        catalogue_page: catalogue_page ? parseInt(catalogue_page) : undefined,
-      };
+  if (!selectedProduct) return;
+  const {
+    category,
+    sub_category,
+    series,
+    upc_code,
+    brand,
+    catalogue_order,
+    catalogue_page,
+  } = editableFields;
+  try {
+    setUpdating(true);
+    const updatedFields = {
+      category: category.trim(),
+      sub_category: sub_category.trim(),
+      series: series.trim(),
+      upc_code: upc_code.trim(),
+      brand: brand.trim(),
+      catalogue_order: catalogue_order
+        ? parseInt(catalogue_order)
+        : undefined,
+      catalogue_page: catalogue_page ? parseInt(catalogue_page) : undefined,
+    };
 
-      // Only include fields that have changed or are being set for the first time
-      const finalUpdatedFields: { [key: string]: any } = {};
-      for (const key in updatedFields) {
-        if (
-          updatedFields[key as keyof typeof updatedFields] !==
-          (selectedProduct as any)[key]
-        ) {
-          finalUpdatedFields[key] =
-            updatedFields[key as keyof typeof updatedFields];
-        }
+    // Only include fields that have changed or are being set for the first time
+    const finalUpdatedFields: { [key: string]: any } = {};
+    for (const key in updatedFields) {
+      if (
+        updatedFields[key as keyof typeof updatedFields] !==
+        (selectedProduct as any)[key]
+      ) {
+        finalUpdatedFields[key] =
+          updatedFields[key as keyof typeof updatedFields];
       }
-
-      if (Object.keys(finalUpdatedFields).length === 0) {
-        toast.info('No changes to save.');
-        setUpdating(false);
-        handleCloseEditModal();
-        return;
-      }
-
-      await axiosInstance.put(
-        `/admin/products/${selectedProduct._id}`, // Assuming /admin/products/:id is for updating details
-        finalUpdatedFields
-      );
-      setProducts((prev) =>
-        prev.map((p) =>
-          p._id === selectedProduct._id ? { ...p, ...finalUpdatedFields } : p
-        )
-      );
-      setSelectedProduct((prev: any) =>
-        prev ? { ...prev, ...finalUpdatedFields } : prev
-      );
-      toast.success('Product details updated successfully.');
-      handleCloseEditModal();
-    } catch (error: any) {
-      console.error(error);
-      toast.error(
-        error.response?.data?.detail || 'Failed to update product details.'
-      );
-    } finally {
-      setUpdating(false);
     }
-  };
+
+    if (Object.keys(finalUpdatedFields).length === 0) {
+      toast.info('No changes to save.');
+      setUpdating(false);
+      handleCloseEditModal();
+      return;
+    }
+
+    // Create FormData instead of sending JSON
+    const formData = new FormData();
+    for (const [key, value] of Object.entries(finalUpdatedFields)) {
+      if (value !== undefined && value !== null) {
+        formData.append(key, value.toString());
+      }
+    }
+
+    await axiosInstance.put(
+      `/admin/products/${selectedProduct._id}`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }
+    );
+    
+    setProducts((prev) =>
+      prev.map((p) =>
+        p._id === selectedProduct._id ? { ...p, ...finalUpdatedFields } : p
+      )
+    );
+    setSelectedProduct((prev: any) =>
+      prev ? { ...prev, ...finalUpdatedFields } : prev
+    );
+    toast.success('Product details updated successfully.');
+    handleCloseEditModal();
+  } catch (error: any) {
+    console.error(error);
+    toast.error(
+      error.response?.data?.detail || 'Failed to update product details.'
+    );
+  } finally {
+    setUpdating(false);
+  }
+};
 
   const handleDownloadProducts = async () => {
     try {
