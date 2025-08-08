@@ -141,19 +141,6 @@ const GradientBackground = styled(Box)({
   zIndex: -1,
 });
 
-const FloatingOrb = styled(Box)({
-  position: 'absolute',
-  borderRadius: '50%',
-  background:
-    'linear-gradient(45deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))',
-  filter: 'blur(1px)',
-  animation: 'float 6s ease-in-out infinite',
-  '@keyframes float': {
-    '0%, 100%': { transform: 'translateY(0px)' },
-    '50%': { transform: 'translateY(-20px)' },
-  },
-});
-
 const StatusChip = styled(Chip)(({ theme }) => ({
   position: 'absolute',
   top: theme.spacing(1),
