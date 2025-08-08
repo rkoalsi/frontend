@@ -27,6 +27,7 @@ import {
   ShoppingCart,
   WorkHistory,
   Link,
+  LineAxis,
 } from '@mui/icons-material';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -174,6 +175,12 @@ const menuItems = [
     text: 'External Links',
     color: '#ff5252',
     action: 'external_links',
+  },
+  {
+    icon: <LineAxis />,
+    text: 'Customer Analytics',
+    color: '#4db6ac',
+    action: 'customer_analytics',
   },
 ];
 
