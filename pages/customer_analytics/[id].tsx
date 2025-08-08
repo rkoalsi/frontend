@@ -18,7 +18,7 @@ import { useRouter } from 'next/router';
 import axios from 'axios';
 import { AddToPhotos, ContentCopy, Download, Edit } from '@mui/icons-material';
 import Link from 'next/link';
-import AuthContext from '../../../src/components/Auth';
+import AuthContext from '../../src/components/Auth';
 import { toast } from 'react-toastify';
 
 const OrderDetails = () => {
