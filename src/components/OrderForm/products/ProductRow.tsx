@@ -265,7 +265,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         {/* Selling Price */}
         <TableCell>
           <Typography
-            variant="h6"
+            variant="body1"
             sx={{
               fontWeight: 700,
               color: 'primary.main',
@@ -316,7 +316,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         {/* Item Total */}
         <TableCell>
           <Typography
-            variant="h6"
+            variant="body1"
             sx={{
               fontWeight: 700,
               color: selectedProduct ? 'success.dark' : 'text.disabled',
