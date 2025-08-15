@@ -365,11 +365,11 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                   Selling Price
                 </Typography>
                 <Typography
-                  variant="h5"
+                  variant="body1"
                   sx={{
                     fontWeight: 700,
                     color: 'primary.main',
-                    fontSize: '1.1rem',
+                    fontSize: '1rem',
                   }}
                 >
                   ₹{sellingPrice?.toLocaleString()}
@@ -408,11 +408,11 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                       Item Total
                     </Typography>
                     <Typography 
-                      variant="h5" 
+                      variant="body1" 
                       sx={{ 
                         fontWeight: 700,
                         color: 'success.dark',
-                        fontSize: '1.2rem',
+                        fontSize: '1rem',
                       }}
                     >
                       ₹{itemTotal?.toLocaleString()}
