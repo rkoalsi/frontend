@@ -39,6 +39,7 @@ import {
   PendingActionsOutlined,
   BrandingWatermark,
   Link,
+  Analytics,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -168,6 +169,12 @@ const menuItems = [
     text: 'External Links',
     icon: <Link />,
     path: '/admin/external_links',
+    allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
+  },
+  {
+    text: 'Customer Analytics',
+    icon: <Analytics />,
+    path: '/admin/customer_analytics',
     allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
   },
 ];
