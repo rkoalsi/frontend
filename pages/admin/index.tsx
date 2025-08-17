@@ -89,6 +89,7 @@ interface Stats {
   total_billed_customers_6_months: number;
   brands: number;
   external_links: number;
+  total_customer_analytics: number;
   last_updated?: string;
 }
 
@@ -165,6 +166,7 @@ const AdminDashboard = () => {
   );
 
   // Fetch stats on mount
+// Fetch stats on mount
   useEffect(() => {
     fetchStats();
 
@@ -174,12 +176,13 @@ const AdminDashboard = () => {
     }, 5 * 60 * 1000);
 
     return () => clearInterval(refreshInterval);
-  }, [fetchStats]);
+  }, []); // Empty dependency array - only run on mount/unmount
 
   // Handle refresh button click
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     fetchStats(true);
-  };
+  }, [fetchStats]);
+
 
   // Close snackbar
   const handleSnackbarClose = () => {
@@ -549,6 +552,19 @@ const AdminDashboard = () => {
             {
               label: 'All Active Links',
               value: stats.external_links,
+              color: 'info',
+            },
+          ],
+          icon: <Link color='primary' />,
+        },
+        {
+          label: 'Customer Analytics',
+          route: 'customer_analytics',
+          value: stats.total_customer_analytics,
+          subStats: [
+            {
+              label: 'Total Customer Analytics',
+              value: stats.total_customer_analytics,
               color: 'info',
             },
           ],

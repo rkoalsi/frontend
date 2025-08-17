@@ -24,7 +24,7 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx"
-  ],
+, "src/components/admin/customer_analytics"  ],
   "exclude": [
     "node_modules"
   ]
