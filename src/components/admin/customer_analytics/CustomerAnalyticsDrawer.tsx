@@ -368,7 +368,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                   border: '1px solid #e0e0e0',
                 }}
               >
-                {customer.billingAddress || 'No address provided'}
+                {customer.shippingAddress || 'No address provided'}
               </Typography>
             </CardContent>
           </Card>
@@ -691,8 +691,27 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                       Current Financial Year ({new Date().getFullYear()})
                     </Typography>
                   </Paper>
-                </Grid>
               </Grid>
+                    <Grid>
+                      <Paper 
+                        elevation={1} 
+                        sx={{ 
+                          textAlign: 'center', 
+                          p: 3, 
+                          background: 'linear-gradient(135deg, #fff3e0 0%, #fff 100%)',
+                          borderRadius: 3,
+                          border: '1px solid #ffcc02',
+                        }}
+                      >
+                        <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#ff9800', mb: 1 }}>
+                          {formatCurrency(customer.totalSalesCurrentMonth || 0)}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Current Month ({new Date().getMonth()})
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                </Grid>
             </CardContent>
           </Card>
         </Fade>
