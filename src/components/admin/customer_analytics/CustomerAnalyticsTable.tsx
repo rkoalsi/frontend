@@ -409,7 +409,7 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
                             }}
                           >
                             <LocationCity sx={{ fontSize: 14 }} />
-                            {customer.billingAddress || 'No address provided'}
+                            {customer.shippingAddress || 'No address provided'}
                           </Typography>
 
                           <Stack direction="row" spacing={1} flexWrap="wrap">

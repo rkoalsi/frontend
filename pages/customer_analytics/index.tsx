@@ -58,7 +58,7 @@ type PaymentInfo = {
 
 type CustomerAnalyticsType = {
   customerName: string;
-  billingAddress: string;
+  shippingAddress: string;
   status: string;
   tier: string;
   totalSalesCurrentMonth: number;
@@ -435,7 +435,7 @@ const CustomerAnalytics = () => {
     // Then apply search filter (case-insensitive search in name and address)
     const searchMatch = searchTerm === '' ||
       customer.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.billingAddress.toLowerCase().includes(searchTerm.toLowerCase());
+      customer.shippingAddress.toLowerCase().includes(searchTerm.toLowerCase());
 
     return activityMatch && paymentMatch && searchMatch;
   });
@@ -1015,7 +1015,7 @@ const CustomerAnalytics = () => {
                             <Box component='span' sx={{ fontWeight: 600, color: 'text.primary' }}>
                               Address:
                             </Box>{' '}
-                            {customer.billingAddress}
+                            {customer.shippingAddress}
                           </Typography>
 
                           {/* Collapsible content on mobile, always visible on larger screens */}
