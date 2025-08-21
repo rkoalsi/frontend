@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -26,10 +26,19 @@ import {
   Fab,
   useScrollTrigger,
   Grid,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Pagination,
+  ToggleButton,
+  ToggleButtonGroup,
+  LinearProgress,
+  Paper,
+  Alert,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useRouter } from 'next/router';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -40,6 +49,12 @@ import ReceiptIcon from '@mui/icons-material/Receipt';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import GridViewIcon from '@mui/icons-material/GridView';
+import ViewListIcon from '@mui/icons-material/ViewList';
+import ClearIcon from '@mui/icons-material/Clear';
+import InfoIcon from '@mui/icons-material/Info';
 import AuthContext from '../../src/components/Auth';
 import { toast } from 'react-toastify';
 import CustomButton from '../../src/components/common/Button';
@@ -47,13 +62,31 @@ import Header from '../../src/components/common/Header';
 import capitalize from '../../src/util/capitalize';
 import { KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material';
 
+// Types remain the same
 type PaymentInfo = {
   _id: string;
   invoice_number: string;
-  invoice_id: string; // Added invoice_id for API calls
+  invoice_id: string;
   status: string;
   total: number;
   balance: number;
+};
+
+type AllInvoiceInfo = {
+  _id: string;
+  invoice_number: string;
+  date: string;
+  due_date: string;
+  status: string;
+  total: number;
+  balance: number;
+  customer_id: string;
+  invoice_id: string;
+  yearMonth: string;
+  isCurrentMonth: boolean;
+  isCurrentFY: boolean;
+  isLastFY: boolean;
+  isPreviousFY: boolean;
 };
 
 type CustomerAnalyticsType = {
@@ -74,11 +107,13 @@ type CustomerAnalyticsType = {
   hasBilledLast3Months: boolean;
   duePayments: PaymentInfo[];
   notDuePayments: PaymentInfo[];
+  allInvoices: AllInvoiceInfo[];
 };
 
+// Styled Components
 const StyledContainer = styled(Box)(({ theme }) => ({
   width: '100%',
-  maxWidth: '1200px',
+  maxWidth: '1400px',
   margin: '0 auto',
   padding: theme.spacing(1),
   [theme.breakpoints.up('sm')]: {
@@ -93,54 +128,55 @@ const StyledContainer = styled(Box)(({ theme }) => ({
 }));
 
 const CustomerCard = styled(Card)(({ theme }) => ({
-  background: 'rgba(255, 255, 255, 0.95)',
-  backdropFilter: 'blur(10px)',
+  background: 'rgba(255, 255, 255, 0.98)',
+  backdropFilter: 'blur(20px)',
   borderRadius: theme.spacing(2),
-  border: '1px solid rgba(255, 255, 255, 0.2)',
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-  marginBottom: theme.spacing(1.5),
-  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  border: '1px solid rgba(0, 0, 0, 0.08)',
+  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+  marginBottom: theme.spacing(2),
+  transition: 'all 0.2s ease-in-out',
+  overflow: 'hidden',
   '&:hover': {
     transform: 'translateY(-2px)',
-    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+    border: '1px solid rgba(0, 0, 0, 0.12)',
   },
   [theme.breakpoints.up('sm')]: {
-    marginBottom: theme.spacing(2),
-    '&:hover': {
-      transform: 'translateY(-4px)',
-      boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-    },
+    marginBottom: theme.spacing(2.5),
   },
 }));
 
 const MetricCard = styled(Box)(({ theme }) => ({
-  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))',
-  borderRadius: theme.spacing(1),
-  padding: theme.spacing(1),
+  background: 'linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%)',
+  borderRadius: theme.spacing(1.5),
+  padding: theme.spacing(1.5),
   textAlign: 'center',
-  border: '1px solid rgba(0, 0, 0, 0.05)',
+  border: '1px solid rgba(0, 0, 0, 0.06)',
   flex: 1,
-  minWidth: '80px',
+  minWidth: '90px',
+  transition: 'transform 0.2s ease',
+  '&:hover': {
+    transform: 'scale(1.02)',
+  },
   [theme.breakpoints.up('sm')]: {
-    padding: theme.spacing(1.5),
-    minWidth: '100px',
-    borderRadius: theme.spacing(1.5),
+    padding: theme.spacing(2),
+    minWidth: '110px',
   },
   [theme.breakpoints.up('md')]: {
-    padding: theme.spacing(2),
-    minWidth: '120px',
+    minWidth: '130px',
   },
 }));
 
-const PaymentCard = styled(Box)(({ theme }) => ({
-  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02))',
-  borderRadius: theme.spacing(1),
-  padding: theme.spacing(1.5),
-  border: '1px solid rgba(0, 0, 0, 0.08)',
-  marginTop: theme.spacing(1),
+const PaymentCard = styled(Paper)(({ theme }) => ({
+  background: 'linear-gradient(135deg, #fafbfc 0%, #ffffff 100%)',
+  borderRadius: theme.spacing(1.5),
+  padding: theme.spacing(2),
+  border: '1px solid rgba(0, 0, 0, 0.06)',
+  marginTop: theme.spacing(1.5),
+  elevation: 0,
   [theme.breakpoints.up('sm')]: {
-    padding: theme.spacing(2),
-    marginTop: theme.spacing(1.5),
+    padding: theme.spacing(2.5),
+    marginTop: theme.spacing(2),
   },
 }));
 
@@ -148,123 +184,92 @@ const InvoiceChip = styled(Chip)(({ theme }) => ({
   cursor: 'pointer',
   transition: 'all 0.2s ease-in-out',
   '&:hover': {
-    transform: 'scale(1.05)',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+    transform: 'scale(1.03)',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
   },
   '&:active': {
     transform: 'scale(0.98)',
   },
 }));
 
-const PaymentBadge = styled(Badge)(({ theme }) => ({
-  '& .MuiBadge-badge': {
-    right: -3,
-    top: 13,
-    border: `2px solid ${theme.palette.background.paper}`,
-    padding: '0 4px',
-    fontSize: '0.65rem',
-    fontWeight: 700,
-  },
-}));
-
 const FilterContainer = styled(Box)(({ theme }) => ({
-  marginBottom: theme.spacing(2),
+  marginBottom: theme.spacing(3),
+  padding: theme.spacing(2),
+  background: 'rgba(255, 255, 255, 0.9)',
+  borderRadius: theme.spacing(2),
+  backdropFilter: 'blur(10px)',
   [theme.breakpoints.up('sm')]: {
-    marginBottom: theme.spacing(3),
+    padding: theme.spacing(2.5),
   },
 }));
 
-const SearchContainer = styled(Box)(({ theme }) => ({
+const PaginationContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   justifyContent: 'center',
-  marginBottom: theme.spacing(2),
-  padding: theme.spacing(0, 1),
-  [theme.breakpoints.up('sm')]: {
-    padding: 0,
-  },
+  alignItems: 'center',
+  gap: theme.spacing(2),
+  marginTop: theme.spacing(3),
+  padding: theme.spacing(2),
+  background: 'rgba(255, 255, 255, 0.9)',
+  borderRadius: theme.spacing(2),
+  flexWrap: 'wrap',
 }));
 
-const MobileFiltersButton = styled(Button)(({ theme }) => ({
-  marginBottom: theme.spacing(2),
+const StyledAccordion = styled(Accordion)(({ theme }) => ({
+  backgroundColor: 'transparent',
+  boxShadow: 'none',
+  border: '1px solid rgba(0, 0, 0, 0.08)',
   borderRadius: theme.spacing(1),
-  textTransform: 'none',
-  fontWeight: 600,
-  [theme.breakpoints.up('md')]: {
+  marginTop: theme.spacing(1),
+  '&:before': {
     display: 'none',
   },
-}));
-
-const DesktopFiltersRow = styled(Box)(({ theme }) => ({
-  display: 'none',
-  [theme.breakpoints.up('md')]: {
-    display: 'flex',
-    gap: theme.spacing(2),
-    padding: theme.spacing(2),
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    '&::-webkit-scrollbar': {
-      height: '4px',
-    },
-    '&::-webkit-scrollbar-track': {
-      background: 'rgba(255, 255, 255, 0.1)',
-      borderRadius: '2px',
-    },
-    '&::-webkit-scrollbar-thumb': {
-      background: 'rgba(255, 255, 255, 0.3)',
-      borderRadius: '2px',
-    },
+  '&.Mui-expanded': {
+    margin: `${theme.spacing(1)} 0`,
   },
 }));
 
-const TabletFiltersRow = styled(Box)(({ theme }) => ({
-  display: 'none',
-  [theme.breakpoints.between('sm', 'md')]: {
-    display: 'flex',
-    gap: theme.spacing(1.5),
-    padding: theme.spacing(1.5),
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+const StyledAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
+  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))',
+  borderRadius: theme.spacing(1),
+  minHeight: 48,
+  cursor: 'pointer',
+  '&.Mui-expanded': {
+    minHeight: 48,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  '& .MuiAccordionSummary-content': {
+    margin: `${theme.spacing(1)} 0`,
+    alignItems: 'center',
+  },
+  '& .MuiAccordionSummary-expandIconWrapper': {
+    transform: 'rotate(0deg)',
+    transition: theme.transitions.create('transform', {
+      duration: theme.transitions.duration.shortest,
+    }),
+  },
+  '&.Mui-expanded .MuiAccordionSummary-expandIconWrapper': {
+    transform: 'rotate(180deg)',
   },
 }));
 
-const StatsContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  gap: theme.spacing(0.5),
-  flexWrap: 'wrap',
-  justifyContent: 'center',
-  marginTop: theme.spacing(2),
-  padding: theme.spacing(0, 1),
-  [theme.breakpoints.up('sm')]: {
-    gap: theme.spacing(1),
-    marginTop: theme.spacing(3),
-    padding: 0,
-  },
-}));
+// Custom hook for debounced search
+const useDebounce = (value: string, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
-const MetricsContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  gap: theme.spacing(0.5),
-  flexWrap: 'wrap',
-  marginBottom: theme.spacing(1.5),
-  [theme.breakpoints.up('sm')]: {
-    gap: theme.spacing(1),
-    marginBottom: theme.spacing(2),
-  },
-  [theme.breakpoints.up('md')]: {
-    gap: theme.spacing(1.5),
-  },
-}));
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
 
-const CollapsibleContent = styled(Collapse)(({ theme }) => ({
-  [theme.breakpoints.up('sm')]: {
-    '& .MuiCollapse-wrapper': {
-      display: 'block !important',
-    },
-    '& .MuiCollapse-wrapperInner': {
-      display: 'block !important',
-    },
-  },
-}));
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
 
 // Animation variants
 const containerVariants = {
@@ -272,8 +277,8 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.1,
+      staggerChildren: 0.03,
+      delayChildren: 0.05,
     },
   },
 };
@@ -284,13 +289,21 @@ const cardVariants = {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.4,
+      duration: 0.3,
       ease: 'easeOut'
     }
   },
+  exit: {
+    opacity: 0,
+    y: -20,
+    transition: {
+      duration: 0.2
+    }
+  }
 };
 
 const CustomerAnalytics = () => {
+  // State Management
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<CustomerAnalyticsType[]>([]);
   const [filterType, setFilterType] = useState('');
@@ -300,47 +313,110 @@ const CustomerAnalytics = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [expandedCards, setExpandedCards] = useState<{ [key: string]: boolean }>({});
+  const [expandedInvoices, setExpandedInvoices] = useState<{ [key: string]: boolean }>({});
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+
+  // Debounced search
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const router = useRouter();
-  // Page navigation refs
-  const pageTopRef = useRef<HTMLDivElement>(null);
-  const pageBottomRef = useRef<HTMLDivElement>(null);
   const { user }: any = useContext(AuthContext);
   const trigger = useScrollTrigger({
     disableHysteresis: true,
-    threshold: 0,
+    threshold: 100,
   });
 
-  // Toggle card expansion on mobile (only for expand icon)
-  const toggleCardExpansion = (customerName: string, event: React.MouseEvent) => {
-    event.stopPropagation(); // Prevent event bubbling
+  // Memoized filtered customers
+  const filteredCustomers = useMemo(() => {
+    return customers.filter((customer) => {
+      let activityMatch = true;
+      switch (filterType) {
+        case 'active':
+          activityMatch = customer.hasBilledLast3Months;
+          break;
+        case 'inactive':
+          activityMatch = !customer.hasBilledLast3Months;
+          break;
+        case 'recent':
+          activityMatch = customer.hasBilledLastMonth;
+          break;
+        default:
+          activityMatch = true;
+      }
+
+      let paymentMatch = true;
+      if (overdueFilter === 'due') {
+        paymentMatch = customer.duePayments && customer.duePayments.length > 0;
+      } else if (overdueFilter === 'not_due') {
+        paymentMatch = !customer.duePayments || customer.duePayments.length === 0;
+      }
+
+      const searchMatch = debouncedSearchTerm === '' ||
+        customer.customerName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        customer.shippingAddress.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        (customer.salesPerson && customer.salesPerson.toLowerCase().includes(debouncedSearchTerm.toLowerCase()));
+
+      return activityMatch && paymentMatch && searchMatch;
+    });
+  }, [customers, filterType, overdueFilter, debouncedSearchTerm]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedCustomers = filteredCustomers.slice(startIndex, endIndex);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterType, statusFilter, tierFilter, overdueFilter, debouncedSearchTerm]);
+
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
+
+  // Toggle functions
+  const toggleCardExpansion = useCallback((customerName: string, event: React.MouseEvent) => {
+    event.stopPropagation();
     if (isMobile) {
       setExpandedCards(prev => ({
         ...prev,
         [customerName]: !prev[customerName]
       }));
     }
-  };
+  }, [isMobile]);
 
-  // Handle invoice click - API call function
-  const handleInvoiceClick = async (invoiceId: string, invoiceNumber: string, event: React.MouseEvent) => {
+  const toggleInvoiceAccordion = useCallback((customerName: string) => {
+    setExpandedInvoices(prev => ({
+      ...prev,
+      [customerName]: !prev[customerName]
+    }));
+  }, []);
+
+  // Handle invoice click
+  const handleInvoiceClick = useCallback(async (invoiceId: string, invoiceNumber: string, event: React.MouseEvent) => {
+    event.stopPropagation();
     try {
       const resp = await axios.get(
         `${process.env.api_url}/invoices/download_pdf/${invoiceId}`,
         {
-          responseType: 'blob', // Receive the response as binary data
+          responseType: 'blob',
         }
       );
-      // Check if the blob is an actual PDF or an error message
+
       if (resp.data.type !== 'application/pdf') {
-        // Convert to text to read the error response
         toast.error('Invoice Not Created');
         return;
       }
 
-      // Extract filename from headers or set default
       const contentDisposition = resp.headers['content-disposition'];
       let fileName = `${invoiceNumber}.pdf`;
 
@@ -351,7 +427,6 @@ const CustomerAnalytics = () => {
         }
       }
 
-      // Create and trigger download
       const blob = new Blob([resp.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -366,26 +441,17 @@ const CustomerAnalytics = () => {
       console.error('Error downloading PDF:', error);
       toast.error(error.message || 'Failed to download PDF');
     }
-  };
+  }, []);
 
-  // Fetch customer analytics from the backend
-  const getData = async () => {
+  // Fetch data
+  const getData = useCallback(async () => {
     try {
       setLoading(true);
       const queryParams: any = {};
 
-      if (statusFilter) {
-        queryParams.status = statusFilter;
-      }
-
-      if (tierFilter) {
-        queryParams.tier = tierFilter;
-      }
-
-      if (overdueFilter) {
-        queryParams.due_status = overdueFilter;
-      }
-
+      if (statusFilter) queryParams.status = statusFilter;
+      if (tierFilter) queryParams.tier = tierFilter;
+      if (overdueFilter) queryParams.due_status = overdueFilter;
       queryParams.sp_code = user?.data?.code;
 
       const queryString = new URLSearchParams(queryParams).toString();
@@ -401,74 +467,31 @@ const CustomerAnalytics = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, tierFilter, overdueFilter, user?.data?.code]);
 
+  useEffect(() => {
+    getData();
+  }, [getData]);
 
-  // Filter customers based on selected dropdown value and search term
-  const filteredCustomers = customers.filter((customer) => {
-    // First apply activity filter
-    let activityMatch = true;
-    switch (filterType) {
-      case 'active':
-        activityMatch = customer.hasBilledLast3Months;
-        break;
-      case 'inactive':
-        activityMatch = !customer.hasBilledLast3Months;
-        break;
-      case 'recent':
-        activityMatch = customer.hasBilledLastMonth;
-        break;
-      default:
-        activityMatch = true;
-    }
-
-    // Apply payment status filter (in addition to backend filtering)
-    let paymentMatch = true;
-    if (overdueFilter === 'due') {
-      // Only show customers who have due payments
-      paymentMatch = customer.duePayments && customer.duePayments.length > 0;
-    } else if (overdueFilter === 'not_due') {
-      // Only show customers who have NO due payments (all payments are done)
-      paymentMatch = !customer.duePayments || customer.duePayments.length === 0;
-    }
-
-    // Then apply search filter (case-insensitive search in name and address)
-    const searchMatch = searchTerm === '' ||
-      customer.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.shippingAddress.toLowerCase().includes(searchTerm.toLowerCase());
-
-    return activityMatch && paymentMatch && searchMatch;
-  });
-
-  // Get status color for chips
+  // Helper functions
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'active':
-        return 'success';
-      case 'inactive':
-        return 'error';
-      case 'unknown':
-        return 'default';
-      default:
-        return 'primary';
+      case 'active': return 'success';
+      case 'inactive': return 'error';
+      case 'unknown': return 'default';
+      default: return 'primary';
     }
   };
 
-  // Get tier color for chips
   const getTierColor = (tier: string) => {
     switch (tier.toLowerCase()) {
-      case 'a':
-        return 'warning';
-      case 'b':
-        return 'info';
-      case 'c':
-        return 'secondary';
-      default:
-        return 'default';
+      case 'a': return 'warning';
+      case 'b': return 'info';
+      case 'c': return 'secondary';
+      default: return 'default';
     }
   };
 
-  // Get payment status color
   const getPaymentStatusColor = (status: string) => {
     const lowerStatus = status.toLowerCase();
     if (lowerStatus === 'paid') return 'success';
@@ -478,7 +501,15 @@ const CustomerAnalytics = () => {
     return 'default';
   };
 
-  // Format currency
+  const formatStatus = (status: string) => {
+    if (!status) return '';
+    return status
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -488,13 +519,26 @@ const CustomerAnalytics = () => {
     }).format(amount);
   };
 
-  const scrollToTop = useCallback(() => {
-    pageTopRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
 
-  const scrollToBottom = useCallback(() => {
-    pageBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+  // Clear all filters
+  const clearAllFilters = () => {
+    setFilterType('');
+    setStatusFilter('');
+    setTierFilter('');
+    setOverdueFilter('all');
+    setSearchTerm('');
+    setCurrentPage(1);
+  };
+
+  // Check if any filter is active
+  const hasActiveFilters = filterType || statusFilter || tierFilter || overdueFilter !== 'all' || searchTerm;
 
   // Render filter control
   const renderFilterControl = (
@@ -511,21 +555,10 @@ const CustomerAnalytics = () => {
         minWidth: minWidth,
         flexShrink: 0,
         '& .MuiInputLabel-root': {
-          color: isMobile ? 'black' : 'white',
-          fontSize: isMobile ? '0.8rem' : '0.85rem'
+          fontSize: { xs: '0.8rem', sm: '0.875rem' }
         },
         '& .MuiSelect-root': {
-          color: isMobile ? 'black' : 'white',
-          fontSize: isMobile ? '0.8rem' : '0.85rem',
-        },
-        '& .MuiOutlinedInput-notchedOutline': {
-          borderColor: 'rgba(255, 255, 255, 0.6)'
-        },
-        '&:hover .MuiOutlinedInput-notchedOutline': {
-          borderColor: 'rgba(255, 255, 255, 0.8)',
-        },
-        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-          borderColor: isMobile ? 'black' : 'white',
+          fontSize: { xs: '0.8rem', sm: '0.875rem' },
         },
       }}
     >
@@ -544,12 +577,12 @@ const CustomerAnalytics = () => {
     </FormControl>
   );
 
-  // Improved invoice rendering function
+  // Render invoice list
   const renderInvoiceList = (payments: PaymentInfo[], title: string, icon: React.ReactNode, color: 'error' | 'success') => {
     if (!payments || payments.length === 0) return null;
 
     return (
-      <PaymentCard>
+      <PaymentCard elevation={0}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
           {icon}
           <Typography
@@ -573,16 +606,18 @@ const CustomerAnalytics = () => {
                 label={
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', py: 0.5 }}>
                     <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
-                     Invoice Number: {payment.invoice_number}
+                      #{payment.invoice_number}
                     </Typography>
                     <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
-                     Total Amount: {formatCurrency(payment.total)}
+                      {formatCurrency(payment.total)}
                     </Typography>
-                    {color == 'error' && <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
-                     Balance Amount: {formatCurrency(payment.balance)}
-                    </Typography>}
+                    {color === 'error' && (
+                      <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: 'error.main' }}>
+                        Balance: {formatCurrency(payment.balance)}
+                      </Typography>
+                    )}
                     <Typography variant="caption" sx={{ fontSize: '0.65rem', opacity: 0.8 }}>
-                    Status: {capitalize(payment.status)}
+                      {capitalize(payment.status)}
                     </Typography>
                   </Box>
                 }
@@ -599,19 +634,351 @@ const CustomerAnalytics = () => {
                     display: 'block',
                     width: '100%',
                     textAlign: 'left',
-                    paddingLeft: 1,
-                    paddingRight: 1,
                   },
-                  '& .MuiChip-icon': {
-                    marginLeft: 1,
-                    marginRight: 0.5,
-                  }
                 }}
               />
             </Grid>
           ))}
         </Grid>
       </PaymentCard>
+    );
+  };
+
+  // Render all invoices accordion
+  const renderAllInvoicesAccordion = (customer: CustomerAnalyticsType) => {
+    if (!customer.allInvoices || customer.allInvoices.length === 0) return null;
+
+    const sortedInvoices = [...customer.allInvoices].sort((a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    return (
+      <StyledAccordion
+        expanded={expandedInvoices[customer.customerName] || false}
+        onChange={() => toggleInvoiceAccordion(customer.customerName)}
+      >
+        <StyledAccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+            <ListAltIcon sx={{ fontSize: '1.1rem', color: 'primary.main' }} />
+            <Typography
+              variant='body2'
+              sx={{
+                fontWeight: 600,
+                color: 'primary.main',
+                fontSize: { xs: '0.8rem', sm: '0.875rem' }
+              }}
+            >
+              All Invoices ({customer.allInvoices.length})
+            </Typography>
+            <Box sx={{ ml: 'auto', display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+              <Chip
+                label={`Total: ${customer.allInvoices.length}`}
+                size="small"
+                color="primary"
+                sx={{ fontSize: '0.65rem', height: 20 }}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <Chip
+                label={`Paid: ${customer.allInvoices.filter(inv => inv.status.toLowerCase() === 'paid').length}`}
+                size="small"
+                color="success"
+                sx={{ fontSize: '0.65rem', height: 20 }}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <Chip
+                label={`Due: ${customer.allInvoices.filter(inv => inv.balance > 0).length}`}
+                size="small"
+                color="error"
+                sx={{ fontSize: '0.65rem', height: 20 }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </Box>
+          </Box>
+        </StyledAccordionSummary>
+        <AccordionDetails sx={{ pt: 2 }}>
+          <Grid container spacing={1.5}>
+            {sortedInvoices.map((invoice, idx) => (
+              <Grid  key={idx}>
+                <InvoiceChip
+                  icon={<VisibilityIcon sx={{ fontSize: '0.9rem' }} />}
+                  label={
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', py: 0.5 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
+                        {formatDate(invoice.date)} - #{invoice.invoice_number}
+                      </Typography>
+                      <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
+                        {formatCurrency(invoice.total)}
+                      </Typography>
+                      {invoice.balance > 0 && (
+                        <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: 'error.main' }}>
+                          Balance: {formatCurrency(invoice.balance)}
+                        </Typography>
+                      )}
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>
+                        Due: {formatDate(invoice.due_date)}
+                      </Typography>
+                    </Box>
+                  }
+                  size="small"
+                  color={getPaymentStatusColor(invoice.status)}
+                  variant="outlined"
+                  onClick={(event) => handleInvoiceClick(invoice._id, invoice.invoice_number, event)}
+                  sx={{
+                    width: '100%',
+                    height: 'auto',
+                    justifyContent: 'flex-start',
+                    '& .MuiChip-label': {
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                    },
+                  }}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </AccordionDetails>
+      </StyledAccordion>
+    );
+  };
+
+  // Render customer card
+  const renderCustomerCard = (customer: CustomerAnalyticsType, index: number) => {
+    const isExpanded = expandedCards[customer.customerName];
+    const hasDuePayments = customer.duePayments && customer.duePayments.length > 0;
+    const hasNotDuePayments = customer.notDuePayments && customer.notDuePayments.length > 0;
+    const globalIndex = startIndex + index + 1;
+
+    return (
+      <motion.div
+        key={`${customer.customerName}-${index}`}
+        variants={cardVariants}
+        layout
+      >
+        <CustomerCard>
+          <CardContent
+            sx={{
+              p: { xs: 2, sm: 2.5, md: 3 },
+              '&:last-child': { pb: { xs: 2, sm: 2.5, md: 3 } }
+            }}
+          >
+            {/* Header Section */}
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                justifyContent: 'space-between',
+                mb: 2,
+                gap: 1,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                <Typography
+                  variant='body1'
+                  component='h2'
+                  sx={{
+                    fontWeight: 700,
+                    color: 'text.primary',
+                    fontSize: { xs: '1rem', sm: '1.1rem', md: '1.2rem' },
+                  }}
+                >
+                  {globalIndex}. {customer.customerName}
+                </Typography>
+
+                {/* Payment Indicators */}
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                  {hasDuePayments && (
+                    <Tooltip title={`${customer.duePayments.length} due payment(s)`}>
+                      <Badge badgeContent={customer.duePayments.length} color="error">
+                        <WarningIcon sx={{ fontSize: '1.2rem', color: 'error.main' }} />
+                      </Badge>
+                    </Tooltip>
+                  )}
+                  {hasNotDuePayments && (
+                    <Tooltip title={`${customer.notDuePayments.length} paid/current payment(s)`}>
+                      <Badge badgeContent={customer.notDuePayments.length} color="success">
+                        <CheckCircleIcon sx={{ fontSize: '1.2rem', color: 'success.main' }} />
+                      </Badge>
+                    </Tooltip>
+                  )}
+                </Box>
+
+                {isMobile && (
+                  <IconButton
+                    size="small"
+                    sx={{ ml: 'auto' }}
+                    onClick={(event) => toggleCardExpansion(customer.customerName, event)}
+                  >
+                    {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                  </IconButton>
+                )}
+              </Box>
+
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <Chip
+                  label={capitalize(customer.status)}
+                  color={getStatusColor(customer.status)}
+                  size='small'
+                  sx={{ fontWeight: 600, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                />
+                <Chip
+                  label={customer.tier === 'UNDEFINED' ? "No Tier" : `Tier ${customer.tier}`}
+                  color={getTierColor(customer.tier)}
+                  size='small'
+                  sx={{ fontWeight: 600, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                />
+              </Box>
+            </Box>
+
+            {/* Address */}
+            <Typography
+              variant='body2'
+              color='text.secondary'
+              sx={{
+                fontSize: { xs: '0.85rem', sm: '0.9rem' },
+                mb: 1.5
+              }}
+            >
+              <Box component='span' sx={{ fontWeight: 600, color: 'text.primary' }}>
+                Address:
+              </Box>{' '}
+              {customer.shippingAddress}
+            </Typography>
+
+            {/* Collapsible content */}
+            <Collapse in={!isMobile || isExpanded} timeout="auto">
+              <Box>
+                {/* Sales Person */}
+                {customer.salesPerson && (
+                  <Typography
+                    variant='body2'
+                    color='text.secondary'
+                    sx={{
+                      fontSize: { xs: '0.85rem', sm: '0.9rem' },
+                      mb: 2
+                    }}
+                  >
+                    <Box component='span' sx={{ fontWeight: 600, color: 'text.primary' }}>
+                      Sales Person:
+                    </Box>{' '}
+                    {customer.salesPerson}
+                  </Typography>
+                )}
+
+                {/* Financial Metrics */}
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                  <MetricCard>
+                    <Typography variant='caption' color='text.secondary' sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
+                      Current Month
+                    </Typography>
+                    <Typography variant='body2' sx={{ fontWeight: 700, color: 'primary.main', fontSize: { xs: '0.85rem', sm: '0.95rem' }, mt: 0.5 }}>
+                      {formatCurrency(customer.totalSalesCurrentMonth)}
+                    </Typography>
+                  </MetricCard>
+
+                  <MetricCard>
+                    <Typography variant='caption' color='text.secondary' sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
+                      This Year
+                    </Typography>
+                    <Typography variant='body2' sx={{ fontWeight: 700, color: 'success.main', fontSize: { xs: '0.85rem', sm: '0.95rem' }, mt: 0.5 }}>
+                      {formatCurrency(customer.billingTillDateCurrentYear)}
+                    </Typography>
+                  </MetricCard>
+
+                  <MetricCard>
+                    <Typography variant='caption' color='text.secondary' sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
+                      Last FY
+                    </Typography>
+                    <Typography variant='body2' sx={{ fontWeight: 700, color: 'info.main', fontSize: { xs: '0.85rem', sm: '0.95rem' }, mt: 0.5 }}>
+                      {formatCurrency(customer.totalSalesLastFY)}
+                    </Typography>
+                  </MetricCard>
+
+                  <MetricCard>
+                    <Typography variant='caption' color='text.secondary' sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
+                      Prior FY
+                    </Typography>
+                    <Typography variant='body2' sx={{ fontWeight: 700, color: 'info.main', fontSize: { xs: '0.85rem', sm: '0.95rem' }, mt: 0.5 }}>
+                      {formatCurrency(customer.totalSalesPreviousFY)}
+                    </Typography>
+                  </MetricCard>
+
+                  <MetricCard>
+                    <Typography variant='caption' color='text.secondary' sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
+                      Frequency
+                    </Typography>
+                    <Typography variant='body2' sx={{ fontWeight: 700, color: 'warning.main', fontSize: { xs: '0.85rem', sm: '0.95rem' }, mt: 0.5 }}>
+                      {customer.averageOrderFrequencyMonthly.toFixed(1)}/mo
+                    </Typography>
+                  </MetricCard>
+                </Box>
+
+                {/* All Invoices Accordion */}
+                {renderAllInvoicesAccordion(customer)}
+
+                {/* Payment Information */}
+                {(hasDuePayments || hasNotDuePayments) && (
+                  <Box sx={{ mb: 2 }}>
+                    {renderInvoiceList(
+                      customer.duePayments,
+                      'Due Payments',
+                      <WarningIcon sx={{ fontSize: '1rem', color: 'error.main' }} />,
+                      'error'
+                    )}
+                    {renderInvoiceList(
+                      customer.notDuePayments,
+                      'Paid/Current Payments',
+                      <CheckCircleIcon sx={{ fontSize: '1rem', color: 'success.main' }} />,
+                      'success'
+                    )}
+                  </Box>
+                )}
+
+                {/* Activity Indicators */}
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 1.5 }}>
+                  <Chip
+                    label={customer.hasBilledLastMonth ? "✓ Last Month" : "✗ Last Month"}
+                    color={customer.hasBilledLastMonth ? "success" : "default"}
+                    size='small'
+                    variant={customer.hasBilledLastMonth ? "filled" : "outlined"}
+                    sx={{ fontSize: '0.7rem' }}
+                  />
+                  <Chip
+                    label={customer.hasBilledLast45Days ? "✓ Last 45D" : "✗ Last 45D"}
+                    color={customer.hasBilledLast45Days ? "info" : "default"}
+                    size='small'
+                    variant={customer.hasBilledLast45Days ? "filled" : "outlined"}
+                    sx={{ fontSize: '0.7rem' }}
+                  />
+                  <Chip
+                    label={customer.hasBilledLast3Months ? "✓ Last 3M" : "✗ Last 3M"}
+                    color={customer.hasBilledLast3Months ? "primary" : "error"}
+                    size='small'
+                    variant={customer.hasBilledLast3Months ? "filled" : "outlined"}
+                    sx={{ fontSize: '0.7rem' }}
+                  />
+                </Box>
+
+                {/* Last Bill Date */}
+                <Typography
+                  variant='body2'
+                  color='text.secondary'
+                  sx={{
+                    fontSize: { xs: '0.85rem', sm: '0.9rem' },
+                    fontStyle: customer.lastBillDate ? 'normal' : 'italic',
+                  }}
+                >
+                  <Box component='span' sx={{ fontWeight: 600, color: 'text.primary' }}>
+                    Last Billed:
+                  </Box>{' '}
+                  {customer.lastBillDate ? formatDate(customer.lastBillDate) : 'No recent bills'}
+                </Typography>
+              </Box>
+            </Collapse>
+          </CardContent>
+        </CustomerCard>
+      </motion.div>
     );
   };
 
@@ -643,7 +1010,7 @@ const CustomerAnalytics = () => {
             filterType,
             setFilterType,
             [
-              { value: 'all', label: 'All' },
+              { value: '', label: 'All' },
               { value: 'active', label: 'Billed in Last 3 Months' },
               { value: 'inactive', label: 'Not Billed in Last 3 Months' },
               { value: 'recent', label: 'Billed in Last 45 Days' },
@@ -684,60 +1051,39 @@ const CustomerAnalytics = () => {
             ]
           )}
         </Stack>
+
+        <Button
+          variant="outlined"
+          color="error"
+          startIcon={<ClearIcon />}
+          onClick={clearAllFilters}
+          sx={{ mt: 3, width: '100%' }}
+        >
+          Clear All Filters
+        </Button>
       </Box>
     </Drawer>
   );
 
-  useEffect(() => {
-    getData();
-  }, [filterType, statusFilter, tierFilter, overdueFilter]);
-
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        paddingBottom: { xs: 2, sm: 3, md: 4 },
-      }}
-    >
-      <div ref={pageTopRef} />
+    <Box sx={{ minHeight: '100vh', pb: { xs: 2, sm: 3, md: 4 } }}>
       <StyledContainer>
         {/* Header */}
         <Header title='Customer Analytics' showBackButton />
 
-        {/* Filter Controls */}
+        {/* Filters */}
         <FilterContainer>
           {/* Search Bar */}
-          <SearchContainer>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
             <TextField
-              placeholder="Search by name or address..."
+              placeholder="Search customers, addresses, sales person..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               variant="outlined"
               size="small"
               sx={{
                 width: '100%',
-                maxWidth: { xs: '100%', sm: '400px', md: '500px' },
-                '& .MuiInputLabel-root': { color: 'black' },
-                '& .MuiInputBase-input': {
-                  color: 'black',
-                  fontSize: { xs: '0.85rem', sm: '0.9rem' },
-                  '&::placeholder': {
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    opacity: 1,
-                  },
-                },
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'rgba(255, 255, 255, 0.6)'
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'rgba(255, 255, 255, 0.8)',
-                },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'black',
-                },
-                '& .MuiSvgIcon-root': {
-                  color: 'rgba(255, 255, 255, 0.7)',
-                },
+                maxWidth: { xs: '100%', sm: '500px', md: '600px' },
               }}
               InputProps={{
                 startAdornment: (
@@ -745,623 +1091,280 @@ const CustomerAnalytics = () => {
                     <SearchIcon />
                   </InputAdornment>
                 ),
+                endAdornment: searchTerm && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearchTerm('')}>
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ),
               }}
             />
-          </SearchContainer>
-
-          {/* Mobile Filters Button */}
-          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-            <MobileFiltersButton
-              variant="outlined"
-              startIcon={<FilterListIcon />}
-              onClick={() => setMobileFiltersOpen(true)}
-              sx={{
-                color: 'white',
-                borderColor: 'rgba(255, 255, 255, 0.6)',
-                '&:hover': {
-                  borderColor: 'rgba(255, 255, 255, 0.8)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                },
-              }}
-            >
-              Filters
-            </MobileFiltersButton>
           </Box>
 
-          {/* Tablet Filters */}
-          <TabletFiltersRow>
-            {renderFilterControl(
-              'Activity',
-              filterType,
-              setFilterType,
-              [
-                { value: 'all', label: 'All' },
-                { value: 'active', label: 'Billed Last 3M' },
-                { value: 'inactive', label: 'Not Billed Last 3M' },
-                { value: 'recent', label: 'Billed Last 45D' },
-              ],
-              130
-            )}
-            {renderFilterControl(
-              'Status',
-              statusFilter,
-              setStatusFilter,
-              [
-                { value: '', label: 'All' },
-                { value: 'active', label: 'Active' },
-                { value: 'inactive', label: 'Inactive' },
-              ],
-              100
-            )}
-            {renderFilterControl(
-              'Tier',
-              tierFilter,
-              setTierFilter,
-              [
-                { value: '', label: 'All' },
-                { value: 'A', label: 'A' },
-                { value: 'B', label: 'B' },
-                { value: 'C', label: 'C' },
-              ],
-              80
-            )}
-            {renderFilterControl(
-              'Payments',
-              overdueFilter,
-              setOverdueFilter,
-              [
-                { value: 'all', label: 'All' },
-                { value: 'due', label: 'Has Due' },
-                { value: 'not_due', label: 'All Done' },
-              ],
-              110
-            )}
-          </TabletFiltersRow>
+          {/* Mobile Filters Button */}
+          {isMobile && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+              <Button
+                variant="outlined"
+                startIcon={<FilterListIcon />}
+                onClick={() => setMobileFiltersOpen(true)}
+                sx={{ mb: 2 }}
+              >
+                Filters {hasActiveFilters && `(Active)`}
+              </Button>
+              {hasActiveFilters && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<ClearIcon />}
+                  onClick={clearAllFilters}
+                  sx={{ mb: 2 }}
+                >
+                  Clear
+                </Button>
+              )}
+            </Box>
+          )}
 
-          {/* Desktop Filters */}
-          <DesktopFiltersRow>
-            {renderFilterControl(
-              'Activity',
-              filterType,
-              setFilterType,
-              [
-                { value: 'all', label: 'All' },
-                { value: 'active', label: 'Billed in the Last 3 Months' },
-                { value: 'inactive', label: 'Not Billed in the Last 3 Months' },
-                { value: 'recent', label: 'Billed in the last 45 days' },
-              ],
-              200
-            )}
-            {renderFilterControl(
-              'Status',
-              statusFilter,
-              setStatusFilter,
-              [
-                { value: '', label: 'All' },
-                { value: 'active', label: 'Active' },
-                { value: 'inactive', label: 'Inactive' },
-              ]
-            )}
-            {renderFilterControl(
-              'Tier',
-              tierFilter,
-              setTierFilter,
-              [
-                { value: '', label: 'All' },
-                { value: 'A', label: 'A' },
-                { value: 'B', label: 'B' },
-                { value: 'C', label: 'C' },
-              ],
-              120
-            )}
-            {renderFilterControl(
-              'Payment Status',
-              overdueFilter,
-              setOverdueFilter,
-              [
-                { value: 'all', label: 'All' },
-                { value: 'due', label: 'Has Due Payments' },
-                { value: 'not_due', label: 'All Payments Done' },
-              ],
-              180
-            )}
-          </DesktopFiltersRow>
+          {/* Desktop/Tablet Filters */}
+          {!isMobile && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, justifyContent: 'center', alignItems: 'center' }}>
+              {renderFilterControl(
+                'Activity',
+                filterType,
+                setFilterType,
+                [
+                  { value: '', label: 'All Activity' },
+                  { value: 'active', label: 'Active (3M)' },
+                  { value: 'inactive', label: 'Inactive (3M)' },
+                  { value: 'recent', label: 'Recent (45D)' },
+                ],
+                isTablet ? 130 : 160
+              )}
+              {renderFilterControl(
+                'Status',
+                statusFilter,
+                setStatusFilter,
+                [
+                  { value: '', label: 'All Status' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' },
+                ],
+                isTablet ? 110 : 140
+              )}
+              {renderFilterControl(
+                'Tier',
+                tierFilter,
+                setTierFilter,
+                [
+                  { value: '', label: 'All Tiers' },
+                  { value: 'A', label: 'Tier A' },
+                  { value: 'B', label: 'Tier B' },
+                  { value: 'C', label: 'Tier C' },
+                ],
+                isTablet ? 100 : 120
+              )}
+              {renderFilterControl(
+                'Payment',
+                overdueFilter,
+                setOverdueFilter,
+                [
+                  { value: 'all', label: 'All Payments' },
+                  { value: 'due', label: 'Has Due' },
+                  { value: 'not_due', label: 'All Paid' },
+                ],
+                isTablet ? 120 : 150
+              )}
+              {hasActiveFilters && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  size="small"
+                  startIcon={<ClearIcon />}
+                  onClick={clearAllFilters}
+                >
+                  Clear All
+                </Button>
+              )}
+            </Box>
+          )}
+
         </FilterContainer>
+
+        {/* Results Summary */}
+        {!loading && filteredCustomers.length > 0 && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <InfoIcon fontSize="small" />
+              <Typography variant="body2">
+                Showing {startIndex + 1}-{Math.min(endIndex, filteredCustomers.length)} of {filteredCustomers.length} customers
+              </Typography>
+              {hasActiveFilters && (
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  (Filtered from {customers.length} total)
+                </Typography>
+              )}
+            </Box>
+          </Alert>
+        )}
 
         {/* Loading State */}
         {loading ? (
-          <Stack spacing={{ xs: 1.5, sm: 2 }}>
-            {[1, 2, 3].map((item) => (
-              <Skeleton
-                key={item}
-                variant='rectangular'
-                sx={{
-                  borderRadius: 2,
-                  bgcolor: 'rgba(255, 255, 255, 0.1)'
-                }}
-              />
-            ))}
-          </Stack>
+          <>
+            <LinearProgress sx={{ mb: 2 }} />
+            <Stack spacing={2}>
+              {[1, 2, 3, 4, 5].map((item) => (
+                <Skeleton
+                  key={item}
+                  variant='rectangular'
+                  height={180}
+                  sx={{
+                    borderRadius: 2,
+                    bgcolor: 'rgba(0, 0, 0, 0.04)'
+                  }}
+                />
+              ))}
+            </Stack>
+          </>
         ) : (
-          /* Customer List */
-          <motion.div
-            variants={containerVariants}
-            initial='hidden'
-            animate='visible'
-          >
-            {filteredCustomers.length > 0 ? (
-              <Stack spacing={{ xs: 1.5, sm: 2 }}>
-                {filteredCustomers.map((customer, index) => {
-                  const isExpanded = expandedCards[customer.customerName];
-                  const hasDuePayments = customer.duePayments && customer.duePayments.length > 0;
-                  const hasNotDuePayments = customer.notDuePayments && customer.notDuePayments.length > 0;
-
-                  return (
-                    <motion.div
-                      key={`${customer.customerName}-${index}`}
-                      variants={cardVariants}
-                    >
-                      <CustomerCard
-                        onClick={(event) => toggleCardExpansion(customer.customerName, event)}
-                        sx={{ cursor: isMobile ? 'default' : 'pointer' }}
+          <>
+            {/* Customer List */}
+            <AnimatePresence mode="wait">
+              {paginatedCustomers.length > 0 ? (
+                <motion.div
+                  variants={containerVariants}
+                  initial='hidden'
+                  animate='visible'
+                  exit='hidden'
+                >
+                  <Grid container spacing={viewMode === 'grid' ? 2 : 0} width={'100%'}>
+                    {paginatedCustomers.map((customer, index) => (
+                      <Grid 
+                        // item 
+                        // xs={12} 
+                        // md={viewMode === 'grid' ? 6 : 12} 
+                        width={'100%'}
+                        key={`${customer.customerName}-${index}`}
                       >
-                        <CardContent
-                          sx={{
-                            p: { xs: 1.5, sm: 2, md: 3 },
-                            '&:last-child': { pb: { xs: 1.5, sm: 2, md: 3 } }
-                          }}
-                        >
-                          {/* Header Section */}
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              flexDirection: { xs: 'column', sm: 'row' },
-                              alignItems: { xs: 'flex-start', sm: 'center' },
-                              justifyContent: 'space-between',
-                              mb: { xs: 1.5, sm: 2 },
-                              gap: { xs: 1, sm: 0 },
-                            }}
-                          >
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-evenly' : 'flex-start', width: '100%', gap: 1, flex: 1 }}>
-                              <Typography
-                                variant='body1'
-                                component='h2'
-                                sx={{
-                                  fontWeight: 700,
-                                  color: 'text.primary',
-                                  lineHeight: 1.2,
-                                  fontSize: {
-                                    xs: '0.95rem',
-                                    sm: '1.1rem',
-                                    md: '1.25rem'
-                                  },
-                                }}
-                              >
-                                {index + 1}. {customer.customerName}
-                              </Typography>
+                        {renderCustomerCard(customer, index)}
+                      </Grid>
+                    ))}
+                  </Grid>
+                </motion.div>
+              ) : (
+                <Card sx={{
+                  textAlign: 'center',
+                  py: { xs: 4, sm: 6 },
+                  background: 'rgba(255, 255, 255, 0.95)'
+                }}>
+                  <CardContent>
+                    <Typography variant='h6' color='text.secondary' sx={{ mb: 1 }}>
+                      No customers found
+                    </Typography>
+                    <Typography variant='body2' color='text.secondary'>
+                      Try adjusting your filters or search term
+                    </Typography>
+                    {hasActiveFilters && (
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<ClearIcon />}
+                        onClick={clearAllFilters}
+                        sx={{ mt: 2 }}
+                      >
+                        Clear All Filters
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </AnimatePresence>
 
-                              {/* Payment Indicators */}
-                              <Box sx={{ display: 'flex', gap: '12px !important', alignItems: 'center' }}>
-                                {hasDuePayments && (
-                                  <Tooltip title={`${customer.duePayments.length} due payment(s)`}>
-                                    <PaymentBadge
-                                      badgeContent={customer.duePayments.length}
-                                      color="error"
-                                    >
-                                      <WarningIcon sx={{ fontSize: '1.2rem', color: 'error.main' }} />
-                                    </PaymentBadge>
-                                  </Tooltip>
-                                )}
-                                {hasNotDuePayments && (
-                                  <Tooltip title={`${customer.notDuePayments.length} paid/current payment(s)`}>
-                                    <PaymentBadge
-                                      badgeContent={customer.notDuePayments.length}
-                                      color="success"
-                                    >
-                                      <CheckCircleIcon sx={{ fontSize: '1.2rem', color: 'success.main' }} />
-                                    </PaymentBadge>
-                                  </Tooltip>
-                                )}
-                              </Box>
+            {/* Pagination */}
+            {filteredCustomers.length > 0 && (
+              <PaginationContainer>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <FormControl size="small" sx={{ minWidth: 120 }}>
+                    <InputLabel>Items per page</InputLabel>
+                    <Select
+                      value={itemsPerPage}
+                      label="Items per page"
+                      onChange={(e) => {
+                        setItemsPerPage(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <MenuItem value={5}>5</MenuItem>
+                      <MenuItem value={10}>10</MenuItem>
+                      <MenuItem value={20}>20</MenuItem>
+                      <MenuItem value={50}>50</MenuItem>
+                      <MenuItem value={100}>100</MenuItem>
+                    </Select>
+                  </FormControl>
 
-                              {isMobile && (
-                                <IconButton
-                                  size="small"
-                                  sx={{ ml: 'auto', color: 'text.secondary' }}
-                                  onClick={(event) => toggleCardExpansion(customer.customerName, event)}
-                                >
-                                  {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                                </IconButton>
-                              )}
-                            </Box>
+                  <Pagination
+                    count={totalPages}
+                    page={currentPage}
+                    onChange={(e, page) => setCurrentPage(page)}
+                    color="primary"
+                    size={isMobile ? 'small' : 'medium'}
+                    siblingCount={isMobile ? 0 : 1}
+                    boundaryCount={1}
+                    showFirstButton={!isMobile}
+                    showLastButton={!isMobile}
+                  />
+                </Box>
+              </PaginationContainer>
+            )}
 
-                            <Box sx={{
-                              display: 'flex',
-                              gap: 0.5,
-                              flexWrap: 'wrap',
-                              alignSelf: { xs: 'flex-start', sm: 'center' }
-                            }}>
-                              <Chip
-                                label={capitalize(customer.status)}
-                                color={getStatusColor(customer.status)}
-                                size='small'
-                                sx={{
-                                  fontWeight: 600,
-                                  fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                                }}
-                              />
-                              <Chip
-                                label={customer.tier === 'UNDEFINED' ? "No Tier" : `Tier ${customer.tier.toUpperCase()}`}
-                                color={getTierColor(customer.tier)}
-                                size='small'
-                                sx={{
-                                  fontWeight: 600,
-                                  fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                                }}
-                              />
-                            </Box>
-                          </Box>
-
-                          {/* Always visible content on mobile - address only */}
-                          <Typography
-                            variant='body2'
-                            color='text.secondary'
-                            sx={{
-                              fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                              lineHeight: 1.4,
-                              mb: { xs: 1, sm: 2 }
-                            }}
-                          >
-                            <Box component='span' sx={{ fontWeight: 600, color: 'text.primary' }}>
-                              Address:
-                            </Box>{' '}
-                            {customer.shippingAddress}
-                          </Typography>
-
-                          {/* Collapsible content on mobile, always visible on larger screens */}
-                          <CollapsibleContent
-                            in={!isMobile || isExpanded}
-                            timeout="auto"
-                          >
-                            <Box>
-                              {/* Sales Person */}
-                              {customer.salesPerson && (
-                                <Typography
-                                  variant='body2'
-                                  color='text.secondary'
-                                  sx={{
-                                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                                    lineHeight: 1.4,
-                                    mb: { xs: 1.5, sm: 2 }
-                                  }}
-                                >
-                                  <Box component='span' sx={{ fontWeight: 600, color: 'text.primary' }}>
-                                    Sales Person:
-                                  </Box>{' '}
-                                  {customer.salesPerson}
-                                </Typography>
-                              )}
-
-                              {/* Financial Metrics */}
-                              <MetricsContainer>
-                                <MetricCard>
-                                  <Typography
-                                    variant='caption'
-                                    color='text.secondary'
-                                    sx={{
-                                      fontSize: { xs: '0.65rem', sm: '0.7rem' },
-                                      fontWeight: 500,
-                                      textTransform: 'uppercase',
-                                      letterSpacing: 0.5,
-                                      display: 'block',
-                                    }}
-                                  >
-                                    Current Month
-                                  </Typography>
-                                  <Typography
-                                    variant='body2'
-                                    sx={{
-                                      fontWeight: 700,
-                                      color: 'primary.main',
-                                      fontSize: { xs: '0.75rem', sm: '0.9rem', md: '1rem' },
-                                      lineHeight: 1.2,
-                                      mt: 0.5,
-                                    }}
-                                  >
-                                    {formatCurrency(customer.totalSalesCurrentMonth)}
-                                  </Typography>
-                                </MetricCard>
-
-                                <MetricCard>
-                                  <Typography
-                                    variant='caption'
-                                    color='text.secondary'
-                                    sx={{
-                                      fontSize: { xs: '0.65rem', sm: '0.7rem' },
-                                      fontWeight: 500,
-                                      textTransform: 'uppercase',
-                                      letterSpacing: 0.5,
-                                      display: 'block',
-                                    }}
-                                  >
-                                    This Year ({new Date().getFullYear()})
-                                  </Typography>
-                                  <Typography
-                                    variant='body2'
-                                    sx={{
-                                      fontWeight: 700,
-                                      color: 'success.main',
-                                      fontSize: { xs: '0.75rem', sm: '0.9rem', md: '1rem' },
-                                      lineHeight: 1.2,
-                                      mt: 0.5,
-                                    }}
-                                  >
-                                    {formatCurrency(customer.billingTillDateCurrentYear)}
-                                  </Typography>
-                                </MetricCard>
-
-                                <MetricCard>
-                                  <Typography
-                                    variant='caption'
-                                    color='text.secondary'
-                                    sx={{
-                                      fontSize: { xs: '0.65rem', sm: '0.7rem' },
-                                      fontWeight: 500,
-                                      textTransform: 'uppercase',
-                                      letterSpacing: 0.5,
-                                      display: 'block',
-                                    }}
-                                  >
-                                    Last FY ({new Date().getFullYear() - 1})
-                                  </Typography>
-                                  <Typography
-                                    variant='body2'
-                                    sx={{
-                                      fontWeight: 700,
-                                      color: 'info.main',
-                                      fontSize: { xs: '0.75rem', sm: '0.9rem', md: '1rem' },
-                                      lineHeight: 1.2,
-                                      mt: 0.5,
-                                    }}
-                                  >
-                                    {formatCurrency(customer.totalSalesLastFY)}
-                                  </Typography>
-                                </MetricCard>
-
-                                <MetricCard>
-                                  <Typography
-                                    variant='caption'
-                                    color='text.secondary'
-                                    sx={{
-                                      fontSize: { xs: '0.65rem', sm: '0.7rem' },
-                                      fontWeight: 500,
-                                      textTransform: 'uppercase',
-                                      letterSpacing: 0.5,
-                                      display: 'block',
-                                    }}
-                                  >
-                                    Prior FY ({new Date().getFullYear() - 2})
-                                  </Typography>
-                                  <Typography
-                                    variant='body2'
-                                    sx={{
-                                      fontWeight: 700,
-                                      color: 'info.main',
-                                      fontSize: { xs: '0.75rem', sm: '0.9rem', md: '1rem' },
-                                      lineHeight: 1.2,
-                                      mt: 0.5,
-                                    }}
-                                  >
-                                    {formatCurrency(customer.totalSalesPreviousFY)}
-                                  </Typography>
-                                </MetricCard>
-
-                                <MetricCard>
-                                  <Typography
-                                    variant='caption'
-                                    color='text.secondary'
-                                    sx={{
-                                      fontSize: { xs: '0.65rem', sm: '0.7rem' },
-                                      fontWeight: 500,
-                                      textTransform: 'uppercase',
-                                      letterSpacing: 0.5,
-                                      display: 'block',
-                                    }}
-                                  >
-                                    Frequency
-                                  </Typography>
-                                  <Typography
-                                    variant='body2'
-                                    sx={{
-                                      fontWeight: 700,
-                                      color: 'warning.main',
-                                      fontSize: { xs: '0.75rem', sm: '0.9rem', md: '1rem' },
-                                      lineHeight: 1.2,
-                                      mt: 0.5,
-                                    }}
-                                  >
-                                    {customer.averageOrderFrequencyMonthly.toFixed(1)}/mo
-                                  </Typography>
-                                </MetricCard>
-                              </MetricsContainer>
-
-                              {/* Payment Information - Updated with better invoice display */}
-                              {(hasDuePayments || hasNotDuePayments) && (
-                                <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
-                                  {renderInvoiceList(
-                                    customer.duePayments,
-                                    'Due Payments',
-                                    <WarningIcon sx={{ fontSize: '1rem', color: 'error.main' }} />,
-                                    'error'
-                                  )}
-
-                                  {renderInvoiceList(
-                                    customer.notDuePayments,
-                                    'Paid/Current Payments',
-                                    <CheckCircleIcon sx={{ fontSize: '1rem', color: 'success.main' }} />,
-                                    'success'
-                                  )}
-                                </Box>
-                              )}
-
-                              {/* Activity Indicators */}
-                              <Box sx={{
-                                display: 'flex',
-                                gap: { xs: 0.5, sm: 0.5 },
-                                flexWrap: 'wrap',
-                                mb: { xs: 1, sm: 1.5 }
-                              }}>
-                                <Chip
-                                  label={customer.hasBilledLastMonth ? "✓ Last Month" : "✗ Last Month"}
-                                  color={customer.hasBilledLastMonth ? "success" : "default"}
-                                  size='small'
-                                  variant={customer.hasBilledLastMonth ? "filled" : "outlined"}
-                                  sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem' } }}
-                                />
-                                <Chip
-                                  label={customer.hasBilledLast45Days ? "✓ Last 45D" : "✗ Last 45D"}
-                                  color={customer.hasBilledLast45Days ? "info" : "default"}
-                                  size='small'
-                                  variant={customer.hasBilledLast45Days ? "filled" : "outlined"}
-                                  sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem' } }}
-                                />
-                                <Chip
-                                  label={customer.hasBilledLast3Months ? "✓ Last 3M" : "✗ Last 3M"}
-                                  color={customer.hasBilledLast3Months ? "primary" : "error"}
-                                  size='small'
-                                  variant={customer.hasBilledLast3Months ? "filled" : "outlined"}
-                                  sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem' } }}
-                                />
-                              </Box>
-
-                              {/* Last Bill Date */}
-                              <Typography
-                                variant='body2'
-                                color='text.secondary'
-                                sx={{
-                                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                                  fontStyle: customer.lastBillDate ? 'normal' : 'italic',
-                                }}
-                              >
-                                <Box component='span' sx={{ fontWeight: 600, color: 'text.primary' }}>
-                                  Last Billed:
-                                </Box>{' '}
-                                {customer.lastBillDate
-                                  ? new Date(customer.lastBillDate).toLocaleDateString('en-IN', {
-                                    day: 'numeric',
-                                    month: 'short',
-                                    year: 'numeric'
-                                  })
-                                  : 'No recent bills'}
-                              </Typography>
-                            </Box>
-                          </CollapsibleContent>
-                        </CardContent>
-                      </CustomerCard>
-                    </motion.div>
-                  );
-                })}
-              </Stack>
-            ) : (
-              <Card sx={{
-                textAlign: 'center',
-                py: { xs: 4, sm: 6 },
-                background: 'rgba(255, 255, 255, 0.9)'
+            {/* Summary Stats */}
+            {!loading && filteredCustomers.length > 0 && (
+              <Box sx={{
+                display: 'flex',
+                gap: 1,
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                mt: 3,
+                p: 2,
+                background: 'rgba(255, 255, 255, 0.9)',
+                borderRadius: 2,
               }}>
-                <CardContent>
-                  <Typography
-                    variant={'body1'}
-                    color='text.secondary'
-                    sx={{ fontWeight: 500 }}
-                  >
-                    No customers found for the selected filters
-                  </Typography>
-                  <Typography
-                    variant='body2'
-                    color='text.secondary'
-                    sx={{ mt: 1 }}
-                  >
-                    Try adjusting your filter criteria or search term
-                  </Typography>
-                </CardContent>
-              </Card>
+                <Chip
+                  label={`Total: ${filteredCustomers.length}`}
+                  color='primary'
+                  size={isMobile ? 'small' : 'medium'}
+                />
+                <Chip
+                  label={`Active: ${filteredCustomers.filter(c => c.hasBilledLast3Months).length}`}
+                  color='success'
+                  size={isMobile ? 'small' : 'medium'}
+                />
+                <Chip
+                  label={`Inactive: ${filteredCustomers.filter(c => !c.hasBilledLast3Months).length}`}
+                  color='error'
+                  size={isMobile ? 'small' : 'medium'}
+                />
+                <Chip
+                  label={`With Due: ${filteredCustomers.filter(c => c.duePayments?.length > 0).length}`}
+                  color='warning'
+                  size={isMobile ? 'small' : 'medium'}
+                />
+                <Chip
+                  label={`Fully Paid: ${filteredCustomers.filter(c => !c.duePayments || c.duePayments.length === 0).length}`}
+                  color='success'
+                  size={isMobile ? 'small' : 'medium'}
+                />
+              </Box>
             )}
-          </motion.div>
-        )}
-
-        {/* Summary Stats */}
-        {!loading && filteredCustomers.length > 0 && (
-          <StatsContainer>
-            <Chip
-              label={`Total: ${filteredCustomers.length}`}
-              color='primary'
-              size={isMobile ? 'small' : 'medium'}
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '0.7rem', sm: '0.8rem' },
-                color: 'white',
-              }}
-            />
-            <Chip
-              label={`Active: ${filteredCustomers.filter(c => c.hasBilledLast3Months).length}`}
-              color='success'
-              size={isMobile ? 'small' : 'medium'}
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '0.7rem', sm: '0.8rem' },
-                color: 'white',
-              }}
-            />
-            <Chip
-              label={`Inactive: ${filteredCustomers.filter(c => !c.hasBilledLast3Months).length}`}
-              color='error'
-              size={isMobile ? 'small' : 'medium'}
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '0.7rem', sm: '0.8rem' },
-                color: 'white',
-              }}
-            />
-            <Chip
-              label={`With Due: ${filteredCustomers.filter(c => c.duePayments && c.duePayments.length > 0).length}`}
-              color='warning'
-              size={isMobile ? 'small' : 'medium'}
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '0.7rem', sm: '0.8rem' },
-                color: 'white',
-              }}
-            />
-            <Chip
-              label={`Fully Paid: ${filteredCustomers.filter(c => !c.duePayments || c.duePayments.length === 0).length}`}
-              color='success'
-              size={isMobile ? 'small' : 'medium'}
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '0.7rem', sm: '0.8rem' },
-                color: 'white',
-              }}
-            />
-            {searchTerm && (
-              <Chip
-                label={`Search: ${filteredCustomers.length}`}
-                color='info'
-                size={isMobile ? 'small' : 'medium'}
-                sx={{
-                  fontWeight: 700,
-                  fontSize: { xs: '0.7rem', sm: '0.8rem' },
-                  color: 'white',
-                }}
-              />
-            )}
-          </StatsContainer>
+          </>
         )}
 
         {/* Navigation */}
         <Box sx={{
           display: 'flex',
           justifyContent: 'center',
-          mt: { xs: 3, sm: 4 },
+          mt: 4,
           px: { xs: 1, sm: 0 }
         }}>
           <CustomButton
@@ -1374,44 +1377,31 @@ const CustomerAnalytics = () => {
         {/* Mobile Filters Drawer */}
         {renderMobileFilters()}
       </StyledContainer>
-      {/* Navigation Buttons */}
+
+      {/* Floating Action Buttons */}
       <Zoom in={trigger}>
         <Box
           sx={{
             position: 'fixed',
-            bottom: isMobile ? 350 : 16, // Move higher on mobile
-            right: isMobile ? 4 : 16,
+            bottom: { xs: 16, sm: 24 },
+            right: { xs: 16, sm: 24 },
             display: 'flex',
             flexDirection: 'column',
             gap: 1,
-            zIndex: 9999,
+            zIndex: 1000,
           }}
-          className='no-pdf'
         >
           <Tooltip title='Go to Top'>
-            <Fab color='primary'
+            <Fab
+              color='primary'
               size={isMobile ? 'small' : 'medium'}
-              aria-label='scroll to top'
-              onClick={scrollToTop}
-              sx={{ opacity: 0.9 }}
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             >
               <KeyboardArrowUp />
             </Fab>
           </Tooltip>
-          <Tooltip title='Go to Bottom'>
-            <Fab
-              color='primary'
-              size={isMobile ? 'small' : 'medium'}
-              aria-label='scroll to bottom'
-              onClick={scrollToBottom}
-              sx={{ opacity: 0.9 }}
-            >
-              <KeyboardArrowDown />
-            </Fab>
-          </Tooltip>
         </Box>
       </Zoom>
-      <div ref={pageBottomRef} />
     </Box>
   );
 };
