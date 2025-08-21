@@ -40,6 +40,7 @@ import {
   BrandingWatermark,
   Link,
   Analytics,
+  CalendarMonth,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -175,7 +176,13 @@ const menuItems = [
     text: 'Customer Analytics',
     icon: <Analytics />,
     path: '/admin/customer_analytics',
-    allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
+    allowedRoles: ['admin', 'sales_admin'],
+  },
+  {
+    text: 'Employee Attendance',
+    icon: <CalendarMonth />,
+    path: '/admin/employee_attendance',
+    allowedRoles: ['admin', 'sales_admin'],
   },
 ];
 
