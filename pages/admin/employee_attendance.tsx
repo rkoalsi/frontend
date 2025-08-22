@@ -52,6 +52,7 @@ interface Employee {
 
 interface AttendanceRecord {
     created_at: string;
+    check_in_time?: string;
     check_out_time?: string;
     status: string;
     location: string;
@@ -620,12 +621,12 @@ const EmployeeAttendance: React.FC = () => {
                                                                             >
                                                                                 <TableCell>
                                                                                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                                                                        {formatDate(record.created_at)}
+                                                                                        {formatDate(record.check_in_time as any)}
                                                                                     </Typography>
                                                                                 </TableCell>
                                                                                 <TableCell>
                                                                                     <Typography variant="body2" color="success.main" sx={{ fontWeight: 500 }}>
-                                                                                        {formatDateTime(record.created_at)}
+                                                                                        {formatDateTime(record.check_in_time as any)}
                                                                                     </Typography>
                                                                                 </TableCell>
                                                                                 <TableCell>
