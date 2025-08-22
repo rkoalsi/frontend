@@ -116,7 +116,8 @@ const Layout = ({ children }: any) => {
             {user &&
               user.data &&
               (user.data.role.includes('admin') ||
-                user.data.role.includes('catalogue_manager')) &&
+                user.data.role.includes('catalogue_manager')||
+                user.data.role.includes('hr')) &&
               !router.pathname.includes('admin') && (
                 <CustomButton
                   color='primary'

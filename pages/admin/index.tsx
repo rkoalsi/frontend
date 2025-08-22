@@ -90,6 +90,7 @@ interface Stats {
   brands: number;
   external_links: number;
   total_customer_analytics: number;
+  total_attendance_records_today: number;
   last_updated?: string;
 }
 
@@ -570,6 +571,19 @@ const AdminDashboard = () => {
           ],
           icon: <Link color='primary' />,
         },
+        {
+          label: 'Employee Attendance',
+          route: 'employee_attendance',
+          value: stats.total_attendance_records_today,
+          subStats: [
+            {
+              label: `Employee Attendance for Today (${new Date().getDate()})`,
+              value: stats.total_attendance_records_today,
+              color: 'info',
+            },
+          ],
+          icon: <Link color='primary' />,
+        },
       ]
     : [];
 
@@ -588,6 +602,18 @@ const AdminDashboard = () => {
       )
     );
   }
+  if (
+    userRoles.includes('hr') &&
+    !userRoles.includes('admin') &&
+    !userRoles.includes('sales_admin')
+  ) {
+    filteredCards = allCards.filter((card) =>
+      ['employee_attendance'].includes(
+        card.route
+      )
+    );
+  }
+
 
   // Separate cards for smart grouping
   const compactCards = filteredCards.filter(
