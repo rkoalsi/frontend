@@ -182,7 +182,7 @@ const menuItems = [
     text: 'Employee Attendance',
     icon: <CalendarMonth />,
     path: '/admin/employee_attendance',
-    allowedRoles: ['admin', 'sales_admin'],
+    allowedRoles: ['admin', 'sales_admin', 'hr'],
   },
 ];
 
@@ -193,9 +193,10 @@ const getAllowedRoles = (path: string): string[] => {
     path === '/admin/products' ||
     path === '/admin/catalogues' ||
     path === '/admin/announcements' ||
-    path === '/admin/external_links'
+    path === '/admin/external_links'||
+    path === '/admin/employee_attendance'
   ) {
-    return ['admin', 'sales_admin', 'catalogue_manager'];
+    return ['admin', 'sales_admin', 'catalogue_manager', 'hr'];
   }
   // For other admin routes, allow admin and sales_admin
   return ['admin', 'sales_admin'];
