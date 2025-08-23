@@ -110,7 +110,7 @@ interface CardProps {
 }
 
 const AdminDashboard = () => {
-  const { user }: any = useContext(AuthContext);
+  const { user, permissions }: any = useContext(AuthContext);
   const theme: any = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const router = useRouter();
@@ -167,453 +167,436 @@ const AdminDashboard = () => {
   );
 
   // Fetch stats on mount
-// Fetch stats on mount
   useEffect(() => {
-    fetchStats();
+    if (permissions) {
+      fetchStats();
 
-    // Auto-refresh every 5 minutes
-    const refreshInterval = setInterval(() => {
-      fetchStats(false);
-    }, 5 * 60 * 1000);
+      // Auto-refresh every 5 minutes
+      const refreshInterval = setInterval(() => {
+        fetchStats(false);
+      }, 5 * 60 * 1000);
 
-    return () => clearInterval(refreshInterval);
-  }, []); // Empty dependency array - only run on mount/unmount
+      return () => clearInterval(refreshInterval);
+    }
+  }, [permissions, fetchStats]);
 
   // Handle refresh button click
   const handleRefresh = useCallback(() => {
     fetchStats(true);
   }, [fetchStats]);
 
-
   // Close snackbar
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
   };
 
-  // Define the cards with icons; all cards available for admin/sales_admin
-  const allCards: CardProps[] = stats
-    ? [
+  // Define all possible cards - now we'll filter based on backend permissions
+  const getAllCards = (stats: Stats): CardProps[] => [
+    {
+      label: 'Payments Due',
+      route: 'payments_due',
+      value: stats.total_due_payments,
+      subStats: [
         {
-          label: 'Payments Due',
-          route: 'payments_due',
+          label: 'Payments Due Today',
+          value: stats.total_due_payments_today,
+          color: 'warning',
+        },
+        {
+          label: 'Total Payments Due',
           value: stats.total_due_payments,
-          subStats: [
-            {
-              label: 'Payments Due Today',
-              value: stats.total_due_payments_today,
-              color: 'warning',
-            },
-            {
-              label: 'Total Payments Due',
-              value: stats.total_due_payments,
-              color: 'info',
-            },
-          ],
-          icon: <Payment color='primary' />,
-          growth: 5, // Example growth value
+          color: 'info',
+        },
+      ],
+      icon: <Payment color='primary' />,
+      growth: 5,
+    },
+    {
+      label: 'Catalogues',
+      route: 'catalogues',
+      value: stats.active_catalogues + stats.inactive_catalogues,
+      subStats: [
+        {
+          label: 'Active Catalogues',
+          value: stats.active_catalogues,
+          color: 'success',
         },
         {
-          label: 'Catalogues',
-          route: 'catalogues',
-          value: stats.active_catalogues + stats.inactive_catalogues,
-          subStats: [
-            {
-              label: 'Active Catalogues',
-              value: stats.active_catalogues,
-              color: 'success',
-            },
-            {
-              label: 'Inactive Catalogues',
-              value: stats.inactive_catalogues,
-              color: 'error',
-            },
-          ],
-          icon: <LibraryBooks color='primary' />,
-          growth: -2, // Example growth value
+          label: 'Inactive Catalogues',
+          value: stats.inactive_catalogues,
+          color: 'error',
+        },
+      ],
+      icon: <LibraryBooks color='primary' />,
+      growth: -2,
+    },
+    {
+      label: 'Training Videos',
+      route: 'training',
+      value: stats.active_trainings + stats.inactive_trainings,
+      subStats: [
+        {
+          label: 'Active Training Videos',
+          value: stats.active_trainings,
+          color: 'success',
         },
         {
-          label: 'Training Videos',
-          route: 'training',
-          value: stats.active_trainings + stats.inactive_trainings,
-          subStats: [
-            {
-              label: 'Active Training Videos',
-              value: stats.active_trainings,
-              color: 'success',
-            },
-            {
-              label: 'Inactive Training Videos',
-              value: stats.inactive_trainings,
-              color: 'error',
-            },
-          ],
-          icon: <VideoLibrary color='primary' />,
-          growth: 8, // Example growth value
+          label: 'Inactive Training Videos',
+          value: stats.inactive_trainings,
+          color: 'error',
+        },
+      ],
+      icon: <VideoLibrary color='primary' />,
+      growth: 8,
+    },
+    {
+      label: 'Announcements',
+      route: 'announcements',
+      value: stats.active_announcements + stats.inactive_announcements,
+      subStats: [
+        {
+          label: 'Active Announcements',
+          value: stats.active_announcements,
+          color: 'success',
         },
         {
-          label: 'Announcements',
-          route: 'announcements',
-          value: stats.active_announcements + stats.inactive_announcements,
-          subStats: [
-            {
-              label: 'Active Announcements',
-              value: stats.active_announcements,
-              color: 'success',
-            },
-            {
-              label: 'Inactive Announcements',
-              value: stats.inactive_announcements,
-              color: 'error',
-            },
-          ],
-          icon: <Campaign color='primary' />,
-          growth: 0, // Example growth value
+          label: 'Inactive Announcements',
+          value: stats.inactive_announcements,
+          color: 'error',
         },
+      ],
+      icon: <Campaign color='primary' />,
+      growth: 0,
+    },
+    {
+      label: 'Orders (last 24 hours)',
+      route: 'orders',
+      value: stats.recent_orders,
+      subStats: [
         {
-          label: 'Orders (last 24 hours)',
-          route: 'orders',
+          label: 'Total Orders',
           value: stats.recent_orders,
-          subStats: [
-            {
-              label: 'Total Orders',
-              value: stats.recent_orders,
-              color: 'success',
-            },
-            {
-              label: 'Draft Orders',
-              value: stats.orders_draft,
-              color: 'info',
-            },
-            {
-              label: 'Accepted Orders',
-              value: stats.orders_accepted,
-              color: 'success',
-            },
-            {
-              label: 'Declined Orders',
-              value: stats.orders_declined,
-              color: 'error',
-            },
-            {
-              label: 'Invoiced Orders',
-              value: stats.orders_invoiced,
-              color: 'success',
-            },
-          ],
-          icon: <ShoppingCartOutlined color='primary' />,
-          growth: 12, // Example growth value
+          color: 'success',
         },
         {
-          label: 'Products',
-          route: 'products',
+          label: 'Draft Orders',
+          value: stats.orders_draft,
+          color: 'info',
+        },
+        {
+          label: 'Accepted Orders',
+          value: stats.orders_accepted,
+          color: 'success',
+        },
+        {
+          label: 'Declined Orders',
+          value: stats.orders_declined,
+          color: 'error',
+        },
+        {
+          label: 'Invoiced Orders',
+          value: stats.orders_invoiced,
+          color: 'success',
+        },
+      ],
+      icon: <ShoppingCartOutlined color='primary' />,
+      growth: 12,
+    },
+    {
+      label: 'Products',
+      route: 'products',
+      value: stats.total_products,
+      subStats: [
+        {
+          label: 'Active Stock',
+          value: stats.active_stock_products,
+          color: 'success',
+        },
+        {
+          label: 'Active',
+          value: stats.active_products,
+          color: 'success',
+        },
+        {
+          label: 'Inactive',
+          value: stats.inactive_products,
+          color: 'error',
+        },
+        {
+          label: 'Out of Stock',
+          value: stats.out_of_stock_products,
+          color: 'error',
+        },
+        {
+          label: 'Total',
           value: stats.total_products,
-          subStats: [
-            {
-              label: 'Active Stock',
-              value: stats.active_stock_products,
-              color: 'success',
-            },
-            {
-              label: 'Active',
-              value: stats.active_products,
-              color: 'success',
-            },
-            {
-              label: 'Inactive',
-              value: stats.inactive_products,
-              color: 'error',
-            },
-            {
-              label: 'Out of Stock',
-              value: stats.out_of_stock_products,
-              color: 'error',
-            },
-            {
-              label: 'Total',
-              value: stats.total_products,
-              color: 'info',
-            },
-          ],
-          icon: <StorefrontOutlined color='primary' />,
-          growth: 3, // Example growth value
+          color: 'info',
+        },
+      ],
+      icon: <StorefrontOutlined color='primary' />,
+      growth: 3,
+    },
+    {
+      label: 'Sales People',
+      route: 'sales_people',
+      value: stats.total_sales_people,
+      subStats: [
+        {
+          label: 'Active',
+          value: stats.active_sales_people,
+          color: 'success',
         },
         {
-          label: 'Sales People',
-          route: 'sales_people',
+          label: 'Inactive',
+          value: stats.inactive_sales_people,
+          color: 'error',
+        },
+        {
+          label: 'Total',
           value: stats.total_sales_people,
-          subStats: [
-            {
-              label: 'Active',
-              value: stats.active_sales_people,
-              color: 'success',
-            },
-            {
-              label: 'Inactive',
-              value: stats.inactive_sales_people,
-              color: 'error',
-            },
-            {
-              label: 'Total',
-              value: stats.total_sales_people,
-              color: 'info',
-            },
-          ],
-          icon: <PersonOutlineOutlined color='primary' />,
-          growth: -1, // Example growth value
+          color: 'info',
+        },
+      ],
+      icon: <PersonOutlineOutlined color='primary' />,
+      growth: -1,
+    },
+    {
+      label: 'Customers',
+      route: 'customers',
+      value: stats.active_customers + stats.inactive_customers,
+      subStats: [
+        {
+          label: 'Assigned',
+          value: stats.assigned_customers,
+          color: 'success',
         },
         {
-          label: 'Customers',
-          route: 'customers',
-          value: stats.active_customers + stats.inactive_customers,
-          subStats: [
-            {
-              label: 'Assigned',
-              value: stats.assigned_customers,
-              color: 'success',
-            },
-            {
-              label: 'Unassigned',
-              value: stats.unassigned_customers,
-              color: 'error',
-            },
-            {
-              label: 'Active',
-              value: stats.active_customers,
-              color: 'success',
-            },
-            {
-              label: 'Inactive',
-              value: stats.inactive_customers,
-              color: 'error',
-            },
-          ],
-          icon: <PeopleOutlined color='primary' />,
-          growth: 7, // Example growth value
+          label: 'Unassigned',
+          value: stats.unassigned_customers,
+          color: 'error',
         },
         {
-          label: 'Daily Visits (last 24 hours)',
-          route: 'daily_visits',
-          value: stats.submitted_daily_visits + stats.updated_daily_visits,
-          subStats: [
-            {
-              label: 'Submitted Daily Visits',
-              value: stats.submitted_daily_visits,
-              color: 'info',
-            },
-            {
-              label: 'Updated Daily Visits',
-              value: stats.updated_daily_visits,
-              color: 'info',
-            },
-          ],
-          icon: <Checklist color='primary' />,
+          label: 'Active',
+          value: stats.active_customers,
+          color: 'success',
         },
         {
-          label: 'Hooks Categories',
-          route: 'hooks_categories',
-          value: stats.active_hook_categories + stats.inactive_hook_categories,
-          subStats: [
-            {
-              label: 'Active Hook Categories',
-              value: stats.active_hook_categories,
-              color: 'info',
-            },
-            {
-              label: 'Updated Hooks Categories',
-              value: stats.inactive_hook_categories,
-              color: 'info',
-            },
-          ],
-          icon: <Category color='primary' />,
+          label: 'Inactive',
+          value: stats.inactive_customers,
+          color: 'error',
+        },
+      ],
+      icon: <PeopleOutlined color='primary' />,
+      growth: 7,
+    },
+    {
+      label: 'Daily Visits (last 24 hours)',
+      route: 'daily_visits',
+      value: stats.submitted_daily_visits + stats.updated_daily_visits,
+      subStats: [
+        {
+          label: 'Submitted Daily Visits',
+          value: stats.submitted_daily_visits,
+          color: 'info',
         },
         {
-          label: 'Shop Hooks (last 24 hours)',
-          route: 'hooks',
+          label: 'Updated Daily Visits',
+          value: stats.updated_daily_visits,
+          color: 'info',
+        },
+      ],
+      icon: <Checklist color='primary' />,
+    },
+    {
+      label: 'Hooks Categories',
+      route: 'hooks_categories',
+      value: stats.active_hook_categories + stats.inactive_hook_categories,
+      subStats: [
+        {
+          label: 'Active Hook Categories',
+          value: stats.active_hook_categories,
+          color: 'info',
+        },
+        {
+          label: 'Updated Hooks Categories',
+          value: stats.inactive_hook_categories,
+          color: 'info',
+        },
+      ],
+      icon: <Category color='primary' />,
+    },
+    {
+      label: 'Shop Hooks (last 24 hours)',
+      route: 'hooks',
+      value: stats.submitted_shop_hooks,
+      subStats: [
+        {
+          label: 'Submitted Shop Hooks',
           value: stats.submitted_shop_hooks,
-          subStats: [
-            {
-              label: 'Submitted Shop Hooks',
-              value: stats.submitted_shop_hooks,
-              color: 'info',
-            },
-          ],
-          icon: <Phishing color='primary' />,
+          color: 'info',
         },
+      ],
+      icon: <Phishing color='primary' />,
+    },
+    {
+      label: 'Delivery Partners',
+      route: 'delivery_partners',
+      value: stats.delivery_partners,
+      subStats: [
         {
-          label: 'Delivery Partners',
-          route: 'delivery_partners',
+          label: 'All Delivery Partners',
           value: stats.delivery_partners,
-          subStats: [
-            {
-              label: 'All Delivery Partners',
-              value: stats.delivery_partners,
-              color: 'info',
-            },
-          ],
-          icon: <DeliveryDining color='primary' />,
+          color: 'info',
         },
+      ],
+      icon: <DeliveryDining color='primary' />,
+    },
+    {
+      label: 'Return Orders',
+      route: 'return_orders',
+      value: stats.return_orders,
+      subStats: [
         {
-          label: 'Return Orders',
-          route: 'return_orders',
+          label: 'All Return Orders',
           value: stats.return_orders,
-          subStats: [
-            {
-              label: 'All Return Orders',
-              value: stats.return_orders,
-              color: 'info',
-            },
-          ],
-          icon: <KeyboardReturn color='primary' />,
+          color: 'info',
         },
-
+      ],
+      icon: <KeyboardReturn color='primary' />,
+    },
+    {
+      label: 'Expected Reorders',
+      route: 'expected_reorders',
+      value: stats.submitted_expected_reorders,
+      subStats: [
         {
-          label: 'Expected Reorders',
-          route: 'expected_reorders',
+          label: 'Submitted Expected Reorders',
           value: stats.submitted_expected_reorders,
-          subStats: [
-            {
-              label: 'Submitted Expected Reorders',
-              value: stats.submitted_expected_reorders,
-              color: 'info',
-            },
-          ],
-          icon: <Repeat color='primary' />,
+          color: 'info',
         },
+      ],
+      icon: <Repeat color='primary' />,
+    },
+    {
+      label: 'Potential Customers',
+      route: 'potential_customers',
+      value: stats.submitted_potential_customers,
+      subStats: [
         {
-          label: 'Potential Customers',
-          route: 'potential_customers',
+          label: 'Submitted Potential Customers',
           value: stats.submitted_potential_customers,
-          subStats: [
-            {
-              label: 'Submitted Potential Customers',
-              value: stats.submitted_potential_customers,
-              color: 'info',
-            },
-          ],
-          icon: <Insights color='primary' />,
+          color: 'info',
         },
+      ],
+      icon: <Insights color='primary' />,
+    },
+    {
+      label: 'Targeted Customers',
+      route: 'targeted_customers',
+      value: stats.submitted_targeted_customers,
+      subStats: [
         {
-          label: 'Targeted Customers',
-          route: 'targeted_customers',
+          label: 'Submitted Targeted Customers',
           value: stats.submitted_targeted_customers,
-          subStats: [
-            {
-              label: 'Submitted Targeted Customers',
-              value: stats.submitted_targeted_customers,
-              color: 'info',
-            },
-          ],
-          icon: <Radar color='primary' />,
+          color: 'info',
         },
-
+      ],
+      icon: <Radar color='primary' />,
+    },
+    {
+      label: 'Billed Customers',
+      route: 'billed_customers',
+      value: stats.total_billed_customers_6_months,
+      subStats: [
         {
-          label: 'Billed Customers',
-          route: 'billed_customers',
+          label: 'All Billed Customers Last 6 Months',
           value: stats.total_billed_customers_6_months,
-          subStats: [
-            {
-              label: 'All Billed Customers Last 6 Months',
-              value: stats.total_billed_customers_6_months,
-              color: 'info',
-            },
-          ],
-          icon: <PaidOutlined color='primary' />,
+          color: 'info',
         },
+      ],
+      icon: <PaidOutlined color='primary' />,
+    },
+    {
+      label: 'Unbilled Customers',
+      route: 'unbilled_customers',
+      value: stats.total_unbilled_customers_6_months,
+      subStats: [
         {
-          label: 'Unbilled Customers',
-          route: 'unbilled_customers',
+          label: 'All Unbilled Customers Last 6 Months',
           value: stats.total_unbilled_customers_6_months,
-          subStats: [
-            {
-              label: 'All Unbilled Customers Last 6 Months',
-              value: stats.total_unbilled_customers_6_months,
-              color: 'info',
-            },
-          ],
-          icon: <PendingActionsOutlined color='primary' />,
+          color: 'info',
         },
+      ],
+      icon: <PendingActionsOutlined color='primary' />,
+    },
+    {
+      label: 'Brands',
+      route: 'brands',
+      value: stats.brands,
+      subStats: [
         {
-          label: 'Brands',
-          route: 'brands',
+          label: 'All Active Brands',
           value: stats.brands,
-          subStats: [
-            {
-              label: 'All Active Brands',
-              value: stats.brands,
-              color: 'info',
-            },
-          ],
-          icon: <BrandingWatermark color='primary' />,
+          color: 'info',
         },
+      ],
+      icon: <BrandingWatermark color='primary' />,
+    },
+    {
+      label: 'External Links',
+      route: 'external_links',
+      value: stats.external_links,
+      subStats: [
         {
-          label: 'External Links',
-          route: 'external_links',
+          label: 'All Active Links',
           value: stats.external_links,
-          subStats: [
-            {
-              label: 'All Active Links',
-              value: stats.external_links,
-              color: 'info',
-            },
-          ],
-          icon: <Link color='primary' />,
+          color: 'info',
         },
+      ],
+      icon: <Link color='primary' />,
+    },
+    {
+      label: 'Customer Analytics',
+      route: 'customer_analytics',
+      value: stats.total_customer_analytics,
+      subStats: [
         {
-          label: 'Customer Analytics',
-          route: 'customer_analytics',
+          label: 'Total Customer Analytics',
           value: stats.total_customer_analytics,
-          subStats: [
-            {
-              label: 'Total Customer Analytics',
-              value: stats.total_customer_analytics,
-              color: 'info',
-            },
-          ],
-          icon: <Link color='primary' />,
+          color: 'info',
         },
+      ],
+      icon: <Link color='primary' />,
+    },
+    {
+      label: 'Employee Attendance',
+      route: 'employee_attendance',
+      value: stats.total_attendance_records_today,
+      subStats: [
         {
-          label: 'Employee Attendance',
-          route: 'employee_attendance',
+          label: `Employee Attendance for Today (${new Date().getDate()})`,
           value: stats.total_attendance_records_today,
-          subStats: [
-            {
-              label: `Employee Attendance for Today (${new Date().getDate()})`,
-              value: stats.total_attendance_records_today,
-              color: 'info',
-            },
-          ],
-          icon: <Link color='primary' />,
+          color: 'info',
         },
-      ]
-    : [];
+      ],
+      icon: <Link color='primary' />,
+    },
+  ];
 
-  // Filter cards based on user's role
-  const userRoles: string[] = user?.data?.role || [];
-  let filteredCards = allCards;
-
-  if (
-    userRoles.includes('catalogue_manager') &&
-    !userRoles.includes('admin') &&
-    !userRoles.includes('sales_admin')
-  ) {
-    filteredCards = allCards.filter((card) =>
-      ['products', 'catalogues', 'announcements', 'external_links'].includes(
-        card.route
-      )
+  // Filter cards based on backend permissions instead of frontend role checking
+  const getFilteredCards = (allCards: CardProps[]): CardProps[] => {
+    if (!permissions || !permissions.dashboard_sections) {
+      return [];
+    }
+    
+    // Filter cards based on dashboard sections allowed by backend
+    return allCards.filter(card => 
+      permissions.dashboard_sections.includes(card.route)
     );
-  }
-  if (
-    userRoles.includes('hr') &&
-    !userRoles.includes('admin') &&
-    !userRoles.includes('sales_admin')
-  ) {
-    filteredCards = allCards.filter((card) =>
-      ['employee_attendance'].includes(
-        card.route
-      )
-    );
-  }
+  };
 
+  // Get filtered cards
+  const filteredCards = stats ? getFilteredCards(getAllCards(stats)) : [];
 
   // Separate cards for smart grouping
   const compactCards = filteredCards.filter(
@@ -747,6 +730,7 @@ const AdminDashboard = () => {
       </Box>
     </Paper>
   );
+
   const renderDetailedCard = (card: CardProps, idx: number) => (
     <Paper
       key={idx}
@@ -875,6 +859,7 @@ const AdminDashboard = () => {
       </Box>
     </Paper>
   );
+
   // Render compact card group (2x2 square)
   const renderCompactCardGroup = (cardGroup: CardProps[], groupIdx: number) => (
     <Box
@@ -924,6 +909,24 @@ const AdminDashboard = () => {
       </Box>
     </Box>
   );
+
+  // Don't render if permissions are not loaded
+  if (!permissions) {
+    return (
+      <Container maxWidth='xl' sx={{ py: { xs: 2, md: 4 } }}>
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            height: '50vh' 
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth='xl' sx={{ py: { xs: 2, md: 4 } }}>
@@ -975,7 +978,7 @@ const AdminDashboard = () => {
                 gutterBottom
                 sx={{ fontWeight: 700, mb: 1 }}
               >
-                Welcome back, {user?.data?.first_name || 'User'}
+                Welcome back, {user?.first_name || 'User'}
               </Typography>
               <Typography
                 variant='body1'
