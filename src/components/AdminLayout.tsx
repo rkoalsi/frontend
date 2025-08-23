@@ -15,6 +15,7 @@ import {
   CssBaseline,
   useTheme,
   useMediaQuery,
+  CircularProgress,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -45,196 +46,85 @@ import {
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
 
-const menuItems = [
-  {
-    text: 'Dashboard',
-    icon: <Dashboard />,
-    path: '/admin',
-    allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
-  },
-  {
-    text: 'Customers',
-    icon: <CustomersIcon />,
-    path: '/admin/customers',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'Products',
-    icon: <ProductsIcon />,
-    path: '/admin/products',
-    allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
-  },
-  {
-    text: 'Brands',
-    icon: <BrandingWatermark />,
-    path: '/admin/brands',
-    allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
-  },
-  {
-    text: 'Orders',
-    icon: <OrdersIcon />,
-    path: '/admin/orders',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'Sales People',
-    icon: <SalesPeopleIcon />,
-    path: '/admin/sales_people',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'Payments Due',
-    icon: <Payment />,
-    path: '/admin/payments_due',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'Catalogues',
-    icon: <LibraryBooks />,
-    path: '/admin/catalogues',
-    allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
-  },
-  {
-    text: 'Training Videos',
-    icon: <VideoLibrary />,
-    path: '/admin/training',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'Announcements',
-    icon: <Campaign />,
-    path: '/admin/announcements',
-    allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
-  },
-  {
-    text: 'Daily Visits',
-    icon: <Checklist />,
-    path: '/admin/daily_visits',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'Hooks Categories',
-    icon: <Category />,
-    path: '/admin/hooks_categories',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'Shop Hooks',
-    icon: <Phishing />,
-    path: '/admin/hooks',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'Potential Customers',
-    icon: <Insights />,
-    path: '/admin/potential_customers',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'Existing Customers Reorder',
-    icon: <Repeat />,
-    path: '/admin/expected_reorders',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'Targeted Customers',
-    icon: <Radar />,
-    path: '/admin/targeted_customers',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'Delivery Partners',
-    icon: <DeliveryDining />,
-    path: '/admin/delivery_partners',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'Return Orders',
-    icon: <KeyboardReturn />,
-    path: '/admin/return_orders',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'Billed Customers',
-    icon: <PaidOutlined />,
-    path: '/admin/billed_customers',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'Unbilled Customers',
-    icon: <PendingActionsOutlined />,
-    path: '/admin/unbilled_customers',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'External Links',
-    icon: <Link />,
-    path: '/admin/external_links',
-    allowedRoles: ['admin', 'sales_admin', 'catalogue_manager'],
-  },
-  {
-    text: 'Customer Analytics',
-    icon: <Analytics />,
-    path: '/admin/customer_analytics',
-    allowedRoles: ['admin', 'sales_admin'],
-  },
-  {
-    text: 'Employee Attendance',
-    icon: <CalendarMonth />,
-    path: '/admin/employee_attendance',
-    allowedRoles: ['admin', 'sales_admin', 'hr'],
-  },
-];
-
-const getAllowedRoles = (path: string): string[] => {
-  // For products and catalogues pages (and Dashboard) allow additional roles
-  if (
-    path === '/admin' ||
-    path === '/admin/products' ||
-    path === '/admin/catalogues' ||
-    path === '/admin/announcements' ||
-    path === '/admin/external_links'||
-    path === '/admin/employee_attendance'
-  ) {
-    return ['admin', 'sales_admin', 'catalogue_manager', 'hr'];
-  }
-  // For other admin routes, allow admin and sales_admin
-  return ['admin', 'sales_admin'];
+// Icon mapping for dynamic icon rendering
+const iconMap: { [key: string]: React.ReactElement } = {
+  Dashboard: <Dashboard />,
+  CustomersIcon: <CustomersIcon />,
+  ProductsIcon: <ProductsIcon />,
+  OrdersIcon: <OrdersIcon />,
+  SalesPeopleIcon: <SalesPeopleIcon />,
+  Payment: <Payment />,
+  LibraryBooks: <LibraryBooks />,
+  VideoLibrary: <VideoLibrary />,
+  Campaign: <Campaign />,
+  Checklist: <Checklist />,
+  Category: <Category />,
+  Phishing: <Phishing />,
+  Insights: <Insights />,
+  Radar: <Radar />,
+  Repeat: <Repeat />,
+  DeliveryDining: <DeliveryDining />,
+  KeyboardReturn: <KeyboardReturn />,
+  PaidOutlined: <PaidOutlined />,
+  PendingActionsOutlined: <PendingActionsOutlined />,
+  BrandingWatermark: <BrandingWatermark />,
+  Link: <Link />,
+  Analytics: <Analytics />,
+  CalendarMonth: <CalendarMonth />,
 };
 
 const AdminLayout = ({ children }: any) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { user, loading, logout }: any = useContext(AuthContext);
+  const { user, loading, logout, permissions, checkRouteAccess }: any = useContext(AuthContext);
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        toast.error('You are not logged in. Please log in to continue.');
-        router.replace('/login');
-        return;
-      }
+    const checkAccess = async () => {
+      if (!loading) {
+        if (!user) {
+          toast.error('You are not logged in. Please log in to continue.');
+          router.replace('/login');
+          return;
+        }
 
-      const allowedRolesForRoute = getAllowedRoles(router.pathname);
-      if (!allowedRolesForRoute.some((role) => user.data.role.includes(role))) {
-        toast.error('You are not authorized to access this page.');
-        router.replace('/');
+        // Check if user can access current route
+        const canAccess = await checkRouteAccess(router.pathname);
+        if (!canAccess) {
+          toast.error('You are not authorized to access this page.');
+          router.replace('/');
+        }
       }
-    }
-  }, [user, loading, router]);
+      setIsCheckingAccess(false);
+    };
 
-  const allowedRolesForRoute = getAllowedRoles(router.pathname);
-  if (
-    loading ||
-    !user ||
-    !allowedRolesForRoute.some((role) => user.data.role.includes(role))
-  ) {
+    checkAccess();
+  }, [user, loading, router.pathname, checkRouteAccess]);
+
+  // Show loading while checking permissions
+  if (loading || isCheckingAccess || !permissions) {
+    return (
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh' 
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Don't render if user is not authenticated or doesn't have access
+  if (!user) {
     return null;
   }
 
-  const handleMenuItemClick = (path: any) => {
+  const handleMenuItemClick = (path: string) => {
     router.push(path);
   };
 
@@ -247,6 +137,7 @@ const AdminLayout = ({ children }: any) => {
       }}
     >
       <CssBaseline />
+      
       {/* App Bar */}
       <AppBar
         position='fixed'
@@ -279,25 +170,22 @@ const AdminLayout = ({ children }: any) => {
               Admin Dashboard
             </Typography>
           </Box>
+          
           <Box display='flex' gap='16px' flexDirection='row'>
-            {user &&
-              allowedRolesForRoute.some((role) =>
-                user.data.role.includes(role)
-              ) &&
-              router.pathname.includes('/admin') && (
-                <Button
-                  variant='contained'
-                  color='primary'
-                  onClick={() => router.push('/')}
-                  sx={{
-                    textTransform: 'none',
-                    fontWeight: 'bold',
-                    paddingX: 3,
-                  }}
-                >
-                  Home
-                </Button>
-              )}
+            {user && router.pathname.includes('/admin') && (
+              <Button
+                variant='contained'
+                color='primary'
+                onClick={() => router.push('/')}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  paddingX: 3,
+                }}
+              >
+                Home
+              </Button>
+            )}
             <Button
               variant='contained'
               color='error'
@@ -346,51 +234,47 @@ const AdminLayout = ({ children }: any) => {
           }}
         >
           <List>
-            {menuItems
-              .filter((item) =>
-                item.allowedRoles.some((role) => user.data.role.includes(role))
-              )
-              .map(({ text, icon, path }, index) => (
-                <ListItem
-                  component='a'
-                  key={index}
-                  onClick={() => handleMenuItemClick(path)}
-                  sx={{
-                    marginY: 0.5,
-                    paddingX: 2,
-                    paddingY: 1.5,
-                    borderRadius: 2,
-                    cursor: 'pointer',
-                    backgroundColor:
-                      router.pathname === path ? '#78354f' : '#344d69',
+            {permissions.menu_items.map(({ text, icon, path }:any, index:number) => (
+              <ListItem
+                component='a'
+                key={index}
+                onClick={() => handleMenuItemClick(path)}
+                sx={{
+                  marginY: 0.5,
+                  paddingX: 2,
+                  paddingY: 1.5,
+                  borderRadius: 2,
+                  cursor: 'pointer',
+                  backgroundColor:
+                    router.pathname === path ? '#78354f' : '#344d69',
+                  color: 'white',
+                  transition: 'background-color 0.3s, color 0.3s',
+                  '&:hover': {
+                    backgroundColor: '#78354f',
                     color: 'white',
-                    transition: 'background-color 0.3s, color 0.3s',
-                    '&:hover': {
-                      backgroundColor: '#78354f',
-                      color: 'white',
-                    },
+                  },
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    color: 'inherit',
+                    minWidth: 40,
+                    marginRight: 1,
                   }}
                 >
-                  <ListItemIcon
-                    sx={{
-                      color: 'inherit',
-                      minWidth: 40,
-                      marginRight: 1,
-                    }}
-                  >
-                    {icon}
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={text}
-                    primaryTypographyProps={{
-                      color: 'inherit',
-                      fontSize: 16,
-                      fontWeight: '500',
-                      fontFamily: 'Roboto, sans-serif',
-                    }}
-                  />
-                </ListItem>
-              ))}
+                  {iconMap[icon] || <Dashboard />}
+                </ListItemIcon>
+                <ListItemText
+                  primary={text}
+                  primaryTypographyProps={{
+                    color: 'inherit',
+                    fontSize: 16,
+                    fontWeight: '500',
+                    fontFamily: 'Roboto, sans-serif',
+                  }}
+                />
+              </ListItem>
+            ))}
           </List>
         </Box>
       </Drawer>
