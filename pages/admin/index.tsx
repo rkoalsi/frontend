@@ -43,6 +43,7 @@ import {
   PendingActionsOutlined,
   BrandingWatermark,
   Link,
+  MiscellaneousServices,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
@@ -91,6 +92,7 @@ interface Stats {
   external_links: number;
   total_customer_analytics: number;
   total_attendance_records_today: number;
+  permissions: number;
   last_updated?: string;
 }
 
@@ -580,6 +582,19 @@ const AdminDashboard = () => {
         },
       ],
       icon: <Link color='primary' />,
+    },
+    {
+      label: 'User and Permission Management',
+      route: 'permissions',
+      value: stats.permissions,
+      subStats: [
+        {
+          label: `Total Permissions`,
+          value: stats.permissions,
+          color: 'info',
+        },
+      ],
+      icon: <MiscellaneousServices color='primary' />,
     },
   ];
 
