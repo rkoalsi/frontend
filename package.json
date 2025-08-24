@@ -19,6 +19,7 @@
     "@mui/material": "latest",
     "@mui/material-nextjs": "latest",
     "@mui/x-date-pickers": "latest",
+    "@types/react-dom": "^19.1.7",
     "axios": "^1.7.9",
     "clsx": "latest",
     "date-fns": "latest",
@@ -37,7 +38,7 @@
   "devDependencies": {
     "@types/lodash.debounce": "^4.0.9",
     "@types/node": "latest",
-    "@types/react": "^19.0.0",
+    "@types/react": "^19.1.11",
     "@types/react-signature-canvas": "^1.0.6",
     "@types/react-window": "^1.8.8",
     "eslint": "latest",
