@@ -234,7 +234,7 @@ const AdminLayout = ({ children }: any) => {
           }}
         >
           <List>
-            {permissions.menu_items.map(({ text, icon, path }:any, index:number) => (
+            {permissions.menu_items.sort((a:any, b:any) => a.text.localeCompare(b.text)).map(({ text, icon, path }:any, index:number) => (
               <ListItem
                 component='a'
                 key={index}
