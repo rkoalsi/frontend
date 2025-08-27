@@ -254,65 +254,7 @@ const Products: React.FC<ProductsProps> = ({
   );
 
   // ------------------ API Calls ------------------
-  const fetchAllBrands = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(
-        `${process.env.api_url}/products/brands`
-      );
-      const allBrands: { brand: string; url: string }[] =
-        response.data.brands || [];
-      setBrandList(allBrands);
-      if (!activeBrand && allBrands[0]) {
-        setActiveBrand(allBrands[0].brand);
-      }
-      setProductsByBrandCategory((prev) =>
-        allBrands.reduce(
-          (acc, brandObj) => ({ ...acc, [brandObj.brand]: [] }),
-          { ...prev }
-        )
-      );
-    } catch (error) {
-      debouncedError("Failed to fetch brands.");
-    } finally {
-      setLoading(false);
-    }
-  }, [activeBrand, debouncedError]);
-
-  const fetchCategories = useCallback(
-    async (brand: string) => {
-      try {
-        const response = await axios.get(
-          `${process.env.api_url}/products/categories`,
-          { params: { brand } }
-        );
-        const categories = response.data.categories || [];
-        setCategoriesByBrand((prev) => ({
-          ...prev,
-          [brand]: categories.sort(),
-        }));
-        if (!activeCategory && categories[0]) setActiveCategory(categories[0]);
-      } catch (error) {
-        debouncedError("Failed to fetch categories.");
-      }
-    },
-    [activeCategory, debouncedError]
-  );
-
-  const fetchAllCategories = useCallback(async () => {
-    try {
-      const response = await axios.get(
-        `${process.env.api_url}/products/all_categories`
-      );
-      const categories = response.data.categories || [];
-      setAllCategories(categories.sort());
-      if (!activeCategory && categories[0]) setActiveCategory(categories[0]);
-    } catch (error) {
-      debouncedError("Failed to fetch all categories.");
-    }
-  }, [activeCategory, debouncedError]);
-
-  const fetchProducts = useCallback(
+    const fetchProducts = useCallback(
     async (
       key: string,
       brand?: string,
@@ -361,17 +303,30 @@ const Products: React.FC<ProductsProps> = ({
     [sortOrder, debouncedError, cataloguePage]
   );
 
-  const fetchProductCounts = useCallback(async () => {
+  const fetchAllBrands = useCallback(async () => {
     try {
+      setLoading(true);
       const response = await axios.get(
-        `${process.env.api_url}/products/counts`
+        `${process.env.api_url}/products/brands`
       );
-      setProductCounts(response.data);
+      const allBrands: { brand: string; url: string }[] =
+        response.data.brands || [];
+      setBrandList(allBrands);
+      if (!activeBrand && allBrands[0]) {
+        setActiveBrand(allBrands[0].brand);
+      }
+      setProductsByBrandCategory((prev) =>
+        allBrands.reduce(
+          (acc, brandObj) => ({ ...acc, [brandObj.brand]: [] }),
+          { ...prev }
+        )
+      );
     } catch (error) {
-      debouncedError("Failed to fetch product counts.");
+      debouncedError("Failed to fetch brands.");
+    } finally {
+      setLoading(false);
     }
-  }, [debouncedError]);
-
+  }, [activeBrand, debouncedError]);
   const resetPaginationAndFetch = useCallback(
     (brand: string, category: string) => {
       let key = "";
@@ -404,6 +359,71 @@ const Products: React.FC<ProductsProps> = ({
     },
     [groupByCategory, fetchProducts, sortOrder]
   );
+  const fetchCategories = useCallback(
+  async (brand: string) => {
+    try {
+      const response = await axios.get(
+        `${process.env.api_url}/products/categories`,
+        { params: { brand } }
+      );
+      const categories = response.data.categories || [];
+      setCategoriesByBrand((prev) => ({
+        ...prev,
+        [brand]: categories.sort(),
+      }));
+      
+      // Set the second category (index 1) as default, or first if second doesn't exist
+      const defaultCategory = categories[1] || categories[0] || "";
+      if (!activeCategory && defaultCategory) {
+        setActiveCategory(defaultCategory);
+        // Immediately trigger the API call for the new category
+        setTimeout(() => {
+          resetPaginationAndFetch(brand, defaultCategory);
+        }, 0);
+      }
+    } catch (error) {
+      debouncedError("Failed to fetch categories.");
+    }
+  },
+  [activeCategory, debouncedError, resetPaginationAndFetch]
+);
+
+const fetchAllCategories = useCallback(async () => {
+  try {
+    const response = await axios.get(
+      `${process.env.api_url}/products/all_categories`
+    );
+    const categories = response.data.categories || [];
+    setAllCategories(categories.sort());
+    
+    // Set the second category (index 1) as default, or first if second doesn't exist
+    const defaultCategory = categories[1] || categories[0] || "";
+    if (!activeCategory && defaultCategory) {
+      setActiveCategory(defaultCategory);
+      // Immediately trigger the API call for the new category
+      setTimeout(() => {
+        resetPaginationAndFetch("", defaultCategory);
+      }, 0);
+    }
+  } catch (error) {
+    debouncedError("Failed to fetch all categories.");
+  }
+}, [activeCategory, debouncedError, resetPaginationAndFetch]);
+
+
+
+  const fetchProductCounts = useCallback(async () => {
+    try {
+      const response = await axios.get(
+        `${process.env.api_url}/products/counts`
+      );
+      setProductCounts(response.data);
+    } catch (error) {
+      debouncedError("Failed to fetch product counts.");
+    }
+  }, [debouncedError]);
+
+
 
   // ------------------ Handlers ------------------
   const handleTabChange = useCallback(
@@ -743,25 +763,23 @@ const Products: React.FC<ProductsProps> = ({
   }, [handleScroll]);
 
   useEffect(() => {
-    if (groupByCategory) {
-      fetchAllCategories();
-      if (activeCategory) {
-        resetPaginationAndFetch("", activeCategory);
-      }
-    } else if (activeBrand) {
-      resetPaginationAndFetch(
-        activeBrand,
-        categoriesByBrand[activeBrand]?.[0] || ""
-      );
-    }
-  }, [
-    activeBrand,
-    activeCategory,
-    categoriesByBrand,
-    groupByCategory,
-    fetchAllCategories,
-    resetPaginationAndFetch,
-  ]);
+  if (groupByCategory) {
+    fetchAllCategories();
+  } else if (activeBrand && !categoriesByBrand[activeBrand]) {
+    fetchCategories(activeBrand);
+  } else if (activeBrand && activeCategory && categoriesByBrand[activeBrand]) {
+    // Only call this if we have both brand and category set, and categories are already loaded
+    resetPaginationAndFetch(activeBrand, activeCategory);
+  }
+}, [
+  activeBrand,
+  activeCategory,
+  categoriesByBrand,
+  groupByCategory,
+  fetchAllCategories,
+  fetchCategories,
+  resetPaginationAndFetch,
+]);
 
   useEffect(() => {
     fetchAllBrands();
