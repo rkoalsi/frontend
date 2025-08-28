@@ -53,9 +53,27 @@ const Checkin = () => {
 
     try {
       setLoading(true);
+       let cleanPhone;
+    
+    // Check if phone is already a number
+    if (typeof userData.phone === 'number') {
+      cleanPhone = userData.phone.toString();
+    } else if (typeof userData.phone === 'string') {
+      // Clean string phone number
+      cleanPhone = userData.phone
+        .replace(/[\u200E-\u200F\u202A-\u202E\u2066-\u2069]/g, '')
+        .replace(/\s+/g, '')
+        .replace(/[^\d]/g, '');
+    } else {
+      // Convert to string and clean
+      cleanPhone = String(userData.phone)
+        .replace(/[\u200E-\u200F\u202A-\u202E\u2066-\u2069]/g, '')
+        .replace(/\s+/g, '')
+        .replace(/[^\d]/g, '');
+    }
       const response = await axios.get(
         `${process.env.api_url}/attendance/employee_attendance`,
-        { params: { phone: userData.phone } }
+        { params: { phone: cleanPhone } }
       );
 
       if (response.status === 200) {
@@ -74,11 +92,28 @@ const Checkin = () => {
 
     try {
       setIsLoading(true);
+       let cleanPhone;
+    
+    // Check if phone is already a number
+    if (typeof userData.phone === 'number') {
+      cleanPhone = userData.phone.toString();
+    } else if (typeof userData.phone === 'string') {
+      // Clean string phone number
+      cleanPhone = userData.phone
+        .replace(/[\u200E-\u200F\u202A-\u202E\u2066-\u2069]/g, '')
+        .replace(/\s+/g, '')
+        .replace(/[^\d]/g, '');
+    } else {
+      // Convert to string and clean
+      cleanPhone = String(userData.phone)
+        .replace(/[\u200E-\u200F\u202A-\u202E\u2066-\u2069]/g, '')
+        .replace(/\s+/g, '')
+        .replace(/[^\d]/g, '');
+    }
       const response = await axios.get(
         `${process.env.api_url}/attendance/status`,
-        { params: { phone: userData.phone } }
+        { params: { phone: cleanPhone } }
       );
-
       if (response.status === 200) {
         setCheckedIn(response.data.checked_in);
       }
@@ -96,8 +131,26 @@ const Checkin = () => {
   }, [userData]);
   const handleAttendance = async () => {
     setIsLoading(true);
+     let cleanPhone;
+    
+    // Check if phone is already a number
+    if (typeof userData.phone === 'number') {
+      cleanPhone = userData.phone.toString();
+    } else if (typeof userData.phone === 'string') {
+      // Clean string phone number
+      cleanPhone = userData.phone
+        .replace(/[\u200E-\u200F\u202A-\u202E\u2066-\u2069]/g, '')
+        .replace(/\s+/g, '')
+        .replace(/[^\d]/g, '');
+    } else {
+      // Convert to string and clean
+      cleanPhone = String(userData.phone)
+        .replace(/[\u200E-\u200F\u202A-\u202E\u2066-\u2069]/g, '')
+        .replace(/\s+/g, '')
+        .replace(/[^\d]/g, '');
+    }
     const payload = {
-      phone: userData.phone,
+      phone: cleanPhone,
       user_id: userData._id,
       action: checkedIn ? 'checkout' : 'checkin',
     };
@@ -266,11 +319,10 @@ const Checkin = () => {
                       alignItems: 'center',
                       justifyContent: 'center',
                       color: 'white',
-                      boxShadow: `0 0 20px ${
-                        checkedIn
-                          ? theme.palette.error.light
-                          : theme.palette.primary.light
-                      }`,
+                      boxShadow: `0 0 20px ${checkedIn
+                        ? theme.palette.error.light
+                        : theme.palette.primary.light
+                        }`,
                       transition: 'all 0.3s ease',
                       cursor: 'pointer',
                       '&:hover': {
@@ -323,8 +375,8 @@ const Checkin = () => {
                 {isLoading
                   ? 'Processing...'
                   : checkedIn
-                  ? 'Check Out'
-                  : 'Check In'}
+                    ? 'Check Out'
+                    : 'Check In'}
               </Button>
             </Stack>
           </Stack>
