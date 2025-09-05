@@ -58,6 +58,7 @@ import ProductCard from "./products/ProductCard";
 import CartDrawer from "./products/Cart";
 import ImagePopupDialog from "../common/ImagePopUp";
 import Image from "next/image";
+import DoubleScrollTable, {DoubleScrollTableRef} from "./DoubleScrollTable";
 
 interface SearchResult {
   id?: number;
@@ -153,6 +154,7 @@ const Products: React.FC<ProductsProps> = ({
     order?.spreadsheet_created ? order?.spreadsheet_url : ""
   );
   const isFetching = useRef<{ [key: string]: boolean }>({});
+  const tableScrollRef = useRef<DoubleScrollTableRef>(null);
 
   // ------------------ Debounced Toasts ------------------
   const debouncedSuccess = useCallback(
@@ -171,34 +173,34 @@ const Products: React.FC<ProductsProps> = ({
   const COLUMNS = useMemo(() => {
     const baseColumns = isShared
       ? [
-          "Image",
-          "Name",
-          "Sub Category",
-          "Series",
-          "SKU",
-          "MRP",
-          "Stock",
-          "Selling Price",
-          "GST",
-          "Quantity",
-          "Total",
-          "Action",
-        ]
+        "Image",
+        "Name",
+        "Sub Category",
+        "Series",
+        "SKU",
+        "MRP",
+        "Stock",
+        "Selling Price",
+        "GST",
+        "Quantity",
+        "Total",
+        "Action",
+      ]
       : [
-          "Image",
-          "Name",
-          "Sub Category",
-          "Series",
-          "SKU",
-          "MRP",
-          "Stock",
-          "Margin",
-          "Selling Price",
-          "GST",
-          "Quantity",
-          "Total",
-          "Action",
-        ];
+        "Image",
+        "Name",
+        "Sub Category",
+        "Series",
+        "SKU",
+        "MRP",
+        "Stock",
+        "Margin",
+        "Selling Price",
+        "GST",
+        "Quantity",
+        "Total",
+        "Action",
+      ];
 
     // Add UPC/EAN Code column if showUPC/EAN is true
     if (showUPC) {
@@ -254,7 +256,7 @@ const Products: React.FC<ProductsProps> = ({
   );
 
   // ------------------ API Calls ------------------
-    const fetchProducts = useCallback(
+  const fetchProducts = useCallback(
     async (
       key: string,
       brand?: string,
@@ -360,55 +362,55 @@ const Products: React.FC<ProductsProps> = ({
     [groupByCategory, fetchProducts, sortOrder]
   );
   const fetchCategories = useCallback(
-  async (brand: string) => {
+    async (brand: string) => {
+      try {
+        const response = await axios.get(
+          `${process.env.api_url}/products/categories`,
+          { params: { brand } }
+        );
+        const categories = response.data.categories || [];
+        setCategoriesByBrand((prev) => ({
+          ...prev,
+          [brand]: categories.sort(),
+        }));
+
+        // Set the second category (index 1) as default, or first if second doesn't exist
+        const defaultCategory = categories[1] || categories[0] || "";
+        if (!activeCategory && defaultCategory) {
+          setActiveCategory(defaultCategory);
+          // Immediately trigger the API call for the new category
+          setTimeout(() => {
+            resetPaginationAndFetch(brand, defaultCategory);
+          }, 0);
+        }
+      } catch (error) {
+        debouncedError("Failed to fetch categories.");
+      }
+    },
+    [activeCategory, debouncedError, resetPaginationAndFetch]
+  );
+
+  const fetchAllCategories = useCallback(async () => {
     try {
       const response = await axios.get(
-        `${process.env.api_url}/products/categories`,
-        { params: { brand } }
+        `${process.env.api_url}/products/all_categories`
       );
       const categories = response.data.categories || [];
-      setCategoriesByBrand((prev) => ({
-        ...prev,
-        [brand]: categories.sort(),
-      }));
-      
+      setAllCategories(categories.sort());
+
       // Set the second category (index 1) as default, or first if second doesn't exist
       const defaultCategory = categories[1] || categories[0] || "";
       if (!activeCategory && defaultCategory) {
         setActiveCategory(defaultCategory);
         // Immediately trigger the API call for the new category
         setTimeout(() => {
-          resetPaginationAndFetch(brand, defaultCategory);
+          resetPaginationAndFetch("", defaultCategory);
         }, 0);
       }
     } catch (error) {
-      debouncedError("Failed to fetch categories.");
+      debouncedError("Failed to fetch all categories.");
     }
-  },
-  [activeCategory, debouncedError, resetPaginationAndFetch]
-);
-
-const fetchAllCategories = useCallback(async () => {
-  try {
-    const response = await axios.get(
-      `${process.env.api_url}/products/all_categories`
-    );
-    const categories = response.data.categories || [];
-    setAllCategories(categories.sort());
-    
-    // Set the second category (index 1) as default, or first if second doesn't exist
-    const defaultCategory = categories[1] || categories[0] || "";
-    if (!activeCategory && defaultCategory) {
-      setActiveCategory(defaultCategory);
-      // Immediately trigger the API call for the new category
-      setTimeout(() => {
-        resetPaginationAndFetch("", defaultCategory);
-      }, 0);
-    }
-  } catch (error) {
-    debouncedError("Failed to fetch all categories.");
-  }
-}, [activeCategory, debouncedError, resetPaginationAndFetch]);
+  }, [activeCategory, debouncedError, resetPaginationAndFetch]);
 
 
 
@@ -454,8 +456,8 @@ const fetchAllCategories = useCallback(async () => {
         search.trim() !== ""
           ? "search"
           : groupByCategory
-          ? `all-${activeCategory}`
-          : `${activeBrand}-${activeCategory}`;
+            ? `all-${activeCategory}`
+            : `${activeBrand}-${activeCategory}`;
       if (search.trim() !== "") {
         // setActiveBrand('');
         // setActiveCategory('');
@@ -605,8 +607,8 @@ const fetchAllCategories = useCallback(async () => {
           searchTerm.trim() !== ""
             ? "search"
             : groupByCategory
-            ? `all-${activeCategory}`
-            : `${activeBrand}-${activeCategory}`
+              ? `all-${activeCategory}`
+              : `${activeBrand}-${activeCategory}`
         ]?.find((p) => p._id === id);
         if (product) {
           const sanitized = Math.max(1, Math.min(newQuantity, product.stock));
@@ -663,17 +665,17 @@ const fetchAllCategories = useCallback(async () => {
     setConfirmModalOpen(false);
   };
   const handleImageClick = useCallback((srcList: string[], index: number) => {
-    if (Array.isArray(srcList)){
+    if (Array.isArray(srcList)) {
       const formattedImages = srcList?.map((src) => ({ src }));
       setPopupImageSrc(formattedImages);
       setPopupImageIndex(index);
       setOpenImagePopup(true);
     } else {
-      setPopupImageSrc([{src:srcList, alt:'main_image'}]);
+      setPopupImageSrc([{ src: srcList, alt: 'main_image' }]);
       setPopupImageIndex(0);
       setOpenImagePopup(true);
     }
-    
+
   }, []);
 
   const handleClosePopup = useCallback(() => setOpenImagePopup(false), []);
@@ -692,14 +694,14 @@ const fetchAllCategories = useCallback(async () => {
       searchTerm.trim() !== ""
         ? "search"
         : newSort === "catalogue"
-        ? activeBrand
-          ? `${activeBrand}-catalogue`
-          : "catalogue"
-        : groupByCategory
-        ? `all-${activeCategory}`
-        : activeBrand && activeCategory
-        ? `${activeBrand}-${activeCategory}`
-        : "all";
+          ? activeBrand
+            ? `${activeBrand}-catalogue`
+            : "catalogue"
+          : groupByCategory
+            ? `all-${activeCategory}`
+            : activeBrand && activeCategory
+              ? `${activeBrand}-${activeCategory}`
+              : "all";
     setPaginationState((prev) => ({
       ...prev,
       [key]: { page: 1, hasMore: true },
@@ -735,7 +737,7 @@ const fetchAllCategories = useCallback(async () => {
       : `${activeBrand}-${activeCategory}`;
     if (
       window.innerHeight + window.scrollY >=
-        document.documentElement.scrollHeight - 500 &&
+      document.documentElement.scrollHeight - 500 &&
       !loadingMore &&
       paginationState[key]?.hasMore
     ) {
@@ -763,23 +765,23 @@ const fetchAllCategories = useCallback(async () => {
   }, [handleScroll]);
 
   useEffect(() => {
-  if (groupByCategory) {
-    fetchAllCategories();
-  } else if (activeBrand && !categoriesByBrand[activeBrand]) {
-    fetchCategories(activeBrand);
-  } else if (activeBrand && activeCategory && categoriesByBrand[activeBrand]) {
-    // Only call this if we have both brand and category set, and categories are already loaded
-    resetPaginationAndFetch(activeBrand, activeCategory);
-  }
-}, [
-  activeBrand,
-  activeCategory,
-  categoriesByBrand,
-  groupByCategory,
-  fetchAllCategories,
-  fetchCategories,
-  resetPaginationAndFetch,
-]);
+    if (groupByCategory) {
+      fetchAllCategories();
+    } else if (activeBrand && !categoriesByBrand[activeBrand]) {
+      fetchCategories(activeBrand);
+    } else if (activeBrand && activeCategory && categoriesByBrand[activeBrand]) {
+      // Only call this if we have both brand and category set, and categories are already loaded
+      resetPaginationAndFetch(activeBrand, activeCategory);
+    }
+  }, [
+    activeBrand,
+    activeCategory,
+    categoriesByBrand,
+    groupByCategory,
+    fetchAllCategories,
+    fetchCategories,
+    resetPaginationAndFetch,
+  ]);
 
   useEffect(() => {
     fetchAllBrands();
@@ -822,8 +824,8 @@ const fetchAllCategories = useCallback(async () => {
     return groupByCategory && activeCategory
       ? `all-${activeCategory}`
       : activeBrand && activeCategory
-      ? `${activeBrand}-${activeCategory}`
-      : "all";
+        ? `${activeBrand}-${activeCategory}`
+        : "all";
   }, [searchTerm, activeBrand, activeCategory, groupByCategory, sortOrder]);
 
   const displayedProducts = useMemo(() => {
@@ -947,8 +949,8 @@ const fetchAllCategories = useCallback(async () => {
             typeof option === "string" && typeof value === "string"
               ? option === value
               : typeof option !== "string" &&
-                typeof value !== "string" &&
-                option._id === value._id
+              typeof value !== "string" &&
+              option._id === value._id
           }
           onInputChange={handleInputChange}
           value={query}
@@ -1015,9 +1017,9 @@ const fetchAllCategories = useCallback(async () => {
                     {brandList.map((b: any) => {
                       const brandCount = productCounts[b.brand]
                         ? Object.values(productCounts[b.brand]).reduce(
-                            (a, b) => a + b,
-                            0
-                          )
+                          (a, b) => a + b,
+                          0
+                        )
                         : 0;
                       return (
                         <MenuItem key={b.brand} value={b.brand}>
@@ -1096,9 +1098,9 @@ const fetchAllCategories = useCallback(async () => {
                     {brandList.map((b: any) => {
                       const brandCount = productCounts[b.brand]
                         ? Object.values(productCounts[b.brand]).reduce(
-                            (a, b) => a + b,
-                            0
-                          )
+                          (a, b) => a + b,
+                          0
+                        )
                         : 0;
                       return (
                         <Tab
@@ -1505,8 +1507,8 @@ const fetchAllCategories = useCallback(async () => {
                   {loading
                     ? "Loading products..."
                     : sortOrder === "catalogue" && cataloguePage !== ""
-                    ? "No products found on this catalogue page"
-                    : "No products found."}
+                      ? "No products found on this catalogue page"
+                      : "No products found."}
                 </Typography>
               </Box>
             )}
@@ -1536,21 +1538,15 @@ const fetchAllCategories = useCallback(async () => {
                   {searchTerm
                     ? searchTerm
                     : groupByCategory
-                    ? activeCategory
-                    : activeBrand}{" "}
+                      ? activeCategory
+                      : activeBrand}{" "}
                   {searchTerm ? "" : activeCategory}.
                 </Typography>
               </Box>
             )}
           </Box>
         ) : (
-          <TableContainer
-            component={Paper}
-            sx={{
-              width: "100%",
-              maxWidth: "100vw",
-              boxShadow: 2,
-            }}
+          <DoubleScrollTable ref={tableScrollRef} tableWidth={1600}
           >
             <Table stickyHeader sx={{ width: "100%", tableLayout: "auto" }}>
               <TableHead>
@@ -1609,8 +1605,8 @@ const fetchAllCategories = useCallback(async () => {
                             {searchTerm
                               ? searchTerm
                               : groupByCategory
-                              ? activeCategory
-                              : activeBrand}{" "}
+                                ? activeCategory
+                                : activeBrand}{" "}
                             {searchTerm ? "" : activeCategory}.
                           </Typography>
                         </TableCell>
@@ -1647,7 +1643,7 @@ const fetchAllCategories = useCallback(async () => {
                 )}
               </TableBody>
             </Table>
-          </TableContainer>
+          </DoubleScrollTable>
         )}
       </Box>
       <Box
@@ -1663,7 +1659,15 @@ const fetchAllCategories = useCallback(async () => {
       >
         <IconButton
           color="primary"
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          onClick={() => {
+            if (isMobile || isTablet) {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            } else {
+              // For desktop, scroll the table to top
+              tableScrollRef.current?.scrollToTop();
+            }
+          }
+          }
           sx={{
             backgroundColor: "background.paper",
             boxShadow: 3,
@@ -1675,11 +1679,17 @@ const fetchAllCategories = useCallback(async () => {
 
         <IconButton
           color="primary"
-          onClick={() =>
-            window.scrollTo({
-              top: document.documentElement.scrollHeight,
-              behavior: "smooth",
-            })
+          onClick={() => {
+            if (isMobile || isTablet) {
+              window.scrollTo({
+                top: document.documentElement.scrollHeight,
+                behavior: "smooth",
+              });
+            } else {
+              // For desktop, scroll the table to bottom
+              tableScrollRef.current?.scrollToBottom();
+            }
+          }
           }
           sx={{
             backgroundColor: "background.paper",
