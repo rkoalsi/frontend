@@ -153,11 +153,11 @@ const PastOrders = () => {
           onChange={(e) =>
             setFilterType(
               e.target.value as
-                | 'all'
-                | 'draft'
-                | 'accepted'
-                | 'declined'
-                | 'invoiced'
+              | 'all'
+              | 'draft'
+              | 'accepted'
+              | 'declined'
+              | 'invoiced'
             )
           }
           sx={{
@@ -251,48 +251,90 @@ const PastOrders = () => {
                     <Box
                       sx={{
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
+                        flexDirection: isMobile ? 'column' : 'row',
+                        alignItems: isMobile ? 'flex-start' : 'center',
+                        gap: isMobile ? 1 : 1,
                         mt: 1,
                         width: '100%',
                         justifyContent: 'space-between',
                       }}
                     >
-                      <Chip
-                        label={
-                          order.status.charAt(0).toUpperCase() +
-                          order.status.slice(1).toLowerCase()
-                        }
-                        color={
-                          order.status.toLowerCase() === 'draft' ||
-                          order.status.toLowerCase() === 'sent'
-                            ? 'default'
-                            : order.status.toLowerCase() === 'accepted' ||
-                              order.status.toLowerCase() === 'invoiced'
-                            ? 'success'
-                            : 'error'
-                        }
+                      {/* Chips Container */}
+                      <Box
                         sx={{
-                          fontWeight: 'bold',
-                          fontSize: '0.85rem',
-                          color: 'black',
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
+                          gap: 0.5,
+                          flex: 1,
                         }}
-                      />
-                      {order?.spreadsheet_created && (
+                      >
                         <Chip
-                          label={'XLSX Created'}
-                          color={'success'}
+                          label={
+                            order.status.charAt(0).toUpperCase() +
+                            order.status.slice(1).toLowerCase()
+                          }
+                          color={
+                            order.status.toLowerCase() === 'draft' ||
+                              order.status.toLowerCase() === 'sent'
+                              ? 'default'
+                              : order.status.toLowerCase() === 'accepted' ||
+                                order.status.toLowerCase() === 'invoiced'
+                                ? 'success'
+                                : 'error'
+                          }
                           sx={{
                             fontWeight: 'bold',
-                            fontSize: '0.85rem',
+                            fontSize: isMobile ? '0.75rem' : '0.85rem',
+                            height: isMobile ? 24 : 'auto',
                             color: 'black',
+                            '& .MuiChip-label': {
+                              padding: isMobile ? '0 8px' : '0 12px',
+                            },
                           }}
                         />
-                      )}
+                        {order?.estimate_created && (
+                          <Chip
+                            label={'Estimate Created'}
+                            color={'success'}
+                            sx={{
+                              fontWeight: 'bold',
+                              fontSize: isMobile ? '0.75rem' : '0.85rem',
+                              height: isMobile ? 24 : 'auto',
+                              color: 'black',
+                              '& .MuiChip-label': {
+                                padding: isMobile ? '0 8px' : '0 12px',
+                              },
+                            }}
+                          />
+                        )}
+                        {order?.spreadsheet_created && (
+                          <Chip
+                            label={'XLSX Created'}
+                            color={'success'}
+                            sx={{
+                              fontWeight: 'bold',
+                              fontSize: isMobile ? '0.75rem' : '0.85rem',
+                              height: isMobile ? 24 : 'auto',
+                              color: 'black',
+                              '& .MuiChip-label': {
+                                padding: isMobile ? '0 8px' : '0 12px',
+                              },
+                            }}
+                          />
+                        )}
+                      </Box>
+
+                      {/* Total Amount */}
                       <Typography
                         variant='body1'
                         fontWeight='bold'
-                        sx={{ color: 'black' }}
+                        sx={{
+                          color: 'black',
+                          fontSize: isMobile ? '0.9rem' : '1rem',
+                          mt: isMobile ? 0.5 : 0,
+                          alignSelf: isMobile ? 'flex-end' : 'center',
+                        }}
                       >
                         ₹{order.total_amount || 0}
                       </Typography>
