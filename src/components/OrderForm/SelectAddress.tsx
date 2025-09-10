@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -49,11 +49,25 @@ function Address(props: Props) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   useEffect(() => {
-    if (customer && customer.addresses.length > 0 && !address) {
+    if (customer && customer.addresses && customer.addresses.length > 0 && !address) {
       setAddress(customer.addresses[0]); // Auto-select the first address if none selected
     }
-  }, [customer, setAddress, address]);
+  }, [customer]); // Remove setAddress and address from dependencies
 
+  // Alternative approach - using useRef to track if we've already set initial address
+  const hasSetInitialAddress = useRef(false);
+
+  useEffect(() => {
+    if (customer && customer.addresses && customer.addresses.length > 0 && !hasSetInitialAddress.current) {
+      setAddress(customer.addresses[0]);
+      hasSetInitialAddress.current = true;
+    }
+
+    // Reset the flag when customer changes
+    if (!customer) {
+      hasSetInitialAddress.current = false;
+    }
+  }, [customer, setAddress]);
   const handleInputChange = (field: string, value: string) => {
     setNewAddress((prev) => ({
       ...prev,
