@@ -291,19 +291,19 @@ const OrderDetails = () => {
           <strong>Shipping Address:</strong>
         </Typography>
         <Typography variant='body1' sx={{ mb: 1 }}>
-          {orderData.shipping_address.attention}
+          {orderData.shipping_address?.attention}
         </Typography>
         <Typography variant='body1' sx={{ mb: 1 }}>
-          {orderData.shipping_address.address}
+          {orderData.shipping_address?.address}
         </Typography>
         <Typography variant='body1' sx={{ mb: 1 }}>
-          {orderData.shipping_address.city}
+          {orderData.shipping_address?.city}
         </Typography>
         <Typography variant='body1' sx={{ mb: 1 }}>
-          {orderData.shipping_address.state}
+          {orderData.shipping_address?.state}
         </Typography>
         <Typography variant='body1' sx={{ mb: 1 }}>
-          {orderData.shipping_address.zip}
+          {orderData.shipping_address?.zip}
         </Typography>
         <Divider sx={{ my: 2 }} />
         <Typography variant='h5' sx={{ mb: 2 }}>
