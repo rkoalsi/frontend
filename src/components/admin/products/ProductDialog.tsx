@@ -404,8 +404,8 @@ const ProductDialog = ({
                       mb: 1,
                     }}
                   >
-                    <Typography variant='subtitle1' fontWeight={500}>
-                      {selectedProduct.item_name}
+                    <Typography fontWeight={500}>
+                      {selectedProduct.name}
                     </Typography>
                     <FormControlLabel
                       control={
