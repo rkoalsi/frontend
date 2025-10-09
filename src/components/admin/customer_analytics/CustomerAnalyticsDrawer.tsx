@@ -64,7 +64,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
+
   if (!customer) return null;
 
   const formatCurrency = (amount: number) => {
@@ -131,9 +131,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
       }}
     >
       {/* Fixed Header */}
-      <Paper 
-        elevation={2} 
-        sx={{ 
+      <Paper
+        elevation={2}
+        sx={{
           position: 'sticky',
           marginTop: 8,
           zIndex: 1,
@@ -158,10 +158,10 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
               {customer.tier || '?'}
             </Avatar>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography 
-                variant={isMobile ? "h6" : "h5"} 
-                sx={{ 
-                  fontWeight: 'bold', 
+              <Typography
+                variant={isMobile ? "h6" : "h5"}
+                sx={{
+                  fontWeight: 'bold',
                   color: '#1976d2',
                   mb: 0.5,
                   wordBreak: 'break-word',
@@ -189,8 +189,8 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
       </Paper>
 
       {/* Scrollable Content */}
-      <Box 
-        sx={{ 
+      <Box
+        sx={{
           flex: 1,
           overflow: 'auto',
           p: 3,
@@ -215,9 +215,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
         <Fade in timeout={300}>
           <Grid container spacing={2} sx={{ mb: 4 }}>
             <Grid>
-              <Card 
-                sx={{ 
-                  textAlign: 'center', 
+              <Card
+                sx={{
+                  textAlign: 'center',
                   background: 'linear-gradient(135deg, #e3f2fd 0%, #f8f9fa 100%)',
                   border: '1px solid #e3f2fd',
                   transition: 'transform 0.2s ease-in-out',
@@ -258,9 +258,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
             </Grid>
 
             <Grid>
-              <Card 
-                sx={{ 
-                  textAlign: 'center', 
+              <Card
+                sx={{
+                  textAlign: 'center',
                   background: 'linear-gradient(135deg, #fff3e0 0%, #f8f9fa 100%)',
                   border: '1px solid #fff3e0',
                   transition: 'transform 0.2s ease-in-out',
@@ -283,9 +283,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
             </Grid>
 
             <Grid>
-              <Card 
-                sx={{ 
-                  textAlign: 'center', 
+              <Card
+                sx={{
+                  textAlign: 'center',
                   background: 'linear-gradient(135deg, #e8f5e8 0%, #f8f9fa 100%)',
                   border: '1px solid #e8f5e8',
                   transition: 'transform 0.2s ease-in-out',
@@ -308,9 +308,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
             </Grid>
 
             <Grid>
-              <Card 
-                sx={{ 
-                  textAlign: 'center', 
+              <Card
+                sx={{
+                  textAlign: 'center',
                   background: 'linear-gradient(135deg, #f3e5f5 0%, #f8f9fa 100%)',
                   border: '1px solid #f3e5f5',
                   transition: 'transform 0.2s ease-in-out',
@@ -331,8 +331,8 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                   <LinearProgress
                     variant="determinate"
                     value={activityScore}
-                    sx={{ 
-                      height: 6, 
+                    sx={{
+                      height: 6,
                       borderRadius: 3,
                       backgroundColor: 'rgba(156, 39, 176, 0.1)',
                       '& .MuiLinearProgress-bar': {
@@ -357,10 +357,10 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                   Billing Address
                 </Typography>
               </Box>
-              <Typography 
-                variant="body1" 
+              <Typography
+                variant="body1"
                 color="text.secondary"
-                sx={{ 
+                sx={{
                   lineHeight: 1.6,
                   backgroundColor: '#f8f9fa',
                   p: 2,
@@ -405,9 +405,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                         <Schedule sx={{ color: 'white', fontSize: { xs: 20, sm: 24 } }} />
                       </Box>
                     </Tooltip>
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
+                    <Typography
+                      variant="caption"
+                      sx={{
                         fontWeight: customer.hasBilledLastMonth ? 'bold' : 'normal',
                         color: customer.hasBilledLastMonth ? '#4caf50' : 'text.secondary',
                         display: 'block',
@@ -440,9 +440,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                         <Schedule sx={{ color: 'white', fontSize: { xs: 20, sm: 24 } }} />
                       </Box>
                     </Tooltip>
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
+                    <Typography
+                      variant="caption"
+                      sx={{
                         fontWeight: customer.hasBilledLast45Days ? 'bold' : 'normal',
                         color: customer.hasBilledLast45Days ? '#ff9800' : 'text.secondary',
                         display: 'block',
@@ -475,9 +475,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                         <Schedule sx={{ color: 'white', fontSize: { xs: 20, sm: 24 } }} />
                       </Box>
                     </Tooltip>
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
+                    <Typography
+                      variant="caption"
+                      sx={{
                         fontWeight: customer.hasBilledLast2Months ? 'bold' : 'normal',
                         color: customer.hasBilledLast2Months ? '#ff5722' : 'text.secondary',
                         display: 'block',
@@ -510,9 +510,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                         <Schedule sx={{ color: 'white', fontSize: { xs: 20, sm: 24 } }} />
                       </Box>
                     </Tooltip>
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
+                    <Typography
+                      variant="caption"
+                      sx={{
                         fontWeight: customer.hasBilledLast3Months ? 'bold' : 'normal',
                         color: customer.hasBilledLast3Months ? '#f44336' : 'text.secondary',
                         display: 'block',
@@ -531,8 +531,8 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
             </CardContent>
           </Card>
         </Fade>
-      
-        
+
+
         {/* Payment Status */}
         {(customer.duePayments?.length > 0 || customer.notDuePayments?.length > 0) && (
           <Fade in timeout={600}>
@@ -544,7 +544,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                     Payment Status
                   </Typography>
                 </Box>
-                
+
                 {customer.duePayments?.length > 0 && (
                   <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
                     <Typography variant="body2">
@@ -636,30 +636,11 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
               </Typography>
               <Grid container spacing={2}>
                 <Grid>
-                  <Paper 
-                    elevation={1} 
-                    sx={{ 
-                      textAlign: 'center', 
-                      p: 3, 
-                      background: 'linear-gradient(135deg, #ffebee 0%, #fff 100%)',
-                      borderRadius: 3,
-                      border: '1px solid #ffcdd2',
-                    }}
-                  >
-                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#f44336', mb: 1 }}>
-                      {formatCurrency(customer.totalSalesLastFY || 0)}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Last Financial Year ({new Date().getFullYear()-1})
-                    </Typography>
-                  </Paper>
-                </Grid>
-                <Grid>
-                  <Paper 
-                    elevation={1} 
-                    sx={{ 
-                      textAlign: 'center', 
-                      p: 3, 
+                  <Paper
+                    elevation={1}
+                    sx={{
+                      textAlign: 'center',
+                      p: 3,
                       background: 'linear-gradient(135deg, #fff3e0 0%, #fff 100%)',
                       borderRadius: 3,
                       border: '1px solid #ffcc02',
@@ -669,16 +650,35 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                       {formatCurrency(customer.totalSalesPreviousFY || 0)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Previous Financial Year ({new Date().getFullYear()-2})
+                      Previous Financial Year ({new Date().getFullYear() - 2})
                     </Typography>
                   </Paper>
                 </Grid>
                 <Grid>
-                  <Paper 
-                    elevation={1} 
-                    sx={{ 
-                      textAlign: 'center', 
-                      p: 3, 
+                  <Paper
+                    elevation={1}
+                    sx={{
+                      textAlign: 'center',
+                      p: 3,
+                      background: 'linear-gradient(135deg, #ffebee 0%, #fff 100%)',
+                      borderRadius: 3,
+                      border: '1px solid #ffcdd2',
+                    }}
+                  >
+                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#f44336', mb: 1 }}>
+                      {formatCurrency(customer.totalSalesLastFY || 0)}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Last Financial Year ({new Date().getFullYear() - 1})
+                    </Typography>
+                  </Paper>
+                </Grid>
+                <Grid>
+                  <Paper
+                    elevation={1}
+                    sx={{
+                      textAlign: 'center',
+                      p: 3,
                       background: 'linear-gradient(135deg, #e8f5e8 0%, #fff 100%)',
                       borderRadius: 3,
                       border: '1px solid #c8e6c9',
@@ -691,27 +691,27 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                       Current Financial Year ({new Date().getFullYear()})
                     </Typography>
                   </Paper>
-              </Grid>
-                    <Grid>
-                      <Paper 
-                        elevation={1} 
-                        sx={{ 
-                          textAlign: 'center', 
-                          p: 3, 
-                          background: 'linear-gradient(135deg, #fff3e0 0%, #fff 100%)',
-                          borderRadius: 3,
-                          border: '1px solid #ffcc02',
-                        }}
-                      >
-                        <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#ff9800', mb: 1 }}>
-                          {formatCurrency(customer.totalSalesCurrentMonth || 0)}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Current Month ({new Date().getMonth()})
-                        </Typography>
-                      </Paper>
-                    </Grid>
                 </Grid>
+                <Grid>
+                  <Paper
+                    elevation={1}
+                    sx={{
+                      textAlign: 'center',
+                      p: 3,
+                      background: 'linear-gradient(135deg, #fff3e0 0%, #fff 100%)',
+                      borderRadius: 3,
+                      border: '1px solid #ffcc02',
+                    }}
+                  >
+                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#ff9800', mb: 1 }}>
+                      {formatCurrency(customer.totalSalesCurrentMonth || 0)}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Current Month ({new Date().getMonth()})
+                    </Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
             </CardContent>
           </Card>
         </Fade>
