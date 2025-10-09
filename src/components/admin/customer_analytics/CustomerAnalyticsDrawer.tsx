@@ -650,7 +650,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                       {formatCurrency(customer.totalSalesLastFY || 0)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Last Financial Year ({new Date().getFullYear()-2})
+                      Last Financial Year ({new Date().getFullYear()-1})
                     </Typography>
                   </Paper>
                 </Grid>
@@ -669,7 +669,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                       {formatCurrency(customer.totalSalesPreviousFY || 0)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Previous Financial Year ({new Date().getFullYear()-1})
+                      Previous Financial Year ({new Date().getFullYear()-2})
                     </Typography>
                   </Paper>
                 </Grid>
