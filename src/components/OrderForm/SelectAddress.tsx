@@ -48,17 +48,11 @@ function Address(props: Props) {
   });
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  useEffect(() => {
-    if (customer && customer.addresses && customer.addresses.length > 0 && !address) {
-      setAddress(customer.addresses[0]); // Auto-select the first address if none selected
-    }
-  }, [customer]); // Remove setAddress and address from dependencies
-
-  // Alternative approach - using useRef to track if we've already set initial address
+  // Using useRef to track if we've already set initial address
   const hasSetInitialAddress = useRef(false);
 
   useEffect(() => {
-    if (customer && customer.addresses && customer.addresses.length > 0 && !hasSetInitialAddress.current) {
+    if (customer && customer.addresses && customer.addresses.length > 0 && !hasSetInitialAddress.current && !address) {
       setAddress(customer.addresses[0]);
       hasSetInitialAddress.current = true;
     }
@@ -67,7 +61,7 @@ function Address(props: Props) {
     if (!customer) {
       hasSetInitialAddress.current = false;
     }
-  }, [customer, setAddress]);
+  }, [customer, setAddress, address]);
   const handleInputChange = (field: string, value: string) => {
     setNewAddress((prev) => ({
       ...prev,
@@ -148,11 +142,12 @@ function Address(props: Props) {
           )}
           <Box
             sx={{
-              maxHeight: isMobile ? null : '380px',
-              overflowY: 'auto',
-              padding: '8px',
-              borderRadius: '8px',
-              border: '1px solid #ddd',
+              maxHeight: { xs: 'none', md: '380px' },
+              overflowY: { xs: 'visible', md: 'auto' },
+              padding: { xs: 1, sm: 1.5 },
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'divider',
             }}
           >
             {customer && customer.addresses && customer.addresses.length > 0 ? (

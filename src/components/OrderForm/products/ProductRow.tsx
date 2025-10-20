@@ -77,16 +77,21 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         sx={{
           '&:hover': {
             backgroundColor: 'action.hover',
-            transform: 'translateY(-1px)',
-            boxShadow: 1,
           },
-          transition: 'all 0.2s ease-in-out',
+          transition: 'background-color 0.2s ease',
           borderLeft: selectedProduct ? '4px solid' : 'none',
           borderLeftColor: selectedProduct ? 'primary.main' : 'transparent',
+          backgroundColor: selectedProduct ? 'action.selected' : 'inherit',
+          '& .MuiTableCell-root': {
+            paddingY: 1.5,
+            paddingX: 2,
+            borderBottom: '1px solid',
+            borderBottomColor: 'divider',
+          },
         }}
       >
         {/* Product Image with Badge */}
-        <TableCell sx={{ width: 120, p: 1 }}>
+        <TableCell sx={{ minWidth: 150, p: 2 }}>
           <Box sx={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
             <Badge
               badgeContent={product.new ? "New" : undefined}
@@ -129,7 +134,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         </TableCell>
 
         {/* Product Name */}
-        <TableCell sx={{ minWidth: 200 }}>
+        <TableCell sx={{ minWidth: 300, paddingX: 2.5 }}>
           <Typography
             variant="subtitle1"
             sx={{
@@ -146,7 +151,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         </TableCell>
 
         {/* Sub Category */}
-        <TableCell sx={{ minWidth: 140 }}>
+        <TableCell sx={{ minWidth: 220, paddingX: 2.5 }}>
           <Chip
             label={product.sub_category || "No Category"}
             variant="outlined"
@@ -169,7 +174,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         </TableCell>
 
         {/* Series */}
-        <TableCell>
+        <TableCell sx={{ minWidth: 220, paddingX: 2.5 }}>
           <Chip
             label={product.series || "-"}
             variant="outlined"
@@ -192,7 +197,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         </TableCell>
 
         {/* SKU Code */}
-        <TableCell>
+        <TableCell sx={{ minWidth: 180, paddingX: 2.5 }}>
           <Chip
             label={product.cf_sku_code || "-"}
             variant="outlined"
@@ -215,12 +220,12 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         </TableCell>
 
         {/* Rate */}
-        <TableCell>
+        <TableCell sx={{ minWidth: 150, paddingX: 2.5 }}>
           <Typography
-            variant="h6"
+            variant="body1"
             sx={{
               fontWeight: 600,
-              color: 'info',
+              color: 'text.secondary',
               fontSize: '0.95rem',
             }}
           >
@@ -245,20 +250,17 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         {/* Margin (if not shared) */}
         {!isShared && (
           <TableCell>
-            <Typography
-              variant="body1"
+            <Chip
+              label={specialMargins[productId] || customerMargin}
+              size="small"
+              variant="filled"
               sx={{
                 fontWeight: 600,
-                color: 'black',
-                px: 1,
-                py: 0.5,
-                borderRadius: 1,
-                textAlign: 'center',
-                opacity: 0.8,
+                backgroundColor: 'info.light',
+                color: 'info.contrastText',
+                minWidth: 50,
               }}
-            >
-              {specialMargins[productId] || customerMargin}
-            </Typography>
+            />
           </TableCell>
         )}
 
@@ -289,7 +291,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         </TableCell>
 
         {/* Quantity Selector */}
-        <TableCell sx={{ minWidth: 140 }}>
+        <TableCell sx={{ minWidth: 180, paddingX: 2.5 }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
             <QuantitySelector
               quantity={quantity}
@@ -315,16 +317,29 @@ const ProductRow: React.FC<ProductRowProps> = memo(
 
         {/* Item Total */}
         <TableCell>
-          <Typography
-            variant="body1"
+          <Box
             sx={{
-              fontWeight: 700,
-              color: selectedProduct ? 'success.dark' : 'text.disabled',
-              fontSize: '1rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              backgroundColor: selectedProduct ? 'success.light' : 'transparent',
+              paddingX: selectedProduct ? 1.5 : 0,
+              paddingY: selectedProduct ? 0.5 : 0,
+              borderRadius: 1,
+              minWidth: 80,
+              justifyContent: 'center',
             }}
           >
-            {selectedProduct ? `₹${itemTotal?.toLocaleString()}` : "—"}
-          </Typography>
+            <Typography
+              variant="body1"
+              sx={{
+                fontWeight: 700,
+                color: selectedProduct ? 'success.dark' : 'text.disabled',
+                fontSize: '1rem',
+              }}
+            >
+              {selectedProduct ? `₹${itemTotal?.toLocaleString()}` : "—"}
+            </Typography>
+          </Box>
         </TableCell>
 
         {/* Action Button */}

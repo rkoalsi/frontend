@@ -187,7 +187,7 @@ const Review: React.FC<Props> = React.memo((props) => {
   }
 
   // Helper function to calculate selling price and item total
-  const calculatePrices = (product: any) => {
+  const calculatePrices = useCallback((product: any) => {
     const productId = product._id;
 
     // Determine margin
@@ -206,10 +206,10 @@ const Review: React.FC<Props> = React.memo((props) => {
     const itemTotal = (quantity * sellingPrice).toFixed(2);
 
     return { sellingPrice, itemTotal, marginPercent };
-  };
+  }, [specialMargins, customer?.cf_margin]);
 
   return (
-    <Box sx={{ p: isMobile ? 0 : 3, flex: 1, position: 'relative' }}>
+    <Box sx={{ p: { xs: 0, sm: 2, md: 3 }, flex: 1, position: 'relative', width: '100%' }}>
       {/* Reference for top of page */}
       <div ref={pageTopRef} />
 
@@ -218,6 +218,7 @@ const Review: React.FC<Props> = React.memo((props) => {
         display='flex'
         justifyContent='space-between'
         alignItems='flex-start'
+        flexDirection={{xs:'column', lg:'row'}}
         mb={2}
       >
         <Typography variant='h6' sx={{ mb: 1 }}>
@@ -241,7 +242,7 @@ const Review: React.FC<Props> = React.memo((props) => {
       {/* PDF Content */}
       <Box ref={componentRef}>
         {/* Customer Info */}
-        <Paper elevation={3} sx={{ p: 3, mb: 2, borderRadius: 2 }}>
+        <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 }, mb: 2, borderRadius: 2 }}>
           <Box
             display='flex'
             alignItems='center'
@@ -342,7 +343,7 @@ const Review: React.FC<Props> = React.memo((props) => {
         <Divider sx={{ my: 2 }} />
 
         {/* Products */}
-        <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+        <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 }, borderRadius: 2 }}>
           <Box
             display='flex'
             alignItems='center'
@@ -810,8 +811,8 @@ const Review: React.FC<Props> = React.memo((props) => {
         <Box
           sx={{
             position: 'fixed',
-            bottom: isMobile ? 350 : 16, // Move higher on mobile
-            right: isMobile ? 4 : 16,
+            bottom: { xs: 350, sm: 200, md: 16 },
+            right: { xs: 8, sm: 12, md: 16 },
             display: 'flex',
             flexDirection: 'column',
             gap: 1,
