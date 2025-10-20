@@ -141,8 +141,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
 
       {/* Cart Items */}
       {selectedProducts.length > 0 && (
-        <Box sx={{ flex: 1, overflowY: 'auto', p: 2, width: '100%' }}>
-          <Stack spacing={2} sx={{ width: '100%' }}>
+        <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', p: 2, width: '100%' }}>
+          <Stack spacing={2} sx={{ width: '100%', maxWidth: '100%' }}>
             {selectedProducts.map((product) => {
               const productId = product._id;
               const sellingPrice = getSellingPrice(product);
@@ -161,6 +161,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                     borderColor: 'divider',
                     transition: 'all 0.2s ease-in-out',
                     width: '100%',
+                    maxWidth: '100%',
+                    overflow: 'hidden',
                     '&:hover': {
                       boxShadow: 2,
                     },
@@ -240,6 +242,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                       sx={{
                         flex: 1,
                         width: isMobile ? '100%' : 'auto',
+                        minWidth: 0,
                         position: 'relative',
                       }}
                     >
@@ -256,8 +259,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                           sx={{
                             fontWeight: 'bold',
                             maxWidth: isMobile ? '90%' : '80%',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
                           }}
-                          noWrap
                         >
                           {product.name}
                         </Typography>

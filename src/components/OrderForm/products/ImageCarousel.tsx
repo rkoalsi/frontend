@@ -38,7 +38,8 @@ function ImageCarousel(props: Props) {
     <Box
       sx={{
         position: 'relative',
-        width: isMobile || isTablet ? '100%' : small ? '140px' : '180px',
+        width: '100%',
+        height: '100%',
         overflow: 'hidden',
       }}
     >
@@ -50,10 +51,10 @@ function ImageCarousel(props: Props) {
         sx={{
           width: '100%',
           height: '100%',
-          objectFit: 'cover',
+          objectFit: 'contain',
           cursor: 'pointer',
           transition: 'transform 0.3s ease-in-out',
-          '&:hover': { transform: 'scale(1.03)' },
+          '&:hover': { transform: 'scale(1.05)' },
         }}
         onClick={() => handleImageClick(images, currentImageIndex)}
       />
