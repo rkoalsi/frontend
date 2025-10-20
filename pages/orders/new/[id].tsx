@@ -6,6 +6,8 @@ import React, {
   useRef,
   useCallback,
   useContext,
+  lazy,
+  Suspense,
 } from 'react';
 import {
   Box,
@@ -26,8 +28,6 @@ import {
 import { useTheme } from '@mui/material/styles';
 import CustomerSearchBar from '../../../src/components/OrderForm/CustomerSearchBar';
 import Address from '../../../src/components/OrderForm/SelectAddress';
-import Products from '../../../src/components/OrderForm/Products';
-import Review from '../../../src/components/OrderForm/Review';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -35,6 +35,14 @@ import { ContentCopy, Sort } from '@mui/icons-material';
 import useDebounce from '../../../src/util/useDebounce';
 import SheetsDisplay from '../../../src/components/OrderForm/SheetDisplay';
 import AuthContext from '../../../src/components/Auth';
+
+// Lazy load heavy components
+const Products = lazy(() =>
+  import('../../../src/components/OrderForm/Products').then(module => ({ default: module.default }))
+);
+const Review = lazy(() =>
+  import('../../../src/components/OrderForm/Review').then(module => ({ default: module.default }))
+);
 
 // Create an Axios instance
 const api = axios.create({
@@ -118,7 +126,7 @@ const NewOrder: React.FC = () => {
     return () => {
       controller.abort();
     };
-  }, [customer]);
+  }, [customer?._id]);
   const handleSortText = () => {
     switch (sort) {
       case 'default':
@@ -136,6 +144,10 @@ const NewOrder: React.FC = () => {
   };
   // ------------------ Calculate Totals ---------------------
   const totals = useMemo(() => {
+    if (!selectedProducts.length || !customer) {
+      return { totalGST: 0, totalAmount: 0 };
+    }
+
     const { totalGST, totalAmount } = selectedProducts.reduce(
       (acc: { totalGST: number; totalAmount: number }, product) => {
         const taxPercentage =
@@ -598,21 +610,23 @@ const NewOrder: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        padding: isMobile ? '0px' : '8px',
-        gap: isMobile ? '12px' : '24px',
+        padding: { xs: 1, sm: 2, md: 3 },
+        gap: { xs: 1.5, sm: 2, md: 3 },
+        width: '100%',
+        maxWidth: '100%',
       }}
     >
       {/* Header */}
       <Paper
         elevation={3}
         sx={{
-          width: 'max-content',
-          maxWidth: isMobile ? '400px' : '100%',
-          padding: '16px',
-          marginTop: '16px',
-          marginBottom: '0px',
+          width: '100%',
+          maxWidth: { xs: '100%', sm: '600px', md: '800px' },
+          padding: { xs: 2, sm: 2.5, md: 3 },
+          marginTop: { xs: 1, sm: 2 },
+          marginBottom: 0,
           textAlign: 'center',
-          borderRadius: '8px',
+          borderRadius: 2,
           alignSelf: 'center',
         }}
       >
@@ -704,27 +718,37 @@ const NewOrder: React.FC = () => {
       <Box
         sx={{
           flexGrow: 1,
-          overflowY: 'auto',
           width: '100%',
-          maxWidth: isMobile ? '400px' : '1400px',
+          maxWidth: { xs: '100%', lg: '90%', xl: '95%' },
           alignSelf: 'center',
+          paddingX: { xs: 0, md: 2 },
         }}
       >
         <Card
           sx={{
             width: '100%',
-            maxWidth: isMobile ? '400px' : undefined,
-            borderRadius: '8px',
+            borderRadius: 2,
             overflow: 'hidden',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            boxShadow: { xs: 2, md: 3 },
           }}
         >
-          <CardContent sx={{ padding: isMobile ? '12px' : '24px' }}>
+          <CardContent sx={{ padding: { xs: 1.5, sm: 2, md: 3 }, overflow: 'visible' }}>
             <Stepper
               activeStep={activeStep}
               alternativeLabel
               sx={{
-                marginTop: isMobile ? '8px' : '0px',
+                marginTop: { xs: 1, md: 0 },
+                marginBottom: { xs: 2, md: 3 },
+                '& .MuiStepLabel-label': {
+                  fontSize: { xs: '0.7rem', sm: '0.875rem', md: '1rem' },
+                  marginTop: { xs: '4px', md: '8px' },
+                },
+                '& .MuiStepConnector-root': {
+                  top: { xs: 10, md: 12 },
+                },
+                '& .MuiStepIcon-root': {
+                  fontSize: { xs: '1.2rem', sm: '1.5rem', md: '1.75rem' },
+                },
               }}
             >
               {steps.map((step, index) => (
@@ -733,8 +757,14 @@ const NewOrder: React.FC = () => {
                 </Step>
               ))}
             </Stepper>
-            <Box sx={{ padding: '24px', minHeight: '100px' }}>
-              {steps[activeStep]?.component}
+            <Box sx={{ padding: activeStep === 3 ? 0 : { xs: 1.5, sm: 2, md: 3 }, minHeight: '100px' }}>
+              <Suspense fallback={
+                <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+                  <CircularProgress />
+                </Box>
+              }>
+                {steps[activeStep]?.component}
+              </Suspense>
             </Box>
             <Box
               sx={{

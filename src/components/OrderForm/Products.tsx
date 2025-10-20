@@ -28,7 +28,6 @@ import {
   useMediaQuery,
   useTheme,
   Badge,
-  Grid,
   FormControl,
   InputLabel,
   Select,
@@ -42,6 +41,9 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  Card,
+  Chip,
+  Alert,
 } from "@mui/material";
 import {
   ArrowDownward,
@@ -49,6 +51,8 @@ import {
   Close as CloseIcon,
   ShoppingCart as ShoppingCartIcon,
   Sort,
+  AddShoppingCart,
+  RemoveShoppingCart,
 } from "@mui/icons-material";
 import debounce from "lodash.debounce";
 import { toast } from "react-toastify";
@@ -58,7 +62,9 @@ import ProductCard from "./products/ProductCard";
 import CartDrawer from "./products/Cart";
 import ImagePopupDialog from "../common/ImagePopUp";
 import Image from "next/image";
-import DoubleScrollTable, {DoubleScrollTableRef} from "./DoubleScrollTable";
+import DoubleScrollTable, { DoubleScrollTableRef } from "./DoubleScrollTable";
+import ImageCarousel from "./products/ImageCarousel";
+import QuantitySelector from "./QuantitySelector";
 
 interface SearchResult {
   id?: number;
@@ -112,7 +118,7 @@ const Products: React.FC<ProductsProps> = ({
     [key: string]: number;
   }>({});
   const [openImagePopup, setOpenImagePopup] = useState<boolean>(false);
-  const [showUPC, setShowUPC] = useState<boolean>(false);
+  const [showUPC, setShowUPC] = useState<boolean>(true);
   const [popupImageSrc, setPopupImageSrc]: any = useState([]);
   const [popupImageIndex, setPopupImageIndex]: any = useState(0);
   const [options, setOptions] = useState<SearchResult[]>([]);
@@ -154,6 +160,7 @@ const Products: React.FC<ProductsProps> = ({
   );
   const isFetching = useRef<{ [key: string]: boolean }>({});
   const tableScrollRef = useRef<DoubleScrollTableRef>(null);
+  const cardScrollRef = useRef<HTMLDivElement>(null);
 
   // ------------------ Debounced Toasts ------------------
   const debouncedSuccess = useCallback(
@@ -251,7 +258,7 @@ const Products: React.FC<ProductsProps> = ({
       const margin = isNaN(marginPercent) ? 0.4 : marginPercent / 100;
       return parseFloat((product.rate - product.rate * margin).toFixed(2));
     },
-    [specialMargins, customer]
+    [specialMargins, customer?.cf_margin]
   );
 
   // ------------------ API Calls ------------------
@@ -846,11 +853,11 @@ const Products: React.FC<ProductsProps> = ({
       sx={{
         display: "flex",
         flexDirection: "column",
-        gap: 3,
+        gap: { xs: 2, md: 3 },
         width: "100%",
-        padding: 1.5,
+        padding: { xs: 1, sm: 1.5, md: 1.5 },
         maxWidth: "100%",
-        margin: "0 auto",
+        margin: "0",
         position: "relative",
       }}
     >
@@ -1544,112 +1551,447 @@ const Products: React.FC<ProductsProps> = ({
               </Box>
             )}
           </Box>
-        ) : (
-          <DoubleScrollTable ref={tableScrollRef} tableWidth={1600}
-          >
-            <Table stickyHeader sx={{ width: "100%", tableLayout: "auto" }}>
-              <TableHead>
-                <TableRow>
-                  {COLUMNS.map((header) => (
-                    <TableCell
-                      key={header}
-                      ref={header === "UPC/EAN Code" ? upcHeaderRef : undefined}
-                      sx={{
-                        position: "sticky",
-                        top: 0,
-                        zIndex: 1000,
-                        backgroundColor: "background.paper",
-                        minWidth:
-                          header === "Name" || header === "Sub Category"
-                            ? 140
-                            : 0,
-                        fontWeight: "bold",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {header}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {displayedProducts.length > 0 ? (
-                  <>
-                    {displayedProducts.map((product: any) => (
-                      <ProductRow
-                        key={product._id}
-                        product={product}
-                        selectedProducts={selectedProducts}
-                        temporaryQuantities={temporaryQuantities}
-                        specialMargins={specialMargins}
-                        customerMargin={customer?.cf_margin || "40%"}
-                        orderStatus={order?.status}
-                        getSellingPrice={getSellingPrice}
-                        handleImageClick={handleImageClick}
-                        handleQuantityChange={handleQuantityChange}
-                        handleAddOrRemove={(prod: any) =>
-                          selectedProducts.some((p) => p._id === prod._id)
-                            ? handleRemoveProduct(prod._id)
-                            : handleAddProducts(prod)
-                        }
-                        isShared={isShared}
-                        showUPC={showUPC}
-                      />
-                    ))}
-                    {!loadingMore && noMoreProducts[productsKey] && (
-                      <TableRow>
-                        <TableCell colSpan={COLUMNS.length} align="center">
-                          <Typography variant="body2" color="textSecondary">
-                            No more products for{" "}
-                            {searchTerm
-                              ? searchTerm
-                              : groupByCategory
-                                ? activeCategory
-                                : activeBrand}{" "}
-                            {searchTerm ? "" : activeCategory}.
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </>
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={COLUMNS.length} align="center">
-                      <Typography variant="body1">
-                        {loading ? "Loading products..." : "No products found."}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-                {loadingMore && (
-                  <TableRow>
-                    <TableCell colSpan={COLUMNS.length} align="center">
-                      <Box
+        ) : isMobile ? (
+          <DoubleScrollTable ref={tableScrollRef} tableWidth={3200}>
+            <Box sx={{ minWidth: "3200px", width: "3200px" }}>
+              <Table stickyHeader sx={{ width: "100%", tableLayout: "auto" }}>
+                <TableHead>
+                  <TableRow
+                    sx={{
+                      '& .MuiTableCell-root': {
+                        borderBottom: '2px solid',
+                        borderBottomColor: 'primary.main',
+                      },
+                    }}
+                  >
+                    {COLUMNS.map((header) => (
+                      <TableCell
+                        key={header}
+                        ref={header === "UPC/EAN Code" ? upcHeaderRef : undefined}
                         sx={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          padding: 2,
+                          position: "sticky",
+                          top: 0,
+                          zIndex: 1000,
+                          backgroundColor: "background.paper",
+                          minWidth:
+                            header === "Name"
+                              ? 300
+                              : header === "Sub Category" || header === "Series"
+                                ? 220
+                                : header === "Image"
+                                  ? 150
+                                  : header === "SKU" || header === "UPC/EAN Code"
+                                    ? 180
+                                    : header === "MRP" || header === "Selling Price" || header === "Total"
+                                      ? 150
+                                      : header === "Quantity"
+                                        ? 180
+                                        : 140,
+                          fontWeight: "bold",
+                          fontSize: "0.95rem",
+                          whiteSpace: "nowrap",
+                          color: "text.primary",
+                          paddingY: 2,
+                          paddingX: 2.5,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
                         }}
                       >
-                        <CircularProgress color="primary" />
-                        <Typography variant="body2" sx={{ mt: 1 }}>
-                          Loading more products...
-                        </Typography>
-                      </Box>
-                    </TableCell>
+                        {header}
+                      </TableCell>
+                    ))}
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHead>
+                <TableBody>
+                  {displayedProducts.length > 0 ? (
+                    <>
+                      {displayedProducts.map((product: any) => (
+                        <ProductRow
+                          key={product._id}
+                          product={product}
+                          selectedProducts={selectedProducts}
+                          temporaryQuantities={temporaryQuantities}
+                          specialMargins={specialMargins}
+                          customerMargin={customer?.cf_margin || "40%"}
+                          orderStatus={order?.status}
+                          getSellingPrice={getSellingPrice}
+                          handleImageClick={handleImageClick}
+                          handleQuantityChange={handleQuantityChange}
+                          handleAddOrRemove={(prod: any) =>
+                            selectedProducts.some((p) => p._id === prod._id)
+                              ? handleRemoveProduct(prod._id)
+                              : handleAddProducts(prod)
+                          }
+                          isShared={isShared}
+                          showUPC={showUPC}
+                        />
+                      ))}
+                      {!loadingMore && noMoreProducts[productsKey] && (
+                        <TableRow>
+                          <TableCell colSpan={COLUMNS.length} align="center">
+                            <Typography variant="body2" color="textSecondary">
+                              No more products for{" "}
+                              {searchTerm
+                                ? searchTerm
+                                : groupByCategory
+                                  ? activeCategory
+                                  : activeBrand}{" "}
+                              {searchTerm ? "" : activeCategory}.
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={COLUMNS.length} align="center">
+                        <Typography variant="body1">
+                          {loading ? "Loading products..." : "No products found."}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {loadingMore && (
+                    <TableRow>
+                      <TableCell colSpan={COLUMNS.length} align="center">
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            padding: 2,
+                          }}
+                        >
+                          <CircularProgress color="primary" />
+                          <Typography variant="body2" sx={{ mt: 1 }}>
+                            Loading more products...
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </Box>
           </DoubleScrollTable>
+        ) : (
+          // Desktop Card Grid View
+          <Box ref={cardScrollRef}>
+            {displayedProducts.length > 0 ? (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)',
+                    lg: 'repeat(3, 1fr)',
+                  },
+                  gap: 2,
+                  width: '100%',
+                  maxWidth: '100%',
+                }}
+              >
+                {displayedProducts.map((product: any) => {
+                  const productId = product._id;
+                  const selectedProduct: any = selectedProducts.find(
+                    (p) => p._id === productId
+                  );
+                  const quantity: any =
+                    selectedProduct?.quantity || temporaryQuantities[productId] || "";
+                  const sellingPrice = getSellingPrice(product);
+                  const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
+                  const isQuantityExceedingStock = quantity > product.stock;
+                  const isDisabled =
+                    order?.status?.toLowerCase().includes("accepted") ||
+                    order?.status?.toLowerCase().includes("declined");
+
+                  return (
+                    <Box key={productId}>
+                      <Card
+                        sx={{
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          borderLeft: selectedProduct ? '4px solid' : 'none',
+                          borderLeftColor: selectedProduct ? 'primary.main' : 'transparent',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            boxShadow: 4,
+                            transform: 'translateY(-4px)',
+                          },
+                        }}
+                      >
+                        <Box sx={{ p: 2, position: 'relative' }}>
+                          {product.new && (
+                            <Chip
+                              label="New"
+                              color="secondary"
+                              size="small"
+                              sx={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                zIndex: 1,
+                                fontWeight: 600,
+                              }}
+                            />
+                          )}
+                          <Box
+                            sx={{
+                              width: '100%',
+                              height: 200,
+                              position: 'relative',
+                              mb: 2,
+                              borderRadius: 2,
+                              overflow: 'hidden',
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <ImageCarousel
+                              product={product}
+                              handleImageClick={handleImageClick}
+                            />
+                          </Box>
+
+                          <Typography
+                            variant="h6"
+                            sx={{
+                              fontWeight: 600,
+                              mb: 2,
+                              minHeight: 64,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 3,
+                              WebkitBoxOrient: 'vertical',
+                              lineHeight: 1.3,
+                            }}
+                          >
+                            {product.name}
+                          </Typography>
+
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Brand:
+                              </Typography>
+                              <Typography variant="body2" fontWeight={500}>
+                                {product.brand}
+                              </Typography>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Category:
+                              </Typography>
+                              <Typography variant="body2" fontWeight={500}>
+                                {product.category || '-'}
+                              </Typography>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Sub-Category:
+                              </Typography>
+                              <Typography variant="body2" fontWeight={500}>
+                                {product.sub_category || '-'}
+                              </Typography>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Series:
+                              </Typography>
+                              <Typography variant="body2" fontWeight={500}>
+                                {product.series || '-'}
+                              </Typography>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary">
+                                SKU:
+                              </Typography>
+                              <Typography variant="body2" fontWeight={500}>
+                                {product.cf_sku_code || '-'}
+                              </Typography>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary">
+                                MRP:
+                              </Typography>
+                              <Typography variant="body1" fontWeight={600}>
+                                ₹{product.rate?.toLocaleString()}
+                              </Typography>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Stock:
+                              </Typography>
+                              <Chip
+                                label={product.stock}
+                                size="small"
+                                color={product.stock > 10 ? 'success' : 'error'}
+                                variant={product.stock > 10 ? 'filled' : 'outlined'}
+                              />
+                            </Box>
+
+                            {!isShared && (
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="body2" color="text.secondary">
+                                  Margin:
+                                </Typography>
+                                <Chip
+                                  label={specialMargins[productId] || customer?.cf_margin || "40%"}
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: 'info.light',
+                                    color: 'info.contrastText',
+                                  }}
+                                />
+                              </Box>
+                            )}
+
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Selling Price:
+                              </Typography>
+                              <Typography variant="h6" color="primary.main" fontWeight={700}>
+                                ₹{sellingPrice?.toLocaleString()}
+                              </Typography>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary">
+                                GST:
+                              </Typography>
+                              <Typography variant="body2" fontWeight={500}>
+                                {product.item_tax_preferences[product?.item_tax_preferences.length - 1].tax_percentage}%
+                              </Typography>
+                            </Box>
+
+                            {showUPC && (
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="body2" color="text.secondary">
+                                  UPC/EAN:
+                                </Typography>
+                                <Typography variant="body2" fontWeight={500}>
+                                  {product.upc_code || '-'}
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        </Box>
+
+                        <Box sx={{ p: 2, pt: 0, mt: 'auto' }}>
+                          <Box sx={{ mb: 2 }}>
+                            <QuantitySelector
+                              quantity={quantity}
+                              max={product.stock}
+                              onChange={(newQuantity) => handleQuantityChange(productId, newQuantity)}
+                              disabled={isDisabled}
+                            />
+                            {isQuantityExceedingStock && (
+                              <Alert severity="error" sx={{ mt: 1, py: 0 }}>
+                                Exceeds stock!
+                              </Alert>
+                            )}
+                          </Box>
+
+                          {selectedProduct && (
+                            <Box
+                              sx={{
+                                mb: 2,
+                                p: 1.5,
+                                borderRadius: 1,
+                                textAlign: 'center',
+                              }}
+                            >
+                              <Typography variant="body2" color="text.secondary">
+                                Total
+                              </Typography>
+                              <Typography variant="h6" color="success.main" fontWeight={700}>
+                                ₹{itemTotal?.toLocaleString()}
+                              </Typography>
+                            </Box>
+                          )}
+
+                          <Button
+                            fullWidth
+                            variant={selectedProduct ? "outlined" : "contained"}
+                            color={selectedProduct ? "error" : "primary"}
+                            disabled={isDisabled}
+                            onClick={() => {
+                              if (selectedProduct) {
+                                handleRemoveProduct(productId);
+                              } else {
+                                handleAddProducts(product);
+                              }
+                            }}
+                            startIcon={selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />}
+                            sx={{
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              py: 1.5,
+                            }}
+                          >
+                            {selectedProduct ? "Remove from Cart" : "Add to Cart"}
+                          </Button>
+                        </Box>
+                      </Card>
+                    </Box>
+                  );
+                })}
+              </Box>
+            ) : (
+              <Box mt={2}>
+                <Typography variant="body1" align="center">
+                  {loading ? "Loading products..." : "No products found."}
+                </Typography>
+              </Box>
+            )}
+            {loadingMore && (
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  padding: 3,
+                }}
+              >
+                <CircularProgress color="primary" />
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  Loading more products...
+                </Typography>
+              </Box>
+            )}
+            {!loadingMore && noMoreProducts[productsKey] && (
+              <Box mt={2}>
+                <Typography variant="body2" color="textSecondary" align="center">
+                  No more products for{" "}
+                  {searchTerm
+                    ? searchTerm
+                    : groupByCategory
+                      ? activeCategory
+                      : activeBrand}{" "}
+                  {searchTerm ? "" : activeCategory}.
+                </Typography>
+              </Box>
+            )}
+          </Box>
         )}
       </Box>
       <Box
         sx={{
           position: "fixed",
-          bottom: isMobile || isTablet ? theme.spacing(20) : theme.spacing(12),
-          right: isMobile || isTablet ? theme.spacing(2) : theme.spacing(4),
+          bottom: { xs: theme.spacing(20), sm: theme.spacing(15), md: theme.spacing(12) },
+          right: { xs: theme.spacing(1), sm: theme.spacing(2), md: theme.spacing(4) },
           display: "flex",
           flexDirection: "column",
           gap: 1,
@@ -1659,11 +2001,12 @@ const Products: React.FC<ProductsProps> = ({
         <IconButton
           color="primary"
           onClick={() => {
-            if (isMobile || isTablet) {
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            } else {
-              // For desktop, scroll the table to top
+            if (isMobile) {
+              // For mobile, use table scroll
               tableScrollRef.current?.scrollToTop();
+            } else {
+              // For desktop cards, scroll to the products section
+              cardScrollRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
             }
           }
           }
@@ -1679,14 +2022,15 @@ const Products: React.FC<ProductsProps> = ({
         <IconButton
           color="primary"
           onClick={() => {
-            if (isMobile || isTablet) {
+            if (isMobile) {
+              // For mobile, use table scroll
+              tableScrollRef.current?.scrollToBottom();
+            } else {
+              // For desktop cards, scroll to bottom of page
               window.scrollTo({
                 top: document.documentElement.scrollHeight,
                 behavior: "smooth",
               });
-            } else {
-              // For desktop, scroll the table to bottom
-              tableScrollRef.current?.scrollToBottom();
             }
           }
           }
@@ -1706,8 +2050,8 @@ const Products: React.FC<ProductsProps> = ({
         onClick={() => setCartDrawerOpen(true)}
         sx={{
           position: "fixed",
-          bottom: isMobile || isTablet ? theme.spacing(10) : theme.spacing(4),
-          right: isMobile || isTablet ? theme.spacing(2) : theme.spacing(4),
+          bottom: { xs: theme.spacing(10), sm: theme.spacing(7), md: theme.spacing(4) },
+          right: { xs: theme.spacing(1), sm: theme.spacing(2), md: theme.spacing(4) },
           backgroundColor: "background.paper",
           boxShadow: 3,
           "&:hover": { backgroundColor: "background.default" },
