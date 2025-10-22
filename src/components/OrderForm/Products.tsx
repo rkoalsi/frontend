@@ -161,6 +161,8 @@ const Products: React.FC<ProductsProps> = ({
   const isFetching = useRef<{ [key: string]: boolean }>({});
   const tableScrollRef = useRef<DoubleScrollTableRef>(null);
   const cardScrollRef = useRef<HTMLDivElement>(null);
+  const pageTopRef = useRef<HTMLDivElement>(null);
+  const pageBottomRef = useRef<HTMLDivElement>(null);
 
   // ------------------ Debounced Toasts ------------------
   const debouncedSuccess = useCallback(
@@ -176,6 +178,14 @@ const Products: React.FC<ProductsProps> = ({
     []
   );
 
+  const scrollToTop = useCallback(() => {
+      pageTopRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, []);
+  
+    const scrollToBottom = useCallback(() => {
+      pageBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, []);
+  
   const COLUMNS = useMemo(() => {
     const baseColumns = isShared
       ? [
@@ -861,6 +871,9 @@ const Products: React.FC<ProductsProps> = ({
         position: "relative",
       }}
     >
+      {/* Reference for top of page */}
+      <div ref={pageTopRef} />
+
       {/* Products Section */}
       <Box sx={{ flex: 3 }}>
         <Box
@@ -1988,61 +2001,60 @@ const Products: React.FC<ProductsProps> = ({
         )}
       </Box>
       <Box
-        sx={{
-          position: "fixed",
-          bottom: { xs: theme.spacing(20), sm: theme.spacing(15), md: theme.spacing(12) },
-          right: { xs: theme.spacing(1), sm: theme.spacing(2), md: theme.spacing(4) },
-          display: "flex",
-          flexDirection: "column",
-          gap: 1,
-          zIndex: 1000,
-        }}
-      >
-        <IconButton
-          color="primary"
-          onClick={() => {
-            if (isMobile) {
-              // For mobile, use table scroll
-              tableScrollRef.current?.scrollToTop();
-            } else {
-              // For desktop cards, scroll to the products section
-              cardScrollRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }
-          }
-          }
-          sx={{
-            backgroundColor: "background.paper",
-            boxShadow: 3,
-            "&:hover": { backgroundColor: "background.default" },
-          }}
-        >
-          <ArrowUpward fontSize={isMobile ? "medium" : "large"} />
-        </IconButton>
-
-        <IconButton
-          color="primary"
-          onClick={() => {
-            if (isMobile) {
-              // For mobile, use table scroll
-              tableScrollRef.current?.scrollToBottom();
-            } else {
-              // For desktop cards, scroll to bottom of page
-              window.scrollTo({
-                top: document.documentElement.scrollHeight,
-                behavior: "smooth",
-              });
-            }
-          }
-          }
-          sx={{
-            backgroundColor: "background.paper",
-            boxShadow: 3,
-            "&:hover": { backgroundColor: "background.default" },
-          }}
-        >
-          <ArrowDownward fontSize={isMobile ? "medium" : "large"} />
-        </IconButton>
-      </Box>
+             sx={{
+               position: 'fixed',
+               bottom: { xs: theme.spacing(20), sm: theme.spacing(12), md: theme.spacing(16) },
+               right: { xs: theme.spacing(1), sm: theme.spacing(3), md: theme.spacing(2) },
+               display: 'flex',
+               flexDirection: 'column',
+               gap: 1.5,
+               zIndex: 1000,
+               pointerEvents: 'none',
+             }}
+             className='no-pdf'
+           >
+             <IconButton
+               color='primary'
+               onClick={scrollToTop}
+               sx={{
+                 backgroundColor: 'primary.main',
+                 color: 'white',
+                 width: { xs: 48, sm: 56 },
+                 height: { xs: 48, sm: 56 },
+                 boxShadow: 6,
+                 '&:hover': {
+                   backgroundColor: 'primary.dark',
+                   boxShadow: 8,
+                   transform: 'scale(1.1)',
+                 },
+                 transition: 'all 0.2s ease-in-out',
+                 pointerEvents: 'auto',
+               }}
+             >
+               <ArrowUpward fontSize={isMobile ? 'medium' : 'large'} />
+             </IconButton>
+     
+             <IconButton
+               color='primary'
+               onClick={scrollToBottom}
+               sx={{
+                 backgroundColor: 'primary.main',
+                 color: 'white',
+                 width: { xs: 48, sm: 56 },
+                 height: { xs: 48, sm: 56 },
+                 boxShadow: 6,
+                 '&:hover': {
+                   backgroundColor: 'primary.dark',
+                   boxShadow: 8,
+                   transform: 'scale(1.1)',
+                 },
+                 transition: 'all 0.2s ease-in-out',
+                 pointerEvents: 'auto',
+               }}
+             >
+               <ArrowDownward fontSize={isMobile ? 'medium' : 'large'} />
+             </IconButton>
+           </Box>
 
       {/* Cart Icon */}
       <IconButton
@@ -2096,6 +2108,9 @@ const Products: React.FC<ProductsProps> = ({
           setPopupImageIndex(newIndex);
         }}
       />
+
+      {/* Reference for bottom of page */}
+      <div ref={pageBottomRef} />
     </Box>
   );
 };

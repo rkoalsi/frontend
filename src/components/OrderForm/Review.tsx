@@ -18,12 +18,15 @@ import {
   Fab,
   Zoom,
   useScrollTrigger,
+  IconButton,
 } from '@mui/material';
 import {
   Edit,
   ExpandMore,
   KeyboardArrowUp,
   KeyboardArrowDown,
+  ArrowUpward,
+  ArrowDownward,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -817,43 +820,61 @@ const Review: React.FC<Props> = React.memo((props) => {
       </Box>
 
       {/* Navigation Buttons */}
-      <Zoom in={trigger}>
-        <Box
+     <Box
+        sx={{
+          position: 'fixed',
+          bottom: { xs: theme.spacing(20), sm: theme.spacing(12), md: theme.spacing(16) },
+          right: { xs: theme.spacing(1), sm: theme.spacing(3), md: theme.spacing(2) },
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1.5,
+          zIndex: 1000,
+          pointerEvents: 'none',
+        }}
+        className='no-pdf'
+      >
+        <IconButton
+          color='primary'
+          onClick={scrollToTop}
           sx={{
-            position: 'fixed',
-            bottom: { xs: 350, sm: 200, md: 16 },
-            right: { xs: 8, sm: 12, md: 16 },
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 1,
-            zIndex: 9999,
+            backgroundColor: 'primary.main',
+            color: 'white',
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 },
+            boxShadow: 6,
+            '&:hover': {
+              backgroundColor: 'primary.dark',
+              boxShadow: 8,
+              transform: 'scale(1.1)',
+            },
+            transition: 'all 0.2s ease-in-out',
+            pointerEvents: 'auto',
           }}
-          className='no-pdf'
         >
-          <Tooltip title='Go to Top'>
-            <Fab
-              color='primary'
-              size={isMobile ? 'small' : 'medium'}
-              aria-label='scroll to top'
-              onClick={scrollToTop}
-              sx={{ opacity: 0.9 }}
-            >
-              <KeyboardArrowUp />
-            </Fab>
-          </Tooltip>
-          <Tooltip title='Go to Bottom'>
-            <Fab
-              color='primary'
-              size={isMobile ? 'small' : 'medium'}
-              aria-label='scroll to bottom'
-              onClick={scrollToBottom}
-              sx={{ opacity: 0.9 }}
-            >
-              <KeyboardArrowDown />
-            </Fab>
-          </Tooltip>
-        </Box>
-      </Zoom>
+          <ArrowUpward fontSize={isMobile ? 'medium' : 'large'} />
+        </IconButton>
+
+        <IconButton
+          color='primary'
+          onClick={scrollToBottom}
+          sx={{
+            backgroundColor: 'primary.main',
+            color: 'white',
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 },
+            boxShadow: 6,
+            '&:hover': {
+              backgroundColor: 'primary.dark',
+              boxShadow: 8,
+              transform: 'scale(1.1)',
+            },
+            transition: 'all 0.2s ease-in-out',
+            pointerEvents: 'auto',
+          }}
+        >
+          <ArrowDownward fontSize={isMobile ? 'medium' : 'large'} />
+        </IconButton>
+      </Box>
     </Box>
   );
 });
