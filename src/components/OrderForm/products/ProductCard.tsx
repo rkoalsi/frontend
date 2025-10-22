@@ -44,7 +44,6 @@ interface ProductCardProps {
   handleAddOrRemove: (product: SearchResult) => void;
   index: number;
   isShared: boolean;
-  showUPC: boolean;
 }
 
 const ProductCard: React.FC<ProductCardProps> = memo(
@@ -61,7 +60,6 @@ const ProductCard: React.FC<ProductCardProps> = memo(
     handleAddOrRemove,
     index,
     isShared = false,
-    showUPC = false,
   }) => {
     const productId = product._id;
     const selectedProduct: any = selectedProducts.find(
@@ -82,12 +80,11 @@ const ProductCard: React.FC<ProductCardProps> = memo(
           sx={{
             display: "flex",
             flexDirection: "column",
+            height: '100%',
             borderRadius: 3,
             boxShadow: selectedProduct ? 4 : 2,
             overflow: "hidden",
             backgroundColor: "background.paper",
-            mt: index === 0 ? "16px" : undefined,
-            mb: "16px",
             border: selectedProduct ? '2px solid' : '1px solid',
             borderColor: selectedProduct ? 'primary.main' : 'divider',
             transition: 'all 0.3s ease-in-out',
@@ -99,13 +96,19 @@ const ProductCard: React.FC<ProductCardProps> = memo(
           }}
         >
           {/* Image Section */}
-          <Box sx={{ position: "relative", backgroundColor: 'grey.50' }}>
+          <Box
+            sx={{
+              position: "relative",
+              backgroundColor: 'grey.50',
+              height: 280,
+              width: '100%',
+            }}
+          >
             {product.new && (
               <Badge
                 badgeContent="New"
                 color="secondary"
                 overlap="rectangular"
-                // anchorOrigin={{ vertical: "top", horizontal: "right" }}
                 sx={{
                   position: "absolute",
                   top: 20,
@@ -122,29 +125,32 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               />
             )}
 
-         
             <ImageCarousel
               product={product}
               handleImageClick={handleImageClick}
             />
           </Box>
 
-          
-          <CardContent sx={{ p: 3, flexGrow: 1 }}>
+
+          <CardContent sx={{ p: 3, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
             {/* Product Name */}
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                fontWeight: 600, 
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
                 mb: 2,
                 color: 'text.primary',
                 lineHeight: 1.3,
                 wordWrap: 'break-word',
                 wordBreak: 'break-word',
+                minHeight: '48px',
               }}
             >
               {product.name}
             </Typography>
+
+            {/* Placeholder for alignment with ProductGroupCard variants section */}
+            <Box sx={{ minHeight: '60px', mb: 2 }} />
 
             {/* Product Details Grid */}
             <Box
@@ -155,71 +161,6 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 mb: 2,
               }}
             >
-              {/* Category */}
-                  <Box>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-                >
-                  Category
-                </Typography>
-                <Box sx={{ mt: 0.5 }}>
-                  <Chip
-                    label={product.sub_category || "-"}
-                    variant="outlined"
-                    size="small"
-                    sx={{
-                      borderRadius: 2,
-                      fontSize: '0.78rem',
-                      height: 'auto',
-                      minHeight: 24,
-                      maxWidth: '100%',
-                      '& .MuiChip-label': {
-                        display: 'block',
-                        whiteSpace: 'normal',
-                        wordWrap: 'break-word',
-                        wordBreak: 'break-word',
-                        padding: '6px',
-                        lineHeight: 1.2,
-                      },
-                    }}
-                  />
-                </Box>
-              </Box>
-
-              {/* Series */}
-              <Box>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-                >
-                  Series
-                </Typography>
-                <Box sx={{ mt: 0.5 }}>
-                  <Chip
-                    label={product.series || "-"}
-                    variant="outlined"
-                    size="small"
-                    sx={{
-                      borderRadius: 2,
-                      fontSize: '0.78rem',
-                      height: 'auto',
-                      minHeight: 24,
-                      maxWidth: '100%',
-                      '& .MuiChip-label': {
-                        display: 'block',
-                        whiteSpace: 'normal',
-                        wordWrap: 'break-word',
-                        wordBreak: 'break-word',
-                        padding: '6px',
-                        lineHeight: 1.2,
-                      },
-                    }}
-                  />
-                </Box>
-              </Box>
 
               {/* SKU */}
               <Box display={'flex'} flexDirection={'column'} alignItems={'baseline'}>
@@ -255,7 +196,6 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               </Box>
 
               {/* UPC (if shown) */}
-              {showUPC && (
                 <Box>
                   <Typography
                     variant="caption"
@@ -278,8 +218,6 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                       '& .MuiChip-label': {
                         display: 'block',
                         whiteSpace: 'normal',
-                        wordWrap: 'break-word',
-                        wordBreak: 'break-word',
                         padding: '6px',
                         lineHeight: 1.2,
                       },
@@ -287,7 +225,6 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                   />
                 </Box>
                 </Box>
-              )}
             </Box>
 
             <Divider sx={{ my: 2 }} />
@@ -421,6 +358,9 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 </>
               )}
             </Box>
+
+            {/* Spacer to push content to bottom */}
+            <Box sx={{ flexGrow: 1 }} />
 
             {/* Quantity Selector */}
             <Box

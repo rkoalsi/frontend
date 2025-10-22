@@ -74,9 +74,6 @@ const UnbilledCustomersComponent = () => {
     data: null,
   });
 
-  // API Base URL
-  const API_BASE_URL = process.env.api_url;
-
   const fetchUnbilledCustomers = async () => {
     // Add validation for dates
     if (!startDate || !endDate) {
@@ -104,7 +101,7 @@ const UnbilledCustomersComponent = () => {
       });
 
       const response = await axiosInstance.post(
-        `${API_BASE_URL}/admin/sales_by_customer/unbilled_customers`,
+        `/admin/sales_by_customer/unbilled_customers`,
         {
           start_date: formattedStartDate,
           end_date: formattedEndDate,
@@ -140,7 +137,7 @@ const UnbilledCustomersComponent = () => {
       const formattedEndDate = format(endDate, 'yyyy-MM-dd');
 
       const response = await axiosInstance.get(
-        `${API_BASE_URL}/admin/sales_by_customer/unbilled_customers?start_date=${formattedStartDate}&end_date=${formattedEndDate}`
+        `/admin/sales_by_customer/unbilled_customers?start_date=${formattedStartDate}&end_date=${formattedEndDate}`
       );
 
       if (!response.status) {
@@ -539,6 +536,7 @@ const UnbilledCustomersComponent = () => {
                   value={startDate}
                   onChange={(date) => setStartDate(date)}
                   format='dd-MM-yyyy'
+                  enableAccessibleFieldDOMStructure={false}
                   slots={{
                     textField: TextField,
                   }}
@@ -557,6 +555,7 @@ const UnbilledCustomersComponent = () => {
                   value={endDate}
                   onChange={(date) => setEndDate(date)}
                   format='dd-MM-yyyy'
+                  enableAccessibleFieldDOMStructure={false}
                   slots={{
                     textField: TextField,
                   }}

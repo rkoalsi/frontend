@@ -95,9 +95,6 @@ const BilledCustomersComponent = () => {
     data: null,
   });
 
-  // API Base URL
-  const API_BASE_URL = process.env.api_url;
-
   const fetchBilledCustomers = async () => {
     // Add validation for dates
     if (!startDate || !endDate) {
@@ -126,7 +123,7 @@ const BilledCustomersComponent = () => {
       });
 
       const response = await axiosInstance.post(
-        `${API_BASE_URL}/admin/sales_by_customer/billed_customers`,
+        `/admin/sales_by_customer/billed_customers`,
         {
           start_date: formattedStartDate,
           end_date: formattedEndDate,
@@ -192,7 +189,7 @@ const BilledCustomersComponent = () => {
       });
 
       const response = await axiosInstance.get(
-        `${API_BASE_URL}/admin/sales_by_customer/billed_customers?${params.toString()}`
+        `/admin/sales_by_customer/billed_customers?${params.toString()}`
       );
       if (!response.status) {
         throw new Error('Failed to download billed customers report');
@@ -610,6 +607,7 @@ const BilledCustomersComponent = () => {
                   format='dd-MM-yyyy'
                   value={startDate}
                   onChange={(date) => setStartDate(date)}
+                  enableAccessibleFieldDOMStructure={false}
                   slots={{
                     textField: TextField,
                   }}
@@ -628,6 +626,7 @@ const BilledCustomersComponent = () => {
                   format='dd-MM-yyyy'
                   value={endDate}
                   onChange={(date) => setEndDate(date)}
+                  enableAccessibleFieldDOMStructure={false}
                   slots={{
                     textField: TextField,
                   }}

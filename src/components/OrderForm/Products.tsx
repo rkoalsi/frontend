@@ -59,12 +59,14 @@ import { toast } from "react-toastify";
 import { useRouter } from "next/router";
 import ProductRow from "./products/ProductRow";
 import ProductCard from "./products/ProductCard";
+import ProductGroupCard from "./products/ProductGroupCard";
 import CartDrawer from "./products/Cart";
 import ImagePopupDialog from "../common/ImagePopUp";
 import Image from "next/image";
 import DoubleScrollTable, { DoubleScrollTableRef } from "./DoubleScrollTable";
 import ImageCarousel from "./products/ImageCarousel";
 import QuantitySelector from "./QuantitySelector";
+import { groupProductsByName, ProductGroup, GroupedProducts } from "../../util/groupProducts";
 
 interface SearchResult {
   id?: number;
@@ -153,6 +155,7 @@ const Products: React.FC<ProductsProps> = ({
   const [cataloguePage, setCataloguePage]: any = useState();
   const [cataloguePages, setCataloguePages] = useState([]);
   const [catalogueEnabled, setCatalogueEnabled] = useState<boolean>(false);
+  const [groupByProductName, setGroupByProductName] = useState<boolean>(true);
 
   const [confirmModalOpen, setConfirmModalOpen] = useState<boolean>(false);
 
@@ -289,18 +292,39 @@ const Products: React.FC<ProductsProps> = ({
             // Pass catalogue_page only in catalogue mode:
             catalogue_page:
               sortToUse === "catalogue" ? cataloguePage : undefined,
+            // Pass group_by_name flag from the frontend state
+            group_by_name: groupByProductName,
           },
           signal: controller.signal,
         });
-        const newProducts = response.data.products || [];
-        const hasMore = newProducts.length === 75;
-        setProductsByBrandCategory((prev) => ({
-          ...prev,
-          [key]:
-            page === 1 ? newProducts : [...(prev[key] || []), ...newProducts],
-        }));
-        setPaginationState((prev) => ({ ...prev, [key]: { page, hasMore } }));
-        if (!hasMore) setNoMoreProducts((prev) => ({ ...prev, [key]: true }));
+
+        // Handle both grouped and ungrouped responses
+        if (groupByProductName && response.data.items !== undefined) {
+          // Backend returned grouped data in ordered format
+          const newItems = response.data.items || [];
+          const hasMore = newItems.length === 75;
+
+          setProductsByBrandCategory((prev:any) => ({
+            ...prev,
+            [key]: {
+              items: page === 1 ? newItems : [...((prev[key] as any)?.items || []), ...newItems],
+            },
+          }));
+
+          setPaginationState((prev) => ({ ...prev, [key]: { page, hasMore } }));
+          if (!hasMore) setNoMoreProducts((prev) => ({ ...prev, [key]: true }));
+        } else {
+          // Normal ungrouped response
+          const newProducts = response.data.products || [];
+          const hasMore = newProducts.length === 75;
+          setProductsByBrandCategory((prev) => ({
+            ...prev,
+            [key]:
+              page === 1 ? newProducts : [...(prev[key] || []), ...newProducts],
+          }));
+          setPaginationState((prev) => ({ ...prev, [key]: { page, hasMore } }));
+          if (!hasMore) setNoMoreProducts((prev) => ({ ...prev, [key]: true }));
+        }
       } catch (error) {
         if (!axios.isCancel(error)) debouncedError("Failed to fetch products.");
       } finally {
@@ -309,7 +333,7 @@ const Products: React.FC<ProductsProps> = ({
       }
       return () => controller.abort();
     },
-    [sortOrder, debouncedError, cataloguePage]
+    [sortOrder, debouncedError, cataloguePage, groupByProductName]
   );
 
   const fetchAllBrands = useCallback(async () => {
@@ -407,11 +431,19 @@ const Products: React.FC<ProductsProps> = ({
 
       // Set the second category (index 1) as default, or first if second doesn't exist
       const defaultCategory = categories[1] || categories[0] || "";
-      if (!activeCategory && defaultCategory) {
-        setActiveCategory(defaultCategory);
-        // Immediately trigger the API call for the new category
+      if (defaultCategory) {
+        // If activeCategory exists and is in the list, keep it; otherwise use default
+        const categoryToUse = activeCategory && categories.includes(activeCategory)
+          ? activeCategory
+          : defaultCategory;
+
+        if (categoryToUse !== activeCategory) {
+          setActiveCategory(categoryToUse);
+        }
+
+        // Always trigger the API call for the category when switching to group by category mode
         setTimeout(() => {
-          resetPaginationAndFetch("", defaultCategory);
+          resetPaginationAndFetch("", categoryToUse);
         }, 0);
       }
     } catch (error) {
@@ -610,13 +642,36 @@ const Products: React.FC<ProductsProps> = ({
           `Updated ${productInCart.name} to quantity ${sanitized}`
         );
       } else {
-        const product = productsByBrandCategory[
-          searchTerm.trim() !== ""
-            ? "search"
-            : groupByCategory
-              ? `all-${activeCategory}`
-              : `${activeBrand}-${activeCategory}`
-        ]?.find((p) => p._id === id);
+        const key = searchTerm.trim() !== ""
+          ? "search"
+          : groupByCategory
+            ? `all-${activeCategory}`
+            : `${activeBrand}-${activeCategory}`;
+
+        const data = productsByBrandCategory[key];
+        let product;
+
+        // Check if data has items array (grouped format) or is a plain array
+        if (data && (data as any).items !== undefined) {
+          // Grouped format - search through items
+          const items = (data as any).items || [];
+          for (const item of items) {
+            if (item.type === 'product' && item.product._id === id) {
+              product = item.product;
+              break;
+            } else if (item.type === 'group') {
+              const foundInGroup = item.products?.find((p: any) => p._id === id);
+              if (foundInGroup) {
+                product = foundInGroup;
+                break;
+              }
+            }
+          }
+        } else if (Array.isArray(data)) {
+          // Plain array format
+          product = data.find((p) => p._id === id);
+        }
+
         if (product) {
           const sanitized = Math.max(1, Math.min(newQuantity, product.stock));
           const isShared = new URLSearchParams(window.location.search).has(
@@ -835,9 +890,36 @@ const Products: React.FC<ProductsProps> = ({
         : "all";
   }, [searchTerm, activeBrand, activeCategory, groupByCategory, sortOrder]);
 
+  // Get items data (ordered mix of groups and products) from backend
+  const itemsData = useMemo(() => {
+    const data = productsByBrandCategory[productsKey];
+    if (groupByProductName && data && (data as any).items !== undefined) {
+      return (data as any).items || [];
+    }
+    return null;
+  }, [productsByBrandCategory, productsKey, groupByProductName]);
+
   const displayedProducts = useMemo(() => {
-    return productsByBrandCategory[productsKey] || [];
-  }, [productsByBrandCategory, productsKey]);
+    // If we have ordered items from backend, extract only the products
+    if (itemsData) {
+      return itemsData
+        .filter((item: any) => item.type === 'product')
+        .map((item: any) => item.product);
+    }
+
+    const data = productsByBrandCategory[productsKey];
+    return data || [];
+  }, [productsByBrandCategory, productsKey, itemsData]);
+
+  // Get grouped data - not used when we have itemsData
+  const groupedData = useMemo((): GroupedProducts | null => {
+    if (!groupByProductName) {
+      return null;
+    }
+
+    // Fallback to frontend grouping (shouldn't be needed)
+    return groupProductsByName(displayedProducts);
+  }, [groupByProductName, displayedProducts]);
 
   const allCategoryCounts = useMemo(() => {
     const counts: { [category: string]: number } = {};
@@ -1428,7 +1510,7 @@ const Products: React.FC<ProductsProps> = ({
             )
           )}
           {sortOrder !== "catalogue" && (
-            <Box display="flex" justifyContent="flex-end">
+            <Box display="flex" justifyContent="flex-end" gap={2}>
               <FormControlLabel
                 control={
                   <Checkbox
@@ -1452,40 +1534,82 @@ const Products: React.FC<ProductsProps> = ({
               />
             </Box>
           )}
-          <Box display="flex" justifyContent="flex-end">
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={showUPC}
-                  onChange={(e) => {
-                    const isChecked = e.target.checked;
-                    setShowUPC(isChecked);
-
-                    // Scroll to UPC/EAN column when enabled
-                    if (isChecked) {
-                      setTimeout(() => {
-                        upcHeaderRef.current?.scrollIntoView({
-                          behavior: "smooth",
-                          block: "nearest",
-                          inline: "end",
-                        });
-                      }, 100);
-                    }
-                  }}
-                  color="primary"
-                />
-              }
-              label="Show UPC/EAN Code"
-            />
-          </Box>
         </Box>
 
         {/* Products Display */}
         {isMobile || isTablet ? (
           <Box>
-            {displayedProducts.length > 0 ? (
-              <Box display={"flex"} flexDirection={"column"}>
-                {displayedProducts.map((product, index) => (
+            {groupByProductName && itemsData ? (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr',
+                  gap: 2,
+                  width: '100%',
+                }}
+              >
+                {/* Render items in exact order from backend */}
+                {itemsData.map((item: any, index: number) => {
+                  if (item.type === 'group') {
+                    return (
+                      <ProductGroupCard
+                        key={item.groupId}
+                        baseName={item.baseName}
+                        products={item.products}
+                        primaryProduct={item.primaryProduct}
+                        selectedProducts={selectedProducts}
+                        temporaryQuantities={temporaryQuantities}
+                        specialMargins={specialMargins}
+                        customerMargin={customer?.cf_margin || "40%"}
+                        orderStatus={order?.status}
+                        getSellingPrice={getSellingPrice}
+                        handleImageClick={handleImageClick}
+                        handleQuantityChange={handleQuantityChange}
+                        handleAddOrRemove={(prod: any) =>
+                          selectedProducts.some((p) => p._id === prod._id)
+                            ? handleRemoveProduct(prod._id)
+                            : handleAddProducts(prod)
+                        }
+                        index={index}
+                        isShared={isShared}
+                      />
+                    );
+                  } else {
+                    // item.type === 'product'
+                    return (
+                      <ProductCard
+                        key={item.product._id}
+                        product={item.product}
+                        selectedProducts={selectedProducts}
+                        temporaryQuantities={temporaryQuantities}
+                        specialMargins={specialMargins}
+                        customerMargin={customer?.cf_margin || "40%"}
+                        orderStatus={order?.status}
+                        getSellingPrice={getSellingPrice}
+                        handleImageClick={handleImageClick}
+                        handleQuantityChange={handleQuantityChange}
+                        handleAddOrRemove={(prod: any) =>
+                          selectedProducts.some((p) => p._id === prod._id)
+                            ? handleRemoveProduct(prod._id)
+                            : handleAddProducts(prod)
+                        }
+                        index={index}
+                        isShared={isShared}
+                      />
+                    );
+                  }
+                })}
+              </Box>
+            ) : displayedProducts.length > 0 ? (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr',
+                  gap: 2,
+                  width: '100%',
+                }}
+              >
+                {displayedProducts.map((product:any, index:number) => (
                   <ProductCard
                     key={product._id}
                     product={product}
@@ -1504,7 +1628,6 @@ const Products: React.FC<ProductsProps> = ({
                     }
                     index={index}
                     isShared={isShared}
-                    showUPC={showUPC}
                   />
                 ))}
               </Box>
@@ -1678,7 +1801,74 @@ const Products: React.FC<ProductsProps> = ({
         ) : (
           // Desktop Card Grid View
           <Box ref={cardScrollRef}>
-            {displayedProducts.length > 0 ? (
+            {groupByProductName && itemsData ? (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)',
+                    lg: 'repeat(3, 1fr)',
+                  },
+                  gap: 2,
+                  width: '100%',
+                  maxWidth: '100%',
+                }}
+              >
+                {/* Render items in exact order from backend */}
+                {itemsData.map((item: any, index: number) => {
+                  if (item.type === 'group') {
+                    return (
+                      <ProductGroupCard
+                        key={item.groupId}
+                        baseName={item.baseName}
+                        products={item.products}
+                        primaryProduct={item.primaryProduct}
+                        selectedProducts={selectedProducts}
+                        temporaryQuantities={temporaryQuantities}
+                        specialMargins={specialMargins}
+                        customerMargin={customer?.cf_margin || "40%"}
+                        orderStatus={order?.status}
+                        getSellingPrice={getSellingPrice}
+                        handleImageClick={handleImageClick}
+                        handleQuantityChange={handleQuantityChange}
+                        handleAddOrRemove={(prod: any) =>
+                          selectedProducts.some((p) => p._id === prod._id)
+                            ? handleRemoveProduct(prod._id)
+                            : handleAddProducts(prod)
+                        }
+                        index={index}
+                        isShared={isShared}
+                      />
+                    );
+                  } else {
+                    // item.type === 'product'
+                    return (
+                      <ProductCard
+                        key={item.product._id}
+                        product={item.product}
+                        selectedProducts={selectedProducts}
+                        temporaryQuantities={temporaryQuantities}
+                        specialMargins={specialMargins}
+                        customerMargin={customer?.cf_margin || "40%"}
+                        orderStatus={order?.status}
+                        getSellingPrice={getSellingPrice}
+                        handleImageClick={handleImageClick}
+                        handleQuantityChange={handleQuantityChange}
+                        handleAddOrRemove={(prod: any) =>
+                          selectedProducts.some((p) => p._id === prod._id)
+                            ? handleRemoveProduct(prod._id)
+                            : handleAddProducts(prod)
+                        }
+                        index={index}
+                        isShared={isShared}
+                      />
+                    );
+                  }
+                })}
+              </Box>
+            ) : displayedProducts.length > 0 ? (
               <Box
                 sx={{
                   display: 'grid',
@@ -1991,20 +2181,24 @@ const Products: React.FC<ProductsProps> = ({
       <Box
         sx={{
           position: "fixed",
-          bottom: { xs: theme.spacing(20), sm: theme.spacing(15), md: theme.spacing(12) },
-          right: { xs: theme.spacing(1), sm: theme.spacing(2), md: theme.spacing(4) },
+          bottom: { xs: theme.spacing(20), sm: theme.spacing(12), md: theme.spacing(16) },
+          right: { xs: theme.spacing(1), sm: theme.spacing(3), md: theme.spacing(2) },
           display: "flex",
           flexDirection: "column",
-          gap: 1,
+          gap: 1.5,
           zIndex: 1000,
+          pointerEvents: "none",
         }}
       >
         <IconButton
           color="primary"
           onClick={() => {
-            if (isMobile) {
-              // For mobile, use table scroll
-              tableScrollRef.current?.scrollToTop();
+            if (isMobile || isTablet) {
+              // For mobile/tablet cards, scroll to top of page
+              window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+              });
             } else {
               // For desktop cards, scroll to the products section
               cardScrollRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2012,9 +2206,18 @@ const Products: React.FC<ProductsProps> = ({
           }
           }
           sx={{
-            backgroundColor: "background.paper",
-            boxShadow: 3,
-            "&:hover": { backgroundColor: "background.default" },
+            backgroundColor: "primary.main",
+            color: "white",
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 },
+            boxShadow: 6,
+            "&:hover": {
+              backgroundColor: "primary.dark",
+              boxShadow: 8,
+              transform: "scale(1.1)",
+            },
+            transition: "all 0.2s ease-in-out",
+            pointerEvents: "auto",
           }}
         >
           <ArrowUpward fontSize={isMobile ? "medium" : "large"} />
@@ -2023,9 +2226,12 @@ const Products: React.FC<ProductsProps> = ({
         <IconButton
           color="primary"
           onClick={() => {
-            if (isMobile) {
-              // For mobile, use table scroll
-              tableScrollRef.current?.scrollToBottom();
+            if (isMobile || isTablet) {
+              // For mobile/tablet cards, scroll to bottom of page
+              window.scrollTo({
+                top: document.documentElement.scrollHeight,
+                behavior: "smooth",
+              });
             } else {
               // For desktop cards, scroll to bottom of page
               window.scrollTo({
@@ -2036,9 +2242,18 @@ const Products: React.FC<ProductsProps> = ({
           }
           }
           sx={{
-            backgroundColor: "background.paper",
-            boxShadow: 3,
-            "&:hover": { backgroundColor: "background.default" },
+            backgroundColor: "primary.main",
+            color: "white",
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 },
+            boxShadow: 6,
+            "&:hover": {
+              backgroundColor: "primary.dark",
+              boxShadow: 8,
+              transform: "scale(1.1)",
+            },
+            transition: "all 0.2s ease-in-out",
+            pointerEvents: "auto",
           }}
         >
           <ArrowDownward fontSize={isMobile ? "medium" : "large"} />
@@ -2051,22 +2266,39 @@ const Products: React.FC<ProductsProps> = ({
         onClick={() => setCartDrawerOpen(true)}
         sx={{
           position: "fixed",
-          bottom: { xs: theme.spacing(10), sm: theme.spacing(7), md: theme.spacing(4) },
-          right: { xs: theme.spacing(1), sm: theme.spacing(2), md: theme.spacing(4) },
+          bottom: { xs: theme.spacing(10), sm: theme.spacing(4), md: theme.spacing(3) },
+          right: { xs: theme.spacing(1), sm: theme.spacing(3), md: theme.spacing(2) },
           backgroundColor: "background.paper",
-          boxShadow: 3,
-          "&:hover": { backgroundColor: "background.default" },
+          color: "primary.main",
+          width: { xs: 56, sm: 64 },
+          height: { xs: 56, sm: 64 },
+          boxShadow: 6,
+          "&:hover": {
+            backgroundColor: "background.default",
+            boxShadow: 8,
+            transform: "scale(1.1)",
+          },
+          transition: "all 0.2s ease-in-out",
           zIndex: 1000,
+          pointerEvents: "auto",
         }}
       >
-        <ShoppingCartIcon fontSize="large" />
-        {selectedProducts.length > 0 && (
-          <Badge
-            badgeContent={selectedProducts.length}
-            color="secondary"
-            sx={{ position: "absolute", top: -4, right: -4 }}
-          />
-        )}
+        <Badge
+          badgeContent={selectedProducts.length}
+          color="error"
+          max={99}
+          sx={{
+            "& .MuiBadge-badge": {
+              fontSize: { xs: "0.7rem", sm: "0.75rem" },
+              height: { xs: 18, sm: 20 },
+              minWidth: { xs: 18, sm: 20 },
+              padding: { xs: "0 4px", sm: "0 6px" },
+              fontWeight: 700,
+            }
+          }}
+        >
+          <ShoppingCartIcon fontSize="large" />
+        </Badge>
       </IconButton>
 
       {/* Cart Drawer */}
@@ -2086,6 +2318,8 @@ const Products: React.FC<ProductsProps> = ({
         orderStatus={order?.status}
         customer={customer}
         isMobile={isMobile}
+        handleClearCart={handleClearCart}
+        order={order}
       />
 
       <ImagePopupDialog
