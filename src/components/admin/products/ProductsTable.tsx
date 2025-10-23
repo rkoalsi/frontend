@@ -91,11 +91,27 @@ const ProductTable = ({
                           : `${index + 1}`}
                       </TableCell>
                       <TableCell>
-                        <ImageCarousel
-                          handleImageClick={handleImageClick}
-                          product={product}
-                          small={true}
-                        />
+                        <Box
+                          sx={{
+                            width: '100%',
+                            height: 200,
+                            position: 'relative',
+                            mb: 2,
+                            borderRadius: 2,
+                            overflow: 'hidden',
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <ImageCarousel
+                            handleImageClick={handleImageClick}
+                            product={product}
+                            small={true}
+                          />
+                        </Box>
                       </TableCell>
                       <TableCell>{product.name}</TableCell>
                       <TableCell>{product.category}</TableCell>

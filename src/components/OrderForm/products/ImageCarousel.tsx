@@ -1,7 +1,6 @@
 import {
   ChevronLeft,
   ChevronRight,
-  FiberManualRecord,
 } from '@mui/icons-material';
 import { Box, IconButton, useMediaQuery, useTheme } from '@mui/material';
 import React, { useState } from 'react';
