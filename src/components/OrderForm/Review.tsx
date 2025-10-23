@@ -70,6 +70,7 @@ const Review: React.FC<Props> = React.memo((props) => {
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc]: any = useState([]);
@@ -221,7 +222,7 @@ const Review: React.FC<Props> = React.memo((props) => {
         display='flex'
         justifyContent='space-between'
         alignItems='flex-start'
-        flexDirection={{xs:'column', lg:'row'}}
+        flexDirection={{ xs: 'column', md: 'row', lg: 'row', xl: 'row' }}
         mb={2}
       >
         <Typography variant='h6' sx={{ mb: 1 }}>
@@ -408,7 +409,11 @@ const Review: React.FC<Props> = React.memo((props) => {
                             >
                               <CardMedia
                                 component='img'
-                                image={product.image_url || '/placeholder.png'}
+                                image={
+                                  product.images && product.images.length > 0
+                                    ? product.images[0]
+                                    : product.image_url || '/placeholder.png'
+                                }
                                 alt={product.name}
                                 onError={(e) =>
                                   (e.currentTarget.src = '/placeholder.png')
@@ -420,9 +425,14 @@ const Review: React.FC<Props> = React.memo((props) => {
                                   objectFit: 'cover',
                                   cursor: 'pointer',
                                 }}
-                                onClick={() =>
-                                  handleImageClick(product.images, index)
-                                }
+                                onClick={() => {
+                                  const imageList = product.images && product.images.length > 0
+                                    ? product.images
+                                    : product.image_url
+                                      ? [product.image_url]
+                                      : ['/placeholder.png'];
+                                  handleImageClick(imageList, 0);
+                                }}
                               />
                             </Badge>
                           </Box>
@@ -820,7 +830,7 @@ const Review: React.FC<Props> = React.memo((props) => {
       </Box>
 
       {/* Navigation Buttons */}
-     <Box
+      <Box
         sx={{
           position: 'fixed',
           bottom: { xs: theme.spacing(20), sm: theme.spacing(12), md: theme.spacing(16) },
