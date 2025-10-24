@@ -11,10 +11,14 @@ import {
   Alert,
   Divider,
   Tooltip,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import {
   AddShoppingCart,
   RemoveShoppingCart,
+  ExpandMore,
 } from "@mui/icons-material";
 import QuantitySelector from "../QuantitySelector";
 import ImageCarousel from "./ImageCarousel";
@@ -24,6 +28,7 @@ interface SearchResult {
   _id: string;
   name: string;
   images?: string[];
+  category?: string;
   sub_category?: string;
   series?: string;
   cf_sku_code?: string;
@@ -32,6 +37,11 @@ interface SearchResult {
   new?: boolean;
   item_tax_preferences: any;
   upc_code?: string;
+  dimensions?: {
+    length?: number;
+    breadth?: number;
+    height?: number;
+  };
 }
 
 interface ProductGroupCardProps {
@@ -96,9 +106,10 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
           display: "flex",
           flexDirection: "column",
           height: '100%',
+          minHeight: '100%',
           borderRadius: 3,
           boxShadow: selectedProduct ? 4 : 2,
-          overflow: "hidden",
+          overflow: "visible",
           backgroundColor: "background.paper",
           border: selectedProduct ? '2px solid' : '1px solid',
           borderColor: selectedProduct ? 'primary.main' : 'divider',
@@ -336,6 +347,71 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
               mb: 2,
             }}
           >
+            {/* Category */}
+            <Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
+              >
+                Category
+              </Typography>
+              <Box sx={{ mt: 0.5 }}>
+                <Chip
+                  label={currentVariant.category || "-"}
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    borderRadius: 2,
+                    fontSize: '0.78rem',
+                    height: 'auto',
+                    minHeight: 24,
+                    maxWidth: '100%',
+                    '& .MuiChip-label': {
+                      display: 'block',
+                      whiteSpace: 'normal',
+                      wordWrap: 'break-word',
+                      wordBreak: 'break-word',
+                      padding: '6px',
+                      lineHeight: 1.2,
+                    },
+                  }}
+                />
+              </Box>
+            </Box>
+
+            {/* Series */}
+            <Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
+              >
+                Series
+              </Typography>
+              <Box sx={{ mt: 0.5 }}>
+                <Chip
+                  label={currentVariant.series || "-"}
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    borderRadius: 2,
+                    fontSize: '0.78rem',
+                    height: 'auto',
+                    minHeight: 24,
+                    maxWidth: '100%',
+                    '& .MuiChip-label': {
+                      display: 'block',
+                      whiteSpace: 'normal',
+                      wordWrap: 'break-word',
+                      wordBreak: 'break-word',
+                      padding: '6px',
+                      lineHeight: 1.2,
+                    },
+                  }}
+                />
+              </Box>
+            </Box>
 
             {/* SKU */}
             <Box display={'flex'} flexDirection={'column'} alignItems={'baseline'}>
@@ -403,6 +479,84 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
               </Box>
             </Box>
           </Box>
+
+          {/* Dimensions Accordion */}
+          {currentVariant.dimensions && (currentVariant.dimensions.length || currentVariant.dimensions.breadth || currentVariant.dimensions.height) && (
+            <Box sx={{ mt: 2 }}>
+              <Accordion
+                elevation={0}
+                sx={{
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: '8px !important',
+                  '&:before': {
+                    display: 'none',
+                  },
+                  '& .MuiAccordionSummary-root': {
+                    minHeight: '48px',
+                    '&.Mui-expanded': {
+                      minHeight: '48px',
+                    },
+                  },
+                }}
+              >
+                <AccordionSummary
+                  expandIcon={<ExpandMore />}
+                  sx={{
+                    '& .MuiAccordionSummary-content': {
+                      margin: '8px 0',
+                    },
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      color: 'text.secondary',
+                    }}
+                  >
+                    Dimensions
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails sx={{ pt: 0 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {currentVariant.dimensions.length !== undefined && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Length:
+                        </Typography>
+                        <Typography variant="body2" fontWeight={500}>
+                          {currentVariant.dimensions.length} cm
+                        </Typography>
+                      </Box>
+                    )}
+                    {currentVariant.dimensions.breadth !== undefined && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Breadth:
+                        </Typography>
+                        <Typography variant="body2" fontWeight={500}>
+                          {currentVariant.dimensions.breadth} cm
+                        </Typography>
+                      </Box>
+                    )}
+                    {currentVariant.dimensions.height !== undefined && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Height:
+                        </Typography>
+                        <Typography variant="body2" fontWeight={500}>
+                          {currentVariant.dimensions.height} cm
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
+            </Box>
+          )}
 
           <Divider sx={{ my: 2 }} />
 

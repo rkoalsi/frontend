@@ -182,13 +182,13 @@ const Products: React.FC<ProductsProps> = ({
   );
 
   const scrollToTop = useCallback(() => {
-      pageTopRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, []);
-  
-    const scrollToBottom = useCallback(() => {
-      pageBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, []);
-  
+    pageTopRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    pageBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
   const COLUMNS = useMemo(() => {
     const baseColumns = isShared
       ? [
@@ -311,9 +311,18 @@ const Products: React.FC<ProductsProps> = ({
         if (groupByProductName && response.data.items !== undefined) {
           // Backend returned grouped data in ordered format
           const newItems = response.data.items || [];
-          const hasMore = newItems.length === 75;
 
-          setProductsByBrandCategory((prev:any) => ({
+          // Count actual number of products (groups may contain multiple products)
+          const totalProductsFetched = newItems.reduce((count: number, item: any) => {
+            if (item.type === 'group') {
+              return count + (item.products?.length || 0);
+            }
+            return count + 1; // Single product
+          }, 0);
+
+          const hasMore = totalProductsFetched === 75;
+
+          setProductsByBrandCategory((prev: any) => ({
             ...prev,
             [key]: {
               items: page === 1 ? newItems : [...((prev[key] as any)?.items || []), ...newItems],
@@ -1558,6 +1567,7 @@ const Products: React.FC<ProductsProps> = ({
                   gridTemplateColumns: '1fr',
                   gap: 2,
                   width: '100%',
+                  alignItems: 'stretch',
                 }}
               >
                 {/* Render items in exact order from backend */}
@@ -1619,9 +1629,10 @@ const Products: React.FC<ProductsProps> = ({
                   gridTemplateColumns: '1fr',
                   gap: 2,
                   width: '100%',
+                  alignItems: 'stretch',
                 }}
               >
-                {displayedProducts.map((product:any, index:number) => (
+                {displayedProducts.map((product: any, index: number) => (
                   <ProductCard
                     key={product._id}
                     product={product}
@@ -1826,6 +1837,7 @@ const Products: React.FC<ProductsProps> = ({
                   gap: 2,
                   width: '100%',
                   maxWidth: '100%',
+                  alignItems: 'stretch',
                 }}
               >
                 {/* Render items in exact order from backend */}
@@ -1893,6 +1905,7 @@ const Products: React.FC<ProductsProps> = ({
                   gap: 2,
                   width: '100%',
                   maxWidth: '100%',
+                  alignItems: 'stretch',
                 }}
               >
                 {displayedProducts.map((product: any) => {
@@ -2192,83 +2205,57 @@ const Products: React.FC<ProductsProps> = ({
       </Box>
       <Box
         sx={{
-          position: "fixed",
+          position: 'fixed',
           bottom: { xs: theme.spacing(20), sm: theme.spacing(12), md: theme.spacing(16) },
           right: { xs: theme.spacing(1), sm: theme.spacing(3), md: theme.spacing(2) },
-          display: "flex",
-          flexDirection: "column",
+          display: 'flex',
+          flexDirection: 'column',
           gap: 1.5,
           zIndex: 1000,
-          pointerEvents: "none",
+          pointerEvents: 'none',
         }}
+        className='no-pdf'
       >
         <IconButton
-          color="primary"
-          onClick={() => {
-            if (isMobile || isTablet) {
-              // For mobile/tablet cards, scroll to top of page
-              window.scrollTo({
-                top: 0,
-                behavior: "smooth",
-              });
-            } else {
-              // For desktop cards, scroll to the products section
-              cardScrollRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }
-          }
-          }
+          color='primary'
+          onClick={scrollToTop}
           sx={{
-            backgroundColor: "primary.main",
-            color: "white",
+            backgroundColor: 'primary.main',
+            color: 'white',
             width: { xs: 48, sm: 56 },
             height: { xs: 48, sm: 56 },
             boxShadow: 6,
-            "&:hover": {
-              backgroundColor: "primary.dark",
+            '&:hover': {
+              backgroundColor: 'primary.dark',
               boxShadow: 8,
-              transform: "scale(1.1)",
+              transform: 'scale(1.1)',
             },
-            transition: "all 0.2s ease-in-out",
-            pointerEvents: "auto",
+            transition: 'all 0.2s ease-in-out',
+            pointerEvents: 'auto',
           }}
         >
-          <ArrowUpward fontSize={isMobile ? "medium" : "large"} />
+          <ArrowUpward fontSize={isMobile ? 'medium' : 'large'} />
         </IconButton>
 
         <IconButton
-          color="primary"
-          onClick={() => {
-            if (isMobile || isTablet) {
-              // For mobile/tablet cards, scroll to bottom of page
-              window.scrollTo({
-                top: document.documentElement.scrollHeight,
-                behavior: "smooth",
-              });
-            } else {
-              // For desktop cards, scroll to bottom of page
-              window.scrollTo({
-                top: document.documentElement.scrollHeight,
-                behavior: "smooth",
-              });
-            }
-          }
-          }
+          color='primary'
+          onClick={scrollToBottom}
           sx={{
-            backgroundColor: "primary.main",
-            color: "white",
+            backgroundColor: 'primary.main',
+            color: 'white',
             width: { xs: 48, sm: 56 },
             height: { xs: 48, sm: 56 },
             boxShadow: 6,
-            "&:hover": {
-              backgroundColor: "primary.dark",
+            '&:hover': {
+              backgroundColor: 'primary.dark',
               boxShadow: 8,
-              transform: "scale(1.1)",
+              transform: 'scale(1.1)',
             },
-            transition: "all 0.2s ease-in-out",
-            pointerEvents: "auto",
+            transition: 'all 0.2s ease-in-out',
+            pointerEvents: 'auto',
           }}
         >
-          <ArrowDownward fontSize={isMobile ? "medium" : "large"} />
+          <ArrowDownward fontSize={isMobile ? 'medium' : 'large'} />
         </IconButton>
       </Box>
 
