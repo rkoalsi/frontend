@@ -71,6 +71,7 @@ const ProductTable = ({
                   <TableCell>SKU</TableCell>
                   <TableCell>Price</TableCell>
                   <TableCell>Stock</TableCell>
+                  <TableCell>UPC Code</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Actions</TableCell>
                 </TableRow>
@@ -120,6 +121,7 @@ const ProductTable = ({
                       <TableCell>{product.cf_sku_code}</TableCell>
                       <TableCell>₹{product.rate}</TableCell>
                       <TableCell>{product.stock}</TableCell>
+                      <TableCell>{product.upc_code}</TableCell>
                       <TableCell>
                         <Switch
                           checked={product.status === 'active'}
