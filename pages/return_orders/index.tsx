@@ -27,6 +27,8 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import PhoneIcon from '@mui/icons-material/Phone';
+import DescriptionIcon from '@mui/icons-material/Description';
 import Header from '../../src/components/common/Header';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -153,6 +155,14 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
             <Typography variant='subtitle1' fontWeight='bold'>
               {returnOrder.contact_name || returnOrder.customer_name || 'N/A'}
             </Typography>
+            {returnOrder.contact_no && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                <PhoneIcon fontSize='small' color='action' />
+                <Typography variant='caption' color='textSecondary'>
+                  {returnOrder.contact_no}
+                </Typography>
+              </Box>
+            )}
           </Box>
 
           <Box>
@@ -163,7 +173,9 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
               </Typography>
             </Box>
             <Typography variant='subtitle1' fontWeight='bold'>
-              {returnOrder.return_date
+              {returnOrder.return_form_date
+                ? formatDate(returnOrder.return_form_date)
+                : returnOrder.return_date
                 ? formatDate(returnOrder.return_date)
                 : formatDate(returnOrder.created_at) || 'N/A'}
             </Typography>
@@ -173,11 +185,12 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <InventoryIcon color='primary' fontSize='small' />
               <Typography variant='body2' color='textSecondary'>
-                Items Count
+                Items / Boxes
               </Typography>
             </Box>
             <Typography variant='subtitle1' fontWeight='bold'>
-              {returnOrder.items?.length || returnOrder.items_count || 0}
+              {returnOrder.items?.length || returnOrder.items_count || 0} items
+              {returnOrder.box_count && ` / ${returnOrder.box_count} boxes`}
             </Typography>
           </Box>
         </Box>
@@ -205,6 +218,42 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
             </Typography>
             <Alert severity='info' sx={{ backgroundColor: '#f3f4f6' }}>
               {returnOrder.return_reason}
+            </Alert>
+          </Box>
+        )}
+
+        {/* Debit Note Document */}
+        {returnOrder.debit_note_document && (
+          <Box sx={{ mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <DescriptionIcon color='primary' fontSize='small' />
+              <Typography variant='body2' color='textSecondary'>
+                Debit Note Document
+              </Typography>
+            </Box>
+            <Alert
+              severity='success'
+              sx={{
+                backgroundColor: '#f0fdf4',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <DescriptionIcon fontSize='small' />
+                <a
+                  href={returnOrder.debit_note_document}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  style={{
+                    color: 'inherit',
+                    textDecoration: 'underline',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  View Document
+                </a>
+              </Box>
             </Alert>
           </Box>
         )}
@@ -408,6 +457,14 @@ function ReturnOrders() {
       pickupAddress: currentReturnOrder.pickup_address,
       items: currentReturnOrder.items || [],
       returnReason: currentReturnOrder.return_reason,
+      returnFormDate: currentReturnOrder.return_form_date
+        ? new Date(currentReturnOrder.return_form_date)
+            .toISOString()
+            .split('T')[0]
+        : '',
+      contactNo: currentReturnOrder.contact_no || '',
+      boxCount: currentReturnOrder.box_count || 1,
+      debitNoteDocument: currentReturnOrder.debit_note_document || '',
       referenceNumber: currentReturnOrder.reference_number || '',
     };
   };

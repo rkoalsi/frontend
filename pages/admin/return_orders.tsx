@@ -546,10 +546,26 @@ const ReturnOrders = () => {
                     <Typography variant='h6' gutterBottom color='primary'>
                       Order Information
                     </Typography>
+                    {selectedOrder.return_form_date && (
+                      <Typography variant='body2' gutterBottom>
+                        <strong>Return Form Date:</strong>{' '}
+                        {formatDate(selectedOrder.return_form_date)}
+                      </Typography>
+                    )}
                     <Typography variant='body2' gutterBottom>
                       <strong>Return Date:</strong>{' '}
                       {formatDate(selectedOrder.return_date)}
                     </Typography>
+                    {selectedOrder.contact_no && (
+                      <Typography variant='body2' gutterBottom>
+                        <strong>Contact Number:</strong> {selectedOrder.contact_no}
+                      </Typography>
+                    )}
+                    {selectedOrder.box_count && (
+                      <Typography variant='body2' gutterBottom>
+                        <strong>Box Count:</strong> {selectedOrder.box_count}
+                      </Typography>
+                    )}
                     <Typography variant='body2' gutterBottom>
                       <strong>Status:</strong>{' '}
                       <Chip
@@ -561,6 +577,22 @@ const ReturnOrders = () => {
                     <Typography variant='body2' gutterBottom>
                       <strong>Reason:</strong> {selectedOrder.return_reason}
                     </Typography>
+                    {selectedOrder.debit_note_document && (
+                      <Typography variant='body2' gutterBottom>
+                        <strong>Debit Note Document:</strong>{' '}
+                        <a
+                          href={selectedOrder.debit_note_document}
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          style={{
+                            color: '#1976d2',
+                            textDecoration: 'underline',
+                          }}
+                        >
+                          View Document
+                        </a>
+                      </Typography>
+                    )}
                   </CardContent>
                 </Card>
               </Box>
