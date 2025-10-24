@@ -312,7 +312,16 @@ const Products: React.FC<ProductsProps> = ({
         if (groupByProductName && response.data.items !== undefined) {
           // Backend returned grouped data in ordered format
           const newItems = response.data.items || [];
-          const hasMore = newItems.length === 75;
+
+          // Count actual number of products (groups may contain multiple products)
+          const totalProductsFetched = newItems.reduce((count: number, item: any) => {
+            if (item.type === 'group') {
+              return count + (item.products?.length || 0);
+            }
+            return count + 1; // Single product
+          }, 0);
+
+          const hasMore = totalProductsFetched === 75;
 
           setProductsByBrandCategory((prev: any) => ({
             ...prev,
@@ -1559,6 +1568,7 @@ const Products: React.FC<ProductsProps> = ({
                   gridTemplateColumns: '1fr',
                   gap: 2,
                   width: '100%',
+                  alignItems: 'stretch',
                 }}
               >
                 {/* Render items in exact order from backend */}
@@ -1620,6 +1630,7 @@ const Products: React.FC<ProductsProps> = ({
                   gridTemplateColumns: '1fr',
                   gap: 2,
                   width: '100%',
+                  alignItems: 'stretch',
                 }}
               >
                 {displayedProducts.map((product: any, index: number) => (
@@ -1827,6 +1838,7 @@ const Products: React.FC<ProductsProps> = ({
                   gap: 2,
                   width: '100%',
                   maxWidth: '100%',
+                  alignItems: 'stretch',
                 }}
               >
                 {/* Render items in exact order from backend */}
@@ -1894,6 +1906,7 @@ const Products: React.FC<ProductsProps> = ({
                   gap: 2,
                   width: '100%',
                   maxWidth: '100%',
+                  alignItems: 'stretch',
                 }}
               >
                 {displayedProducts.map((product: any) => {
