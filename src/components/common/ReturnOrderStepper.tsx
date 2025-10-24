@@ -22,6 +22,7 @@ import {
   useMediaQuery,
   CardMedia,
   CircularProgress,
+  InputAdornment,
 } from '@mui/material';
 import {
   PersonAdd,
@@ -38,6 +39,10 @@ import {
   CancelOutlined,
   KeyboardArrowDown,
   KeyboardArrowUp,
+  Phone,
+  Description,
+  CalendarMonth,
+  Inbox,
 } from '@mui/icons-material';
 import CustomerSearchBar from '../OrderForm/CustomerSearchBar';
 import Address from '../OrderForm/SelectAddress';
@@ -335,7 +340,17 @@ const ReturnOrderStepper = ({
   const [returnReason, setReturnReason] = useState(
     initialData?.returnReason || ''
   );
+  const [returnFormDate, setReturnFormDate] = useState(
+    initialData?.returnFormDate || ''
+  );
+  const [contactNo, setContactNo] = useState(initialData?.contactNo || '');
+  const [boxCount, setBoxCount] = useState(initialData?.boxCount || 1);
+  const [debitNoteFile, setDebitNoteFile] = useState<File | null>(null);
+  const [debitNoteDocument, setDebitNoteDocument] = useState(
+    initialData?.debitNoteDocument || ''
+  );
   const [loading, setLoading] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   const handleNext = () => {
     if (canProceedToNext()) {
@@ -355,8 +370,13 @@ const ReturnOrderStepper = ({
         return pickupAddress !== null;
       case 2: // Items selection
         return returnItems.length > 0;
-      case 3: // Return note
-        return returnReason.trim() !== '';
+      case 3: // Return note and details
+        return (
+          returnReason.trim() !== '' &&
+          returnFormDate !== '' &&
+          contactNo.trim() !== '' &&
+          boxCount > 0
+        );
       case 4: // Review step
         return true; // Always can proceed from review to submit
       default:
@@ -415,11 +435,15 @@ const ReturnOrderStepper = ({
     try {
       setLoading(true);
       console.log(returnItems);
+
       const returnOrderData = {
         customer_id: customer._id,
         customer_name: customer.contact_name,
         pickup_address: pickupAddress,
         return_reason: returnReason,
+        return_form_date: returnFormDate,
+        contact_no: contactNo,
+        box_count: boxCount,
         items: returnItems.map((item: any) => ({
           product_id: item._id || item.product_id,
           product_name: item.name || item.product_name,
@@ -431,6 +455,8 @@ const ReturnOrderStepper = ({
         created_by: user.data._id,
       };
 
+      let returnOrderId = initialData?._id;
+
       if (isEditing && initialData?._id) {
         await axios.put(
           `${process.env.api_url}/return_orders/${initialData._id}`,
@@ -438,11 +464,37 @@ const ReturnOrderStepper = ({
         );
         toast.success('Return order updated successfully');
       } else {
-        await axios.post(
+        const response = await axios.post(
           `${process.env.api_url}/return_orders`,
           returnOrderData
         );
+        returnOrderId = response.data.return_order._id;
         toast.success('Return order created successfully');
+      }
+
+      // Upload file if one was selected
+      if (debitNoteFile && returnOrderId) {
+        try {
+          setUploadingFile(true);
+          const formData = new FormData();
+          formData.append('file', debitNoteFile);
+
+          await axios.post(
+            `${process.env.api_url}/return_orders/${returnOrderId}/upload-document`,
+            formData,
+            {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            }
+          );
+          toast.success('Document uploaded successfully');
+        } catch (uploadError) {
+          console.error('Error uploading document:', uploadError);
+          toast.error('Failed to upload document');
+        } finally {
+          setUploadingFile(false);
+        }
       }
 
       onSave?.();
@@ -788,20 +840,256 @@ const ReturnOrderStepper = ({
 
       case 3:
         return (
-          <Box>
-            <Typography variant='h6'>Return Reason</Typography>
-            <TextField
-              fullWidth
-              label='Return Reason'
-              placeholder='Please specify the reason for return...'
-              multiline
-              rows={3}
-              value={returnReason}
-              onChange={(e) => setReturnReason(e.target.value)}
-              required
-              sx={{ mt: 3 }}
-            />
-          </Box>
+          <Card>
+            <CardContent>
+              <Typography variant='h6' gutterBottom>
+                Return Details
+              </Typography>
+              <Typography variant='body2' color='textSecondary' sx={{ mb: 3 }}>
+                Provide additional information about the return
+              </Typography>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {/* Return Reason */}
+                <TextField
+                  fullWidth
+                  label='Return Reason'
+                  placeholder='Please specify the reason for return...'
+                  multiline
+                  rows={3}
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  required
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position='start'>
+                        <NoteAdd color='primary' />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      alignItems: 'flex-start',
+                    },
+                  }}
+                />
+
+                {/* Return Form Date */}
+                <TextField
+                  fullWidth
+                  label='Return Form Date'
+                  type='date'
+                  value={returnFormDate}
+                  onChange={(e) => setReturnFormDate(e.target.value)}
+                  required
+                  slotProps={{
+                    inputLabel: {
+                      shrink: true,
+                    },
+                    input: {
+                      inputProps: {
+                        min: new Date().toISOString().split('T')[0],
+                      },
+                      startAdornment: (
+                        <InputAdornment position='start'>
+                          <CalendarMonth color='primary' />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+
+                {/* Contact Number */}
+                <TextField
+                  fullWidth
+                  label='Contact Number'
+                  placeholder='Enter contact number...'
+                  value={contactNo}
+                  onChange={(e) => setContactNo(e.target.value)}
+                  required
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position='start'>
+                        <Phone color='primary' />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+
+                {/* Box Count */}
+                <Box>
+                  <Typography variant='subtitle2' gutterBottom>
+                    Box Count
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2,
+                      p: 2,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 2,
+                      backgroundColor: 'grey.50',
+                    }}
+                  >
+                    <Inbox color='primary' />
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        flex: 1,
+                      }}
+                    >
+                      <IconButton
+                        onClick={() => setBoxCount(Math.max(1, boxCount - 1))}
+                        disabled={boxCount <= 1}
+                        sx={{
+                          backgroundColor: 'primary.main',
+                          color: 'white',
+                          '&:hover': {
+                            backgroundColor: 'primary.dark',
+                          },
+                          '&:disabled': {
+                            backgroundColor: 'grey.300',
+                          },
+                          width: 40,
+                          height: 40,
+                        }}
+                      >
+                        <Remove />
+                      </IconButton>
+                      <TextField
+                        value={boxCount}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '') {
+                            setBoxCount(1);
+                          } else {
+                            const num = parseInt(value);
+                            if (!isNaN(num) && num >= 1) {
+                              setBoxCount(num);
+                            }
+                          }
+                        }}
+                        sx={{
+                          width: '80px',
+                          '& .MuiOutlinedInput-root': {
+                            '& input': {
+                              textAlign: 'center',
+                              fontSize: '1.2rem',
+                              fontWeight: 'bold',
+                            },
+                          },
+                        }}
+                        inputProps={{
+                          min: 1,
+                          style: { textAlign: 'center' },
+                        }}
+                      />
+                      <IconButton
+                        onClick={() => setBoxCount(boxCount + 1)}
+                        sx={{
+                          backgroundColor: 'primary.main',
+                          color: 'white',
+                          '&:hover': {
+                            backgroundColor: 'primary.dark',
+                          },
+                          width: 40,
+                          height: 40,
+                        }}
+                      >
+                        <Add />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                </Box>
+
+                {/* Debit Note Document Upload */}
+                <Box
+                  sx={{
+                    p: 2,
+                    border: '2px dashed',
+                    borderColor: 'primary.main',
+                    borderRadius: 2,
+                    backgroundColor: 'grey.50',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Description color='primary' />
+                    <Typography variant='subtitle2'>
+                      Debit Note Document (Optional)
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant='caption'
+                    color='textSecondary'
+                    sx={{ mb: 2, display: 'block' }}
+                  >
+                    Upload xlsx, csv, pdf, or image files
+                  </Typography>
+                  <input
+                    type='file'
+                    accept='.xlsx,.xls,.csv,.jpg,.jpeg,.png,.pdf'
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setDebitNoteFile(file);
+                      }
+                    }}
+                    style={{ display: 'none' }}
+                    id='debit-note-upload'
+                  />
+                  <label htmlFor='debit-note-upload'>
+                    <Button
+                      variant='contained'
+                      component='span'
+                      fullWidth
+                      startIcon={<Description />}
+                      sx={{
+                        mb: 1,
+                        backgroundColor: debitNoteFile
+                          ? 'success.main'
+                          : 'primary.main',
+                        '&:hover': {
+                          backgroundColor: debitNoteFile
+                            ? 'success.dark'
+                            : 'primary.dark',
+                        },
+                      }}
+                    >
+                      {debitNoteFile
+                        ? `Selected: ${debitNoteFile.name}`
+                        : debitNoteDocument
+                        ? 'Change Document'
+                        : 'Choose File'}
+                    </Button>
+                  </label>
+
+                  {debitNoteFile && (
+                    <Alert severity='success' sx={{ mt: 1 }}>
+                      File ready to upload: {debitNoteFile.name}
+                    </Alert>
+                  )}
+
+                  {debitNoteDocument && !debitNoteFile && (
+                    <Alert severity='info' sx={{ mt: 1 }}>
+                      Current document:{' '}
+                      <a
+                        href={debitNoteDocument}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        style={{ color: 'inherit', textDecoration: 'underline' }}
+                      >
+                        View Document
+                      </a>
+                    </Alert>
+                  )}
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
         );
       case 4:
         return (
@@ -914,12 +1202,84 @@ const ReturnOrderStepper = ({
                       color='textSecondary'
                       sx={{ mb: 0.5 }}
                     >
+                      Contact Number
+                    </Typography>
+                    <Typography variant='body1' fontWeight={500}>
+                      {contactNo}
+                    </Typography>
+                  </Box>
+
+                  <Box>
+                    <Typography
+                      variant='subtitle2'
+                      color='textSecondary'
+                      sx={{ mb: 0.5 }}
+                    >
                       Pickup Address
                     </Typography>
                     <Typography variant='body1' sx={{ lineHeight: 1.6 }}>
                       {formatAddress(pickupAddress)}
                     </Typography>
                   </Box>
+
+                  <Box>
+                    <Typography
+                      variant='subtitle2'
+                      color='textSecondary'
+                      sx={{ mb: 0.5 }}
+                    >
+                      Return Form Date
+                    </Typography>
+                    <Typography variant='body1' fontWeight={500}>
+                      {new Date(returnFormDate).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </Typography>
+                  </Box>
+
+                  <Box>
+                    <Typography
+                      variant='subtitle2'
+                      color='textSecondary'
+                      sx={{ mb: 0.5 }}
+                    >
+                      Box Count
+                    </Typography>
+                    <Typography variant='body1' fontWeight={500}>
+                      {boxCount}
+                    </Typography>
+                  </Box>
+
+                  {(debitNoteFile || debitNoteDocument) && (
+                    <Box>
+                      <Typography
+                        variant='subtitle2'
+                        color='textSecondary'
+                        sx={{ mb: 0.5 }}
+                      >
+                        Debit Note Document
+                      </Typography>
+                      <Typography variant='body1' fontWeight={500}>
+                        {debitNoteFile
+                          ? debitNoteFile.name
+                          : debitNoteDocument && (
+                              <a
+                                href={debitNoteDocument}
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                style={{
+                                  color: 'inherit',
+                                  textDecoration: 'underline',
+                                }}
+                              >
+                                View Document
+                              </a>
+                            )}
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
               </Paper>
               {/* Return Items Section */}
@@ -1265,12 +1625,14 @@ const ReturnOrderStepper = ({
               <Button
                 variant='contained'
                 onClick={handleSaveReturnOrder}
-                disabled={!canProceedToNext() || loading}
+                disabled={!canProceedToNext() || loading || uploadingFile}
                 startIcon={<CheckCircle />}
                 color='success'
               >
-                {loading
-                  ? 'Saving...'
+                {loading || uploadingFile
+                  ? uploadingFile
+                    ? 'Uploading Document...'
+                    : 'Saving...'
                   : isEditing
                   ? 'Update Return Order'
                   : 'Create Return Order'}
