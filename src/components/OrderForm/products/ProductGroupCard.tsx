@@ -157,32 +157,31 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
           />
         </Box>
 
-        <CardContent sx={{ p: 3, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-          {/* Product Name - matches ProductCard exactly */}
+        <CardContent sx={{ p: 2, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+          {/* Product Name */}
           <Typography
             variant="h6"
             sx={{
               fontWeight: 600,
-              mb: 2,
+              mb: 1.5,
               color: 'text.primary',
               lineHeight: 1.3,
               wordWrap: 'break-word',
               wordBreak: 'break-word',
-              minHeight: '48px',
+              minHeight: '40px',
+              fontSize: '1rem',
             }}
           >
             {currentVariant.name}
           </Typography>
 
-          {/* Variant Selector - compact to minimize height difference */}
-          <Box sx={{ mb: 2, minHeight: '60px' }}>
+          {/* Variant Selector - Compact */}
+          <Box sx={{ mb: 1.5 }}>
             <Typography
               variant="caption"
               color="text.secondary"
               sx={{
                 fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
                 mb: 0.5,
                 display: 'block',
                 fontSize: '0.7rem',
@@ -338,218 +337,156 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
             </Box>
           </Box>
 
-          {/* Product Details Grid */}
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
+          {/* Product Details - Enhanced Design */}
+          <Box sx={{ mb: 1.5 }}>
+            {/* Category & Series in one row */}
+            <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
+              {currentVariant.category && (
+                <Chip
+                  label={currentVariant.category}
+                  variant="filled"
+                  size="small"
+                  sx={{
+                    borderRadius: 1.5,
+                    fontSize: '0.7rem',
+                    height: '24px',
+                    fontWeight: 600,
+                    bgcolor: 'primary.50',
+                    color: 'primary.dark',
+                    '& .MuiChip-label': { px: 1.5 },
+                  }}
+                />
+              )}
+              {currentVariant.series && (
+                <Chip
+                  label={currentVariant.series}
+                  variant="filled"
+                  size="small"
+                  sx={{
+                    borderRadius: 1.5,
+                    fontSize: '0.7rem',
+                    height: '24px',
+                    fontWeight: 600,
+                    bgcolor: 'secondary.50',
+                    color: 'secondary.dark',
+                    '& .MuiChip-label': { px: 1.5 },
+                  }}
+                />
+              )}
+            </Box>
+
+            {/* SKU & UPC in enhanced grid */}
+            <Box sx={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
               gap: 2,
-              mb: 2,
-            }}
-          >
-            {/* Category */}
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-              >
-                Category
-              </Typography>
-              <Box sx={{ mt: 0.5 }}>
-                <Chip
-                  label={currentVariant.category || "-"}
-                  variant="outlined"
-                  size="small"
+            }}>
+              <Box>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
                   sx={{
-                    borderRadius: 2,
-                    fontSize: '0.78rem',
-                    height: 'auto',
-                    minHeight: 24,
-                    maxWidth: '100%',
-                    '& .MuiChip-label': {
-                      display: 'block',
-                      whiteSpace: 'normal',
-                      wordWrap: 'break-word',
-                      wordBreak: 'break-word',
-                      padding: '6px',
-                      lineHeight: 1.2,
-                    },
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.3px',
+                    display: 'block',
+                    mb: 0.5,
                   }}
-                />
+                >
+                  SKU
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    fontFamily: 'monospace',
+                    color: 'text.primary',
+                  }}
+                >
+                  {currentVariant.cf_sku_code || "-"}
+                </Typography>
               </Box>
-            </Box>
-
-            {/* Series */}
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-              >
-                Series
-              </Typography>
-              <Box sx={{ mt: 0.5 }}>
-                <Chip
-                  label={currentVariant.series || "-"}
-                  variant="outlined"
-                  size="small"
+              <Box>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
                   sx={{
-                    borderRadius: 2,
-                    fontSize: '0.78rem',
-                    height: 'auto',
-                    minHeight: 24,
-                    maxWidth: '100%',
-                    '& .MuiChip-label': {
-                      display: 'block',
-                      whiteSpace: 'normal',
-                      wordWrap: 'break-word',
-                      wordBreak: 'break-word',
-                      padding: '6px',
-                      lineHeight: 1.2,
-                    },
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.3px',
+                    display: 'block',
+                    mb: 0.5,
                   }}
-                />
-              </Box>
-            </Box>
-
-            {/* SKU */}
-            <Box display={'flex'} flexDirection={'column'} alignItems={'baseline'}>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-              >
-                SKU Code
-              </Typography>
-              <Box sx={{ mt: 0.5 }}>
-                <Chip
-                  label={currentVariant.cf_sku_code || "-"}
-                  variant="outlined"
-                  size="small"
+                >
+                  UPC
+                </Typography>
+                <Typography
+                  variant="body2"
                   sx={{
-                    borderRadius: 2,
-                    fontSize: '0.78rem',
-                    height: 'auto',
-                    minHeight: 24,
-                    maxWidth: '100%',
-                    '& .MuiChip-label': {
-                      display: 'block',
-                      whiteSpace: 'normal',
-                      wordWrap: 'break-word',
-                      wordBreak: 'break-word',
-                      padding: '6px',
-                      lineHeight: 1.2,
-                    },
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    fontFamily: 'monospace',
+                    color: 'text.primary',
                   }}
-                />
-              </Box>
-            </Box>
-
-            {/* UPC */}
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-              >
-                UPC/EAN
-              </Typography>
-              <Box sx={{ mt: 0.5 }}>
-                <Chip
-                  label={currentVariant.upc_code || "-"}
-                  variant="outlined"
-                  size="small"
-                  sx={{
-                    borderRadius: 2,
-                    fontSize: '0.78rem',
-                    height: 'auto',
-                    minHeight: 24,
-                    maxWidth: '100%',
-                    '& .MuiChip-label': {
-                      display: 'block',
-                      whiteSpace: 'normal',
-                      wordWrap: 'break-word',
-                      wordBreak: 'break-word',
-                      padding: '6px',
-                      lineHeight: 1.2,
-                    },
-                  }}
-                />
+                >
+                  {currentVariant.upc_code || "-"}
+                </Typography>
               </Box>
             </Box>
           </Box>
 
-          {/* Dimensions Accordion */}
+          {/* Dimensions Accordion - Compact */}
           {currentVariant.dimensions && (currentVariant.dimensions.length || currentVariant.dimensions.breadth || currentVariant.dimensions.height) && (
-            <Box sx={{ mt: 2 }}>
+            <Box sx={{ mb: 1.5 }}>
               <Accordion
                 elevation={0}
                 sx={{
                   border: '1px solid',
                   borderColor: 'divider',
-                  borderRadius: '8px !important',
-                  '&:before': {
-                    display: 'none',
-                  },
+                  borderRadius: '6px !important',
+                  '&:before': { display: 'none' },
                   '& .MuiAccordionSummary-root': {
-                    minHeight: '48px',
-                    '&.Mui-expanded': {
-                      minHeight: '48px',
-                    },
+                    minHeight: '36px',
+                    '&.Mui-expanded': { minHeight: '36px' },
                   },
                 }}
               >
                 <AccordionSummary
-                  expandIcon={<ExpandMore />}
-                  sx={{
-                    '& .MuiAccordionSummary-content': {
-                      margin: '8px 0',
-                    },
-                  }}
+                  expandIcon={<ExpandMore sx={{ fontSize: '1.2rem' }} />}
+                  sx={{ '& .MuiAccordionSummary-content': { margin: '6px 0' } }}
                 >
                   <Typography
                     variant="caption"
                     sx={{
                       fontWeight: 600,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
+                      fontSize: '0.7rem',
                       color: 'text.secondary',
                     }}
                   >
                     Dimensions
                   </Typography>
                 </AccordionSummary>
-                <AccordionDetails sx={{ pt: 0 }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <AccordionDetails sx={{ pt: 0, pb: 1 }}>
+                  <Box sx={{ display: 'flex', gap: 2, fontSize: '0.75rem' }}>
                     {currentVariant.dimensions.length !== undefined && (
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Length:
-                        </Typography>
-                        <Typography variant="body2" fontWeight={500}>
-                          {currentVariant.dimensions.length} cm
-                        </Typography>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>L:</Typography>
+                        <Typography variant="body2" component="span" sx={{ ml: 0.5, fontSize: '0.75rem' }}>{currentVariant.dimensions.length}cm</Typography>
                       </Box>
                     )}
                     {currentVariant.dimensions.breadth !== undefined && (
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Breadth:
-                        </Typography>
-                        <Typography variant="body2" fontWeight={500}>
-                          {currentVariant.dimensions.breadth} cm
-                        </Typography>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>B:</Typography>
+                        <Typography variant="body2" component="span" sx={{ ml: 0.5, fontSize: '0.75rem' }}>{currentVariant.dimensions.breadth}cm</Typography>
                       </Box>
                     )}
                     {currentVariant.dimensions.height !== undefined && (
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Height:
-                        </Typography>
-                        <Typography variant="body2" fontWeight={500}>
-                          {currentVariant.dimensions.height} cm
-                        </Typography>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>H:</Typography>
+                        <Typography variant="body2" component="span" sx={{ ml: 0.5, fontSize: '0.75rem' }}>{currentVariant.dimensions.height}cm</Typography>
                       </Box>
                     )}
                   </Box>
@@ -558,135 +495,190 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
             </Box>
           )}
 
-          <Divider sx={{ my: 2 }} />
+          <Divider sx={{ my: 1.5 }} />
 
-          {/* Pricing Section */}
-          <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-              >
-                MRP
-              </Typography>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: 600,
-                  color: 'info',
-                  fontSize: '1rem',
-                }}
-              >
-                ₹{currentVariant.rate?.toLocaleString()}
-              </Typography>
-            </Box>
-
-            {/* Stock Section */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-              >
-                Stock
-              </Typography>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: 600,
-                  color: currentVariant.stock > 10 ? 'success.main' : 'error.light',
-                  fontSize: '1rem',
-                }}
-              >
-                {currentVariant.stock}
-              </Typography>
-            </Box>
-
-            {!isShared && (
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          {/* Pricing Section - Enhanced */}
+          <Box sx={{ mb: 1.5 }}>
+            {/* Price Information Grid */}
+            <Box sx={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: 2,
+              mb: 1.5,
+            }}>
+              {/* MRP */}
+              <Box>
                 <Typography
                   variant="caption"
                   color="text.secondary"
-                  sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-                >
-                  Margin
-                </Typography>
-                <Typography
-                  variant="body2"
                   sx={{
-                    fontWeight: 600,
-                    color: 'info',
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.3px',
+                    display: 'block',
+                    mb: 0.5,
                   }}
                 >
-                  {specialMargins[productId] || customerMargin}
+                  MRP
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    fontFamily: 'system-ui',
+                    color: 'text.primary',
+                    letterSpacing: '-0.3px',
+                  }}
+                >
+                  ₹{currentVariant.rate?.toLocaleString('en-IN')}
                 </Typography>
               </Box>
-            )}
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-              >
-                Selling Price
-              </Typography>
-              <Typography
-                variant="body1"
-                sx={{
-                  fontWeight: 700,
-                  color: 'primary.main',
-                  fontSize: '1rem',
-                }}
-              >
-                ₹{sellingPrice?.toLocaleString()}
-              </Typography>
-            </Box>
-
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-              >
-                GST
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{ fontWeight: 500 }}
-              >
-                {currentVariant?.item_tax_preferences[currentVariant?.item_tax_preferences.length - 1].tax_percentage}%
-              </Typography>
-            </Box>
-
-            {selectedProduct && (
-              <>
-                <Divider sx={{ my: 1 }} />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography
-                    variant="subtitle2"
-                    sx={{
-                      fontWeight: 700,
-                      color: 'success.dark',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}
-                  >
-                    Item Total
-                  </Typography>
+              {/* Stock */}
+              <Box sx={{ textAlign: 'right' }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.3px',
+                    display: 'block',
+                    mb: 0.5,
+                  }}
+                >
+                  Stock
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'end', gap: 0.5, justifyContent: 'flex-end' }}>
                   <Typography
                     variant="body1"
                     sx={{
                       fontWeight: 700,
-                      color: 'success.dark',
-                      fontSize: '1rem',
+                      fontSize: '0.95rem',
+                      fontFamily: 'system-ui',
+                      color: currentVariant.stock > 10 ? 'success.main' : currentVariant.stock > 0 ? 'error.main' : 'error.main',
+                      letterSpacing: '-0.3px',
                     }}
                   >
-                    ₹{itemTotal?.toLocaleString()}
+                    {currentVariant.stock.toLocaleString('en-IN')}
                   </Typography>
                 </Box>
-              </>
+              </Box>
+
+              {/* Selling Price */}
+              <Box>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.3px',
+                    display: 'block',
+                    mb: 0.5,
+                  }}
+                >
+                  Selling Price
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: '1.05rem',
+                    fontFamily: 'system-ui',
+                    color: 'primary.main',
+                    letterSpacing: '-0.5px',
+                  }}
+                >
+                  ₹{sellingPrice?.toLocaleString('en-IN')}
+                </Typography>
+                {!isShared && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: '0.65rem',
+                      color: 'text.secondary',
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    {specialMargins[productId] || customerMargin} margin
+                  </Typography>
+                )}
+              </Box>
+
+              {/* GST */}
+              <Box sx={{ textAlign: 'right' }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.3px',
+                    display: 'block',
+                    mb: 0.5,
+                  }}
+                >
+                  GST
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    fontFamily: 'system-ui',
+                    color: 'text.primary',
+                    letterSpacing: '-0.3px',
+                  }}
+                >
+                  {currentVariant?.item_tax_preferences[currentVariant?.item_tax_preferences.length - 1].tax_percentage}%
+                </Typography>
+              </Box>
+            </Box>
+
+            {selectedProduct && (
+              <Box
+                sx={{
+                  p: 1.5,
+                  bgcolor: 'success.50',
+                  borderRadius: 1.5,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  border: '2px solid',
+                  borderColor: 'success.main',
+                }}
+              >
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    fontWeight: 700,
+                    color: 'success.dark',
+                    fontSize: '0.85rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  Item Total
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: 800,
+                    color: 'success.dark',
+                    fontSize: '1.15rem',
+                    fontFamily: 'system-ui',
+                    letterSpacing: '-0.5px',
+                  }}
+                >
+                  ₹{itemTotal?.toLocaleString('en-IN')}
+                </Typography>
+              </Box>
             )}
           </Box>
 
@@ -699,7 +691,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              mb: 2,
+              mb: 1.5,
             }}
           >
             <Typography
@@ -707,9 +699,8 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
               color="text.secondary"
               sx={{
                 fontWeight: 600,
-                mb: 1,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
+                mb: 0.75,
+                fontSize: '0.7rem',
               }}
             >
               Quantity
@@ -726,7 +717,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
               <Alert
                 severity="error"
                 sx={{
-                  mt: 1,
+                  mt: 0.75,
                   py: 0,
                   px: 1,
                   fontSize: '0.65rem',
@@ -750,13 +741,13 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                 onClick={() => handleAddOrRemove(currentVariant)}
                 disabled={isDisabled}
                 fullWidth
-                size="large"
+                size="medium"
                 sx={{
                   textTransform: "none",
                   borderRadius: 2,
                   fontWeight: 600,
-                  py: 1.5,
-                  fontSize: '0.9rem',
+                  py: 1,
+                  fontSize: '0.85rem',
                   boxShadow: 2,
                   '&:hover': {
                     boxShadow: 4,
