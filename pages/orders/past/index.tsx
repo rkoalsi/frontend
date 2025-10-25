@@ -15,8 +15,15 @@ import {
   useMediaQuery,
   Paper,
   styled,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import { useTheme } from '@mui/material/styles';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
@@ -72,6 +79,8 @@ const PastOrders = () => {
   const [filterType, setFilterType] = useState<
     'all' | 'draft' | 'accepted' | 'declined' | 'invoiced'
   >('all');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const router = useRouter();
@@ -102,11 +111,27 @@ const PastOrders = () => {
     router.push(`/orders/past/${id}`);
   };
 
-  // Delete a specific order
-  const deleteOrder = async (id: string) => {
+  // Open delete confirmation dialog
+  const handleDeleteClick = (id: string) => {
+    setOrderToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  // Close delete confirmation dialog
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setOrderToDelete(null);
+  };
+
+  // Delete a specific order after confirmation
+  const handleDeleteConfirm = async () => {
+    if (!orderToDelete) return;
+
     try {
-      await axios.delete(`${process.env.api_url}/orders/${id}`);
+      await axios.delete(`${process.env.api_url}/orders/${orderToDelete}`);
       toast.success(`Order Deleted Successfully`);
+      setDeleteDialogOpen(false);
+      setOrderToDelete(null);
       getData();
     } catch (error) {
       console.error('Error deleting order:', error);
@@ -229,17 +254,31 @@ const PastOrders = () => {
                           : `Order #${order._id.slice(-6)}`}
                       </Typography>
                       {!order.estimate_created && (
-                        <IconButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteOrder(order._id);
-                          }}
-                          aria-label='delete order'
-                          sx={{ ml: 2 }}
-                          color='error'
-                        >
-                          <DeleteIcon />
-                        </IconButton>
+                        <Box display='flex' alignItems='center' gap={2}>
+                          <IconButton
+                            disabled={['declined', 'accepted', 'invoiced'].includes(
+                              order?.status?.toLowerCase()
+                            )}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/orders/new/${order._id}`);
+                            }}
+                            aria-label='edit order'
+                            color='primary'
+                          >
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(order._id);
+                            }}
+                            aria-label='delete order'
+                            color='error'
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Box>
                       )}
                     </Box>
                     <Typography variant='body2' color='black'>
@@ -364,6 +403,31 @@ const PastOrders = () => {
           text='Go Back'
         />
       </Box>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        aria-labelledby='delete-dialog-title'
+        aria-describedby='delete-dialog-description'
+      >
+        <DialogTitle id='delete-dialog-title'>
+          Confirm Delete
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id='delete-dialog-description'>
+            Are you sure you want to delete this order? This action is irreversible and cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} color='primary'>
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteConfirm} color='error' variant='contained' autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
