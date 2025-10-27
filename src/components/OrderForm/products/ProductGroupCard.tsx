@@ -189,7 +189,11 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
             >
               Variants
             </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+            <Box sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 1.5,
+            }}>
               {(() => {
                 // Extract only SIZE from each product
                 const variantMap = new Map<string, typeof products[0]>();
@@ -324,8 +328,12 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                         fontWeight: 600,
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
-                        fontSize: '0.7rem',
-                        height: '24px',
+                        fontSize: '0.8rem',
+                        height: '28px',
+                        minWidth: '44px',
+                        '& .MuiChip-label': {
+                          px: 1.5,
+                        },
                         '&:hover': {
                           transform: 'translateY(-2px)',
                           boxShadow: 2,
