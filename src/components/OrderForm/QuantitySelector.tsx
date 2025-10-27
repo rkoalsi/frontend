@@ -18,17 +18,22 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   const theme = useTheme()
   const [inputValue, setInputValue] = useState<string>(quantity.toString());
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   useEffect(() => {
     setInputValue(quantity.toString());
   }, [quantity]);
 
-  const handleIncrease = useCallback(() => {
+  const handleIncrease = useCallback((e?: React.MouseEvent | React.TouchEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     if (quantity < max) {
       onChange(quantity + 1);
     }
   }, [quantity, max, onChange]);
 
-  const handleDecrease = useCallback(() => {
+  const handleDecrease = useCallback((e?: React.MouseEvent | React.TouchEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     if (quantity > 1) {
       onChange(quantity - 1);
     }
@@ -60,46 +65,132 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
     }
   }, [inputValue, max, onChange, quantity]);
 
-  const handleKeyPress = useCallback((event: React.KeyboardEvent) => {
-    if (event.key === 'Enter') {
-      (event.target as HTMLInputElement).blur();
-    }
-  }, []);
-
   return (
-    <Box display='flex' alignItems='center' justifyContent={'center'} p={0}>
+    <Box
+      display='flex'
+      alignItems='center'
+      justifyContent='center'
+      p={0}
+      sx={{
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+        transition: 'all 0.2s ease',
+        '&:hover': {
+          borderColor: 'primary.main',
+          boxShadow: 1,
+        },
+      }}
+    >
       <IconButton
         onClick={handleDecrease}
+        onTouchEnd={handleDecrease}
         disabled={disabled || quantity <= 1}
         aria-label='Decrease quantity'
-        size='small'
+        size={isMobile ? 'medium' : 'small'}
+        sx={{
+          minWidth: isMobile ? 44 : 36,
+          minHeight: isMobile ? 44 : 36,
+          padding: isMobile ? 1.5 : 1,
+          borderRadius: '8px 0 0 8px',
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+          userSelect: 'none',
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            bgcolor: 'primary.lighter',
+            color: 'primary.main',
+          },
+          '&:disabled': {
+            color: 'action.disabled',
+          },
+        }}
       >
-        <Remove />
+        <Remove fontSize={isMobile ? 'medium' : 'small'} />
       </IconButton>
       <TextField
         value={inputValue}
         onChange={handleInputChange}
         onBlur={handleInputBlur}
-        onKeyPress={handleKeyPress}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            (event.target as HTMLInputElement).blur();
+          }
+        }}
         variant='outlined'
         size='small'
-        inputProps={{
-          inputMode: 'numeric',
-          pattern: '[0-9]*',
-          max: max,
-          style: { textAlign: 'center', width:isMobile ?'60px': '30px' },
-          'aria-label': 'Quantity',
+        slotProps={{
+          input: {
+            inputMode: 'numeric',
+            style: {
+              textAlign: 'center',
+              width: isMobile ? '60px' : isTablet ? '70px' : '80px',
+              fontSize: isMobile ? '15px' : '16px',
+              fontWeight: 600,
+              padding: 0,
+              height: isMobile ? '44px' : '36px',
+            },
+          },
+          htmlInput: {
+            pattern: '[0-9]*',
+            max: max,
+            'aria-label': 'Quantity',
+            style: {
+              textAlign: 'center',
+              padding: isMobile ? '12px 8px' : '8px 6px',
+            },
+          },
         }}
         disabled={disabled}
-        sx={{ mx: 1 }}
+        sx={{
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 0,
+            '& fieldset': {
+              border: 'none',
+              borderLeft: '1px solid',
+              borderRight: '1px solid',
+              borderColor: 'divider',
+            },
+            '&:hover fieldset': {
+              borderColor: 'divider',
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: 'divider',
+            },
+          },
+          '& input': {
+            textAlign: 'center',
+            fontWeight: 600,
+            color: 'text.primary',
+          },
+        }}
       />
       <IconButton
         onClick={handleIncrease}
+        onTouchEnd={handleIncrease}
         disabled={disabled || quantity >= max}
         aria-label='Increase quantity'
-        size='small'
+        size={isMobile ? 'medium' : 'small'}
+        sx={{
+          minWidth: isMobile ? 44 : 36,
+          minHeight: isMobile ? 44 : 36,
+          padding: isMobile ? 1.5 : 1,
+          borderRadius: '0 8px 8px 0',
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+          userSelect: 'none',
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            bgcolor: 'primary.lighter',
+            color: 'primary.main',
+          },
+          '&:disabled': {
+            color: 'action.disabled',
+          },
+        }}
       >
-        <Add />
+        <Add fontSize={isMobile ? 'medium' : 'small'} />
       </IconButton>
     </Box>
   );
