@@ -16,7 +16,13 @@ function ImageCarousel(props: Props) {
   const images = product.images || [product.image_url];
   const hasMultipleImages = images.length > 1;
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const theme = useTheme();
+
+  // Minimum swipe distance (in px)
+  const minSwipeDistance = 50;
+
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
@@ -30,6 +36,33 @@ function ImageCarousel(props: Props) {
   const handleDotClick = (index: number) => {
     setCurrentImageIndex(index);
   };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe) {
+      // Swipe left - go to next image
+      setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+    }
+    if (isRightSwipe) {
+      // Swipe right - go to previous image
+      setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+    }
+  };
+
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -41,6 +74,9 @@ function ImageCarousel(props: Props) {
         height: '100%',
         overflow: 'hidden',
       }}
+      onTouchStart={hasMultipleImages ? onTouchStart : undefined}
+      onTouchMove={hasMultipleImages ? onTouchMove : undefined}
+      onTouchEnd={hasMultipleImages ? onTouchEnd : undefined}
     >
       {/* Main Image */}
       <Box
@@ -53,6 +89,7 @@ function ImageCarousel(props: Props) {
           objectFit: 'contain',
           cursor: 'pointer',
           transition: 'transform 0.3s ease-in-out',
+          userSelect: 'none',
           '&:hover': { transform: 'scale(1.05)' },
         }}
         onClick={() => handleImageClick(images, currentImageIndex)}
