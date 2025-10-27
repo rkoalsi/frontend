@@ -12,8 +12,11 @@ import {
   Alert,
   Divider,
   Tooltip,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
-import { AddShoppingCart, RemoveShoppingCart } from "@mui/icons-material";
+import { AddShoppingCart, RemoveShoppingCart, ExpandMore } from "@mui/icons-material";
 import QuantitySelector from "../QuantitySelector";
 import ImageCarousel from "./ImageCarousel";
 
@@ -21,6 +24,7 @@ interface SearchResult {
   _id: string;
   name: string;
   images?: string[]; // Changed from image_url to image_urls array
+  category?: string;
   sub_category?: string;
   series?: string;
   cf_sku_code?: string;
@@ -29,6 +33,11 @@ interface SearchResult {
   new?: boolean;
   item_tax_preferences: any;
   upc_code?: string;
+  dimensions?: {
+    length?: number;
+    breadth?: number;
+    height?: number;
+  };
 }
 
 interface ProductCardProps {
@@ -44,7 +53,6 @@ interface ProductCardProps {
   handleAddOrRemove: (product: SearchResult) => void;
   index: number;
   isShared: boolean;
-  showUPC: boolean;
 }
 
 const ProductCard: React.FC<ProductCardProps> = memo(
@@ -61,7 +69,6 @@ const ProductCard: React.FC<ProductCardProps> = memo(
     handleAddOrRemove,
     index,
     isShared = false,
-    showUPC = false,
   }) => {
     const productId = product._id;
     const selectedProduct: any = selectedProducts.find(
@@ -77,17 +84,17 @@ const ProductCard: React.FC<ProductCardProps> = memo(
       orderStatus?.toLowerCase().includes("declined");
 
     return (
-      <Grid>
+      <Grid sx={{ height: '100%' }}>
         <Card
           sx={{
             display: "flex",
             flexDirection: "column",
+            height: '100%',
+            minHeight: '100%',
             borderRadius: 3,
             boxShadow: selectedProduct ? 4 : 2,
-            overflow: "hidden",
+            overflow: "visible",
             backgroundColor: "background.paper",
-            mt: index === 0 ? "16px" : undefined,
-            mb: "16px",
             border: selectedProduct ? '2px solid' : '1px solid',
             borderColor: selectedProduct ? 'primary.main' : 'divider',
             transition: 'all 0.3s ease-in-out',
@@ -99,13 +106,19 @@ const ProductCard: React.FC<ProductCardProps> = memo(
           }}
         >
           {/* Image Section */}
-          <Box sx={{ position: "relative", backgroundColor: 'grey.50' }}>
+          <Box
+            sx={{
+              position: "relative",
+              backgroundColor: 'grey.50',
+              height: 280,
+              width: '100%',
+            }}
+          >
             {product.new && (
               <Badge
                 badgeContent="New"
                 color="secondary"
                 overlap="rectangular"
-                // anchorOrigin={{ vertical: "top", horizontal: "right" }}
                 sx={{
                   position: "absolute",
                   top: 20,
@@ -122,305 +135,378 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               />
             )}
 
-         
             <ImageCarousel
               product={product}
               handleImageClick={handleImageClick}
             />
           </Box>
 
-          
-          <CardContent sx={{ p: 3, flexGrow: 1 }}>
+
+          <CardContent sx={{ p: 2, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
             {/* Product Name */}
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                fontWeight: 600, 
-                mb: 2,
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
+                mb: 1.5,
                 color: 'text.primary',
                 lineHeight: 1.3,
                 wordWrap: 'break-word',
                 wordBreak: 'break-word',
+                minHeight: '40px',
+                fontSize: '1rem',
               }}
             >
               {product.name}
             </Typography>
 
-            {/* Product Details Grid */}
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
+            {/* Product Details - Enhanced Design */}
+            <Box sx={{ mb: 1.5 }}>
+              {/* Category & Series in one row */}
+              <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
+                {product.category && (
+                  <Chip
+                    label={product.category}
+                    variant="filled"
+                    size="small"
+                    sx={{
+                      borderRadius: 1.5,
+                      fontSize: '0.7rem',
+                      height: '24px',
+                      fontWeight: 600,
+                      bgcolor: 'primary.50',
+                      color: 'primary.dark',
+                      '& .MuiChip-label': { px: 1.5 },
+                    }}
+                  />
+                )}
+                {product.series && (
+                  <Chip
+                    label={product.series}
+                    variant="filled"
+                    size="small"
+                    sx={{
+                      borderRadius: 1.5,
+                      fontSize: '0.7rem',
+                      height: '24px',
+                      fontWeight: 600,
+                      bgcolor: 'secondary.50',
+                      color: 'secondary.dark',
+                      '& .MuiChip-label': { px: 1.5 },
+                    }}
+                  />
+                )}
+              </Box>
+
+              {/* SKU & UPC in enhanced grid */}
+              <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
                 gap: 2,
-                mb: 2,
-              }}
-            >
-              {/* Category */}
-                  <Box>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-                >
-                  Category
-                </Typography>
-                <Box sx={{ mt: 0.5 }}>
-                  <Chip
-                    label={product.sub_category || "-"}
-                    variant="outlined"
-                    size="small"
-                    sx={{
-                      borderRadius: 2,
-                      fontSize: '0.78rem',
-                      height: 'auto',
-                      minHeight: 24,
-                      maxWidth: '100%',
-                      '& .MuiChip-label': {
-                        display: 'block',
-                        whiteSpace: 'normal',
-                        wordWrap: 'break-word',
-                        wordBreak: 'break-word',
-                        padding: '6px',
-                        lineHeight: 1.2,
-                      },
-                    }}
-                  />
-                </Box>
-              </Box>
-
-              {/* Series */}
-              <Box>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-                >
-                  Series
-                </Typography>
-                <Box sx={{ mt: 0.5 }}>
-                  <Chip
-                    label={product.series || "-"}
-                    variant="outlined"
-                    size="small"
-                    sx={{
-                      borderRadius: 2,
-                      fontSize: '0.78rem',
-                      height: 'auto',
-                      minHeight: 24,
-                      maxWidth: '100%',
-                      '& .MuiChip-label': {
-                        display: 'block',
-                        whiteSpace: 'normal',
-                        wordWrap: 'break-word',
-                        wordBreak: 'break-word',
-                        padding: '6px',
-                        lineHeight: 1.2,
-                      },
-                    }}
-                  />
-                </Box>
-              </Box>
-
-              {/* SKU */}
-              <Box display={'flex'} flexDirection={'column'} alignItems={'baseline'}>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-                >
-                  SKU Code
-                </Typography>
-               <Box sx={{ mt: 0.5 }}>
-                  <Chip
-                    label={product.cf_sku_code || "-"}
-                    variant="outlined"
-                    size="small"
-                    sx={{
-                      borderRadius: 2,
-                      fontSize: '0.78rem',
-                      height: 'auto',
-                      minHeight: 24,
-                      maxWidth: '100%',
-                      '& .MuiChip-label': {
-                        display: 'block',
-                        whiteSpace: 'normal',
-                        wordWrap: 'break-word',
-                        wordBreak: 'break-word',
-                        padding: '6px',
-                        lineHeight: 1.2,
-                      },
-                    }}
-                  />
-                </Box>
-              </Box>
-
-              {/* UPC (if shown) */}
-              {showUPC && (
+              }}>
                 <Box>
                   <Typography
                     variant="caption"
                     color="text.secondary"
-                    sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-                  >
-                    UPC/EAN
-                  </Typography>
-                 <Box sx={{ mt: 0.5 }}>
-                  <Chip
-                    label={product.upc_code || "-"}
-                    variant="outlined"
-                    size="small"
                     sx={{
-                      borderRadius: 2,
-                      fontSize: '0.78rem',
-                      height: 'auto',
-                      minHeight: 24,
-                      maxWidth: '100%',
-                      '& .MuiChip-label': {
-                        display: 'block',
-                        whiteSpace: 'normal',
-                        wordWrap: 'break-word',
-                        wordBreak: 'break-word',
-                        padding: '6px',
-                        lineHeight: 1.2,
-                      },
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px',
+                      display: 'block',
+                      mb: 0.5,
                     }}
-                  />
-                </Box>
-                </Box>
-              )}
-            </Box>
-
-            <Divider sx={{ my: 2 }} />
-
-            {/* Pricing Section */}
-            <Box sx={{ mb: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-                >
-                  MRP
-                </Typography>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontWeight: 600,
-                    color: 'info',
-                    fontSize: '1rem',
-                  }}
-                >
-                  ₹{product.rate?.toLocaleString()}
-                </Typography>
-              </Box>
-
-              {/* Stock Section */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-                >
-                  Stock
-                </Typography>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontWeight: 600,
-                    color: product.stock > 10 ? 'success.main' : 'error.light',
-                    fontSize: '1rem',
-                  }}
-                >
-                  {product.stock}
-                </Typography>
-              </Box>
-
-              {!isShared && (
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
                   >
-                    Margin
+                    SKU
                   </Typography>
                   <Typography
                     variant="body2"
                     sx={{
+                      fontSize: '0.8rem',
                       fontWeight: 600,
-                      color: 'info',
+                      fontFamily: 'monospace',
+                      color: 'text.primary',
                     }}
                   >
-                    {specialMargins[productId] || customerMargin}
+                    {product.cf_sku_code || "-"}
                   </Typography>
                 </Box>
-              )}
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px',
+                      display: 'block',
+                      mb: 0.5,
+                    }}
+                  >
+                    UPC
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      fontFamily: 'monospace',
+                      color: 'text.primary',
+                    }}
+                  >
+                    {product.upc_code || "-"}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
 
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-                >
-                  Selling Price
-                </Typography>
-                <Typography
-                  variant="body1"
+            {/* Dimensions Accordion - More Compact */}
+            {product.dimensions && (product.dimensions.length || product.dimensions.breadth || product.dimensions.height) && (
+              <Box sx={{ mb: 1.5 }}>
+                <Accordion
+                  elevation={0}
                   sx={{
-                    fontWeight: 700,
-                    color: 'primary.main',
-                    fontSize: '1rem',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: '6px !important',
+                    '&:before': { display: 'none' },
+                    '& .MuiAccordionSummary-root': {
+                      minHeight: '36px',
+                      '&.Mui-expanded': { minHeight: '36px' },
+                    },
                   }}
                 >
-                  ₹{sellingPrice?.toLocaleString()}
-                </Typography>
+                  <AccordionSummary
+                    expandIcon={<ExpandMore sx={{ fontSize: '1.2rem' }} />}
+                    sx={{ '& .MuiAccordionSummary-content': { margin: '6px 0' } }}
+                  >
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 600,
+                        fontSize: '0.7rem',
+                        color: 'text.secondary',
+                      }}
+                    >
+                      Dimensions
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ pt: 0, pb: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 2, fontSize: '0.75rem' }}>
+                      {product.dimensions.length !== undefined && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>L:</Typography>
+                          <Typography variant="body2" component="span" sx={{ ml: 0.5, fontSize: '0.75rem' }}>{product.dimensions.length}cm</Typography>
+                        </Box>
+                      )}
+                      {product.dimensions.breadth !== undefined && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>B:</Typography>
+                          <Typography variant="body2" component="span" sx={{ ml: 0.5, fontSize: '0.75rem' }}>{product.dimensions.breadth}cm</Typography>
+                        </Box>
+                      )}
+                      {product.dimensions.height !== undefined && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>H:</Typography>
+                          <Typography variant="body2" component="span" sx={{ ml: 0.5, fontSize: '0.75rem' }}>{product.dimensions.height}cm</Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
               </Box>
+            )}
 
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}
-                >
-                  GST
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ fontWeight: 500 }}
-                >
-                  {product?.item_tax_preferences[product?.item_tax_preferences.length - 1].tax_percentage}%
-                </Typography>
+            <Divider sx={{ my: 1.5 }} />
+
+            {/* Pricing Section - Enhanced */}
+            <Box sx={{ mb: 1.5 }}>
+              {/* Price Information Grid */}
+              <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: 2,
+                mb: 1.5,
+              }}>
+                {/* MRP */}
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px',
+                      display: 'block',
+                      mb: 0.5,
+                    }}
+                  >
+                    MRP
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.95rem',
+                      fontFamily: 'system-ui',
+                      color: 'text.primary',
+                      letterSpacing: '-0.3px',
+                    }}
+                  >
+                    ₹{product.rate?.toLocaleString('en-IN')}
+                  </Typography>
+                </Box>
+
+                {/* Stock */}
+                <Box sx={{ textAlign: 'right' }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px',
+                      display: 'block',
+                      mb: 0.5,
+                    }}
+                  >
+                    Stock
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'end', gap: 0.5, justifyContent: 'flex-end' }}>
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: '0.95rem',
+                        fontFamily: 'system-ui',
+                        color: product.stock > 10 ? 'success.main' : product.stock > 0 ? 'error.main' : 'primary',
+                        letterSpacing: '-0.3px',
+                      }}
+                    >
+                      {product.stock.toLocaleString('en-IN')}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {/* Selling Price */}
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px',
+                      display: 'block',
+                      mb: 0.5,
+                    }}
+                  >
+                    Selling Price
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      fontWeight: 800,
+                      fontSize: '1.05rem',
+                      fontFamily: 'system-ui',
+                      color: 'primary.main',
+                      letterSpacing: '-0.5px',
+                    }}
+                  >
+                    ₹{sellingPrice?.toLocaleString('en-IN')}
+                  </Typography>
+                  {!isShared && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontSize: '0.65rem',
+                        color: 'text.secondary',
+                        fontStyle: 'italic',
+                      }}
+                    >
+                      {specialMargins[productId] || customerMargin} margin
+                    </Typography>
+                  )}
+                </Box>
+
+                {/* GST */}
+                <Box sx={{ textAlign: 'right' }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px',
+                      display: 'block',
+                      mb: 0.5,
+                    }}
+                  >
+                    GST
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.95rem',
+                      fontFamily: 'system-ui',
+                      color: 'text.primary',
+                      letterSpacing: '-0.3px',
+                    }}
+                  >
+                    {product?.item_tax_preferences[product?.item_tax_preferences.length - 1].tax_percentage}%
+                  </Typography>
+                </Box>
               </Box>
 
               {selectedProduct && (
-                <>
-                  <Divider sx={{ my: 1 }} />
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{ 
-                        fontWeight: 700,
-                        color: 'success.dark',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                      }}
-                    >
-                      Item Total
-                    </Typography>
-                    <Typography 
-                      variant="body1" 
-                      sx={{ 
-                        fontWeight: 700,
-                        color: 'success.dark',
-                        fontSize: '1rem',
-                      }}
-                    >
-                      ₹{itemTotal?.toLocaleString()}
-                    </Typography>
-                  </Box>
-                </>
+                <Box
+                  sx={{
+                    p: 1.5,
+                    bgcolor: 'success.50',
+                    borderRadius: 1.5,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    border: '2px solid',
+                    borderColor: 'success.main',
+                  }}
+                >
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      fontWeight: 700,
+                      color: 'success.dark',
+                      fontSize: '0.85rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                    }}
+                  >
+                    Item Total
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: 800,
+                      color: 'success.dark',
+                      fontSize: '1.15rem',
+                      fontFamily: 'system-ui',
+                      letterSpacing: '-0.5px',
+                    }}
+                  >
+                    ₹{itemTotal?.toLocaleString('en-IN')}
+                  </Typography>
+                </Box>
               )}
             </Box>
+
+            {/* Spacer to push content to bottom */}
+            <Box sx={{ flexGrow: 1 }} />
 
             {/* Quantity Selector */}
             <Box
@@ -428,17 +514,16 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                mb: 2,
+                mb: 1.5,
               }}
             >
               <Typography
                 variant="caption"
                 color="text.secondary"
-                sx={{ 
-                  fontWeight: 600, 
-                  mb: 1,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
+                sx={{
+                  fontWeight: 600,
+                  mb: 0.75,
+                  fontSize: '0.7rem',
                 }}
               >
                 Quantity
@@ -455,7 +540,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 <Alert
                   severity="error"
                   sx={{
-                    mt: 1,
+                    mt: 0.75,
                     py: 0,
                     px: 1,
                     fontSize: '0.65rem',
@@ -479,13 +564,13 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                   onClick={() => handleAddOrRemove(product)}
                   disabled={isDisabled}
                   fullWidth
-                  size="large"
+                  size="medium"
                   sx={{
                     textTransform: "none",
                     borderRadius: 2,
                     fontWeight: 600,
-                    py: 1.5,
-                    fontSize: '0.9rem',
+                    py: 1,
+                    fontSize: '0.85rem',
                     boxShadow: 2,
                     '&:hover': {
                       boxShadow: 4,
