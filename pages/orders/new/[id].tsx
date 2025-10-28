@@ -350,8 +350,12 @@ const NewOrder: React.FC = () => {
         if (notify_sp) {
           await api.post('/orders/notify', { order_id: id });
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(error);
+        const errorMessage = error?.response?.data?.message ||
+                            error?.response?.data?.detail ||
+                            'An error occurred while finalizing the order';
+        toast.error(errorMessage);
       } finally {
         setLoading(false);
       }
