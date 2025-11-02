@@ -19,6 +19,7 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   const [inputValue, setInputValue] = useState<string>(quantity.toString());
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
   useEffect(() => {
     setInputValue(quantity.toString());
   }, [quantity]);
@@ -26,6 +27,10 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   const handleIncrease = useCallback((e?: React.MouseEvent | React.TouchEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
+    // Prevent default touch behavior that might cause scrolling
+    if (e && 'touches' in e) {
+      e.preventDefault();
+    }
     if (quantity < max) {
       onChange(quantity + 1);
     }
@@ -34,6 +39,10 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   const handleDecrease = useCallback((e?: React.MouseEvent | React.TouchEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
+    // Prevent default touch behavior that might cause scrolling
+    if (e && 'touches' in e) {
+      e.preventDefault();
+    }
     if (quantity > 1) {
       onChange(quantity - 1);
     }
@@ -85,7 +94,6 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
     >
       <IconButton
         onClick={handleDecrease}
-        onTouchEnd={handleDecrease}
         disabled={disabled || quantity <= 1}
         aria-label='Decrease quantity'
         size={isMobile ? 'medium' : 'small'}
@@ -113,6 +121,10 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
         value={inputValue}
         onChange={handleInputChange}
         onBlur={handleInputBlur}
+        onFocus={(e) => {
+          // Prevent scroll on focus for mobile devices
+          e.preventDefault();
+        }}
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
             (event.target as HTMLInputElement).blur();
@@ -123,6 +135,7 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
         slotProps={{
           input: {
             inputMode: 'numeric',
+            readOnly: isMobile, // Make readonly on mobile to prevent keyboard and scrolling issues
             style: {
               textAlign: 'center',
               width: isMobile ? '60px' : isTablet ? '70px' : '80px',
@@ -163,12 +176,12 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
             textAlign: 'center',
             fontWeight: 600,
             color: 'text.primary',
+            cursor: isMobile ? 'default' : 'text',
           },
         }}
       />
       <IconButton
         onClick={handleIncrease}
-        onTouchEnd={handleIncrease}
         disabled={disabled || quantity >= max}
         aria-label='Increase quantity'
         size={isMobile ? 'medium' : 'small'}
