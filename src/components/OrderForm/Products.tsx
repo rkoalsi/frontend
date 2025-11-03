@@ -542,7 +542,13 @@ const Products: React.FC<ProductsProps> = ({
           setProductsByBrandCategory((prev) => ({ ...prev, [newKey]: [] }));
           setNoMoreProducts((prev) => ({ ...prev, [newKey]: false }));
           await fetchProducts(newKey, undefined, defaultCategory, undefined, 1);
-          setOptions(productsByBrandCategory[newKey] || []);
+          const data = productsByBrandCategory[newKey];
+          // Handle both grouped format {items: [...]} and plain array format
+          if (data && (data as any).items !== undefined) {
+            setOptions([]);
+          } else {
+            setOptions(Array.isArray(data) ? data : []);
+          }
         } else {
           const defaultBrand = brandList.length > 0 ? brandList[0].brand : "";
           const defaultCategory =
@@ -565,7 +571,13 @@ const Products: React.FC<ProductsProps> = ({
             undefined,
             1
           );
-          setOptions(productsByBrandCategory[newKey] || []);
+          const data = productsByBrandCategory[newKey];
+          // Handle both grouped format {items: [...]} and plain array format
+          if (data && (data as any).items !== undefined) {
+            setOptions([]);
+          } else {
+            setOptions(Array.isArray(data) ? data : []);
+          }
         }
       }
     }, 500),
@@ -622,7 +634,7 @@ const Products: React.FC<ProductsProps> = ({
       } else {
         debouncedWarn(`${product.name} is already in the cart.`);
       }
-      setOptions((prev) => prev.filter((opt) => opt._id !== product._id));
+      setOptions((prev) => Array.isArray(prev) ? prev.filter((opt) => opt._id !== product._id) : []);
     },
     [
       selectedProducts,
@@ -639,7 +651,7 @@ const Products: React.FC<ProductsProps> = ({
       const removedProduct = selectedProducts.find((p) => p._id === id);
       if (!removedProduct) return;
       setSelectedProducts(selectedProducts.filter((p) => p._id !== id));
-      setOptions((prev) => [...prev, removedProduct]);
+      setOptions((prev) => Array.isArray(prev) ? [...prev, removedProduct] : [removedProduct]);
       debouncedSuccess(`Removed ${removedProduct.name} from cart`);
     },
     [selectedProducts, debouncedSuccess, setSelectedProducts]
