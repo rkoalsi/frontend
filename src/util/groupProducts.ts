@@ -36,7 +36,12 @@ function extractBaseName(productName: string): string {
   let baseName = productName;
 
   // Define size patterns
-  const sizePattern = '(XXS|XS|S|M|L|XL|XXL|XXXL)';
+  // IMPORTANT: Longer sizes must come first to avoid partial matches (XXXXL before XXXL before XXL before XL before L)
+  const sizePattern = '(XXXXL|XXXL|XXL|XL|XXS|XS|S|M|L)';
+
+  // NEW: Remove (SIZE/measurement) pattern first - e.g., (XXL/62CM), (M/32CM), （XL/48CM）
+  // Handles both regular parentheses () and full-width parentheses （）
+  baseName = baseName.replace(new RegExp(`[（(]\\s*${sizePattern}\\s*/\\s*\\d+\\s*[Cc]?[Mm]\\s*[)）]`, 'gi'), '');
 
   // Pattern 1: Remove "-color-SIZE" at the end (reversed order) but keep color
   // Example: "Product -Vibrant Orange-XL" -> "Product Vibrant Orange"
@@ -88,6 +93,8 @@ function extractBaseName(productName: string): string {
 
   // Clean up extra spaces and dashes
   baseName = baseName.replace(/\s*-+\s*$/g, ''); // Remove trailing dashes
+  baseName = baseName.replace(/^\s*-+\s*/g, ''); // Remove leading dashes
+  baseName = baseName.replace(/\s*-\s*/g, ' - '); // Normalize spacing around dashes
   baseName = baseName.replace(/\s+/g, ' ').trim();
 
   return baseName;
@@ -127,8 +134,8 @@ function extractColor(productName: string): string {
  * This matches the backend logic in products.py lines 244-279
  */
 function getSizeOrder(productName: string): number {
-  // Match size pattern: XS, S, M, L, XL, XXL, XXXL with word boundaries
-  const sizeMatch = productName.match(/\b(XXXL|XXL|XL|XXS|XXXS|XS|S|M|L)\b/);
+  // Match size pattern: XS, S, M, L, XL, XXL, XXXL, XXXXL with word boundaries
+  const sizeMatch = productName.match(/\b(XXXXL|XXXL|XXL|XL|XXS|XXXS|XS|S|M|L)\b/);
 
   if (!sizeMatch) {
     return 99; // Default for no size found
@@ -145,6 +152,7 @@ function getSizeOrder(productName: string): number {
     'XL': 5,
     'XXL': 6,
     'XXXL': 7,
+    'XXXXL': 8,
   };
 
   return sizeOrder[size] || 99;
