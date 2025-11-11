@@ -122,8 +122,8 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
         onChange={handleInputChange}
         onBlur={handleInputBlur}
         onFocus={(e) => {
-          // Prevent scroll on focus for mobile devices
-          e.preventDefault();
+          // Select all text on focus for easier editing
+          e.target.select();
         }}
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
@@ -135,7 +135,6 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
         slotProps={{
           input: {
             inputMode: 'numeric',
-            readOnly: isMobile, // Make readonly on mobile to prevent keyboard and scrolling issues
             style: {
               textAlign: 'center',
               width: isMobile ? '60px' : isTablet ? '70px' : '80px',
@@ -176,7 +175,7 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
             textAlign: 'center',
             fontWeight: 600,
             color: 'text.primary',
-            cursor: isMobile ? 'default' : 'text',
+            cursor: 'text',
           },
         }}
       />
