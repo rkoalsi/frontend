@@ -296,7 +296,7 @@ const Products: React.FC<ProductsProps> = ({
             category,
             search,
             page,
-            per_page: 75,
+            per_page: 100,
             sort: sortToUse,
             // Pass catalogue_page only in catalogue mode:
             catalogue_page:
@@ -320,7 +320,7 @@ const Products: React.FC<ProductsProps> = ({
             return count + 1; // Single product
           }, 0);
 
-          const hasMore = totalProductsFetched === 75;
+          const hasMore = totalProductsFetched >= 100;
 
           setProductsByBrandCategory((prev: any) => ({
             ...prev,
@@ -334,7 +334,7 @@ const Products: React.FC<ProductsProps> = ({
         } else {
           // Normal ungrouped response
           const newProducts = response.data.products || [];
-          const hasMore = newProducts.length === 75;
+          const hasMore = newProducts.length >= 100;
           setProductsByBrandCategory((prev) => ({
             ...prev,
             [key]:
