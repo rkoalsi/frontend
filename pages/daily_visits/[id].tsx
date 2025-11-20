@@ -6,7 +6,11 @@ import {
   CircularProgress,
   Alert,
   Button,
+  Typography,
+  Paper,
+  Divider,
 } from '@mui/material';
+import CommentIcon from '@mui/icons-material/Comment';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -345,6 +349,79 @@ const DailyVisitDetail = () => {
               handleDeleteUpdate(update);
             }}
           />
+
+          {/* Admin Comments Section */}
+          {dailyVisit.admin_comments && dailyVisit.admin_comments.length > 0 && (
+            <Box sx={{ mt: 3 }}>
+              <Divider sx={{ mb: 2 }} />
+              <Typography
+                variant='h6'
+                sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}
+              >
+                <CommentIcon /> Admin Comments
+              </Typography>
+
+              {/* Visit-level comments */}
+              {dailyVisit.admin_comments.filter((c: any) => !c.shop_id).length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant='subtitle2' sx={{ fontWeight: 500, mb: 1 }}>
+                    General Comments:
+                  </Typography>
+                  {dailyVisit.admin_comments
+                    .filter((c: any) => !c.shop_id)
+                    .map((comment: any) => (
+                      <Paper
+                        key={comment._id}
+                        sx={{ p: 1.5, my: 1, backgroundColor: '#fff3e0' }}
+                      >
+                        <Typography variant='body2' sx={{ fontWeight: 500 }}>
+                          {comment.admin_name}
+                        </Typography>
+                        <Typography variant='body2'>{comment.text}</Typography>
+                        <Typography variant='caption' color='text.secondary'>
+                          {new Date(comment.created_at).toLocaleString()}
+                        </Typography>
+                      </Paper>
+                    ))}
+                </Box>
+              )}
+
+              {/* Shop-level comments */}
+              {dailyVisit.shops &&
+                dailyVisit.shops.map((shop: any, index: number) => {
+                  const shopKey = shop.id || `shop-${index}`;
+                  const shopComments = dailyVisit.admin_comments.filter(
+                    (c: any) => c.shop_id === shopKey
+                  );
+                  if (shopComments.length === 0) return null;
+                  return (
+                    <Box key={shopKey} sx={{ mb: 2 }}>
+                      <Typography variant='subtitle2' sx={{ fontWeight: 500, mb: 1 }}>
+                        Comments for{' '}
+                        {shop.potential_customer
+                          ? shop.potential_customer_name
+                          : shop.customer_name}
+                        :
+                      </Typography>
+                      {shopComments.map((comment: any) => (
+                        <Paper
+                          key={comment._id}
+                          sx={{ p: 1.5, my: 1, backgroundColor: '#e3f2fd' }}
+                        >
+                          <Typography variant='body2' sx={{ fontWeight: 500 }}>
+                            {comment.admin_name}
+                          </Typography>
+                          <Typography variant='body2'>{comment.text}</Typography>
+                          <Typography variant='caption' color='text.secondary'>
+                            {new Date(comment.created_at).toLocaleString()}
+                          </Typography>
+                        </Paper>
+                      ))}
+                    </Box>
+                  );
+                })}
+            </Box>
+          )}
         </CardContent>
       </Card>
 
