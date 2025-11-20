@@ -36,6 +36,7 @@ export interface CustomerDetailsDrawerProps {
   openAddDialog: () => void;
   handleDeleteAllSpecialMargins: () => void;
   onCustomerUpdate: (updatedCustomer: any) => void;
+  onMarginsUpdated?: () => void;
 }
 
 const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
@@ -46,6 +47,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   openAddDialog,
   onCustomerUpdate,
   handleDeleteAllSpecialMargins,
+  onMarginsUpdated,
 }) => {
   const [editMargin, setEditMargin] = useState('');
   const [editTier, setEditTier] = useState('');
@@ -150,6 +152,10 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
       setLocalSpecialMargins((prev) =>
         prev.filter((p) => p.product_id !== prod.product_id)
       );
+      // Notify parent to refresh data
+      if (onMarginsUpdated) {
+        onMarginsUpdated();
+      }
     } catch (error) {
       toast.error('Failed to delete special margin.');
     }
@@ -171,6 +177,10 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
       setLocalSpecialMargins((prev) =>
         prev.filter((item) => (item.brand || 'Other') !== brand)
       );
+      // Notify parent to refresh data
+      if (onMarginsUpdated) {
+        onMarginsUpdated();
+      }
     } catch (error) {
       toast.error(`Failed to delete overall margin for ${brand}.`);
     }
