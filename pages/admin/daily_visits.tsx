@@ -18,7 +18,11 @@ import {
   Drawer,
   LinearProgress,
   Chip,
+  IconButton,
+  Divider,
 } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CommentIcon from '@mui/icons-material/Comment';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
@@ -51,6 +55,11 @@ const DailyVisits = () => {
   const [selectedVisit, setSelectedVisit] = useState<any>(null);
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
+
+  // Admin comment state
+  const [visitComment, setVisitComment] = useState('');
+  const [shopComments, setShopComments] = useState<{ [key: string]: string }>({});
+  const [commentLoading, setCommentLoading] = useState(false);
 
   // Fetch daily visits from server
   const fetchDailyVisits = async () => {
@@ -147,6 +156,89 @@ const DailyVisits = () => {
   const handleCloseDrawer = () => {
     setDrawerOpen(false);
     setSelectedVisit(null);
+    setVisitComment('');
+    setShopComments({});
+  };
+
+  // Add admin comment (visit level or shop level)
+  const handleAddComment = async (shopId?: string) => {
+    const commentText = shopId ? shopComments[shopId] : visitComment;
+    if (!commentText?.trim()) {
+      toast.error('Please enter a comment');
+      return;
+    }
+
+    setCommentLoading(true);
+    try {
+      const response = await axiosInstance.post(
+        `/admin/daily_visits/${selectedVisit._id}/admin_comments`,
+        {
+          comment: commentText,
+          admin_name: 'Admin', // You can get this from auth context
+          shop_id: shopId || null,
+        }
+      );
+
+      if (response.status === 200) {
+        toast.success('Comment added successfully');
+        // Reset comment input
+        if (shopId) {
+          setShopComments((prev) => ({ ...prev, [shopId]: '' }));
+        } else {
+          setVisitComment('');
+        }
+        // Refresh data
+        await fetchDailyVisits();
+        // Update selected visit with new data
+        const updatedVisits = await axiosInstance.get('/admin/daily_visits', {
+          params: { page, limit: rowsPerPage },
+        });
+        const updatedVisit = updatedVisits.data.daily_visits.find(
+          (v: any) => v._id === selectedVisit._id
+        );
+        if (updatedVisit) {
+          setSelectedVisit(updatedVisit);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Error adding comment');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  // Delete admin comment
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm('Are you sure you want to delete this comment?')) return;
+
+    setCommentLoading(true);
+    try {
+      const response = await axiosInstance.delete(
+        `/admin/daily_visits/${selectedVisit._id}/admin_comments/${commentId}`
+      );
+
+      if (response.status === 200) {
+        toast.success('Comment deleted successfully');
+        // Refresh data
+        await fetchDailyVisits();
+        // Update selected visit
+        const updatedVisits = await axiosInstance.get('/admin/daily_visits', {
+          params: { page, limit: rowsPerPage },
+        });
+        const updatedVisit = updatedVisits.data.daily_visits.find(
+          (v: any) => v._id === selectedVisit._id
+        );
+        if (updatedVisit) {
+          setSelectedVisit(updatedVisit);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Error deleting comment');
+    } finally {
+      setCommentLoading(false);
+    }
   };
 
   const handleDownload = async () => {
@@ -420,11 +512,73 @@ const DailyVisits = () => {
                   />
                 </Box>
               )}
+              {/* Admin Comments for Daily Visit */}
+              <Box sx={{ mt: 3 }}>
+                <Typography variant='h6' sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CommentIcon /> Admin Comments (Visit Level)
+                </Typography>
+
+                {/* Existing visit-level comments */}
+                {selectedVisit.admin_comments && selectedVisit.admin_comments.length > 0 && (
+                  <Box sx={{ mb: 2 }}>
+                    {selectedVisit.admin_comments
+                      .filter((c: any) => !c.shop_id)
+                      .map((comment: any) => (
+                        <Paper key={comment._id} sx={{ p: 1.5, my: 1, backgroundColor: '#fff3e0' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <Box>
+                              <Typography variant='body2' sx={{ fontWeight: 500 }}>
+                                {comment.admin_name}
+                              </Typography>
+                              <Typography variant='body2'>{comment.text}</Typography>
+                              <Typography variant='caption' color='text.secondary'>
+                                {new Date(comment.created_at).toLocaleString()}
+                              </Typography>
+                            </Box>
+                            <IconButton
+                              size='small'
+                              onClick={() => handleDeleteComment(comment._id)}
+                              disabled={commentLoading}
+                            >
+                              <DeleteIcon fontSize='small' />
+                            </IconButton>
+                          </Box>
+                        </Paper>
+                      ))}
+                  </Box>
+                )}
+
+                {/* Add new visit-level comment */}
+                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                  <TextField
+                    size='small'
+                    fullWidth
+                    placeholder='Add admin comment for this visit...'
+                    value={visitComment}
+                    onChange={(e) => setVisitComment(e.target.value)}
+                    multiline
+                    rows={2}
+                  />
+                  <Button
+                    variant='contained'
+                    onClick={() => handleAddComment()}
+                    disabled={commentLoading || !visitComment.trim()}
+                    sx={{ minWidth: '80px' }}
+                  >
+                    Add
+                  </Button>
+                </Box>
+              </Box>
+
+              <Divider sx={{ my: 2 }} />
+
               <Box sx={{ mt: 3 }}>
                 <Typography variant='h6'>Shops:</Typography>
                 {selectedVisit.shops && selectedVisit.shops.length > 0 ? (
-                  selectedVisit.shops.map((shop: any, index: number) => (
-                    <Paper key={shop._id} sx={{ p: 2, my: 1 }}>
+                  selectedVisit.shops.map((shop: any, index: number) => {
+                    const shopKey = shop.id || `shop-${index}`;
+                    return (
+                    <Paper key={shopKey} sx={{ p: 2, my: 1 }}>
                       <Typography
                         variant='subtitle1'
                         style={{ whiteSpace: 'pre-line' }}
@@ -475,10 +629,68 @@ const DailyVisits = () => {
                       >
                         <strong>Reason: </strong> {shop.reason}
                       </Typography>
+
+                      {/* Shop-level admin comments */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography variant='subtitle2' sx={{ fontWeight: 500, mb: 1 }}>
+                          Admin Comments for this Shop:
+                        </Typography>
+
+                        {/* Existing shop-level comments */}
+                        {selectedVisit.admin_comments && selectedVisit.admin_comments
+                          .filter((c: any) => c.shop_id === shopKey)
+                          .map((comment: any) => (
+                            <Paper key={comment._id} sx={{ p: 1, my: 0.5, backgroundColor: '#e3f2fd' }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <Box>
+                                  <Typography variant='caption' sx={{ fontWeight: 500 }}>
+                                    {comment.admin_name}
+                                  </Typography>
+                                  <Typography variant='body2'>{comment.text}</Typography>
+                                  <Typography variant='caption' color='text.secondary'>
+                                    {new Date(comment.created_at).toLocaleString()}
+                                  </Typography>
+                                </Box>
+                                <IconButton
+                                  size='small'
+                                  onClick={() => handleDeleteComment(comment._id)}
+                                  disabled={commentLoading}
+                                >
+                                  <DeleteIcon fontSize='small' />
+                                </IconButton>
+                              </Box>
+                            </Paper>
+                          ))}
+
+                        {/* Add new shop-level comment */}
+                        <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                          <TextField
+                            size='small'
+                            fullWidth
+                            placeholder='Add comment for this shop...'
+                            value={shopComments[shopKey] || ''}
+                            onChange={(e) =>
+                              setShopComments((prev) => ({
+                                ...prev,
+                                [shopKey]: e.target.value,
+                              }))
+                            }
+                          />
+                          <Button
+                            variant='outlined'
+                            size='small'
+                            onClick={() => handleAddComment(shopKey)}
+                            disabled={commentLoading || !shopComments[shopKey]?.trim()}
+                          >
+                            Add
+                          </Button>
+                        </Box>
+                      </Box>
                     </Paper>
-                  ))
+                  );
+                  })
                 ) : (
-                  <Typography variant='body2'>No updates available.</Typography>
+                  <Typography variant='body2'>No shops available.</Typography>
                 )}
               </Box>
               <Box sx={{ mt: 3 }}>
