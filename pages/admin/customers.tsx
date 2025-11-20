@@ -301,6 +301,7 @@ const Customers = () => {
             )
           );
         }}
+        onMarginsUpdated={onMarginsUpdated}
       />
 
       <AddSpecialMarginDialog
