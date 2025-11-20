@@ -993,7 +993,7 @@ const AdminDashboard = () => {
                 gutterBottom
                 sx={{ fontWeight: 700, mb: 1 }}
               >
-                Welcome back, {user?.first_name || 'User'}
+                {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}, {user?.first_name || 'User'}
               </Typography>
               <Typography
                 variant='body1'

@@ -34,14 +34,12 @@ import {
 import axios from 'axios';
 import { motion } from 'framer-motion';
 
-const SectionTitle = styled(Typography)(({ theme }) => ({
-  fontSize: '0.875rem',
-  fontWeight: 700,
-  color: 'rgba(255, 255, 255, 0.9)',
-  textTransform: 'uppercase',
-  letterSpacing: '1px',
-  marginBottom: theme.spacing(1.5),
-  paddingLeft: theme.spacing(0.5),
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(3),
+  backgroundColor: theme.palette.primary.main,
+  borderRadius: 16,
+  border: `1px solid ${theme.palette.primary.dark}`,
+  boxShadow: '0px 4px 20px rgba(0,0,0,0.25)',
 }));
 
 const ActionCard = styled(Button)(({ theme }) => ({
@@ -72,6 +70,15 @@ const ActionCard = styled(Button)(({ theme }) => ({
     fontSize: '2rem',
     marginBottom: theme.spacing(1),
   },
+}));
+
+const SectionTitle = styled(Typography)(({ theme }) => ({
+  color: 'rgba(255, 255, 255, 0.9)',
+  fontWeight: 600,
+  fontSize: '0.875rem',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  marginBottom: theme.spacing(1.5),
 }));
 
 const containerVariants = {
@@ -328,7 +335,13 @@ const Home = () => {
                 fontSize: { xs: '1.5rem', sm: '1.75rem' },
               }}
             >
-              Welcome, {user?.data?.first_name} 👋
+              {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}, {user?.data?.first_name}
+            </Typography>
+            <Typography
+              variant='subtitle1'
+              sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+            >
+              Your portal to effortless and streamlined order management.
             </Typography>
           </Box>
 
