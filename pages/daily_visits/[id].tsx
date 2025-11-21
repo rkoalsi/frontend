@@ -9,8 +9,17 @@ import {
   Typography,
   Paper,
   Divider,
+  IconButton,
+  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import CommentIcon from '@mui/icons-material/Comment';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import ReplyIcon from '@mui/icons-material/Reply';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -52,6 +61,94 @@ const DailyVisitDetail = () => {
   const [addresses, setAddresses] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editingHookId, setEditingHookId] = useState<string | null>(null);
+
+  // Comment dialog states
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
+  const [commentDialogMode, setCommentDialogMode] = useState<'reply' | 'editReply'>('reply');
+  const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState('');
+  const [commentLoading, setCommentLoading] = useState(false);
+
+  // Comment action handlers
+  const handleOpenReplyDialog = (commentId: string) => {
+    setSelectedCommentId(commentId);
+    setCommentText('');
+    setCommentDialogMode('reply');
+    setCommentDialogOpen(true);
+  };
+
+  const handleOpenEditReplyDialog = (commentId: string, currentText: string) => {
+    setSelectedCommentId(commentId);
+    setCommentText(currentText);
+    setCommentDialogMode('editReply');
+    setCommentDialogOpen(true);
+  };
+
+  const handleCommentDialogSubmit = async () => {
+    if (!commentText.trim()) {
+      toast.error('Please enter text');
+      return;
+    }
+
+    setCommentLoading(true);
+    try {
+      let response;
+      if (commentDialogMode === 'reply') {
+        response = await axios.post(
+          `${process.env.api_url}/daily_visits/${id}/comments/${selectedCommentId}/reply`,
+          {
+            reply: commentText,
+            user_id: user?.data?._id,
+            user_name: user?.data?.name || 'Salesperson',
+            user_role: 'salesperson',
+          }
+        );
+      } else if (commentDialogMode === 'editReply') {
+        response = await axios.put(
+          `${process.env.api_url}/daily_visits/${id}/comments/${selectedCommentId}/reply`,
+          { reply: commentText }
+        );
+      }
+
+      if (response && response.status === 200) {
+        toast.success(
+          commentDialogMode === 'reply'
+            ? 'Reply added successfully'
+            : 'Reply updated successfully'
+        );
+        setCommentDialogOpen(false);
+        setCommentText('');
+        setSelectedCommentId(null);
+        fetchDailyVisit();
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Error processing request');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  const handleDeleteReply = async (commentId: string) => {
+    if (!confirm('Are you sure you want to delete this reply?')) return;
+
+    setCommentLoading(true);
+    try {
+      const response = await axios.delete(
+        `${process.env.api_url}/daily_visits/${id}/comments/${commentId}/reply`
+      );
+
+      if (response.status === 200) {
+        toast.success('Reply deleted successfully');
+        fetchDailyVisit();
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Error deleting reply');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
 
   const fetchHooks = async () => {
     try {
@@ -374,13 +471,63 @@ const DailyVisitDetail = () => {
                         key={comment._id}
                         sx={{ p: 1.5, my: 1, backgroundColor: '#fff3e0' }}
                       >
-                        <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                          {comment.admin_name}
-                        </Typography>
-                        <Typography variant='body2'>{comment.text}</Typography>
-                        <Typography variant='caption' color='text.secondary'>
-                          {new Date(comment.created_at).toLocaleString()}
-                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant='body2' sx={{ fontWeight: 500 }}>
+                              {comment.admin_name}
+                            </Typography>
+                            <Typography variant='body2'>{comment.text}</Typography>
+                            <Typography variant='caption' color='text.secondary'>
+                              {new Date(comment.created_at).toLocaleString()}
+                              {comment.updated_at && ' (edited)'}
+                            </Typography>
+                          </Box>
+                          {!comment.reply && (
+                            <IconButton
+                              size='small'
+                              onClick={() => handleOpenReplyDialog(comment._id)}
+                              disabled={commentLoading}
+                              title='Reply'
+                            >
+                              <ReplyIcon fontSize='small' />
+                            </IconButton>
+                          )}
+                        </Box>
+                        {/* Reply display */}
+                        {comment.reply && (
+                          <Paper sx={{ p: 1, mt: 1, ml: 2, backgroundColor: '#e8f5e9' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <Box sx={{ flex: 1 }}>
+                                <Typography variant='caption' sx={{ fontWeight: 500 }}>
+                                  {comment.reply.user_name} ({comment.reply.user_role})
+                                </Typography>
+                                <Typography variant='body2'>{comment.reply.text}</Typography>
+                                <Typography variant='caption' color='text.secondary'>
+                                  {new Date(comment.reply.created_at).toLocaleString()}
+                                  {comment.reply.updated_at && ' (edited)'}
+                                </Typography>
+                              </Box>
+                              {comment.reply.user_id === user?.data?._id && (
+                                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                  <IconButton
+                                    size='small'
+                                    onClick={() => handleOpenEditReplyDialog(comment._id, comment.reply.text)}
+                                    disabled={commentLoading}
+                                  >
+                                    <EditIcon fontSize='small' />
+                                  </IconButton>
+                                  <IconButton
+                                    size='small'
+                                    onClick={() => handleDeleteReply(comment._id)}
+                                    disabled={commentLoading}
+                                  >
+                                    <DeleteIcon fontSize='small' />
+                                  </IconButton>
+                                </Box>
+                              )}
+                            </Box>
+                          </Paper>
+                        )}
                       </Paper>
                     ))}
                 </Box>
@@ -408,13 +555,63 @@ const DailyVisitDetail = () => {
                           key={comment._id}
                           sx={{ p: 1.5, my: 1, backgroundColor: '#e3f2fd' }}
                         >
-                          <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                            {comment.admin_name}
-                          </Typography>
-                          <Typography variant='body2'>{comment.text}</Typography>
-                          <Typography variant='caption' color='text.secondary'>
-                            {new Date(comment.created_at).toLocaleString()}
-                          </Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <Box sx={{ flex: 1 }}>
+                              <Typography variant='body2' sx={{ fontWeight: 500 }}>
+                                {comment.admin_name}
+                              </Typography>
+                              <Typography variant='body2'>{comment.text}</Typography>
+                              <Typography variant='caption' color='text.secondary'>
+                                {new Date(comment.created_at).toLocaleString()}
+                                {comment.updated_at && ' (edited)'}
+                              </Typography>
+                            </Box>
+                            {!comment.reply && (
+                              <IconButton
+                                size='small'
+                                onClick={() => handleOpenReplyDialog(comment._id)}
+                                disabled={commentLoading}
+                                title='Reply'
+                              >
+                                <ReplyIcon fontSize='small' />
+                              </IconButton>
+                            )}
+                          </Box>
+                          {/* Reply display */}
+                          {comment.reply && (
+                            <Paper sx={{ p: 1, mt: 1, ml: 2, backgroundColor: '#e8f5e9' }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <Box sx={{ flex: 1 }}>
+                                  <Typography variant='caption' sx={{ fontWeight: 500 }}>
+                                    {comment.reply.user_name} ({comment.reply.user_role})
+                                  </Typography>
+                                  <Typography variant='body2'>{comment.reply.text}</Typography>
+                                  <Typography variant='caption' color='text.secondary'>
+                                    {new Date(comment.reply.created_at).toLocaleString()}
+                                    {comment.reply.updated_at && ' (edited)'}
+                                  </Typography>
+                                </Box>
+                                {comment.reply.user_id === user?.data?._id && (
+                                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                    <IconButton
+                                      size='small'
+                                      onClick={() => handleOpenEditReplyDialog(comment._id, comment.reply.text)}
+                                      disabled={commentLoading}
+                                    >
+                                      <EditIcon fontSize='small' />
+                                    </IconButton>
+                                    <IconButton
+                                      size='small'
+                                      onClick={() => handleDeleteReply(comment._id)}
+                                      disabled={commentLoading}
+                                    >
+                                      <DeleteIcon fontSize='small' />
+                                    </IconButton>
+                                  </Box>
+                                )}
+                              </Box>
+                            </Paper>
+                          )}
                         </Paper>
                       ))}
                     </Box>
@@ -464,6 +661,35 @@ const DailyVisitDetail = () => {
         onClose={handleClosePopup}
         imageSrc={popupImageSrc}
       />
+
+      {/* Reply Dialog */}
+      <Dialog open={commentDialogOpen} onClose={() => setCommentDialogOpen(false)} maxWidth='sm' fullWidth>
+        <DialogTitle>
+          {commentDialogMode === 'reply' ? 'Add Reply' : 'Edit Reply'}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin='dense'
+            fullWidth
+            multiline
+            rows={3}
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            placeholder='Enter your reply...'
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCommentDialogOpen(false)}>Cancel</Button>
+          <Button
+            onClick={handleCommentDialogSubmit}
+            variant='contained'
+            disabled={commentLoading || !commentText.trim()}
+          >
+            {commentDialogMode === 'reply' ? 'Reply' : 'Update'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
