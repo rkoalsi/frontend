@@ -57,11 +57,12 @@ function Shipments() {
       const isAdminOrManager = user?.data?.role?.includes('admin') || user?.data?.role?.includes('catalogue_manager');
       const resp = await axios.get(`${process.env.api_url}/shipments`, {
         params: {
-          ...(!isAdminOrManager && { created_by: user?.data?._id }),
+          created_by: user?.data?._id,
           page: pageNum,
           per_page: 20,
           ...(searchTerm && { search: searchTerm }),
           ...(status && { status: status }),
+          ...(isAdminOrManager && { role: 'admin' }),
         },
       });
       const newShipments = resp.data.shipments || [];
