@@ -22,7 +22,13 @@ import {
   Divider,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import ReplyIcon from '@mui/icons-material/Reply';
 import CommentIcon from '@mui/icons-material/Comment';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
@@ -60,6 +66,12 @@ const DailyVisits = () => {
   const [visitComment, setVisitComment] = useState('');
   const [shopComments, setShopComments] = useState<{ [key: string]: string }>({});
   const [commentLoading, setCommentLoading] = useState(false);
+
+  // Edit/Reply dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editDialogMode, setEditDialogMode] = useState<'edit' | 'reply' | 'editReply'>('edit');
+  const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
 
   // Fetch daily visits from server
   const fetchDailyVisits = async () => {
@@ -236,6 +248,124 @@ const DailyVisits = () => {
     } catch (error) {
       console.error(error);
       toast.error('Error deleting comment');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  // Open edit dialog
+  const handleOpenEditDialog = (commentId: string, currentText: string) => {
+    setSelectedCommentId(commentId);
+    setEditText(currentText);
+    setEditDialogMode('edit');
+    setEditDialogOpen(true);
+  };
+
+  // Open reply dialog
+  const handleOpenReplyDialog = (commentId: string) => {
+    setSelectedCommentId(commentId);
+    setEditText('');
+    setEditDialogMode('reply');
+    setEditDialogOpen(true);
+  };
+
+  // Open edit reply dialog
+  const handleOpenEditReplyDialog = (commentId: string, currentText: string) => {
+    setSelectedCommentId(commentId);
+    setEditText(currentText);
+    setEditDialogMode('editReply');
+    setEditDialogOpen(true);
+  };
+
+  // Handle dialog submit
+  const handleDialogSubmit = async () => {
+    if (!editText.trim()) {
+      toast.error('Please enter text');
+      return;
+    }
+
+    setCommentLoading(true);
+    try {
+      let response;
+      if (editDialogMode === 'edit') {
+        response = await axiosInstance.put(
+          `/admin/daily_visits/${selectedVisit._id}/admin_comments/${selectedCommentId}`,
+          { comment: editText }
+        );
+      } else if (editDialogMode === 'reply') {
+        response = await axiosInstance.post(
+          `/admin/daily_visits/${selectedVisit._id}/admin_comments/${selectedCommentId}/reply`,
+          {
+            reply: editText,
+            user_name: 'Admin',
+            user_role: 'admin',
+          }
+        );
+      } else if (editDialogMode === 'editReply') {
+        response = await axiosInstance.put(
+          `/admin/daily_visits/${selectedVisit._id}/admin_comments/${selectedCommentId}/reply`,
+          { reply: editText }
+        );
+      }
+
+      if (response && response.status === 200) {
+        toast.success(
+          editDialogMode === 'edit'
+            ? 'Comment updated successfully'
+            : editDialogMode === 'reply'
+            ? 'Reply added successfully'
+            : 'Reply updated successfully'
+        );
+        setEditDialogOpen(false);
+        setEditText('');
+        setSelectedCommentId(null);
+
+        // Refresh data
+        await fetchDailyVisits();
+        const updatedVisits = await axiosInstance.get('/admin/daily_visits', {
+          params: { page, limit: rowsPerPage },
+        });
+        const updatedVisit = updatedVisits.data.daily_visits.find(
+          (v: any) => v._id === selectedVisit._id
+        );
+        if (updatedVisit) {
+          setSelectedVisit(updatedVisit);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Error processing request');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  // Delete reply
+  const handleDeleteReply = async (commentId: string) => {
+    if (!confirm('Are you sure you want to delete this reply?')) return;
+
+    setCommentLoading(true);
+    try {
+      const response = await axiosInstance.delete(
+        `/admin/daily_visits/${selectedVisit._id}/admin_comments/${commentId}/reply`
+      );
+
+      if (response.status === 200) {
+        toast.success('Reply deleted successfully');
+        await fetchDailyVisits();
+        const updatedVisits = await axiosInstance.get('/admin/daily_visits', {
+          params: { page, limit: rowsPerPage },
+        });
+        const updatedVisit = updatedVisits.data.daily_visits.find(
+          (v: any) => v._id === selectedVisit._id
+        );
+        if (updatedVisit) {
+          setSelectedVisit(updatedVisit);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Error deleting reply');
     } finally {
       setCommentLoading(false);
     }
@@ -526,23 +656,75 @@ const DailyVisits = () => {
                       .map((comment: any) => (
                         <Paper key={comment._id} sx={{ p: 1.5, my: 1, backgroundColor: '#fff3e0' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <Box>
+                            <Box sx={{ flex: 1 }}>
                               <Typography variant='body2' sx={{ fontWeight: 500 }}>
                                 {comment.admin_name}
                               </Typography>
                               <Typography variant='body2'>{comment.text}</Typography>
                               <Typography variant='caption' color='text.secondary'>
                                 {new Date(comment.created_at).toLocaleString()}
+                                {comment.updated_at && ' (edited)'}
                               </Typography>
                             </Box>
-                            <IconButton
-                              size='small'
-                              onClick={() => handleDeleteComment(comment._id)}
-                              disabled={commentLoading}
-                            >
-                              <DeleteIcon fontSize='small' />
-                            </IconButton>
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                              <IconButton
+                                size='small'
+                                onClick={() => handleOpenEditDialog(comment._id, comment.text)}
+                                disabled={commentLoading}
+                              >
+                                <EditIcon fontSize='small' />
+                              </IconButton>
+                              {!comment.reply && (
+                                <IconButton
+                                  size='small'
+                                  onClick={() => handleOpenReplyDialog(comment._id)}
+                                  disabled={commentLoading}
+                                >
+                                  <ReplyIcon fontSize='small' />
+                                </IconButton>
+                              )}
+                              <IconButton
+                                size='small'
+                                onClick={() => handleDeleteComment(comment._id)}
+                                disabled={commentLoading}
+                              >
+                                <DeleteIcon fontSize='small' />
+                              </IconButton>
+                            </Box>
                           </Box>
+                          {/* Reply display */}
+                          {comment.reply && (
+                            <Paper sx={{ p: 1, mt: 1, ml: 2, backgroundColor: '#e8f5e9' }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <Box sx={{ flex: 1 }}>
+                                  <Typography variant='caption' sx={{ fontWeight: 500 }}>
+                                    {comment.reply.user_name} ({comment.reply.user_role})
+                                  </Typography>
+                                  <Typography variant='body2'>{comment.reply.text}</Typography>
+                                  <Typography variant='caption' color='text.secondary'>
+                                    {new Date(comment.reply.created_at).toLocaleString()}
+                                    {comment.reply.updated_at && ' (edited)'}
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                  <IconButton
+                                    size='small'
+                                    onClick={() => handleOpenEditReplyDialog(comment._id, comment.reply.text)}
+                                    disabled={commentLoading}
+                                  >
+                                    <EditIcon fontSize='small' />
+                                  </IconButton>
+                                  <IconButton
+                                    size='small'
+                                    onClick={() => handleDeleteReply(comment._id)}
+                                    disabled={commentLoading}
+                                  >
+                                    <DeleteIcon fontSize='small' />
+                                  </IconButton>
+                                </Box>
+                              </Box>
+                            </Paper>
+                          )}
                         </Paper>
                       ))}
                   </Box>
@@ -642,23 +824,75 @@ const DailyVisits = () => {
                           .map((comment: any) => (
                             <Paper key={comment._id} sx={{ p: 1, my: 0.5, backgroundColor: '#e3f2fd' }}>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <Box>
+                                <Box sx={{ flex: 1 }}>
                                   <Typography variant='caption' sx={{ fontWeight: 500 }}>
                                     {comment.admin_name}
                                   </Typography>
                                   <Typography variant='body2'>{comment.text}</Typography>
                                   <Typography variant='caption' color='text.secondary'>
                                     {new Date(comment.created_at).toLocaleString()}
+                                    {comment.updated_at && ' (edited)'}
                                   </Typography>
                                 </Box>
-                                <IconButton
-                                  size='small'
-                                  onClick={() => handleDeleteComment(comment._id)}
-                                  disabled={commentLoading}
-                                >
-                                  <DeleteIcon fontSize='small' />
-                                </IconButton>
+                                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                  <IconButton
+                                    size='small'
+                                    onClick={() => handleOpenEditDialog(comment._id, comment.text)}
+                                    disabled={commentLoading}
+                                  >
+                                    <EditIcon fontSize='small' />
+                                  </IconButton>
+                                  {!comment.reply && (
+                                    <IconButton
+                                      size='small'
+                                      onClick={() => handleOpenReplyDialog(comment._id)}
+                                      disabled={commentLoading}
+                                    >
+                                      <ReplyIcon fontSize='small' />
+                                    </IconButton>
+                                  )}
+                                  <IconButton
+                                    size='small'
+                                    onClick={() => handleDeleteComment(comment._id)}
+                                    disabled={commentLoading}
+                                  >
+                                    <DeleteIcon fontSize='small' />
+                                  </IconButton>
+                                </Box>
                               </Box>
+                              {/* Reply display */}
+                              {comment.reply && (
+                                <Paper sx={{ p: 1, mt: 1, ml: 2, backgroundColor: '#e8f5e9' }}>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <Box sx={{ flex: 1 }}>
+                                      <Typography variant='caption' sx={{ fontWeight: 500 }}>
+                                        {comment.reply.user_name} ({comment.reply.user_role})
+                                      </Typography>
+                                      <Typography variant='body2'>{comment.reply.text}</Typography>
+                                      <Typography variant='caption' color='text.secondary'>
+                                        {new Date(comment.reply.created_at).toLocaleString()}
+                                        {comment.reply.updated_at && ' (edited)'}
+                                      </Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                      <IconButton
+                                        size='small'
+                                        onClick={() => handleOpenEditReplyDialog(comment._id, comment.reply.text)}
+                                        disabled={commentLoading}
+                                      >
+                                        <EditIcon fontSize='small' />
+                                      </IconButton>
+                                      <IconButton
+                                        size='small'
+                                        onClick={() => handleDeleteReply(comment._id)}
+                                        disabled={commentLoading}
+                                      >
+                                        <DeleteIcon fontSize='small' />
+                                      </IconButton>
+                                    </Box>
+                                  </Box>
+                                </Paper>
+                              )}
                             </Paper>
                           ))}
 
@@ -815,6 +1049,47 @@ const DailyVisits = () => {
         onClose={handleClosePopup}
         imageSrc={popupImageSrc}
       />
+
+      {/* Edit/Reply Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth='sm' fullWidth>
+        <DialogTitle>
+          {editDialogMode === 'edit'
+            ? 'Edit Comment'
+            : editDialogMode === 'reply'
+            ? 'Add Reply'
+            : 'Edit Reply'}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin='dense'
+            fullWidth
+            multiline
+            rows={3}
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            placeholder={
+              editDialogMode === 'edit'
+                ? 'Enter comment...'
+                : 'Enter reply...'
+            }
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+          <Button
+            onClick={handleDialogSubmit}
+            variant='contained'
+            disabled={commentLoading || !editText.trim()}
+          >
+            {editDialogMode === 'edit'
+              ? 'Update'
+              : editDialogMode === 'reply'
+              ? 'Reply'
+              : 'Update'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
