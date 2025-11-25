@@ -197,6 +197,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
               {(() => {
                 // Extract only SIZE from each product
                 const variantMap = new Map<string, typeof products[0]>();
+                let parentProduct: typeof products[0] | null = null;
 
                 products.forEach((product) => {
                   // Extract only the SIZE, not the color
@@ -266,16 +267,22 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                     }
                   }
 
-                  // Only add if we found a size and it's not a duplicate
-                  if (sizeLabel && !variantMap.has(sizeLabel)) {
-                    variantMap.set(sizeLabel, product);
+                  // If no size was found, this is a parent product
+                  if (!sizeLabel) {
+                    parentProduct = product;
+                  } else {
+                    // Only add if we found a size and it's not a duplicate
+                    if (!variantMap.has(sizeLabel)) {
+                      variantMap.set(sizeLabel, product);
+                    }
                   }
                 });
 
                 // Convert map to array for sorting
                 return Array.from(variantMap.entries()).map(([sizeLabel, product]) => ({
                   product,
-                  sizeLabel
+                  sizeLabel,
+                  parentProduct
                 }));
               })()
                 .sort((a, b) => {
@@ -309,7 +316,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                     return indexA - indexB;
                   }
                 })
-                .map(({ product, sizeLabel }) => {
+                .map(({ product, sizeLabel, parentProduct }) => {
                   const isSelected = selectedVariantId === product._id;
                   const isInCart = selectedProducts.some((p) => p._id === product._id);
 
@@ -317,7 +324,14 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                     <Chip
                       key={product._id}
                       label={sizeLabel}
-                      onClick={() => setSelectedVariantId(product._id)}
+                      onClick={() => {
+                        // If clicking on already selected chip and parent product exists, deselect
+                        if (isSelected && parentProduct) {
+                          setSelectedVariantId(parentProduct._id);
+                        } else {
+                          setSelectedVariantId(product._id);
+                        }
+                      }}
                       color={isInCart ? "success" : isSelected ? "primary" : "default"}
                       variant={isSelected ? "filled" : "outlined"}
                       size="small"
