@@ -48,6 +48,7 @@ import {
 import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
 import { format } from 'date-fns';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
 
 // Define TypeScript interfaces for better type safety
 interface Stats {
@@ -94,6 +95,14 @@ interface Stats {
   total_attendance_records_today: number;
   permissions: number;
   last_updated?: string;
+  product_additions_by_type?: {
+    total_products: number;
+    breakdown: Array<{
+      added_by: string;
+      count: number;
+      percentage: number;
+    }>;
+  };
 }
 
 interface SubStat {
@@ -1093,6 +1102,93 @@ const AdminDashboard = () => {
                     Refreshing data...
                   </Typography>
                 </Box>
+              )}
+
+              {/* Product Additions Pie Chart */}
+              {stats?.product_additions_by_type && stats.product_additions_by_type.breakdown.length > 0 && (
+                <Paper
+                  elevation={1}
+                  sx={{
+                    p: 3,
+                    mb: 4,
+                    borderRadius: 3,
+                    border: `1px solid ${theme.palette.divider}`,
+                  }}
+                >
+                  <Typography
+                    variant='h6'
+                    fontWeight={600}
+                    sx={{ mb: 3, color: theme.palette.text.primary }}
+                  >
+                    Product Additions by Type (SP vs Customer)
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: 'center', gap: 3 }}>
+                    <Box sx={{ width: { xs: '100%', md: '50%' }, height: 300 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={stats.product_additions_by_type.breakdown.map(item => ({
+                              name: item.added_by === 'customer' ? 'Customer' : 'Sales Person',
+                              value: item.count,
+                              percentage: item.percentage,
+                              added_by: item.added_by
+                            }))}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={(entry: any) => `${entry.name}: ${entry.percentage}%`}
+                            outerRadius={100}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {stats.product_additions_by_type.breakdown.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.added_by === 'customer' ? '#4caf50' : '#2196f3'} />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip
+                            formatter={(value: number, name: string, props: any) => [
+                              `${value.toLocaleString()} products (${props.payload.percentage}%)`,
+                              name
+                            ]}
+                          />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </Box>
+                    <Box sx={{ width: { xs: '100%', md: '50%' } }}>
+                      <Stack spacing={2}>
+                        <Typography variant='subtitle1' fontWeight={600} color='text.secondary'>
+                          Total Products: {stats.product_additions_by_type.total_products.toLocaleString()}
+                        </Typography>
+                        {stats.product_additions_by_type.breakdown.map((item, index) => (
+                          <Box
+                            key={index}
+                            sx={{
+                              p: 2,
+                              borderRadius: 2,
+                              backgroundColor: item.added_by === 'customer' ? '#4caf5008' : '#2196f308',
+                              border: `1px solid ${item.added_by === 'customer' ? '#4caf5020' : '#2196f320'}`,
+                            }}
+                          >
+                            <Typography variant='body1' fontWeight={600} sx={{ mb: 0.5 }}>
+                              {item.added_by === 'customer' ? 'Customer' : 'Sales Person'}
+                            </Typography>
+                            <Typography
+                              variant='h5'
+                              fontWeight={700}
+                              sx={{ color: item.added_by === 'customer' ? '#4caf50' : '#2196f3' }}
+                            >
+                              {item.count.toLocaleString()}
+                            </Typography>
+                            <Typography variant='body2' color='text.secondary'>
+                              {item.percentage}% of total
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Stack>
+                    </Box>
+                  </Box>
+                </Paper>
               )}
 
               {/* Mixed layout with square-grouped compact cards and detailed cards */}
