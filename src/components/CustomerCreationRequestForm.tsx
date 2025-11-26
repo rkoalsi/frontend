@@ -12,7 +12,9 @@ import {
   CircularProgress,
   Divider,
   Paper,
+  IconButton,
 } from '@mui/material';
+import { Close as CloseIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../util/axios';
 import AuthContext from './Auth';
@@ -140,12 +142,24 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
     >
       <form onSubmit={handleSubmit}>
         <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="h5" component="div" fontWeight={600}>
-            Request New Customer Creation
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Fill in the details below to request admin approval for customer creation
-          </Typography>
+          <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+            <Box>
+              <Typography variant="h5" component="div" fontWeight={600}>
+                Request New Customer Creation
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Fill in the details below to request admin approval for customer creation
+              </Typography>
+            </Box>
+            <IconButton
+              onClick={handleClose}
+              disabled={loading}
+              sx={{ mt: -1, mr: -1 }}
+              aria-label="close"
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
         </DialogTitle>
 
         <Divider />
@@ -157,7 +171,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
                 Business Information
               </Typography>
-              <Grid spacing={3}>
+              <Grid container spacing={4}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
@@ -205,7 +219,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
                 Tax & Contact Information
               </Typography>
-              <Grid spacing={3}>
+              <Grid container spacing={4}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
@@ -264,7 +278,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
                 Business Terms
               </Typography>
-              <Grid spacing={3}>
+              <Grid container spacing={4}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
