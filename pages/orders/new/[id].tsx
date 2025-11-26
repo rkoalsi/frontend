@@ -106,13 +106,16 @@ const NewOrder: React.FC = () => {
             signal: controller.signal,
           }
         );
+        console.log('Special margins API response:', res.data);
         const marginMap = (res.data.products || []).reduce(
           (acc: any, item: any) => {
+            console.log('Mapping product_id:', item.product_id, 'to margin:', item.margin);
             acc[item.product_id] = item.margin;
             return acc;
           },
           {}
         );
+        console.log('Final special margins map:', marginMap);
         setSpecialMargins(marginMap);
       } catch (error: any) {
         if (error.name !== 'CanceledError') {
@@ -155,6 +158,7 @@ const NewOrder: React.FC = () => {
         const rate = parseFloat(product.rate.toString()) || 0;
         const quantity = parseInt(product.quantity?.toString() || '1', 10) || 1;
         // Use special margin if available; fallback to customer's margin (default 40%)
+        console.log('Product ID:', product._id, 'Special margin:', specialMargins[product._id], 'Available margins:', Object.keys(specialMargins));
         const margin = specialMargins[product._id]
           ? parseInt(specialMargins[product._id].replace('%', ''), 10) / 100
           : parseInt(customer?.cf_margin?.replace('%', '') || '40', 10) / 100;

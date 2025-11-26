@@ -21,11 +21,14 @@ import {
   List,
   ListItem,
   ListItemText,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
+import { Delete, ExpandMore } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../../util/axios';
 import capitalize from '../../../util/capitalize';
-import { Delete } from '@mui/icons-material';
 
 const TIERS = ['A+', 'A', 'B', 'C', 'D'];
 export interface CustomerDetailsDrawerProps {
@@ -377,75 +380,138 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                   new Set(products.map((p) => p.margin))
                 );
                 if (uniqueMargins.length === 1) {
-                  // Entire brand group has the same margin.
+                  // Entire brand group has the same margin - show as accordion
                   return (
-                    <Box key={brand} mb={3}>
-                      <Box
+                    <Accordion
+                      key={brand}
+                      sx={{
+                        mb: 2,
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '8px !important',
+                        '&:before': {
+                          display: 'none',
+                        },
+                        boxShadow: 1,
+                      }}
+                    >
+                      <AccordionSummary
+                        expandIcon={<ExpandMore />}
                         sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          mb: 1,
+                          backgroundColor: '#f0f7ff',
+                          borderRadius: '8px',
+                          '&:hover': {
+                            backgroundColor: '#e3f2fd',
+                          },
                         }}
                       >
-                        <Typography variant='h6'>
-                          {brand} - Margin: {uniqueMargins[0]}
-                        </Typography>
-                        <IconButton
-                          color='error'
-                          onClick={() => handleDeleteBrandMargin(brand)}
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            width: '100%',
+                            pr: 2,
+                          }}
                         >
-                          <Delete />
-                        </IconButton>
-                      </Box>
-                    </Box>
-                  );
-                } else {
-                  // Mixed margins: find the mode (default) and list exceptions.
-                  const defaultMargin = getModeMargin(products);
-                  const exceptions = products.filter(
-                    (p) => p.margin !== defaultMargin
-                  );
-                  return (
-                    <Box key={brand} mb={3}>
-                      <Box
-                        display={'flex'}
-                        flexDirection={'row'}
-                        gap={'16px'}
-                        alignItems={'center'}
-                        sx={{ mb: 1 }}
-                      >
-                        <Typography variant='h6'>
-                          {brand} - Overall Margin: {defaultMargin}
-                        </Typography>
-                        <IconButton
-                          color='error'
-                          onClick={() => handleDeleteBrandMargin(brand)}
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant='h6'>
+                              {brand}
+                            </Typography>
+                            <Typography variant='body2' color='text.secondary'>
+                              {products.length} product{products.length !== 1 ? 's' : ''} with uniform margin
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Chip
+                              label={`Margin: ${uniqueMargins[0]}`}
+                              color='success'
+                              size='medium'
+                            />
+                            <IconButton
+                              color='error'
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteBrandMargin(brand);
+                              }}
+                              size='small'
+                            >
+                              <Delete />
+                            </IconButton>
+                          </Box>
+                        </Box>
+                      </AccordionSummary>
+                      <AccordionDetails sx={{ pt: 2 }}>
+                        <TableContainer
+                          component={Paper}
+                          variant='outlined'
+                          sx={{ maxHeight: 400 }}
                         >
-                          <Delete />
-                        </IconButton>
-                      </Box>
-                      {exceptions.length > 0 && (
-                        <TableContainer component={Paper}>
-                          <Table size='small'>
+                          <Table size='small' stickyHeader>
                             <TableHead>
                               <TableRow>
-                                <TableCell>#</TableCell>
-                                <TableCell>Product Name</TableCell>
-                                <TableCell>Margin</TableCell>
-                                <TableCell>Action</TableCell>
+                                <TableCell
+                                  sx={{
+                                    fontWeight: 'bold',
+                                    backgroundColor: '#f5f5f5',
+                                  }}
+                                >
+                                  #
+                                </TableCell>
+                                <TableCell
+                                  sx={{
+                                    fontWeight: 'bold',
+                                    backgroundColor: '#f5f5f5',
+                                  }}
+                                >
+                                  Product Name
+                                </TableCell>
+                                <TableCell
+                                  sx={{
+                                    fontWeight: 'bold',
+                                    backgroundColor: '#f5f5f5',
+                                  }}
+                                >
+                                  Margin
+                                </TableCell>
+                                <TableCell
+                                  sx={{
+                                    fontWeight: 'bold',
+                                    backgroundColor: '#f5f5f5',
+                                  }}
+                                >
+                                  Action
+                                </TableCell>
                               </TableRow>
                             </TableHead>
                             <TableBody>
-                              {exceptions.map((prod, index) => (
-                                <TableRow key={prod.product_id}>
+                              {products.map((prod, index) => (
+                                <TableRow
+                                  key={prod.product_id}
+                                  sx={{
+                                    '&:hover': {
+                                      backgroundColor: '#f9f9f9',
+                                    },
+                                  }}
+                                >
                                   <TableCell>{index + 1}</TableCell>
-                                  <TableCell>{prod.name}</TableCell>
-                                  <TableCell>{prod.margin}</TableCell>
+                                  <TableCell>
+                                    <Typography variant='body2'>
+                                      {prod.name}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Chip
+                                      label={prod.margin}
+                                      size='small'
+                                      color='success'
+                                      variant='outlined'
+                                    />
+                                  </TableCell>
                                   <TableCell>
                                     <Button
                                       variant='outlined'
                                       color='error'
+                                      size='small'
                                       onClick={() =>
                                         handleDeleteSpecialMargin(prod)
                                       }
@@ -458,6 +524,142 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                             </TableBody>
                           </Table>
                         </TableContainer>
+                      </AccordionDetails>
+                    </Accordion>
+                  );
+                } else {
+                  // Mixed margins: find the mode (default) and list exceptions.
+                  const defaultMargin = getModeMargin(products);
+                  const exceptions = products.filter(
+                    (p) => p.margin !== defaultMargin
+                  );
+                  return (
+                    <Box
+                      key={brand}
+                      mb={3}
+                      sx={{
+                        p: 2,
+                        border: '1px solid #e0e0e0',
+                        borderRadius: 2,
+                        backgroundColor: '#fafafa',
+                      }}
+                    >
+                      <Box
+                        display={'flex'}
+                        flexDirection={'row'}
+                        gap={'16px'}
+                        alignItems={'center'}
+                        sx={{ mb: 2 }}
+                      >
+                        <Typography variant='h6' sx={{ flex: 1 }}>
+                          {brand} - Overall Margin: {defaultMargin}
+                        </Typography>
+                        <IconButton
+                          color='error'
+                          onClick={() => handleDeleteBrandMargin(brand)}
+                          size='small'
+                        >
+                          <Delete />
+                        </IconButton>
+                      </Box>
+                      {exceptions.length > 0 && (
+                        <Box>
+                          <Typography
+                            variant='subtitle2'
+                            color='text.secondary'
+                            sx={{ mb: 1 }}
+                          >
+                            Exceptions ({exceptions.length} product
+                            {exceptions.length !== 1 ? 's' : ''} with different
+                            margin):
+                          </Typography>
+                          <TableContainer
+                            component={Paper}
+                            sx={{
+                              boxShadow: 1,
+                              borderRadius: 1,
+                              border: '1px solid #e0e0e0',
+                            }}
+                          >
+                            <Table size='small'>
+                              <TableHead>
+                                <TableRow>
+                                  <TableCell
+                                    sx={{
+                                      fontWeight: 'bold',
+                                      backgroundColor: '#f5f5f5',
+                                    }}
+                                  >
+                                    #
+                                  </TableCell>
+                                  <TableCell
+                                    sx={{
+                                      fontWeight: 'bold',
+                                      backgroundColor: '#f5f5f5',
+                                    }}
+                                  >
+                                    Product Name
+                                  </TableCell>
+                                  <TableCell
+                                    sx={{
+                                      fontWeight: 'bold',
+                                      backgroundColor: '#f5f5f5',
+                                    }}
+                                  >
+                                    Margin
+                                  </TableCell>
+                                  <TableCell
+                                    sx={{
+                                      fontWeight: 'bold',
+                                      backgroundColor: '#f5f5f5',
+                                    }}
+                                  >
+                                    Action
+                                  </TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {exceptions.map((prod, index) => (
+                                  <TableRow
+                                    key={prod.product_id}
+                                    sx={{
+                                      '&:hover': {
+                                        backgroundColor: '#f9f9f9',
+                                      },
+                                    }}
+                                  >
+                                    <TableCell>{index + 1}</TableCell>
+                                    <TableCell>
+                                      <Typography variant='body2'>
+                                        {prod.name}
+                                      </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Chip
+                                        label={prod.margin}
+                                        size='small'
+                                        color='warning'
+                                        variant='outlined'
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <Button
+                                        variant='outlined'
+                                        color='error'
+                                        size='small'
+                                        onClick={() =>
+                                          handleDeleteSpecialMargin(prod)
+                                        }
+                                      >
+                                        Delete
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        </Box>
                       )}
                     </Box>
                   );
