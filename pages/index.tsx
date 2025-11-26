@@ -9,7 +9,7 @@ import {
   useMediaQuery,
   Grid,
 } from '@mui/material';
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import AuthContext from '../src/components/Auth';
 import { useRouter } from 'next/router';
 import {
@@ -30,9 +30,12 @@ import {
   Link,
   LineAxis,
   Rocket,
+  PersonAdd,
+  Assignment,
 } from '@mui/icons-material';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import CustomerCreationRequestForm from '../src/components/CustomerCreationRequestForm';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -160,6 +163,18 @@ const menuSections = [
     title: 'Customers',
     items: [
       {
+        icon: <PersonAdd />,
+        text: 'Create New Customer',
+        color: '#22c55e',
+        action: 'create_customer',
+      },
+      {
+        icon: <Assignment />,
+        text: 'My Customer Requests',
+        color: '#3b82f6',
+        action: 'my_customer_requests',
+      },
+      {
         icon: <Insights />,
         text: 'Potential Customers',
         color: '#ec4899',
@@ -233,6 +248,7 @@ const Home = () => {
   const { user }: any = useContext(AuthContext);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [showCustomerRequestForm, setShowCustomerRequestForm] = useState(false);
 
   const handleNewOrder = async () => {
     try {
@@ -252,6 +268,12 @@ const Home = () => {
     switch (action) {
       case 'newOrder':
         handleNewOrder();
+        break;
+      case 'create_customer':
+        setShowCustomerRequestForm(true);
+        break;
+      case 'my_customer_requests':
+        router.push('/customer_requests');
         break;
       case 'pastOrder':
         router.push('/orders/past');
@@ -385,6 +407,12 @@ const Home = () => {
           ))}
         </motion.div>
       </Container>
+
+      {/* Customer Creation Request Form Dialog */}
+      <CustomerCreationRequestForm
+        open={showCustomerRequestForm}
+        onClose={() => setShowCustomerRequestForm(false)}
+      />
     </Box>
   );
 };

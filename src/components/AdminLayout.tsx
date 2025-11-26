@@ -42,6 +42,7 @@ import {
   Link,
   Analytics,
   CalendarMonth,
+  AssignmentInd,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -71,6 +72,7 @@ const iconMap: { [key: string]: React.ReactElement } = {
   Link: <Link />,
   Analytics: <Analytics />,
   CalendarMonth: <CalendarMonth />,
+  AssignmentInd: <AssignmentInd />,
 };
 
 const AdminLayout = ({ children }: any) => {
