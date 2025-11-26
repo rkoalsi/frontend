@@ -267,7 +267,7 @@ const CustomerRequests = () => {
               </Box>
             </DialogTitle>
             <DialogContent>
-              <Grid container spacing={3} sx={{ mt: 1 }}>
+              <Grid container spacing={4} sx={{ mt: 1 }}>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
