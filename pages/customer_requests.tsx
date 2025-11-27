@@ -22,9 +22,15 @@ import {
   IconButton,
   Tooltip,
   Divider,
+  Card,
+  CardContent,
+  CardActions,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
-import { Visibility, Reply as ReplyIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Visibility, Reply as ReplyIcon, Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon } from '@mui/icons-material';
 import CommentIcon from '@mui/icons-material/Comment';
+import { InputAdornment } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../src/util/axios';
 import { format } from 'date-fns';
@@ -70,13 +76,16 @@ interface CustomerRequest {
 const CustomerRequests = () => {
   const { user }: any = useContext(AuthContext);
   const router = useRouter();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [requests, setRequests] = useState<CustomerRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<CustomerRequest | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
   const [totalCount, setTotalCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Reply dialog states
   const [replyDialogOpen, setReplyDialogOpen] = useState(false);
@@ -324,6 +333,19 @@ const CustomerRequests = () => {
     return <Chip label={config.label} color={config.color} size="small" />;
   };
 
+  // Filter requests based on search query
+  const filteredRequests = requests.filter((request) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      request.shop_name?.toLowerCase().includes(query) ||
+      request.customer_name?.toLowerCase().includes(query) ||
+      request.created_by_name?.toLowerCase().includes(query) ||
+      request.tier_category?.toLowerCase().includes(query) ||
+      request.status?.toLowerCase().includes(query)
+    );
+  });
+
   if (loading && requests.length === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -344,72 +366,242 @@ const CustomerRequests = () => {
         <Typography variant="h4" sx={{ mb: 1, fontWeight: 600, color: '#ffffff' }}>
           My Customer Requests
         </Typography>
-        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 2 }}>
           View the status of your customer creation requests below
         </Typography>
+
+        {/* Search Bar */}
+        <TextField
+          fullWidth
+          variant="outlined"
+          placeholder="Search by shop name, customer name, created by, tier/category, or status..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+                </InputAdornment>
+              ),
+            },
+          }}
+          sx={{
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: 1,
+            '& .MuiOutlinedInput-root': {
+              color: '#ffffff',
+              '& fieldset': {
+                borderColor: 'rgba(255, 255, 255, 0.3)',
+              },
+              '&:hover fieldset': {
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: 'rgba(255, 255, 255, 0.7)',
+              },
+            },
+            '& .MuiOutlinedInput-input::placeholder': {
+              color: 'rgba(255, 255, 255, 0.5)',
+              opacity: 1,
+            },
+          }}
+        />
       </Box>
 
-      <TableContainer component={Paper} elevation={2}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-              <TableCell><strong>Shop Name</strong></TableCell>
-              <TableCell><strong>Customer Name</strong></TableCell>
-              <TableCell><strong>Created By</strong></TableCell>
-              <TableCell><strong>Tier/Category</strong></TableCell>
-              <TableCell><strong>Status</strong></TableCell>
-              <TableCell><strong>Submitted Date</strong></TableCell>
-              <TableCell><strong>Actions</strong></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {requests.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  <Typography variant="body2" color="textSecondary" sx={{ py: 3 }}>
-                    You haven't submitted any customer requests yet
-                  </Typography>
-                </TableCell>
+      {/* Mobile Card View */}
+      {isMobile ? (
+        <>
+          {filteredRequests.length === 0 ? (
+            <Paper elevation={2} sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="body2" color="textSecondary">
+                {searchQuery ? 'No customer requests found matching your search' : "You haven't submitted any customer requests yet"}
+              </Typography>
+            </Paper>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {filteredRequests.map((request) => (
+                <Card key={request._id} elevation={2}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                        {request.shop_name}
+                      </Typography>
+                      {getStatusChip(request.status)}
+                    </Box>
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                          Customer Name
+                        </Typography>
+                        <Typography variant="body2">{request.customer_name}</Typography>
+                      </Box>
+
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                          Created By
+                        </Typography>
+                        <Typography variant="body2">{request.created_by_name || 'N/A'}</Typography>
+                      </Box>
+
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                          Tier/Category
+                        </Typography>
+                        <Typography variant="body2">{request.tier_category}</Typography>
+                      </Box>
+
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                          Submitted Date
+                        </Typography>
+                        <Typography variant="body2">
+                          {request.created_at
+                            ? format(new Date(request.created_at), 'MMM dd, yyyy HH:mm')
+                            : 'N/A'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+
+                  <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      size="small"
+                      startIcon={<Visibility />}
+                      onClick={() => handleViewDetails(request)}
+                    >
+                      View Details
+                    </Button>
+                  </CardActions>
+                </Card>
+              ))}
+            </Box>
+          )}
+
+          <Paper
+            elevation={3}
+            sx={{
+              mt: 2,
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              borderRadius: 2,
+            }}
+          >
+            <TablePagination
+              rowsPerPageOptions={[10, 25, 50, 100]}
+              component="div"
+              count={searchQuery ? filteredRequests.length : totalCount}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              sx={{
+                '.MuiTablePagination-toolbar': {
+                  flexWrap: 'wrap',
+                  minHeight: 'auto',
+                  paddingY: 1.5,
+                  paddingX: 2,
+                },
+                '.MuiTablePagination-selectLabel': {
+                  margin: 0,
+                  marginBottom: { xs: 1, sm: 0 },
+                  fontWeight: 500,
+                },
+                '.MuiTablePagination-displayedRows': {
+                  margin: 0,
+                  marginBottom: { xs: 1, sm: 0 },
+                  fontWeight: 500,
+                },
+                '.MuiTablePagination-select': {
+                  marginRight: { xs: 1, sm: 2 },
+                },
+                '.MuiTablePagination-actions': {
+                  marginLeft: { xs: 0, sm: 2 },
+                },
+              }}
+            />
+          </Paper>
+        </>
+      ) : (
+        /* Desktop Table View */
+        <TableContainer component={Paper} elevation={2}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                <TableCell><strong>Shop Name</strong></TableCell>
+                <TableCell><strong>Customer Name</strong></TableCell>
+                <TableCell><strong>Created By</strong></TableCell>
+                <TableCell><strong>Tier/Category</strong></TableCell>
+                <TableCell><strong>Status</strong></TableCell>
+                <TableCell><strong>Submitted Date</strong></TableCell>
+                <TableCell><strong>Actions</strong></TableCell>
               </TableRow>
-            ) : (
-              requests.map((request) => (
-                <TableRow key={request._id} hover>
-                  <TableCell>{request.shop_name}</TableCell>
-                  <TableCell>{request.customer_name}</TableCell>
-                  <TableCell>{request.created_by_name || 'N/A'}</TableCell>
-                  <TableCell>{request.tier_category}</TableCell>
-                  <TableCell>{getStatusChip(request.status)}</TableCell>
-                  <TableCell>
-                    {request.created_at
-                      ? format(new Date(request.created_at), 'MMM dd, yyyy HH:mm')
-                      : 'N/A'}
-                  </TableCell>
-                  <TableCell>
-                    <Tooltip title="View Details">
-                      <IconButton
-                        color="primary"
-                        size="small"
-                        onClick={() => handleViewDetails(request)}
-                      >
-                        <Visibility />
-                      </IconButton>
-                    </Tooltip>
+            </TableHead>
+            <TableBody>
+              {filteredRequests.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center">
+                    <Typography variant="body2" color="textSecondary" sx={{ py: 3 }}>
+                      {searchQuery ? 'No customer requests found matching your search' : "You haven't submitted any customer requests yet"}
+                    </Typography>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25, 50]}
-          component="div"
-          count={totalCount}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      </TableContainer>
+              ) : (
+                filteredRequests.map((request) => (
+                  <TableRow key={request._id} hover>
+                    <TableCell>{request.shop_name}</TableCell>
+                    <TableCell>{request.customer_name}</TableCell>
+                    <TableCell>{request.created_by_name || 'N/A'}</TableCell>
+                    <TableCell>{request.tier_category}</TableCell>
+                    <TableCell>{getStatusChip(request.status)}</TableCell>
+                    <TableCell>
+                      {request.created_at
+                        ? format(new Date(request.created_at), 'MMM dd, yyyy HH:mm')
+                        : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      <Tooltip title="View Details">
+                        <IconButton
+                          color="primary"
+                          size="small"
+                          onClick={() => handleViewDetails(request)}
+                        >
+                          <Visibility />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+          <TablePagination
+            rowsPerPageOptions={[10, 25, 50, 100]}
+            component="div"
+            count={searchQuery ? filteredRequests.length : totalCount}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            sx={{
+              '.MuiTablePagination-toolbar': {
+                flexWrap: 'wrap',
+                minHeight: 'auto',
+                paddingY: 1.5,
+                paddingX: 2,
+              },
+              '.MuiTablePagination-selectLabel': {
+                fontWeight: 500,
+              },
+              '.MuiTablePagination-displayedRows': {
+                fontWeight: 500,
+              },
+            }}
+          />
+        </TableContainer>
+      )}
 
       {/* Details Dialog */}
       <Dialog
