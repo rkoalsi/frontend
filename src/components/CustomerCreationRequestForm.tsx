@@ -13,8 +13,12 @@ import {
   Divider,
   Paper,
   IconButton,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
-import { Close as CloseIcon } from '@mui/icons-material';
+import { Close as CloseIcon, ContentCopy as CopyIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../util/axios';
 import AuthContext from './Auth';
@@ -43,7 +47,13 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
     multiple_branches: '',
     tier_category: '',
     sales_person: '',
-    margin_details: ''
+    margin_details: '',
+    billing_address: '',
+    shipping_address: '',
+    place_of_supply: '',
+    customer_mail_id: '',
+    gst_treatment: '',
+    pincode: ''
   });
 
   // Auto-fill sales person when dialog opens
@@ -69,12 +79,26 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
     }));
   };
 
+  const handleCopyBillingToShipping = () => {
+    if (!formData.billing_address) {
+      toast.warning('Please enter billing address first');
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      shipping_address: prev.billing_address
+    }));
+    toast.success('Billing address copied to shipping address');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validation
     if (!formData.shop_name || !formData.customer_name || !formData.address ||
-        !formData.whatsapp_no || !formData.payment_terms || !formData.tier_category) {
+        !formData.whatsapp_no || !formData.payment_terms || !formData.tier_category ||
+        !formData.billing_address || !formData.shipping_address || !formData.place_of_supply ||
+        !formData.customer_mail_id || !formData.gst_treatment || !formData.pincode) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -106,7 +130,13 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
         multiple_branches: '',
         tier_category: '',
         sales_person: salesPersonValue,
-        margin_details: ''
+        margin_details: '',
+        billing_address: '',
+        shipping_address: '',
+        place_of_supply: '',
+        customer_mail_id: '',
+        gst_treatment: '',
+        pincode: ''
       });
 
       if (onSuccess) {
@@ -210,6 +240,113 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                     onChange={handleChange}
                     placeholder="Enter complete address with city, state, and pincode"
                   />
+                </Grid>
+              </Grid>
+            </Paper>
+
+            {/* Address Details Section */}
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
+                Address Details
+              </Typography>
+              <Grid container spacing={4}>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    multiline
+                    rows={3}
+                    label="Billing Address"
+                    name="billing_address"
+                    value={formData.billing_address}
+                    onChange={handleChange}
+                    placeholder="Enter billing address"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Box sx={{ position: 'relative' }}>
+                    <TextField
+                      fullWidth
+                      required
+                      multiline
+                      rows={3}
+                      label="Shipping Address"
+                      name="shipping_address"
+                      value={formData.shipping_address}
+                      onChange={handleChange}
+                      placeholder="Enter shipping address"
+                    />
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<CopyIcon />}
+                      onClick={handleCopyBillingToShipping}
+                      sx={{
+                        mt: 1,
+                        textTransform: 'none',
+                        fontSize: '0.75rem'
+                      }}
+                    >
+                      Copy from Billing Address
+                    </Button>
+                  </Box>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="Place Of Supply"
+                    name="place_of_supply"
+                    value={formData.place_of_supply}
+                    onChange={handleChange}
+                    placeholder="Enter place of supply"
+                    size="medium"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="Pincode"
+                    name="pincode"
+                    value={formData.pincode}
+                    onChange={handleChange}
+                    placeholder="Enter pincode"
+                    size="medium"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="Customer Mail Id"
+                    name="customer_mail_id"
+                    value={formData.customer_mail_id}
+                    onChange={handleChange}
+                    placeholder="Enter customer email address"
+                    type="email"
+                    size="medium"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <FormControl fullWidth required size="medium">
+                    <InputLabel>GST Treatment</InputLabel>
+                    <Select
+                      label="GST Treatment"
+                      name="gst_treatment"
+                      value={formData.gst_treatment}
+                      onChange={(e) => handleChange(e as any)}
+                    >
+                      <MenuItem value="Business GST">Business GST</MenuItem>
+                      <MenuItem value="Unregistered Business">Unregistered Business</MenuItem>
+                      <MenuItem value="Consumer">Consumer</MenuItem>
+                    </Select>
+                  </FormControl>
                 </Grid>
               </Grid>
             </Paper>
