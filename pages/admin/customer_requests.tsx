@@ -59,10 +59,17 @@ interface CustomerRequest {
   tier_category: string;
   sales_person: string;
   margin_details?: string;
+  billing_address?: string;
+  shipping_address?: string;
+  place_of_supply?: string;
+  customer_mail_id?: string;
+  gst_treatment?: string;
+  pincode?: string;
   created_by_name: string;
   created_at: string;
-  status: 'pending' | 'approved' | 'rejected' | 'admin_commented' | 'salesperson_replied';
+  status: 'pending' | 'approved' | 'rejected' | 'admin_commented' | 'salesperson_replied' | 'created_on_zoho';
   admin_comments?: Comment[];
+  zoho_contact_id?: string;
 }
 
 const CustomerRequests = () => {
@@ -168,6 +175,7 @@ const CustomerRequests = () => {
       rejected: { color: 'error' as const, label: 'Rejected' },
       admin_commented: { color: 'info' as const, label: 'Admin Commented' },
       salesperson_replied: { color: 'primary' as const, label: 'Salesperson Replied' },
+      created_on_zoho: { color: 'success' as const, label: 'Created on Zoho' },
     };
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
     return <Chip label={config.label} color={config.color} size="small" />;
@@ -295,6 +303,65 @@ const CustomerRequests = () => {
                     variant="outlined"
                     multiline
                     rows={2}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Billing Address"
+                    value={selectedRequest.billing_address || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                    multiline
+                    rows={2}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Shipping Address"
+                    value={selectedRequest.shipping_address || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                    multiline
+                    rows={2}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Place Of Supply"
+                    value={selectedRequest.place_of_supply || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Pincode"
+                    value={selectedRequest.pincode || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Customer Mail Id"
+                    value={selectedRequest.customer_mail_id || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                    type="email"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="GST Treatment"
+                    value={selectedRequest.gst_treatment || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
@@ -456,9 +523,9 @@ const CustomerRequests = () => {
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 2 }}>
               <Button onClick={handleCloseDialog}>Close</Button>
-              {(selectedRequest.status === 'pending' ||
-                selectedRequest.status === 'admin_commented' ||
-                selectedRequest.status === 'salesperson_replied') && (
+              {selectedRequest.status !== 'created_on_zoho' &&
+                selectedRequest.status !== 'rejected' &&
+                selectedRequest.status !== 'approved' && (
                 <>
                   <Button
                     variant="outlined"
@@ -474,9 +541,14 @@ const CustomerRequests = () => {
                     startIcon={<Check />}
                     onClick={() => handleUpdateStatus(selectedRequest._id, 'approved')}
                   >
-                    Approve
+                    Approve & Create in Zoho
                   </Button>
                 </>
+              )}
+              {selectedRequest.status === 'created_on_zoho' && selectedRequest.zoho_contact_id && (
+                <Typography variant="body2" color="success.main" sx={{ fontWeight: 500 }}>
+                  Zoho Contact ID: {selectedRequest.zoho_contact_id}
+                </Typography>
               )}
             </DialogActions>
           </>
