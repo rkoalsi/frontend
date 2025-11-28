@@ -11,16 +11,31 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  styled,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import { useTheme } from '@emotion/react';
-import { ShoppingCart } from '@mui/icons-material';
+import { ShoppingCart, Refresh } from '@mui/icons-material';
+
+const StyledButton = styled(Button)(({ theme }: any) => ({
+  textTransform: 'none',
+  fontWeight: 600,
+  borderRadius: 12,
+  padding: '10px 24px',
+  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+  transition: 'all 0.2s ease-in-out',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+  },
+}));
 
 const SheetsDisplay = ({
   googleSheetsLink = '',
   updateCart = () => {},
+  recreateSheet = () => {},
   loading = false,
   sort = '',
 }: any) => {
@@ -57,48 +72,78 @@ const SheetsDisplay = ({
     <Accordion
       sx={{
         m: 2,
-        borderRadius: 2,
-        boxShadow: 3,
-        backgroundColor: theme.palette.background.paper,
-        maxWidth: '100%', // Prevent overflow
+        borderRadius: 3,
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+        backgroundColor: '#ffffff',
+        maxWidth: '100%',
+        '&:before': {
+          display: 'none',
+        },
       }}
     >
       <AccordionSummary
         expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}
         sx={{
-          px: 2,
-          py: 1,
-          bgcolor: theme.palette.secondary.dark,
+          px: 3,
+          py: 1.5,
+          background: 'linear-gradient(135deg, #6B5B95 0%, #554474 100%)',
           color: 'white',
-          borderRadius: '8px',
+          borderRadius: '12px 12px 0 0',
+          '&.Mui-expanded': {
+            minHeight: 56,
+          },
         }}
       >
-        <Box display='flex' alignItems='center' gap={1}>
-          <InsertDriveFileIcon color='success' fontSize='large' />
-          <Typography variant='h6' fontWeight='bold'>
+        <Box display='flex' alignItems='center' gap={1.5}>
+          <InsertDriveFileIcon sx={{ fontSize: 32, color: '#4CAF50' }} />
+          <Typography variant='h6' fontWeight={700}>
             Order Form Google Sheet Template
           </Typography>
         </Box>
       </AccordionSummary>
-      <AccordionDetails sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+      <AccordionDetails sx={{ p: { xs: 2, sm: 3, md: 4 }, backgroundColor: '#fafafa' }}>
         <Paper
-          elevation={4}
+          elevation={0}
           sx={{
-            p: { xs: 2, sm: 2.5, md: 3 },
+            p: { xs: 2.5, sm: 3, md: 3.5 },
             width: getResponsiveWidth(),
             maxWidth: getResponsiveMaxWidth(),
             mx: 'auto',
-            borderRadius: 2,
-            backgroundColor: theme.palette.background.default,
-            boxSizing: 'border-box', // Include padding in width calculation
+            borderRadius: 3,
+            backgroundColor: '#ffffff',
+            border: '1px solid #e2e8f0',
+            boxSizing: 'border-box',
           }}
         >
           <Box display='flex' flexDirection='column' gap={3}>
-            <Alert severity='info' sx={{ borderRadius: '8px' }}>
+            <Alert
+              severity='info'
+              sx={{
+                borderRadius: 2,
+                border: '1px solid #2196F3',
+                backgroundColor: '#E3F2FD',
+                '& .MuiAlert-icon': {
+                  color: '#1976D2',
+                },
+              }}
+            >
               You can place the order directly below or generate a Google Sheet
               template to share with your customer for easy order input.
             </Alert>
-            <Typography>Current Sort Order: {sort}</Typography>
+            <Box
+              sx={{
+                backgroundColor: '#f1f5f9',
+                px: 2.5,
+                py: 1.5,
+                borderRadius: 2,
+                border: '1px solid #cbd5e1',
+              }}
+            >
+              <Typography variant='subtitle2' fontWeight={700} color='text.primary'>
+                Current Sort Order: <Typography component='span' fontWeight={500} color='text.secondary'>{sort}</Typography>
+              </Typography>
+            </Box>
             <TextField
               fullWidth
               variant='outlined'
@@ -106,72 +151,100 @@ const SheetsDisplay = ({
               InputProps={{
                 readOnly: true,
                 sx: {
-                  bgcolor: '#f5f5f5',
+                  bgcolor: '#f8fafc',
                   fontFamily: 'monospace',
                   fontSize: '0.875rem',
-                  borderRadius: '8px',
+                  borderRadius: 2,
+                  border: '1px solid #e2e8f0',
+                  '&:hover': {
+                    backgroundColor: '#f1f5f9',
+                  },
                 },
               }}
             />
-            <Alert severity='warning' sx={{ borderRadius: '8px' }}>
+            <Alert
+              severity='warning'
+              sx={{
+                borderRadius: 2,
+                border: '1px solid #FF9800',
+                backgroundColor: '#FFF3E0',
+                '& .MuiAlert-icon': {
+                  color: '#F57C00',
+                },
+              }}
+            >
               On Creation of google Sheet, images will not show. Click on "Allow
               Access" on the sheet to display images on sheet.
             </Alert>
 
             <Box
               display='flex'
-              flexDirection={isMobile ? 'column' : isTablet ? 'column' : 'row'}
+              flexDirection={isMobile ? 'column' : 'row'}
               gap={2}
+              flexWrap='wrap'
             >
-              <Button
+              <StyledButton
                 variant='contained'
                 startIcon={<ContentCopyIcon />}
                 onClick={handleCopyToClipboard}
                 sx={{
-                  textTransform: 'none',
-                  fontWeight: 'bold',
-                  borderRadius: '24px',
-                  flexGrow: { xs: 1, md: 1 },
-                  flexShrink: 0,
-                  bgcolor: theme.palette.primary.dark,
+                  flexGrow: 1,
+                  flexBasis: isMobile ? '100%' : 'calc(50% - 8px)',
+                  bgcolor: theme.palette.primary.main,
                   color: 'white',
+                  '&:hover': {
+                    bgcolor: theme.palette.primary.dark,
+                  },
                 }}
               >
                 Copy Link
-              </Button>
+              </StyledButton>
 
-              <Button
+              <StyledButton
                 variant='outlined'
                 onClick={openGoogleSheet}
                 sx={{
-                  textTransform: 'none',
-                  fontWeight: 'bold',
-                  borderRadius: '24px',
-                  flexGrow: { xs: 1, md: 1 },
-                  flexShrink: 0,
+                  flexGrow: 1,
+                  flexBasis: isMobile ? '100%' : 'calc(50% - 8px)',
                   borderColor: theme.palette.primary.main,
                   color: theme.palette.primary.main,
+                  borderWidth: 2,
+                  '&:hover': {
+                    borderWidth: 2,
+                    backgroundColor: '#f0f7ff',
+                  },
                 }}
               >
                 Open in Google Sheets
-              </Button>
-              <Button
+              </StyledButton>
+
+              <StyledButton
                 variant='contained'
                 color='secondary'
                 startIcon={<ShoppingCart />}
                 onClick={updateCart}
                 disabled={loading}
                 sx={{
-                  textTransform: 'none',
-                  fontWeight: 'bold',
-                  borderRadius: '24px',
-                  flexGrow: { xs: 1, md: 1 },
-                  flexShrink: 0,
-                  bgcolor: theme.palette.secondary.main,
+                  flexGrow: 1,
+                  flexBasis: isMobile ? '100%' : 'calc(50% - 8px)',
                 }}
               >
                 Update Cart
-              </Button>
+              </StyledButton>
+
+              <StyledButton
+                variant='contained'
+                color='warning'
+                startIcon={<Refresh />}
+                onClick={recreateSheet}
+                disabled={loading}
+                sx={{
+                  flexGrow: 1,
+                  flexBasis: isMobile ? '100%' : 'calc(50% - 8px)',
+                }}
+              >
+                Recreate Sheet
+              </StyledButton>
             </Box>
           </Box>
         </Paper>

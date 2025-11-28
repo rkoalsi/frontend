@@ -12,7 +12,10 @@ import {
   CardContent,
   useTheme,
   useMediaQuery,
+  Chip,
+  InputAdornment,
 } from '@mui/material';
+import { Search, RadioButtonUnchecked, CheckCircle } from '@mui/icons-material';
 
 interface CheckListProps {
   values: any[];
@@ -87,20 +90,33 @@ export default function CheckList({
     <Box sx={{ width: '100%' }}>
       {/* Search Field */}
       <TextField
-        label='Search'
-        variant='standard'
+        label='Search Addresses'
+        variant='outlined'
         size='small'
         fullWidth
-        margin='dense'
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        sx={{ mb: 2 }}
+        sx={{
+          mb: 2,
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 2,
+            backgroundColor: '#ffffff',
+            '&:hover': {
+              backgroundColor: '#fafafa',
+            },
+            '&.Mui-focused': {
+              backgroundColor: '#ffffff',
+            },
+          },
+        }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position='start'>
+              <Search sx={{ color: 'text.secondary' }} />
+            </InputAdornment>
+          ),
+        }}
       />
-
-      {/*
-        If you want a single scroll on mobile, remove or adjust 
-        any maxHeight/overflow from the parent container.
-      */}
 
       {filteredValues.length > 0 ? (
         // We conditionally render cards on mobile, list items on desktop
@@ -114,83 +130,122 @@ export default function CheckList({
               sx={{
                 mb: 2,
                 cursor: 'pointer',
-                border:
-                  selectedIndex === index
-                    ? '2px solid #1976d2'
-                    : '1px solid #ddd',
+                borderRadius: 2,
+                border: selectedIndex === index
+                  ? '2px solid'
+                  : '1px solid #e2e8f0',
+                borderColor: selectedIndex === index ? 'primary.main' : '#e2e8f0',
+                backgroundColor: selectedIndex === index ? '#f0f7ff' : '#ffffff',
+                transition: 'all 0.2s ease-in-out',
+                boxShadow: selectedIndex === index
+                  ? '0 4px 12px rgba(25, 118, 210, 0.15)'
+                  : '0 1px 3px rgba(0,0,0,0.05)',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                },
               }}
             >
               <CardContent>
-                {/* Checkbox + Title */}
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Checkbox
-                    edge='start'
-                    checked={selectedIndex === index}
-                    disableRipple
-                  />
-                  <Typography variant='subtitle1' fontWeight='bold'>
-                    {value.attention}
-                  </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 1.5 }}>
+                  {selectedIndex === index ? (
+                    <CheckCircle sx={{ color: 'primary.main', mr: 1.5, mt: 0.5 }} />
+                  ) : (
+                    <RadioButtonUnchecked sx={{ color: 'text.disabled', mr: 1.5, mt: 0.5 }} />
+                  )}
+                  <Box flex={1}>
+                    <Typography variant='subtitle1' fontWeight={700} color='text.primary' mb={0.5}>
+                      {value.attention}
+                    </Typography>
+                    <Typography variant='body2' color='text.secondary' mb={0.3}>
+                      {value.address} {value.street2}
+                    </Typography>
+                    <Typography variant='body2' color='text.secondary' mb={0.3}>
+                      {value.city}, {value.state} {value.zip}
+                    </Typography>
+                    {value.phone && (
+                      <Chip
+                        label={value.phone}
+                        size='small'
+                        sx={{
+                          mt: 1,
+                          height: 24,
+                          fontSize: '0.75rem',
+                          backgroundColor: '#f1f5f9',
+                          color: 'text.secondary',
+                        }}
+                      />
+                    )}
+                  </Box>
                 </Box>
-                <Typography variant='body2'>
-                  {value.address} {value.street2}
-                </Typography>
-                <Typography variant='body2'>{value.city}</Typography>
-                <Typography variant='body2'>{value.state}</Typography>
-                <Typography variant='body2'>{value.zip}</Typography>
               </CardContent>
             </Card>
           ))
         ) : (
           /* ----------- Desktop List Layout ----------- */
-          <List component='nav' aria-label='address list'>
+          <List component='nav' aria-label='address list' sx={{ p: 0 }}>
             {filteredValues.map((value: any, index: number) => (
               <ListItemButton
                 key={value.address}
                 onClick={(event) => handleListItemClick(event, index)}
                 selected={selectedIndex === index}
                 sx={{
+                  mb: 1.5,
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: selectedIndex === index ? 'primary.main' : '#e2e8f0',
+                  backgroundColor: selectedIndex === index ? '#f0f7ff' : '#ffffff',
+                  transition: 'all 0.2s ease-in-out',
                   '&.Mui-selected': {
-                    backgroundColor: 'grey.200',
+                    backgroundColor: '#f0f7ff',
+                    borderWidth: '2px',
+                    '&:hover': {
+                      backgroundColor: '#e3f2fd',
+                    },
                   },
-                  '&.Mui-selected:hover': {
-                    backgroundColor: 'grey.300',
+                  '&:hover': {
+                    backgroundColor: '#fafafa',
+                    transform: 'translateX(4px)',
                   },
-                  padding: '12px',
-                  borderRadius: '8px',
-                  mb: 1,
+                  padding: 2,
                 }}
               >
-                <ListItemIcon>
-                  <Checkbox
-                    edge='start'
-                    checked={selectedIndex === index}
-                    disableRipple
-                  />
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  {selectedIndex === index ? (
+                    <CheckCircle sx={{ color: 'primary.main' }} />
+                  ) : (
+                    <RadioButtonUnchecked sx={{ color: 'text.disabled' }} />
+                  )}
                 </ListItemIcon>
                 <ListItemText
                   primary={
-                    <>
-                      <Box component='span' sx={{ fontWeight: 'bold' }}>
+                    <Box>
+                      <Typography variant='subtitle1' fontWeight={700} color='text.primary' mb={0.5}>
                         {value.attention}
-                      </Box>
-                      <Box>
+                      </Typography>
+                      <Typography variant='body2' color='text.secondary' mb={0.3}>
                         {value.address} {value.street2}
-                      </Box>
-                      <Box>{value.city}</Box>
-                      <Box>{value.state}</Box>
-                      <Box>{value.zip}</Box>
-                    </>
+                      </Typography>
+                      <Typography variant='body2' color='text.secondary' mb={0.3}>
+                        {value.city}, {value.state} {value.zip}
+                      </Typography>
+                      {value.phone && (
+                        <Chip
+                          label={value.phone}
+                          size='small'
+                          sx={{
+                            mt: 0.5,
+                            height: 24,
+                            fontSize: '0.75rem',
+                            backgroundColor: '#f1f5f9',
+                            color: 'text.secondary',
+                          }}
+                        />
+                      )}
+                    </Box>
                   }
                   primaryTypographyProps={{
                     component: 'div',
-                    fontSize: '0.875rem',
-                    noWrap: false,
-                    sx: {
-                      whiteSpace: 'normal',
-                      overflow: 'visible',
-                      textOverflow: 'inherit',
-                    },
                   }}
                 />
               </ListItemButton>
@@ -198,9 +253,18 @@ export default function CheckList({
           </List>
         )
       ) : (
-        <Typography fontWeight='bold'>
-          Could not find any match for {searchQuery} in Addresses
-        </Typography>
+        <Box
+          display='flex'
+          flexDirection='column'
+          alignItems='center'
+          justifyContent='center'
+          py={4}
+        >
+          <Search sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+          <Typography fontWeight={600} color='text.secondary'>
+            Could not find any match for "{searchQuery}"
+          </Typography>
+        </Box>
       )}
     </Box>
   );
