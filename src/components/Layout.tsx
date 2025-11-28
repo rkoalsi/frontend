@@ -95,7 +95,7 @@ const Layout = ({ children }: any) => {
         display: 'flex',
         minHeight: '100vh',
         flexDirection: 'column',
-        background: 'linear-gradient(135deg, #5A7CA4, #2B4864, #172335)',
+        background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
       }}
     >
       {/* Top Navigation Bar */}

@@ -5,10 +5,13 @@ import {
   Button,
   useTheme,
   useMediaQuery,
+  Paper,
+  styled,
 } from '@mui/material';
 import CheckList from './CheckList';
 import axios from 'axios';
 import NewAddress from './NewAddress';
+import { LocationOn, Add } from '@mui/icons-material';
 
 interface Props {
   address: any;
@@ -20,6 +23,14 @@ interface Props {
   addNewAddress?: boolean;
   setLoading: any;
 }
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(3),
+  borderRadius: 16,
+  border: '1px solid #e2e8f0',
+  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+  backgroundColor: '#ffffff',
+}));
 
 function Address(props: Props) {
   const {
@@ -124,30 +135,46 @@ function Address(props: Props) {
           handleSave={handleSave}
         />
       ) : (
-        <>
-          {addNewAddress ?? (
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mb: 2,
-              }}
-            >
-              <Typography variant='h6'>Select {type} Address</Typography>
-              <Button variant='contained' onClick={() => setIsAddingNew(true)}>
-                Add New Address
-              </Button>
-            </Box>
-          )}
+        <StyledPaper>
           <Box
             sx={{
-              maxHeight: { xs: 'none', md: '380px' },
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 3,
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: 2,
+            }}
+          >
+            <Box display='flex' alignItems='center'>
+              <LocationOn sx={{ mr: 1, color: type === 'Billing' ? 'primary.main' : 'secondary.main', fontSize: 28 }} />
+              <Typography variant='h6' fontWeight={600} color='text.primary'>
+                Select {type} Address
+              </Typography>
+            </Box>
+          </Box>
+          <Box
+            sx={{
+              maxHeight: { xs: 'none', md: '400px' },
               overflowY: { xs: 'visible', md: 'auto' },
-              padding: { xs: 1, sm: 1.5 },
+              padding: { xs: 1, sm: 2 },
               borderRadius: 2,
-              border: '1px solid',
-              borderColor: 'divider',
+              border: '1px solid #e2e8f0',
+              backgroundColor: '#fafafa',
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                backgroundColor: '#f1f1f1',
+                borderRadius: '10px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: '#cbd5e1',
+                borderRadius: '10px',
+                '&:hover': {
+                  backgroundColor: '#94a3b8',
+                },
+              },
             }}
           >
             {customer && customer.addresses && customer.addresses.length > 0 ? (
@@ -164,12 +191,21 @@ function Address(props: Props) {
                 setSelectedValue={setAddress}
               />
             ) : (
-              <Typography fontWeight='bold'>
-                {customer.company_name} has no saved addresses
-              </Typography>
+              <Box
+                display='flex'
+                flexDirection='column'
+                alignItems='center'
+                justifyContent='center'
+                py={4}
+              >
+                <LocationOn sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+                <Typography fontWeight='bold' color='text.secondary'>
+                  {customer?.company_name || 'Customer'} has no saved addresses
+                </Typography>
+              </Box>
             )}
           </Box>
-        </>
+        </StyledPaper>
       )}
     </>
   );

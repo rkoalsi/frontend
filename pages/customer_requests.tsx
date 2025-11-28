@@ -27,6 +27,7 @@ import {
   CardActions,
   useMediaQuery,
   useTheme,
+  MenuItem,
 } from '@mui/material';
 import { Visibility, Reply as ReplyIcon, Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon } from '@mui/icons-material';
 import CommentIcon from '@mui/icons-material/Comment';
@@ -67,10 +68,17 @@ interface CustomerRequest {
   tier_category: string;
   sales_person: string;
   margin_details?: string;
+  billing_address?: string;
+  shipping_address?: string;
+  place_of_supply?: string;
+  customer_mail_id?: string;
+  gst_treatment?: string;
+  pincode?: string;
   created_by_name: string;
   created_at: string;
-  status: 'pending' | 'approved' | 'rejected' | 'admin_commented' | 'salesperson_replied';
+  status: 'pending' | 'approved' | 'rejected' | 'admin_commented' | 'salesperson_replied' | 'created_on_zoho';
   admin_comments?: Comment[];
+  zoho_contact_id?: string;
 }
 
 const CustomerRequests = () => {
@@ -166,7 +174,9 @@ const CustomerRequests = () => {
 
     // Validation
     if (!editFormData.shop_name || !editFormData.customer_name || !editFormData.address ||
-        !editFormData.whatsapp_no || !editFormData.payment_terms || !editFormData.tier_category) {
+        !editFormData.whatsapp_no || !editFormData.payment_terms || !editFormData.tier_category ||
+        !editFormData.billing_address || !editFormData.shipping_address || !editFormData.place_of_supply ||
+        !editFormData.customer_mail_id || !editFormData.gst_treatment || !editFormData.pincode) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -189,6 +199,12 @@ const CustomerRequests = () => {
         tier_category: editFormData.tier_category,
         sales_person: editFormData.sales_person,
         margin_details: editFormData.margin_details,
+        billing_address: editFormData.billing_address,
+        shipping_address: editFormData.shipping_address,
+        place_of_supply: editFormData.place_of_supply,
+        customer_mail_id: editFormData.customer_mail_id,
+        gst_treatment: editFormData.gst_treatment,
+        pincode: editFormData.pincode,
       });
       toast.success('Request updated successfully');
 
@@ -328,6 +344,7 @@ const CustomerRequests = () => {
       rejected: { color: 'error' as const, label: 'Rejected' },
       admin_commented: { color: 'info' as const, label: 'Admin Commented' },
       salesperson_replied: { color: 'primary' as const, label: 'Salesperson Replied' },
+      created_on_zoho: { color: 'success' as const, label: 'Created on Zoho' },
     };
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
     return <Chip label={config.label} color={config.color} size="small" />;
@@ -660,6 +677,84 @@ const CustomerRequests = () => {
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
+                    required
+                    label="Billing Address"
+                    value={isEditMode ? editFormData.billing_address || '' : (selectedRequest.billing_address || '')}
+                    onChange={(e) => handleEditFormChange('billing_address', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
+                    variant="outlined"
+                    multiline
+                    rows={2}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="Shipping Address"
+                    value={isEditMode ? editFormData.shipping_address || '' : (selectedRequest.shipping_address || '')}
+                    onChange={(e) => handleEditFormChange('shipping_address', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
+                    variant="outlined"
+                    multiline
+                    rows={2}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="Place Of Supply"
+                    value={isEditMode ? editFormData.place_of_supply || '' : (selectedRequest.place_of_supply || '')}
+                    onChange={(e) => handleEditFormChange('place_of_supply', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="Pincode"
+                    value={isEditMode ? editFormData.pincode || '' : (selectedRequest.pincode || '')}
+                    onChange={(e) => handleEditFormChange('pincode', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="Customer Mail Id"
+                    value={isEditMode ? editFormData.customer_mail_id || '' : (selectedRequest.customer_mail_id || '')}
+                    onChange={(e) => handleEditFormChange('customer_mail_id', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
+                    variant="outlined"
+                    type="email"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="GST Treatment"
+                    value={isEditMode ? editFormData.gst_treatment || '' : (selectedRequest.gst_treatment || '')}
+                    onChange={(e) => handleEditFormChange('gst_treatment', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
+                    variant="outlined"
+                    select={isEditMode}
+                  >
+                    {isEditMode && [
+                      <MenuItem key="business" value="Business GST">Business GST</MenuItem>,
+                      <MenuItem key="unregistered" value="Unregistered Business">Unregistered Business</MenuItem>,
+                      <MenuItem key="consumer" value="Consumer">Consumer</MenuItem>
+                    ]}
+                  </TextField>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
                     label="GST No."
                     value={isEditMode ? editFormData.gst_no || '' : (selectedRequest.gst_no || 'N/A')}
                     onChange={(e) => handleEditFormChange('gst_no', e.target.value)}
@@ -852,9 +947,9 @@ const CustomerRequests = () => {
                   <Button onClick={handleCloseDialog}>
                     Close
                   </Button>
-                  {(selectedRequest.status === 'pending' ||
-                    selectedRequest.status === 'admin_commented' ||
-                    selectedRequest.status === 'salesperson_replied') && (
+                  {selectedRequest.status !== 'created_on_zoho' &&
+                    selectedRequest.status !== 'rejected' &&
+                    selectedRequest.status !== 'approved' && (
                     <Button
                       onClick={handleEnterEditMode}
                       variant="contained"
@@ -863,6 +958,11 @@ const CustomerRequests = () => {
                     >
                       Edit Request
                     </Button>
+                  )}
+                  {selectedRequest.status === 'created_on_zoho' && selectedRequest.zoho_contact_id && (
+                    <Typography variant="body2" color="success.main" sx={{ fontWeight: 500, mr: 2 }}>
+                      Zoho Contact ID: {selectedRequest.zoho_contact_id}
+                    </Typography>
                   )}
                 </>
               )}

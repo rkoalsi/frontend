@@ -599,6 +599,34 @@ const NewOrder: React.FC = () => {
       setLoading(false);
     }
   };
+  const handleRecreateSheet = async () => {
+    setLoading(true);
+    try {
+      // First, clear the existing sheet
+      await axios.delete(`${process.env.api_url}/orders/clear_sheet/${order._id}`);
+
+      // Then create a new sheet
+      const { data = {} } = await axios.get(
+        `${process.env.api_url}/orders/download_order_form`,
+        {
+          params: {
+            customer_id: customer._id,
+            order_id: order._id,
+            sort,
+          },
+        }
+      );
+      const { google_sheet_url = '' } = data;
+      setLink(google_sheet_url);
+      await getOrder();
+      toast.success('Sheet Recreated Successfully');
+    } catch (error) {
+      console.error(error);
+      toast.error('Error recreating sheet. Try again Later');
+    } finally {
+      setLoading(false);
+    }
+  };
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'draft':
@@ -626,72 +654,191 @@ const NewOrder: React.FC = () => {
     >
       {/* Header */}
       <Paper
-        elevation={3}
+        elevation={0}
         sx={{
           width: '100%',
-          maxWidth: { xs: '100%', sm: '600px', md: '800px' },
-          padding: { xs: 2, sm: 2.5, md: 3 },
-          marginTop: { xs: 1, sm: 2 },
+          maxWidth: { xs: '100%', sm: '700px', md: '900px' },
+          padding: { xs: 2.5, sm: 3, md: 4 },
           marginBottom: 0,
-          textAlign: 'center',
-          borderRadius: 2,
+          borderRadius: 3,
           alignSelf: 'center',
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
         }}
       >
-        <Box
-          display='flex'
-          flexDirection='column'
-          alignItems='center'
-          gap='8px'
-        >
-          <Typography
-            variant={isMobile ? 'h5' : 'h4'}
-            fontWeight='bold'
-            color='black'
-          >
-            {order?.estimate_created ? 'Update ' : 'Create '}
-            {order?.estimate_created ? 'Existing ' : 'New '}Order
-          </Typography>
-          <Box display='flex' alignItems='center' justifyContent='center'>
-            <Typography
-              variant={isMobile ? 'h6' : 'h5'}
-              fontWeight='bold'
-              color='black'
+        {customer ? (
+          <Box>
+            {/* Customer Info Section */}
+            <Box
+              display='flex'
+              flexDirection={{ xs: 'column', sm: 'column', md: 'row' }}
+              justifyContent='space-between'
+              alignItems={{ xs: 'stretch', md: 'center' }}
+              gap={{ xs: 2, sm: 2.5, md: 2 }}
             >
-              Order Status:
+              <Box flex={1}>
+                <Typography
+                  variant='overline'
+                  sx={{
+                    color: 'text.secondary',
+                    fontWeight: 600,
+                    letterSpacing: '0.1em',
+                    fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+                  }}
+                >
+                  Customer
+                </Typography>
+                <Typography
+                  variant={isMobile ? 'h6' : 'h5'}
+                  fontWeight={700}
+                  sx={{
+                    background: 'linear-gradient(135deg, #2B4864 0%, #172335 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    mb: 0.5,
+                    fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' },
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {customer.company_name || customer.contact_name}
+                </Typography>
+                {order?.created_at && (
+                  <Typography
+                    variant='caption'
+                    color='text.secondary'
+                    fontWeight={400}
+                    sx={{
+                      fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' },
+                      display: 'block',
+                    }}
+                  >
+                    Created: {new Date(order.created_at).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </Typography>
+                )}
+              </Box>
+
+              <Box
+                display='flex'
+                flexDirection={{ xs: 'row', sm: 'row', md: 'column' }}
+                gap={{ xs: 1, sm: 1.5 }}
+                flexWrap='wrap'
+                justifyContent={{ xs: 'flex-start', md: 'flex-end' }}
+              >
+                <Box
+                  sx={{
+                    backgroundColor: getStatusColor(order?.status) + '15',
+                    px: { xs: 1.5, sm: 2 },
+                    py: { xs: 0.75, sm: 1 },
+                    borderRadius: 2,
+                    border: `1.5px solid ${getStatusColor(order?.status)}40`,
+                    minWidth: { xs: '100px', sm: '120px', md: '150px' },
+                    textAlign: 'center',
+                    flex: { xs: '1 1 auto', md: '0 0 auto' },
+                  }}
+                >
+                  <Typography
+                    variant='caption'
+                    color='text.secondary'
+                    fontWeight={600}
+                    sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}
+                  >
+                    STATUS
+                  </Typography>
+                  <Typography
+                    variant='subtitle2'
+                    fontWeight={700}
+                    color={getStatusColor(order?.status)}
+                    sx={{ fontSize: { xs: '0.8rem', sm: '0.85rem', md: '0.9rem' } }}
+                  >
+                    {order?.status?.toUpperCase()}
+                  </Typography>
+                </Box>
+
+                {order?.estimate_created && (
+                  <Box
+                    sx={{
+                      backgroundColor: '#f1f5f9',
+                      px: { xs: 1.5, sm: 2 },
+                      py: { xs: 0.75, sm: 1 },
+                      borderRadius: 2,
+                      border: '1px solid #cbd5e1',
+                      minWidth: { xs: '100px', sm: '120px', md: '150px' },
+                      textAlign: 'center',
+                      flex: { xs: '1 1 auto', md: '0 0 auto' },
+                    }}
+                  >
+                    <Typography
+                      variant='caption'
+                      color='text.secondary'
+                      fontWeight={600}
+                      sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}
+                    >
+                      ESTIMATE
+                    </Typography>
+                    <Box display='flex' alignItems='center' justifyContent='center' gap={0.5}>
+                      <Typography
+                        variant='subtitle2'
+                        fontWeight={700}
+                        color='text.primary'
+                        sx={{ fontSize: { xs: '0.8rem', sm: '0.85rem', md: '0.9rem' } }}
+                      >
+                        {order?.estimate_number}
+                      </Typography>
+                      <IconButton
+                        size='small'
+                        onClick={handleCopyEstimate}
+                        sx={{
+                          padding: { xs: '1px', sm: '2px' },
+                          '&:hover': {
+                            backgroundColor: '#e2e8f0',
+                          },
+                        }}
+                      >
+                        <ContentCopy sx={{ fontSize: { xs: 12, sm: 13, md: 14 } }} />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          </Box>
+        ) : (
+          <Box display='flex' flexDirection='column' alignItems='center' gap='12px'>
+            <Typography
+              variant={isMobile ? 'h5' : 'h4'}
+              fontWeight={700}
+              sx={{
+                background: 'linear-gradient(135deg, #2B4864 0%, #172335 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              Create New Order
             </Typography>
             <Typography
-              variant={isMobile ? 'h6' : 'h5'}
-              fontWeight='bold'
-              sx={{ ml: 1 }}
-              color={getStatusColor(order?.status)}
+              variant='body2'
+              fontWeight={500}
+              color='text.secondary'
+              sx={{
+                backgroundColor: '#f8fafc',
+                px: 2,
+                py: 1,
+                borderRadius: 1,
+              }}
             >
-              {order?.status}
+              Select a customer to begin
             </Typography>
           </Box>
-          {order?.estimate_created ? (
-            <Box display='flex' alignItems='center' justifyContent='center'>
-              <Typography
-                variant={isMobile ? 'body1' : 'h5'}
-                fontWeight='bold'
-                color='black'
-              >
-                Estimate Number: {order?.estimate_number}
-              </Typography>
-              <IconButton
-                size='small'
-                onClick={handleCopyEstimate}
-                sx={{ ml: 1 }}
-              >
-                <ContentCopy fontSize='small' />
-              </IconButton>
-            </Box>
-          ) : (
-            <Typography variant='body1' fontWeight='bold' color='black'>
-              Complete each step to finalize your order.
-            </Typography>
-          )}
-        </Box>
+        )}
       </Paper>
       {/* Google Sheet Content if in draft */}
       {!isShared &&
@@ -703,6 +850,7 @@ const NewOrder: React.FC = () => {
           <SheetsDisplay
             googleSheetsLink={link}
             updateCart={updateCart}
+            recreateSheet={handleRecreateSheet}
             loading={loading}
             sort={handleSortText()}
           />
@@ -717,6 +865,10 @@ const NewOrder: React.FC = () => {
               fontWeight: 'bold',
               borderRadius: '24px',
               marginBottom: '12px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              '&:hover': {
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              },
             }}
           >
             {loading ? <CircularProgress /> : 'Download Order Form'}
@@ -735,33 +887,53 @@ const NewOrder: React.FC = () => {
         <Card
           sx={{
             width: '100%',
-            borderRadius: 2,
+            borderRadius: 3,
             overflow: 'hidden',
-            boxShadow: { xs: 2, md: 3 },
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+            background: '#ffffff',
           }}
         >
-          <CardContent sx={{ padding: { xs: 1.5, sm: 2, md: 3 }, overflow: 'visible' }}>
+          <CardContent sx={{ padding: { xs: 1.5, sm: 2.5, md: 3.5 }, overflow: 'visible' }}>
             <Stepper
               activeStep={activeStep}
               alternativeLabel
               sx={{
                 marginTop: { xs: 1, md: 0 },
-                marginBottom: { xs: 2, md: 3 },
+                marginBottom: { xs: 3, md: 4 },
                 '& .MuiStepLabel-label': {
                   fontSize: { xs: '0.7rem', sm: '0.875rem', md: '1rem' },
                   marginTop: { xs: '4px', md: '8px' },
+                  fontWeight: 600,
+                  '&.Mui-active': {
+                    color: 'primary.main',
+                    fontWeight: 700,
+                  },
+                  '&.Mui-completed': {
+                    fontWeight: 600,
+                  },
                 },
                 '& .MuiStepConnector-root': {
                   top: { xs: 10, md: 12 },
                 },
+                '& .MuiStepConnector-line': {
+                  borderColor: '#cbd5e1',
+                  borderTopWidth: 2,
+                },
                 '& .MuiStepIcon-root': {
                   fontSize: { xs: '1.2rem', sm: '1.5rem', md: '1.75rem' },
+                  '&.Mui-active': {
+                    color: 'primary.main',
+                  },
+                  '&.Mui-completed': {
+                    color: 'success.main',
+                  },
                 },
               }}
             >
               {steps.map((step, index) => (
                 <Step key={index} onClick={() => handleStepClick(index)}>
-                  <StepLabel>{step.name}</StepLabel>
+                  <StepLabel sx={{ cursor: 'pointer' }}>{step.name}</StepLabel>
                 </Step>
               ))}
             </Stepper>
