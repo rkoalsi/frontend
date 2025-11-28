@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { TextField, Autocomplete, CircularProgress, Box } from '@mui/material';
+import { TextField, Autocomplete, CircularProgress, Box, Paper, Typography, styled } from '@mui/material';
 import axios from 'axios';
 import AuthContext from '../Auth';
+import { Person, Business } from '@mui/icons-material';
 
 interface SearchResult {
   _id: string;
@@ -20,6 +21,14 @@ interface SearchBarProps {
   reference?: any;
   ref_no?: boolean;
 }
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(3),
+  borderRadius: 16,
+  border: '1px solid #e2e8f0',
+  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+  backgroundColor: '#ffffff',
+}));
 
 const CustomerSearchBar: React.FC<SearchBarProps> = ({
   label = 'Search',
@@ -79,64 +88,110 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
   };
 
   return (
-    <Box
-      display='flex'
-      flexDirection='column'
-      width='100%'
-      gap={2}
-      sx={{ maxWidth: 500, mx: 'auto' }}
-    >
-      <Autocomplete
-        disabled={disabled}
-        freeSolo
-        options={options}
-        getOptionLabel={(option: any) => option?.contact_name || 'Unknown Name'}
-        isOptionEqualToValue={(option: SearchResult, value: SearchResult) =>
-          option._id === value._id
-        }
-        value={selectedOption}
-        inputValue={inputValue}
-        onInputChange={(event, newInputValue, reason) => {
-          if (newInputValue !== inputValue) {
-            setInputValue(newInputValue);
-            handleSearch(newInputValue);
+    <StyledPaper>
+      <Box display='flex' alignItems='center' mb={2}>
+        <Person sx={{ mr: 1, color: 'primary.main', fontSize: 28 }} />
+        <Typography variant='h6' fontWeight={600} color='text.primary'>
+          Customer Information
+        </Typography>
+      </Box>
+      <Box
+        display='flex'
+        flexDirection='column'
+        width='100%'
+        gap={2.5}
+      >
+        <Autocomplete
+          disabled={disabled}
+          freeSolo
+          options={options}
+          getOptionLabel={(option: any) => option?.contact_name || 'Unknown Name'}
+          isOptionEqualToValue={(option: SearchResult, value: SearchResult) =>
+            option._id === value._id
           }
-        }}
-        onChange={(e, value: any) => handleOptionSelect(e, value)}
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            label={label}
-            variant='standard'
-            fullWidth
-            InputProps={{
-              ...params.InputProps,
-              endAdornment: (
-                <>
-                  {loading ? (
-                    <CircularProgress color='inherit' size={20} />
-                  ) : null}
-                  {params.InputProps.endAdornment}
-                </>
-              ),
-            }}
-          />
-        )}
-      />
-      {selectedOption &&
-        ref_no &&
-        (selectedOption?.cf_sales_person?.includes('Company customers') ||
-          selectedOption?.salesperson_name?.includes('Company customers')) && (
-          <TextField
-            disabled={disabled}
-            label='Reference Number'
-            onChange={onChangeReference}
-            value={reference || ''}
-            fullWidth
-            variant='standard'
-          />
-        )}
-    </Box>
+          value={selectedOption}
+          inputValue={inputValue}
+          onInputChange={(event, newInputValue, reason) => {
+            if (newInputValue !== inputValue) {
+              setInputValue(newInputValue);
+              handleSearch(newInputValue);
+            }
+          }}
+          onChange={(e, value: any) => handleOptionSelect(e, value)}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label={label}
+              variant='outlined'
+              fullWidth
+              InputProps={{
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {loading ? (
+                      <CircularProgress color='primary' size={20} />
+                    ) : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  backgroundColor: '#fafafa',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    backgroundColor: '#f5f5f5',
+                  },
+                  '&.Mui-focused': {
+                    backgroundColor: '#ffffff',
+                  },
+                },
+              }}
+            />
+          )}
+          sx={{
+            '& .MuiAutocomplete-popupIndicator': {
+              color: 'primary.main',
+            },
+          }}
+        />
+        {selectedOption &&
+          ref_no &&
+          (selectedOption?.cf_sales_person?.includes('Company customers') ||
+            selectedOption?.salesperson_name?.includes('Company customers')) && (
+            <Box>
+              <Box display='flex' alignItems='center' mb={1.5}>
+                <Business sx={{ mr: 1, color: 'secondary.main', fontSize: 24 }} />
+                <Typography variant='subtitle2' fontWeight={600} color='text.secondary'>
+                  Reference Information
+                </Typography>
+              </Box>
+              <TextField
+                disabled={disabled}
+                label='Reference Number'
+                onChange={onChangeReference}
+                value={reference || ''}
+                fullWidth
+                variant='outlined'
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    backgroundColor: '#fafafa',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      backgroundColor: '#f5f5f5',
+                    },
+                    '&.Mui-focused': {
+                      backgroundColor: '#ffffff',
+                    },
+                  },
+                }}
+              />
+            </Box>
+          )}
+      </Box>
+    </StyledPaper>
   );
 };
 
