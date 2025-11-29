@@ -46,6 +46,19 @@ interface Comment {
   };
 }
 
+interface AddressData {
+  attention?: string;
+  address?: string;
+  street2?: string;
+  city?: string;
+  state?: string;
+  state_code?: string;
+  zip?: string;
+  country?: string;
+  phone?: string;
+  fax?: string;
+}
+
 interface CustomerRequest {
   _id: string;
   shop_name: string;
@@ -59,8 +72,8 @@ interface CustomerRequest {
   tier_category: string;
   sales_person: string;
   margin_details?: string;
-  billing_address?: string;
-  shipping_address?: string;
+  billing_address?: AddressData | string; // Support both old and new formats
+  shipping_address?: AddressData | string; // Support both old and new formats
   place_of_supply?: string;
   customer_mail_id?: string;
   gst_treatment?: string;
@@ -71,6 +84,34 @@ interface CustomerRequest {
   admin_comments?: Comment[];
   zoho_contact_id?: string;
 }
+
+// Helper function to format address for display
+const formatAddress = (address: AddressData | string | undefined): string => {
+  if (!address) return '';
+  if (typeof address === 'string') return address;
+
+  const parts = [];
+  if (address.attention) parts.push(address.attention);
+  if (address.address) parts.push(address.address);
+  if (address.street2) parts.push(address.street2);
+  if (address.city) parts.push(address.city);
+  if (address.state) parts.push(address.state);
+  if (address.zip) parts.push(address.zip);
+  if (address.country && address.country !== 'India') parts.push(address.country);
+  if (address.phone) parts.push(`Ph: ${address.phone}`);
+
+  return parts.join(', ');
+};
+
+// Helper function to get address field value safely
+const getAddressField = (address: AddressData | string | undefined, field: keyof AddressData): string => {
+  if (!address) return '';
+  if (typeof address === 'string') {
+    // For legacy string addresses, show the whole string in the main address field
+    return field === 'address' ? address : '';
+  }
+  return address[field] || '';
+};
 
 const CustomerRequests = () => {
   const [requests, setRequests] = useState<CustomerRequest[]>([]);
@@ -305,26 +346,145 @@ const CustomerRequests = () => {
                     rows={2}
                   />
                 </Grid>
+                {/* Billing Address Section */}
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, mt: 2, color: 'primary.main' }}>
+                    Billing Address
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
-                    label="Billing Address"
-                    value={selectedRequest.billing_address || 'N/A'}
+                    label="Street Address"
+                    value={getAddressField(selectedRequest.billing_address, 'address') || 'N/A'}
                     InputProps={{ readOnly: true }}
                     variant="outlined"
-                    multiline
-                    rows={2}
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
-                    label="Shipping Address"
-                    value={selectedRequest.shipping_address || 'N/A'}
+                    label="Street 2"
+                    value={getAddressField(selectedRequest.billing_address, 'street2') || 'N/A'}
                     InputProps={{ readOnly: true }}
                     variant="outlined"
-                    multiline
-                    rows={2}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField
+                    fullWidth
+                    label="City"
+                    value={getAddressField(selectedRequest.billing_address, 'city') || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField
+                    fullWidth
+                    label="State"
+                    value={getAddressField(selectedRequest.billing_address, 'state') || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField
+                    fullWidth
+                    label="Pincode / ZIP"
+                    value={getAddressField(selectedRequest.billing_address, 'zip') || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Phone"
+                    value={getAddressField(selectedRequest.billing_address, 'phone') || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Attention"
+                    value={getAddressField(selectedRequest.billing_address, 'attention') || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                  />
+                </Grid>
+
+                {/* Shipping Address Section */}
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, mt: 2, color: 'primary.main' }}>
+                    Shipping Address
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Street Address"
+                    value={getAddressField(selectedRequest.shipping_address, 'address') || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Street 2"
+                    value={getAddressField(selectedRequest.shipping_address, 'street2') || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField
+                    fullWidth
+                    label="City"
+                    value={getAddressField(selectedRequest.shipping_address, 'city') || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField
+                    fullWidth
+                    label="State"
+                    value={getAddressField(selectedRequest.shipping_address, 'state') || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField
+                    fullWidth
+                    label="Pincode / ZIP"
+                    value={getAddressField(selectedRequest.shipping_address, 'zip') || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Phone"
+                    value={getAddressField(selectedRequest.shipping_address, 'phone') || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Attention"
+                    value={getAddressField(selectedRequest.shipping_address, 'attention') || 'N/A'}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>

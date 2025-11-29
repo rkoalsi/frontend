@@ -29,6 +29,32 @@ interface CustomerCreationRequestFormProps {
   onSuccess?: () => void;
 }
 
+interface AddressData {
+  attention?: string;
+  address?: string;
+  street2?: string;
+  city?: string;
+  state?: string;
+  state_code?: string;
+  zip?: string;
+  country?: string;
+  phone?: string;
+  fax?: string;
+}
+
+const emptyAddress: AddressData = {
+  attention: '',
+  address: '',
+  street2: '',
+  city: '',
+  state: '',
+  state_code: '',
+  zip: '',
+  country: 'India',
+  phone: '',
+  fax: ''
+};
+
 const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = ({
   open,
   onClose,
@@ -48,8 +74,8 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
     tier_category: '',
     sales_person: '',
     margin_details: '',
-    billing_address: '',
-    shipping_address: '',
+    billing_address: { ...emptyAddress },
+    shipping_address: { ...emptyAddress },
     place_of_supply: '',
     customer_mail_id: '',
     gst_treatment: '',
@@ -79,14 +105,28 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
     }));
   };
 
+  const handleAddressChange = (
+    addressType: 'billing_address' | 'shipping_address',
+    field: keyof AddressData,
+    value: string
+  ) => {
+    setFormData(prev => ({
+      ...prev,
+      [addressType]: {
+        ...prev[addressType],
+        [field]: value
+      }
+    }));
+  };
+
   const handleCopyBillingToShipping = () => {
-    if (!formData.billing_address) {
+    if (!formData.billing_address.address) {
       toast.warning('Please enter billing address first');
       return;
     }
     setFormData(prev => ({
       ...prev,
-      shipping_address: prev.billing_address
+      shipping_address: { ...prev.billing_address }
     }));
     toast.success('Billing address copied to shipping address');
   };
@@ -97,8 +137,9 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
     // Validation
     if (!formData.shop_name || !formData.customer_name || !formData.address ||
         !formData.whatsapp_no || !formData.payment_terms || !formData.tier_category ||
-        !formData.billing_address || !formData.shipping_address || !formData.place_of_supply ||
-        !formData.customer_mail_id || !formData.gst_treatment || !formData.pincode) {
+        !formData.billing_address.address || !formData.billing_address.city || !formData.billing_address.state || !formData.billing_address.zip ||
+        !formData.shipping_address.address || !formData.shipping_address.city || !formData.shipping_address.state || !formData.shipping_address.zip ||
+        !formData.place_of_supply || !formData.customer_mail_id || !formData.gst_treatment || !formData.pincode) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -131,8 +172,8 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
         tier_category: '',
         sales_person: salesPersonValue,
         margin_details: '',
-        billing_address: '',
-        shipping_address: '',
+        billing_address: { ...emptyAddress },
+        shipping_address: { ...emptyAddress },
         place_of_supply: '',
         customer_mail_id: '',
         gst_treatment: '',
@@ -244,55 +285,175 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
               </Grid>
             </Paper>
 
-            {/* Address Details Section */}
+            {/* Billing Address Section */}
             <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
-                Address Details
+                Billing Address
               </Typography>
-              <Grid container spacing={4}>
+              <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
                     required
-                    multiline
-                    rows={3}
-                    label="Billing Address"
-                    name="billing_address"
-                    value={formData.billing_address}
-                    onChange={handleChange}
-                    placeholder="Enter billing address"
+                    label="Street Address"
+                    value={formData.billing_address.address}
+                    onChange={(e) => handleAddressChange('billing_address', 'address', e.target.value)}
+                    placeholder="Enter street address"
                   />
                 </Grid>
-
                 <Grid size={{ xs: 12, md: 6 }}>
-                  <Box sx={{ position: 'relative' }}>
-                    <TextField
-                      fullWidth
-                      required
-                      multiline
-                      rows={3}
-                      label="Shipping Address"
-                      name="shipping_address"
-                      value={formData.shipping_address}
-                      onChange={handleChange}
-                      placeholder="Enter shipping address"
-                    />
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<CopyIcon />}
-                      onClick={handleCopyBillingToShipping}
-                      sx={{
-                        mt: 1,
-                        textTransform: 'none',
-                        fontSize: '0.75rem'
-                      }}
-                    >
-                      Copy from Billing Address
-                    </Button>
-                  </Box>
+                  <TextField
+                    fullWidth
+                    label="Street 2 (Optional)"
+                    value={formData.billing_address.street2}
+                    onChange={(e) => handleAddressChange('billing_address', 'street2', e.target.value)}
+                    placeholder="Enter apartment, suite, etc."
+                  />
                 </Grid>
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="City"
+                    value={formData.billing_address.city}
+                    onChange={(e) => handleAddressChange('billing_address', 'city', e.target.value)}
+                    placeholder="Enter city"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="State"
+                    value={formData.billing_address.state}
+                    onChange={(e) => handleAddressChange('billing_address', 'state', e.target.value)}
+                    placeholder="Enter state"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="Pincode / ZIP"
+                    value={formData.billing_address.zip}
+                    onChange={(e) => handleAddressChange('billing_address', 'zip', e.target.value)}
+                    placeholder="Enter pincode"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Phone"
+                    value={formData.billing_address.phone}
+                    onChange={(e) => handleAddressChange('billing_address', 'phone', e.target.value)}
+                    placeholder="Enter phone number"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Attention"
+                    value={formData.billing_address.attention}
+                    onChange={(e) => handleAddressChange('billing_address', 'attention', e.target.value)}
+                    placeholder="Contact person name"
+                  />
+                </Grid>
+              </Grid>
+            </Paper>
 
+            {/* Shipping Address Section */}
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" fontWeight={600} color="primary.main">
+                  Shipping Address
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<CopyIcon />}
+                  onClick={handleCopyBillingToShipping}
+                  sx={{ textTransform: 'none' }}
+                >
+                  Copy from Billing
+                </Button>
+              </Box>
+              <Grid container spacing={3}>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="Street Address"
+                    value={formData.shipping_address.address}
+                    onChange={(e) => handleAddressChange('shipping_address', 'address', e.target.value)}
+                    placeholder="Enter street address"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Street 2 (Optional)"
+                    value={formData.shipping_address.street2}
+                    onChange={(e) => handleAddressChange('shipping_address', 'street2', e.target.value)}
+                    placeholder="Enter apartment, suite, etc."
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="City"
+                    value={formData.shipping_address.city}
+                    onChange={(e) => handleAddressChange('shipping_address', 'city', e.target.value)}
+                    placeholder="Enter city"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="State"
+                    value={formData.shipping_address.state}
+                    onChange={(e) => handleAddressChange('shipping_address', 'state', e.target.value)}
+                    placeholder="Enter state"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="Pincode / ZIP"
+                    value={formData.shipping_address.zip}
+                    onChange={(e) => handleAddressChange('shipping_address', 'zip', e.target.value)}
+                    placeholder="Enter pincode"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Phone"
+                    value={formData.shipping_address.phone}
+                    onChange={(e) => handleAddressChange('shipping_address', 'phone', e.target.value)}
+                    placeholder="Enter phone number"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Attention"
+                    value={formData.shipping_address.attention}
+                    onChange={(e) => handleAddressChange('shipping_address', 'attention', e.target.value)}
+                    placeholder="Contact person name"
+                  />
+                </Grid>
+              </Grid>
+            </Paper>
+
+            {/* Other Address Fields Section */}
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
+                Additional Information
+              </Typography>
+              <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
@@ -302,10 +463,8 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                     value={formData.place_of_supply}
                     onChange={handleChange}
                     placeholder="Enter place of supply"
-                    size="medium"
                   />
                 </Grid>
-
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
@@ -315,10 +474,8 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                     value={formData.pincode}
                     onChange={handleChange}
                     placeholder="Enter pincode"
-                    size="medium"
                   />
                 </Grid>
-
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
@@ -329,12 +486,10 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                     onChange={handleChange}
                     placeholder="Enter customer email address"
                     type="email"
-                    size="medium"
                   />
                 </Grid>
-
                 <Grid size={{ xs: 12, md: 6 }}>
-                  <FormControl fullWidth required size="medium">
+                  <FormControl fullWidth required>
                     <InputLabel>GST Treatment</InputLabel>
                     <Select
                       label="GST Treatment"
