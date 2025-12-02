@@ -279,8 +279,8 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
     // Validation
     if (!formData.shop_name || !formData.customer_name || !formData.address ||
         !formData.whatsapp_no || !formData.payment_terms || !formData.tier_category ||
-        !formData.billing_address.address || !formData.billing_address.city || !formData.billing_address.state || !formData.billing_address.zip ||
-        !formData.shipping_address.address || !formData.shipping_address.city || !formData.shipping_address.state || !formData.shipping_address.zip ||
+        !formData.billing_address.address || !formData.billing_address.city || !formData.billing_address.state || !formData.billing_address.zip || !formData.billing_address.phone ||
+        !formData.shipping_address.address || !formData.shipping_address.city || !formData.shipping_address.state || !formData.shipping_address.zip || !formData.shipping_address.phone ||
         !formData.place_of_supply || !formData.customer_mail_id || !formData.gst_treatment || !formData.pincode) {
       toast.error('Please fill in all required fields');
       return;
@@ -497,6 +497,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
+                    required
                     label="Phone"
                     value={formData.billing_address.phone}
                     onChange={(e) => handleAddressChange('billing_address', 'phone', e.target.value)}
@@ -596,6 +597,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
+                    required
                     label="Phone"
                     value={formData.shipping_address.phone}
                     onChange={(e) => handleAddressChange('shipping_address', 'phone', e.target.value)}
