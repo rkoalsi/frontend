@@ -272,11 +272,7 @@ const ProductSearchBar = ({ onProductSelect, disabled }: any) => {
                       },
                       lineHeight: 1.3,
                       mb: 0.5,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
+                      wordBreak: 'break-word',
                     }}
                   >
                     {product.item_name}
@@ -695,10 +691,8 @@ const ReturnOrderStepper = ({
                                   fontWeight={600}
                                   sx={{
                                     mb: 0.5,
-                                    textOverflow: 'ellipsis',
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 2,
-                                    WebkitBoxOrient: 'vertical',
+                                    lineHeight: 1.4,
+                                    wordBreak: 'break-word',
                                   }}
                                 >
                                   {item.name || item.product_name}
@@ -1385,7 +1379,7 @@ const ReturnOrderStepper = ({
                             />
                           </Box>
 
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Box sx={{ flex: 1 }}>
                             <Typography
                               variant='subtitle1'
                               fontWeight={600}
@@ -1393,7 +1387,7 @@ const ReturnOrderStepper = ({
                                 mb: 1,
                                 color: 'text.primary',
                                 lineHeight: 1.4,
-                                // Remove text truncation to show full name
+                                wordBreak: 'break-word',
                               }}
                             >
                               {item.name}
