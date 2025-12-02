@@ -23,6 +23,148 @@ import { toast } from 'react-toastify';
 import axiosInstance from '../util/axios';
 import AuthContext from './Auth';
 
+// Dropdown constants for form fields
+const INDIAN_STATES = [
+  'Andaman and Nicobar Islands',
+  'Andhra Pradesh',
+  'Arunachal Pradesh',
+  'Assam',
+  'Bihar',
+  'Chandigarh',
+  'Chhattisgarh',
+  'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi',
+  'Goa',
+  'Gujarat',
+  'Haryana',
+  'Himachal Pradesh',
+  'Jammu and Kashmir',
+  'Jharkhand',
+  'Karnataka',
+  'Kerala',
+  'Ladakh',
+  'Lakshadweep',
+  'Madhya Pradesh',
+  'Maharashtra',
+  'Manipur',
+  'Meghalaya',
+  'Mizoram',
+  'Nagaland',
+  'Odisha',
+  'Puducherry',
+  'Punjab',
+  'Rajasthan',
+  'Sikkim',
+  'Tamil Nadu',
+  'Telangana',
+  'Tripura',
+  'Uttar Pradesh',
+  'Uttarakhand',
+  'West Bengal',
+];
+
+const INDIAN_CITIES = [
+  'Agra',
+  'Ahmedabad',
+  'Ajmer',
+  'Aligarh',
+  'Allahabad',
+  'Amaravati',
+  'Amravati',
+  'Amritsar',
+  'Asansol',
+  'Aurangabad',
+  'Bangalore',
+  'Bareilly',
+  'Belgaum',
+  'Bhavnagar',
+  'Bhilai',
+  'Bhopal',
+  'Bhubaneswar',
+  'Bikaner',
+  'Chandigarh',
+  'Chennai',
+  'Coimbatore',
+  'Cuttack',
+  'Dehradun',
+  'Delhi',
+  'Dhanbad',
+  'Durgapur',
+  'Erode',
+  'Faridabad',
+  'Ghaziabad',
+  'Goa',
+  'Gorakhpur',
+  'Guntur',
+  'Gurgaon',
+  'Guwahati',
+  'Gwalior',
+  'Hubli',
+  'Hyderabad',
+  'Indore',
+  'Jabalpur',
+  'Jaipur',
+  'Jalandhar',
+  'Jammu',
+  'Jamnagar',
+  'Jamshedpur',
+  'Jodhpur',
+  'Kanpur',
+  'Kochi',
+  'Kolhapur',
+  'Kolkata',
+  'Kota',
+  'Kozhikode',
+  'Lucknow',
+  'Ludhiana',
+  'Madurai',
+  'Mangalore',
+  'Meerut',
+  'Moradabad',
+  'Mumbai',
+  'Mysore',
+  'Nagpur',
+  'Nashik',
+  'Navi Mumbai',
+  'Noida',
+  'Patna',
+  'Pune',
+  'Raipur',
+  'Rajkot',
+  'Ranchi',
+  'Salem',
+  'Siliguri',
+  'Solapur',
+  'Srinagar',
+  'Surat',
+  'Thane',
+  'Thiruvananthapuram',
+  'Tiruchirappalli',
+  'Tiruppur',
+  'Udaipur',
+  'Vadodara',
+  'Varanasi',
+  'Vasai-Virar',
+  'Vijayawada',
+  'Visakhapatnam',
+  'Warangal',
+];
+
+const PAYMENT_TERMS = [
+  'Due On Receipt',
+  'Upfront',
+  'Immediate',
+  'Net 15',
+  'Net 30',
+  'Net 45',
+  'Net 60',
+];
+
+const MULTIPLE_BRANCHES_OPTIONS = [
+  'Yes',
+  'No',
+];
+
 interface CustomerCreationRequestFormProps {
   open: boolean;
   onClose: () => void;
@@ -311,24 +453,36 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                   />
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="City"
-                    value={formData.billing_address.city}
-                    onChange={(e) => handleAddressChange('billing_address', 'city', e.target.value)}
-                    placeholder="Enter city"
-                  />
+                  <FormControl fullWidth required>
+                    <InputLabel>City</InputLabel>
+                    <Select
+                      label="City"
+                      value={formData.billing_address.city}
+                      onChange={(e) => handleAddressChange('billing_address', 'city', e.target.value)}
+                    >
+                      {INDIAN_CITIES.map((city) => (
+                        <MenuItem key={city} value={city}>
+                          {city}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="State"
-                    value={formData.billing_address.state}
-                    onChange={(e) => handleAddressChange('billing_address', 'state', e.target.value)}
-                    placeholder="Enter state"
-                  />
+                  <FormControl fullWidth required>
+                    <InputLabel>State</InputLabel>
+                    <Select
+                      label="State"
+                      value={formData.billing_address.state}
+                      onChange={(e) => handleAddressChange('billing_address', 'state', e.target.value)}
+                    >
+                      {INDIAN_STATES.map((state) => (
+                        <MenuItem key={state} value={state}>
+                          {state}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
                   <TextField
@@ -398,24 +552,36 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                   />
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="City"
-                    value={formData.shipping_address.city}
-                    onChange={(e) => handleAddressChange('shipping_address', 'city', e.target.value)}
-                    placeholder="Enter city"
-                  />
+                  <FormControl fullWidth required>
+                    <InputLabel>City</InputLabel>
+                    <Select
+                      label="City"
+                      value={formData.shipping_address.city}
+                      onChange={(e) => handleAddressChange('shipping_address', 'city', e.target.value)}
+                    >
+                      {INDIAN_CITIES.map((city) => (
+                        <MenuItem key={city} value={city}>
+                          {city}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="State"
-                    value={formData.shipping_address.state}
-                    onChange={(e) => handleAddressChange('shipping_address', 'state', e.target.value)}
-                    placeholder="Enter state"
-                  />
+                  <FormControl fullWidth required>
+                    <InputLabel>State</InputLabel>
+                    <Select
+                      label="State"
+                      value={formData.shipping_address.state}
+                      onChange={(e) => handleAddressChange('shipping_address', 'state', e.target.value)}
+                    >
+                      {INDIAN_STATES.map((state) => (
+                        <MenuItem key={state} value={state}>
+                          {state}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
                   <TextField
@@ -455,15 +621,21 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
               </Typography>
               <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Place Of Supply"
-                    name="place_of_supply"
-                    value={formData.place_of_supply}
-                    onChange={handleChange}
-                    placeholder="Enter place of supply"
-                  />
+                  <FormControl fullWidth required>
+                    <InputLabel>Place Of Supply</InputLabel>
+                    <Select
+                      label="Place Of Supply"
+                      name="place_of_supply"
+                      value={formData.place_of_supply}
+                      onChange={(e) => handleChange(e as any)}
+                    >
+                      {INDIAN_STATES.map((state) => (
+                        <MenuItem key={state} value={state}>
+                          {state}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
@@ -552,15 +724,22 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                 </Grid>
 
                 <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Multiple Branches"
-                    name="multiple_branches"
-                    value={formData.multiple_branches}
-                    onChange={handleChange}
-                    placeholder="e.g., Yes/No, or specify branch details"
-                    size="medium"
-                  />
+                  <FormControl fullWidth>
+                    <InputLabel>Multiple Branches</InputLabel>
+                    <Select
+                      label="Multiple Branches"
+                      name="multiple_branches"
+                      value={formData.multiple_branches}
+                      onChange={(e) => handleChange(e as any)}
+                      size="medium"
+                    >
+                      {MULTIPLE_BRANCHES_OPTIONS.map((option) => (
+                        <MenuItem key={option} value={option}>
+                          {option}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
               </Grid>
             </Paper>
@@ -572,16 +751,22 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
               </Typography>
               <Grid container spacing={4}>
                 <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Payment Terms"
-                    name="payment_terms"
-                    value={formData.payment_terms}
-                    onChange={handleChange}
-                    placeholder="e.g., Net 30, Immediate, COD, etc."
-                    size="medium"
-                  />
+                  <FormControl fullWidth required>
+                    <InputLabel>Payment Terms</InputLabel>
+                    <Select
+                      label="Payment Terms"
+                      name="payment_terms"
+                      value={formData.payment_terms}
+                      onChange={(e) => handleChange(e as any)}
+                      size="medium"
+                    >
+                      {PAYMENT_TERMS.map((term) => (
+                        <MenuItem key={term} value={term}>
+                          {term}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
 
                 <Grid size={{ xs: 12, md: 6 }}>
