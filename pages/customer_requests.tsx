@@ -87,6 +87,7 @@ interface CustomerRequest {
   customer_mail_id?: string;
   gst_treatment?: string;
   pincode?: string;
+  in_ex?: string;
   created_by_name: string;
   created_at: string;
   status: 'pending' | 'approved' | 'rejected' | 'admin_commented' | 'salesperson_replied' | 'created_on_zoho';
@@ -246,6 +247,7 @@ const CustomerRequests = () => {
         customer_mail_id: editFormData.customer_mail_id,
         gst_treatment: editFormData.gst_treatment,
         pincode: editFormData.pincode,
+        in_ex: editFormData.in_ex,
       });
       toast.success('Request updated successfully');
 
@@ -984,6 +986,29 @@ const CustomerRequests = () => {
                     variant="outlined"
                     helperText={isEditMode ? "Auto-filled from your profile" : ""}
                   />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  {isEditMode ? (
+                    <TextField
+                      fullWidth
+                      label="Tax Treatment"
+                      value={editFormData.in_ex || ''}
+                      onChange={(e) => handleEditFormChange('in_ex', e.target.value)}
+                      variant="outlined"
+                      select
+                    >
+                      <MenuItem value="Inclusive">Inclusive</MenuItem>
+                      <MenuItem value="Exclusive">Exclusive</MenuItem>
+                    </TextField>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      label="Tax Treatment"
+                      value={selectedRequest.in_ex || 'N/A'}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
