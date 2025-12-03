@@ -165,6 +165,11 @@ const MULTIPLE_BRANCHES_OPTIONS = [
   'No',
 ];
 
+const TAX_TREATMENT_OPTIONS = [
+  'Inclusive',
+  'Exclusive',
+];
+
 interface CustomerCreationRequestFormProps {
   open: boolean;
   onClose: () => void;
@@ -221,7 +226,8 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
     place_of_supply: '',
     customer_mail_id: '',
     gst_treatment: '',
-    pincode: ''
+    pincode: '',
+    in_ex: ''
   });
 
   // Auto-fill sales person when dialog opens
@@ -277,7 +283,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
     e.preventDefault();
 
     // Validation
-    if (!formData.shop_name || !formData.customer_name || !formData.address ||
+    if (!formData.shop_name || !formData.customer_name ||
         !formData.whatsapp_no || !formData.payment_terms || !formData.tier_category ||
         !formData.billing_address.address || !formData.billing_address.city || !formData.billing_address.state || !formData.billing_address.zip || !formData.billing_address.phone ||
         !formData.shipping_address.address || !formData.shipping_address.city || !formData.shipping_address.state || !formData.shipping_address.zip || !formData.shipping_address.phone ||
@@ -319,7 +325,8 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
         place_of_supply: '',
         customer_mail_id: '',
         gst_treatment: '',
-        pincode: ''
+        pincode: '',
+        in_ex: ''
       });
 
       if (onSuccess) {
@@ -408,20 +415,6 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                     onChange={handleChange}
                     placeholder="Enter contact person name"
                     size="medium"
-                  />
-                </Grid>
-
-                <Grid size={{ xs: 12 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    multiline
-                    rows={3}
-                    label="Address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    placeholder="Enter complete address with city, state, and pincode"
                   />
                 </Grid>
               </Grid>
@@ -796,6 +789,25 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                     size="medium"
                     helperText="Auto-filled from your profile"
                   />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Tax Treatment</InputLabel>
+                    <Select
+                      label="Tax Treatment"
+                      name="in_ex"
+                      value={formData.in_ex}
+                      onChange={(e) => handleChange(e as any)}
+                      size="medium"
+                    >
+                      {TAX_TREATMENT_OPTIONS.map((option) => (
+                        <MenuItem key={option} value={option}>
+                          {option}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
               </Grid>
             </Paper>
