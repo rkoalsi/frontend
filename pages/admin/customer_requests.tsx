@@ -78,6 +78,7 @@ interface CustomerRequest {
   customer_mail_id?: string;
   gst_treatment?: string;
   pincode?: string;
+  in_ex?: string;
   created_by_name: string;
   created_at: string;
   status: 'pending' | 'approved' | 'rejected' | 'admin_commented' | 'salesperson_replied' | 'created_on_zoho';
@@ -583,6 +584,15 @@ const CustomerRequests = () => {
                     fullWidth
                     label="Sales Person"
                     value={selectedRequest.sales_person}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Tax Treatment"
+                    value={selectedRequest.in_ex || 'N/A'}
                     InputProps={{ readOnly: true }}
                     variant="outlined"
                   />
