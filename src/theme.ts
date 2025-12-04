@@ -41,6 +41,16 @@ const theme = createTheme({
     },
   },
   components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        html: {
+          scrollBehavior: 'smooth',
+        },
+        '*': {
+          scrollBehavior: 'smooth',
+        },
+      },
+    },
     MuiButton: {
       styleOverrides: {
         root: {

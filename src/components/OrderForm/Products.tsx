@@ -8,6 +8,9 @@ import React, {
   memo,
 } from "react";
 import axios from "axios";
+import { useProducts, useBrands, useCategories, useAllCategories, useProductCounts } from "../../hooks/useProducts";
+import { ProductCardSkeleton, ProductGroupCardSkeleton } from "../common/ProductCardSkeleton";
+import { useIntersectionObserver } from "../../hooks/useIntersectionObserver";
 import {
   TextField,
   Autocomplete,
@@ -168,19 +171,17 @@ const Products: React.FC<ProductsProps> = ({
   const pageTopRef = useRef<HTMLDivElement>(null);
   const pageBottomRef = useRef<HTMLDivElement>(null);
 
-  // ------------------ Debounced Toasts ------------------
+  // ------------------ Optimized Toast Notifications ------------------
+  // Remove debounce from errors (critical feedback) and reduce success debounce
   const debouncedSuccess = useCallback(
-    debounce((msg: string) => toast.success(msg), 1000),
+    debounce((msg: string) => toast.success(msg), 500), // Reduced from 1000ms
     []
   );
   const debouncedWarn = useCallback(
-    debounce((msg: string) => toast.warn(msg), 1000),
+    debounce((msg: string) => toast.warn(msg), 500), // Reduced from 1000ms
     []
   );
-  const debouncedError = useCallback(
-    debounce((msg: string) => toast.error(msg), 1000),
-    []
-  );
+  const showError = useCallback((msg: string) => toast.error(msg), []); // No debounce for errors
 
   const scrollToTop = useCallback(() => {
     pageTopRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -239,9 +240,8 @@ const Products: React.FC<ProductsProps> = ({
     return () => {
       debouncedSuccess.cancel();
       debouncedWarn.cancel();
-      debouncedError.cancel();
     };
-  }, [debouncedSuccess, debouncedWarn, debouncedError]);
+  }, [debouncedSuccess, debouncedWarn]);
   useEffect(() => {
     if (catalogueEnabled && activeBrand) {
       axios
@@ -257,7 +257,7 @@ const Products: React.FC<ProductsProps> = ({
             setCataloguePage(undefined);
           }
         })
-        .catch((error) => debouncedError("Failed to fetch catalogue pages."));
+        .catch((error) => showError("Failed to fetch catalogue pages."));
     }
   }, [catalogueEnabled, activeBrand]);
   // ------------------ Price Calculation ------------------
@@ -345,14 +345,14 @@ const Products: React.FC<ProductsProps> = ({
           if (!hasMore) setNoMoreProducts((prev) => ({ ...prev, [key]: true }));
         }
       } catch (error) {
-        if (!axios.isCancel(error)) debouncedError("Failed to fetch products.");
+        if (!axios.isCancel(error)) showError("Failed to fetch products.");
       } finally {
         isFetching.current[key] = false;
         setLoadingMore(false);
       }
       return () => controller.abort();
     },
-    [sortOrder, debouncedError, cataloguePage, groupByProductName]
+    [sortOrder, showError, cataloguePage, groupByProductName]
   );
 
   const fetchAllBrands = useCallback(async () => {
@@ -374,11 +374,11 @@ const Products: React.FC<ProductsProps> = ({
         )
       );
     } catch (error) {
-      debouncedError("Failed to fetch brands.");
+      showError("Failed to fetch brands.");
     } finally {
       setLoading(false);
     }
-  }, [activeBrand, debouncedError]);
+  }, [activeBrand, showError]);
   const resetPaginationAndFetch = useCallback(
     (brand: string, category: string) => {
       let key = "";
@@ -434,10 +434,10 @@ const Products: React.FC<ProductsProps> = ({
           }, 0);
         }
       } catch (error) {
-        debouncedError("Failed to fetch categories.");
+        showError("Failed to fetch categories.");
       }
     },
-    [activeCategory, debouncedError, resetPaginationAndFetch]
+    [activeCategory, showError, resetPaginationAndFetch]
   );
 
   const fetchAllCategories = useCallback(async () => {
@@ -466,9 +466,9 @@ const Products: React.FC<ProductsProps> = ({
         }, 0);
       }
     } catch (error) {
-      debouncedError("Failed to fetch all categories.");
+      showError("Failed to fetch all categories.");
     }
-  }, [activeCategory, debouncedError, resetPaginationAndFetch]);
+  }, [activeCategory, showError, resetPaginationAndFetch]);
 
 
 
@@ -479,9 +479,9 @@ const Products: React.FC<ProductsProps> = ({
       );
       setProductCounts(response.data);
     } catch (error) {
-      debouncedError("Failed to fetch product counts.");
+      showError("Failed to fetch product counts.");
     }
-  }, [debouncedError]);
+  }, [showError]);
 
 
 
@@ -508,7 +508,7 @@ const Products: React.FC<ProductsProps> = ({
   );
 
   const handleSearch = useCallback(
-    debounce(async (search: string) => {
+    debounce(async (search: string) => { // Optimized 300ms debounce for better UX
       setSearchTerm(search);
       const key =
         search.trim() !== ""
@@ -580,7 +580,7 @@ const Products: React.FC<ProductsProps> = ({
           }
         }
       }
-    }, 500),
+    }, 300), // Reduced from 500ms to 300ms for more responsive search
     [
       activeBrand,
       activeCategory,
@@ -745,10 +745,10 @@ const Products: React.FC<ProductsProps> = ({
       debouncedSuccess("Cart cleared successfully.");
       setConfirmModalOpen(false); // Close modal after successful clear
     } catch (error) {
-      debouncedError("Failed to clear the cart.");
+      showError("Failed to clear the cart.");
       setConfirmModalOpen(false); // Close modal even on error
     }
-  }, [id, setSelectedProducts, debouncedSuccess, debouncedError]);
+  }, [id, setSelectedProducts, debouncedSuccess, showError]);
 
   const handleOpenConfirmModal = () => {
     setConfirmModalOpen(true);
@@ -823,17 +823,13 @@ const Products: React.FC<ProductsProps> = ({
     setCataloguePage(parseInt(value));
   };
 
-  // ------------------ Infinite Scroll ------------------
-  const handleScroll = useCallback(() => {
+  // ------------------ Infinite Scroll with Intersection Observer (Performance Optimized) ------------------
+  const loadMore = useCallback(() => {
     const key = groupByCategory
       ? `all-${activeCategory}`
       : `${activeBrand}-${activeCategory}`;
-    if (
-      window.innerHeight + window.scrollY >=
-      document.documentElement.scrollHeight - 500 &&
-      !loadingMore &&
-      paginationState[key]?.hasMore
-    ) {
+
+    if (!loadingMore && paginationState[key]?.hasMore) {
       const nextPage = (paginationState[key]?.page || 1) + 1;
       fetchProducts(
         key,
@@ -851,11 +847,6 @@ const Products: React.FC<ProductsProps> = ({
     paginationState,
     fetchProducts,
   ]);
-
-  useEffect(() => {
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [handleScroll]);
 
   useEffect(() => {
     if (groupByCategory) {
@@ -961,6 +952,14 @@ const Products: React.FC<ProductsProps> = ({
     });
     return counts;
   }, [productCounts]);
+
+  // Use Intersection Observer for better scroll performance (added after productsKey is defined)
+  const intersectionRef = useIntersectionObserver({
+    onIntersect: loadMore,
+    enabled: paginationState[productsKey]?.hasMore && !loadingMore,
+    threshold: 0.5,
+    rootMargin: '200px', // Start loading when 200px away from trigger
+  });
 
   return (
     <Box
@@ -1573,7 +1572,21 @@ const Products: React.FC<ProductsProps> = ({
         {/* Products Display */}
         {isMobile || isTablet ? (
           <Box>
-            {groupByProductName && itemsData ? (
+            {loading ? (
+              // Loading skeletons for mobile/tablet
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr',
+                  gap: 2,
+                  width: '100%',
+                }}
+              >
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <ProductCardSkeleton key={i} variant="card" />
+                ))}
+              </Box>
+            ) : groupByProductName && itemsData ? (
               <Box
                 sx={{
                   display: 'grid',
@@ -1710,6 +1723,8 @@ const Products: React.FC<ProductsProps> = ({
                 </Typography>
               </Box>
             )}
+            {/* Intersection Observer target for infinite scroll */}
+            <div ref={intersectionRef} style={{ height: '20px', margin: '20px 0' }} />
           </Box>
         ) : isMobile ? (
           <DoubleScrollTable ref={tableScrollRef} tableWidth={3200}>
@@ -1837,7 +1852,27 @@ const Products: React.FC<ProductsProps> = ({
         ) : (
           // Desktop Card Grid View
           <Box ref={cardScrollRef}>
-            {groupByProductName && itemsData ? (
+            {loading ? (
+              // Loading skeletons for desktop
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)',
+                    lg: 'repeat(3, 1fr)',
+                  },
+                  gap: 2,
+                  width: '100%',
+                  maxWidth: '100%',
+                }}
+              >
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <ProductCardSkeleton key={i} variant="card" />
+                ))}
+              </Box>
+            ) : groupByProductName && itemsData ? (
               <Box
                 sx={{
                   display: 'grid',
@@ -2213,6 +2248,8 @@ const Products: React.FC<ProductsProps> = ({
                 </Typography>
               </Box>
             )}
+            {/* Intersection Observer target for infinite scroll - Desktop */}
+            <div ref={intersectionRef} style={{ height: '20px', margin: '20px 0' }} />
           </Box>
         )}
       </Box>
@@ -2241,9 +2278,12 @@ const Products: React.FC<ProductsProps> = ({
             '&:hover': {
               backgroundColor: 'primary.dark',
               boxShadow: 8,
-              transform: 'scale(1.1)',
+              transform: 'scale(1.1) translateY(-2px)',
             },
-            transition: 'all 0.2s ease-in-out',
+            '&:active': {
+              transform: 'scale(0.95)',
+            },
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', // Enhanced smooth transition
             pointerEvents: 'auto',
           }}
         >
@@ -2262,9 +2302,12 @@ const Products: React.FC<ProductsProps> = ({
             '&:hover': {
               backgroundColor: 'primary.dark',
               boxShadow: 8,
-              transform: 'scale(1.1)',
+              transform: 'scale(1.1) translateY(2px)',
             },
-            transition: 'all 0.2s ease-in-out',
+            '&:active': {
+              transform: 'scale(0.95)',
+            },
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', // Enhanced smooth transition
             pointerEvents: 'auto',
           }}
         >

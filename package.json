@@ -19,6 +19,7 @@
     "@mui/material": "latest",
     "@mui/material-nextjs": "latest",
     "@mui/x-date-pickers": "latest",
+    "@tanstack/react-query": "^5.90.12",
     "@types/react-dom": "^19.1.7",
     "axios": "^1.7.9",
     "clsx": "latest",
