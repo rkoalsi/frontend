@@ -22,6 +22,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 
 const STATUS_FILTERS = [
   { label: 'All', value: '' },
@@ -316,13 +317,23 @@ function Shipments() {
                   </Typography>
                 </Box>
 
-                {/* Bottom row: Date, Total */}
+                {/* Bottom row: Date, Total, Images indicator */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <CalendarTodayIcon sx={{ fontSize: 14, mr: 0.5, color: 'text.secondary' }} />
-                    <Typography variant='body2' color='text.secondary'>
-                      {formatDate(shipment.date)}
-                    </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <CalendarTodayIcon sx={{ fontSize: 14, mr: 0.5, color: 'text.secondary' }} />
+                      <Typography variant='body2' color='text.secondary'>
+                        {formatDate(shipment.date)}
+                      </Typography>
+                    </Box>
+                    {shipment.images && shipment.images.length > 0 && (
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <PhotoLibraryIcon sx={{ fontSize: 14, mr: 0.3, color: 'primary.main' }} />
+                        <Typography variant='caption' color='primary.main'>
+                          {shipment.images.length}
+                        </Typography>
+                      </Box>
+                    )}
                   </Box>
                   {shipment.total && (
                     <Typography variant='body2' fontWeight={600} color='primary.main'>
