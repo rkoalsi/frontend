@@ -11,25 +11,33 @@ import {
   Divider,
   useMediaQuery,
   useTheme,
+  ImageList,
+  ImageListItem,
+  ImageListItemBar,
+  Dialog,
+  DialogContent,
+  IconButton,
 } from '@mui/material';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import AuthContext from '../../src/components/Auth';
 import Header from '../../src/components/common/Header';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import PersonIcon from '@mui/icons-material/Person';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import InventoryIcon from '@mui/icons-material/Inventory';
+import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
+import { ChevronLeft, ChevronRight, Close } from '@mui/icons-material';
 
 const ShipmentDetail = () => {
   const router = useRouter();
   const { id } = router.query;
-  const { user }: any = useContext(AuthContext);
   const [shipment, setShipment] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [carouselOpen, setCarouselOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -75,6 +83,42 @@ const ShipmentDetail = () => {
       return dateStr;
     }
   };
+
+  const handleImageClick = (index: number) => {
+    setCurrentImageIndex(index);
+    setCarouselOpen(true);
+  };
+
+  const handleCarouselNext = () => {
+    if (shipment?.images) {
+      setCurrentImageIndex((prev) => (prev + 1) % shipment.images.length);
+    }
+  };
+
+  const handleCarouselPrev = () => {
+    if (shipment?.images) {
+      setCurrentImageIndex((prev) => (prev - 1 + shipment.images.length) % shipment.images.length);
+    }
+  };
+
+  // Keyboard navigation for carousel
+  useEffect(() => {
+    if (!carouselOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft') {
+        handleCarouselPrev();
+      } else if (event.key === 'ArrowRight') {
+        handleCarouselNext();
+      } else if (event.key === 'Escape') {
+        setCarouselOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [carouselOpen, shipment?.images?.length]);
 
   if (loading) {
     return (
@@ -233,7 +277,7 @@ const ShipmentDetail = () => {
 
       {/* Line Items */}
       {shipment.line_items && shipment.line_items.length > 0 && (
-        <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+        <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, mb: 1.5 }}>
           <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
               <InventoryIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
@@ -278,6 +322,190 @@ const ShipmentDetail = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Shipment Images */}
+      {shipment.images && shipment.images.length > 0 && (
+        <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+              <PhotoLibraryIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
+              <Typography variant='subtitle2' fontWeight={600}>
+                Shipment Images ({shipment.images.length})
+              </Typography>
+            </Box>
+
+            <ImageList cols={isMobile ? 1 : 2} gap={8}>
+              {shipment.images.map((image: any, index: number) => (
+                <ImageListItem key={index}>
+                  <img
+                    src={image.url}
+                    alt={image.caption || `Shipment image ${index + 1}`}
+                    loading='lazy'
+                    style={{
+                      height: 200,
+                      objectFit: 'cover',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => handleImageClick(index)}
+                  />
+                  {image.caption && (
+                    <ImageListItemBar
+                      title={image.caption}
+                      sx={{
+                        borderBottomLeftRadius: 4,
+                        borderBottomRightRadius: 4,
+                      }}
+                    />
+                  )}
+                </ImageListItem>
+              ))}
+            </ImageList>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Image Carousel Dialog */}
+      <Dialog
+        open={carouselOpen}
+        onClose={() => setCarouselOpen(false)}
+        maxWidth='lg'
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              backgroundColor: 'rgba(0, 0, 0, 0.9)',
+              boxShadow: 'none',
+            },
+          },
+        }}
+      >
+        <DialogContent sx={{ position: 'relative', p: 0, backgroundColor: 'black' }}>
+          <IconButton
+            onClick={() => setCarouselOpen(false)}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              color: 'white',
+              zIndex: 1,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              '&:hover': {
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              },
+            }}
+          >
+            <Close />
+          </IconButton>
+
+          {shipment?.images && shipment.images.length > 0 && (
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '70vh',
+                position: 'relative',
+              }}
+            >
+              {/* Image */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  flex: 1,
+                }}
+              >
+                <img
+                  src={shipment.images[currentImageIndex]?.url}
+                  alt={shipment.images[currentImageIndex]?.caption || `Image ${currentImageIndex + 1}`}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '70vh',
+                    objectFit: 'contain',
+                  }}
+                />
+              </Box>
+
+              {/* Caption */}
+              {shipment.images[currentImageIndex]?.caption && (
+                <Box
+                  sx={{
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    color: 'white',
+                    padding: 2,
+                    width: '100%',
+                    textAlign: 'center',
+                  }}
+                >
+                  <Typography variant='body1'>
+                    {shipment.images[currentImageIndex].caption}
+                  </Typography>
+                </Box>
+              )}
+
+              {/* Navigation Buttons */}
+              {shipment.images.length > 1 && (
+                <>
+                  <IconButton
+                    onClick={handleCarouselPrev}
+                    sx={{
+                      position: 'absolute',
+                      left: 16,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: 'white',
+                      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                      '&:hover': {
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                      },
+                    }}
+                  >
+                    <ChevronLeft fontSize='large' />
+                  </IconButton>
+                  <IconButton
+                    onClick={handleCarouselNext}
+                    sx={{
+                      position: 'absolute',
+                      right: 16,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: 'white',
+                      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                      '&:hover': {
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                      },
+                    }}
+                  >
+                    <ChevronRight fontSize='large' />
+                  </IconButton>
+
+                  {/* Image Counter */}
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      bottom: 16,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                      color: 'white',
+                      padding: '4px 12px',
+                      borderRadius: 2,
+                    }}
+                  >
+                    <Typography variant='body2'>
+                      {currentImageIndex + 1} / {shipment.images.length}
+                    </Typography>
+                  </Box>
+                </>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
