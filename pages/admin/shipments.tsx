@@ -42,6 +42,8 @@ interface Shipment {
   _id: string;
   shipment_number: string;
   customer_name: string;
+  carrier: string;
+  tracking_number: string;
   status: string;
   date: string;
   images?: ShipmentImage[];
@@ -421,6 +423,8 @@ const AdminShipments = () => {
                 <TableRow>
                   <TableCell>Shipment Number</TableCell>
                   <TableCell>Customer Name</TableCell>
+                  <TableCell>Tracking Number</TableCell>
+                  <TableCell>Carrier</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Date</TableCell>
                   <TableCell align='center'>Images</TableCell>
@@ -443,6 +447,8 @@ const AdminShipments = () => {
                       </Typography>
                     </TableCell>
                     <TableCell>{shipment.customer_name}</TableCell>
+                    <TableCell>{shipment.tracking_number}</TableCell>
+                    <TableCell>{shipment.carrier}</TableCell>
                     <TableCell>
                       <Chip
                         label={capitalize(shipment.status)}
