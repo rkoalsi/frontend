@@ -28,6 +28,8 @@ import CommentIcon from '@mui/icons-material/Comment';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+
 
 interface Comment {
   _id: string;
@@ -167,7 +169,24 @@ const CustomerRequests = () => {
       handleCloseDialog();
     } catch (error: any) {
       console.error('Error updating request status:', error);
-      toast.error('Failed to update request status');
+
+      // Extract detailed error message from response
+      let errorMessage = 'Failed to update request status';
+
+      if (error.response?.data?.detail) {
+        // FastAPI returns error details in the 'detail' field
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      // Display the detailed error message
+      toast.error(errorMessage, {
+        autoClose: 10000, // Show for 10 seconds to give user time to read
+        style: { whiteSpace: 'pre-wrap' } // Preserve line breaks
+      });
     }
   };
 
@@ -223,6 +242,8 @@ const CustomerRequests = () => {
     return <Chip label={config.label} color={config.color} size="small" />;
   };
 
+
+
   if (loading && requests.length === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -233,7 +254,7 @@ const CustomerRequests = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" sx={{ mb: 3, fontWeight: 600, color:'white'}}>
+      <Typography variant="h4" sx={{ mb: 3, fontWeight: 600, color: 'white' }}>
         Customer Creation Requests
       </Typography>
 
@@ -261,8 +282,8 @@ const CustomerRequests = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              requests.map((request) => (
-                <TableRow key={request._id} hover>
+              requests.map((request) => {
+                return (<TableRow key={request._id} hover>
                   <TableCell>{request.shop_name}</TableCell>
                   <TableCell>{request.customer_name}</TableCell>
                   <TableCell>{request.sales_person}</TableCell>
@@ -271,7 +292,10 @@ const CustomerRequests = () => {
                   <TableCell>{getStatusChip(request.status)}</TableCell>
                   <TableCell>
                     {request.created_at
-                      ? format(new Date(request.created_at), 'MMM dd, yyyy HH:mm')
+                      ? format(
+                        toZonedTime(new Date(request.created_at), 'Asia/Kolkata'),
+                        'MMM dd, yyyy HH:mm'
+                      )
                       : 'N/A'}
                   </TableCell>
                   <TableCell>
@@ -286,7 +310,8 @@ const CustomerRequests = () => {
                     </Tooltip>
                   </TableCell>
                 </TableRow>
-              ))
+                )
+              })
             )}
           </TableBody>
         </Table>
@@ -520,7 +545,7 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="GST Treatment"
-                    value={selectedRequest.gst_treatment || 'N/A'}
+                    value={selectedRequest.gst_treatment || 'Exclusive'}
                     InputProps={{ readOnly: true }}
                     variant="outlined"
                   />
@@ -667,7 +692,10 @@ const CustomerRequests = () => {
                           </Typography>
                           <Typography variant="body2">{comment.text}</Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {format(new Date(comment.created_at), 'MMM dd, yyyy HH:mm')}
+                            {format(
+                              toZonedTime(new Date(comment.created_at), 'Asia/Kolkata'),
+                              'MMM dd, yyyy HH:mm'
+                            )}
                             {comment.updated_at && ' (edited)'}
                           </Typography>
                         </Box>
@@ -680,7 +708,10 @@ const CustomerRequests = () => {
                             </Typography>
                             <Typography variant="body2">{comment.reply.text}</Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {format(new Date(comment.reply.created_at), 'MMM dd, yyyy HH:mm')}
+                              {format(
+                                toZonedTime(new Date(comment.reply.created_at), 'Asia/Kolkata'),
+                                'MMM dd, yyyy HH:mm'
+                              )}
                               {comment.reply.updated_at && ' (edited)'}
                             </Typography>
                           </Paper>
@@ -696,25 +727,25 @@ const CustomerRequests = () => {
               {selectedRequest.status !== 'created_on_zoho' &&
                 selectedRequest.status !== 'rejected' &&
                 selectedRequest.status !== 'approved' && (
-                <>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={<Close />}
-                    onClick={() => handleUpdateStatus(selectedRequest._id, 'rejected')}
-                  >
-                    Reject
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="success"
-                    startIcon={<Check />}
-                    onClick={() => handleUpdateStatus(selectedRequest._id, 'approved')}
-                  >
-                    Approve & Create in Zoho
-                  </Button>
-                </>
-              )}
+                  <>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      startIcon={<Close />}
+                      onClick={() => handleUpdateStatus(selectedRequest._id, 'rejected')}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      startIcon={<Check />}
+                      onClick={() => handleUpdateStatus(selectedRequest._id, 'approved')}
+                    >
+                      Approve & Create in Zoho
+                    </Button>
+                  </>
+                )}
               {selectedRequest.status === 'created_on_zoho' && selectedRequest.zoho_contact_id && (
                 <Typography variant="body2" color="success.main" sx={{ fontWeight: 500 }}>
                   Zoho Contact ID: {selectedRequest.zoho_contact_id}
