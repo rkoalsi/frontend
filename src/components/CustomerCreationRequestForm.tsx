@@ -88,6 +88,7 @@ const INDIAN_CITIES = [
   'Cuttack',
   'Dehradun',
   'Delhi',
+  'Dewas',
   'Dhanbad',
   'Durgapur',
   'Erode',
