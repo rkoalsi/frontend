@@ -17,11 +17,13 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Autocomplete,
 } from '@mui/material';
 import { Close as CloseIcon, ContentCopy as CopyIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../util/axios';
 import AuthContext from './Auth';
+import axios from 'axios';
 
 // Dropdown constants for form fields
 const INDIAN_STATES = [
@@ -61,94 +63,6 @@ const INDIAN_STATES = [
   'Uttar Pradesh',
   'Uttarakhand',
   'West Bengal',
-];
-
-const INDIAN_CITIES = [
-  'Agra',
-  'Ahmedabad',
-  'Ajmer',
-  'Aligarh',
-  'Allahabad',
-  'Amaravati',
-  'Amravati',
-  'Amritsar',
-  'Asansol',
-  'Aurangabad',
-  'Bangalore',
-  'Bareilly',
-  'Belgaum',
-  'Bhavnagar',
-  'Bhilai',
-  'Bhopal',
-  'Bhubaneswar',
-  'Bikaner',
-  'Chandigarh',
-  'Chennai',
-  'Coimbatore',
-  'Cuttack',
-  'Dehradun',
-  'Delhi',
-  'Dewas',
-  'Dhanbad',
-  'Durgapur',
-  'Erode',
-  'Faridabad',
-  'Ghaziabad',
-  'Goa',
-  'Gorakhpur',
-  'Guntur',
-  'Gurgaon',
-  'Guwahati',
-  'Gwalior',
-  'Hubli',
-  'Hyderabad',
-  'Indore',
-  'Jabalpur',
-  'Jaipur',
-  'Jalandhar',
-  'Jammu',
-  'Jamnagar',
-  'Jamshedpur',
-  'Jodhpur',
-  'Kanpur',
-  'Kochi',
-  'Kolhapur',
-  'Kolkata',
-  'Kota',
-  'Kozhikode',
-  'Lucknow',
-  'Ludhiana',
-  'Madurai',
-  'Mangalore',
-  'Meerut',
-  'Moradabad',
-  'Mumbai',
-  'Mysore',
-  'Nagpur',
-  'Nashik',
-  'Navi Mumbai',
-  'Noida',
-  'Patna',
-  'Pune',
-  'Raipur',
-  'Rajkot',
-  'Ranchi',
-  'Salem',
-  'Siliguri',
-  'Solapur',
-  'Srinagar',
-  'Surat',
-  'Thane',
-  'Thiruvananthapuram',
-  'Tiruchirappalli',
-  'Tiruppur',
-  'Udaipur',
-  'Vadodara',
-  'Varanasi',
-  'Vasai-Virar',
-  'Vijayawada',
-  'Visakhapatnam',
-  'Warangal',
 ];
 
 const PAYMENT_TERMS = [
@@ -210,6 +124,8 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
 }) => {
   const { user }: any = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
+  const [cities, setCities] = useState<string[]>([]); 
+  const [citiesLoading, setCitiesLoading] = useState(false);
   const [formData, setFormData] = useState({
     shop_name: '',
     customer_name: '',
@@ -230,6 +146,33 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
     pincode: '',
     in_ex: ''
   });
+
+  // Fetch Indian cities from backend API
+  useEffect(() => {
+    const fetchCities = async () => {
+      setCitiesLoading(true);
+      try {
+        const response = await axios.get(`${process.env.api_url}/util/indian-cities`);
+
+        if (response.data && response.data.cities && response.data.cities.length > 0) {
+          setCities(response.data.cities);
+          console.log(`Loaded ${response.data.cities.length} Indian cities from backend`);
+        } else {
+          console.warn('Using fallback city list');
+          toast.info('Using default city list');
+        }
+      } catch (error) {
+        console.error('Error fetching cities:', error);
+        toast.warn('Could not load cities from API, using default list');
+        // Keep the hardcoded INDIAN_CITIES as fallback
+      } finally {
+        setCitiesLoading(false);
+      }
+    };
+
+    // Only fetch once on component mount
+    fetchCities();
+  }, []);
 
   // Auto-fill sales person when dialog opens
   useEffect(() => {
@@ -447,20 +390,31 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                   />
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
-                  <FormControl fullWidth required>
-                    <InputLabel>City</InputLabel>
-                    <Select
-                      label="City"
-                      value={formData.billing_address.city}
-                      onChange={(e) => handleAddressChange('billing_address', 'city', e.target.value)}
-                    >
-                      {INDIAN_CITIES.map((city) => (
-                        <MenuItem key={city} value={city}>
-                          {city}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <Autocomplete
+                    fullWidth
+                    options={cities}
+                    value={formData.billing_address.city || null}
+                    onChange={(_, newValue) => handleAddressChange('billing_address', 'city', newValue || '')}
+                    disabled={citiesLoading}
+                    loading={citiesLoading}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        required
+                        label="City"
+                        placeholder="Search or select city"
+                        InputProps={{
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {citiesLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
+                      />
+                    )}
+                  />
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
                   <FormControl fullWidth required>
@@ -547,20 +501,31 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                   />
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
-                  <FormControl fullWidth required>
-                    <InputLabel>City</InputLabel>
-                    <Select
-                      label="City"
-                      value={formData.shipping_address.city}
-                      onChange={(e) => handleAddressChange('shipping_address', 'city', e.target.value)}
-                    >
-                      {INDIAN_CITIES.map((city) => (
-                        <MenuItem key={city} value={city}>
-                          {city}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <Autocomplete
+                    fullWidth
+                    options={cities}
+                    value={formData.shipping_address.city || null}
+                    onChange={(_, newValue) => handleAddressChange('shipping_address', 'city', newValue || '')}
+                    disabled={citiesLoading}
+                    loading={citiesLoading}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        required
+                        label="City"
+                        placeholder="Search or select city"
+                        InputProps={{
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {citiesLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
+                      />
+                    )}
+                  />
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
                   <FormControl fullWidth required>
