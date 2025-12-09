@@ -804,7 +804,7 @@ const CustomerRequests = () => {
                 <Grid size={{ xs: 12 }}>
                   <TextField
                     fullWidth
-                    label="Margin Details / Special Requests"
+                    label="Margin Details / Special Requests (Do not enter percentage symbol)"
                     value={isEditMode ? editFormData.margin_details || '' : (selectedRequest.margin_details || '')}
                     onChange={(e) => handleEditFormChange('margin_details', e.target.value)}
                     InputProps={{ readOnly: !isEditMode }}
