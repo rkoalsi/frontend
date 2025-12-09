@@ -215,7 +215,7 @@ const CustomerRequests = () => {
     if (!selectedRequest) return;
 
     // Validation
-    if (!editFormData.shop_name || !editFormData.customer_name || !editFormData.address ||
+    if (!editFormData.shop_name || !editFormData.customer_name ||
         !editFormData.whatsapp_no || !editFormData.payment_terms || !editFormData.tier_category ||
         !editFormData.billing_address || !editFormData.shipping_address || !editFormData.place_of_supply ||
         !editFormData.customer_mail_id || !editFormData.gst_treatment || !editFormData.pincode) {
@@ -232,7 +232,6 @@ const CustomerRequests = () => {
       await axiosInstance.put(`/customer_creation_requests/${selectedRequest._id}`, {
         shop_name: editFormData.shop_name,
         customer_name: editFormData.customer_name,
-        address: editFormData.address,
         gst_no: editFormData.gst_no,
         pan_card_no: editFormData.pan_card_no,
         whatsapp_no: editFormData.whatsapp_no,
@@ -702,19 +701,6 @@ const CustomerRequests = () => {
                     onChange={(e) => handleEditFormChange('customer_name', e.target.value)}
                     InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
-                  />
-                </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Address"
-                    value={isEditMode ? editFormData.address || '' : selectedRequest.address}
-                    onChange={(e) => handleEditFormChange('address', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                    multiline
-                    rows={2}
                   />
                 </Grid>
                 {/* Billing Address Section */}
