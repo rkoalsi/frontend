@@ -372,10 +372,10 @@ const Products: React.FC<ProductsProps> = ({
       const allBrands: { brand: string; url: string }[] =
         response.data.brands || [];
 
-      // Add "New Arrivals" as the first brand with a star badge (using brand colors - blue/indigo)
+      // Add "New Arrivals" as the first brand with a professional badge
       const newArrivalsBrand = {
         brand: "New Arrivals",
-        url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='10' fill='%233F51B5'/%3E%3Ctext x='50' y='35' font-family='Arial, sans-serif' font-size='32' font-weight='bold' fill='white' text-anchor='middle'%3ENEW%3C/text%3E%3Cpolygon points='50,45 54,58 68,58 57,66 61,79 50,71 39,79 43,66 32,58 46,58' fill='%23FFC107'/%3E%3C/svg%3E"
+        url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='10' fill='white'/%3E%3Ctext x='50' y='43' font-family='Poppins, sans-serif' font-size='18' font-weight='bold' fill='%233F51B5' text-anchor='middle'%3ENEW%3C/text%3E%3Ctext x='50' y='63' font-family='Poppins, sans-serif' font-size='18' font-weight='bold' fill='%233F51B5' text-anchor='middle'%3EARRIVALS%3C/text%3E%3C/svg%3E"
       };
       const brandsWithNewArrivals = [newArrivalsBrand, ...allBrands];
 
@@ -2025,15 +2025,25 @@ const Products: React.FC<ProductsProps> = ({
                         <Box sx={{ p: 2, position: 'relative' }}>
                           {product.new && (
                             <Chip
-                              label="New"
-                              color="secondary"
+                              label="New Arrivals"
                               size="small"
                               sx={{
                                 position: 'absolute',
                                 top: 8,
                                 right: 8,
                                 zIndex: 1,
-                                fontWeight: 600,
+                                fontFamily: 'Poppins, sans-serif',
+                                fontWeight: 700,
+                                fontSize: '0.75rem',
+                                backgroundColor: 'white',
+                                color: 'primary.main',
+                                letterSpacing: '0.5px',
+                                textTransform: 'uppercase',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                '&:hover': {
+                                  backgroundColor: 'primary.light',
+                                  color: 'white',
+                                },
                               }}
                             />
                           )}
