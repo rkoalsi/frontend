@@ -787,7 +787,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                 fullWidth
                 multiline
                 rows={4}
-                label="Margin Details / Special Requests (Do not enter percentage symbol)"
+                label="Margin Details / Special Requests (DO NOT enter percentage symbol)"
                 name="margin_details"
                 value={formData.margin_details}
                 onChange={handleChange}
