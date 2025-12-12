@@ -85,6 +85,14 @@ const TAX_TREATMENT_OPTIONS = [
   'Exclusive',
 ];
 
+const TIER_CATEGORY_OPTIONS = [
+  'A+',
+  'A',
+  'B',
+  'C',
+  'D',
+];
+
 interface CustomerCreationRequestFormProps {
   open: boolean;
   onClose: () => void;
@@ -144,7 +152,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
     customer_mail_id: '',
     gst_treatment: '',
     pincode: '',
-    in_ex: ''
+    in_ex: 'Exclusive'
   });
 
   // Fetch Indian cities from backend API
@@ -270,7 +278,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
         customer_mail_id: '',
         gst_treatment: '',
         pincode: '',
-        in_ex: ''
+        in_ex: 'Exclusive'
       });
 
       if (onSuccess) {
@@ -731,16 +739,22 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                 </Grid>
 
                 <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Tier / Category"
-                    name="tier_category"
-                    value={formData.tier_category}
-                    onChange={handleChange}
-                    placeholder="e.g., A, B, C, Premium, etc."
-                    size="medium"
-                  />
+                  <FormControl fullWidth required>
+                    <InputLabel>Tier / Category</InputLabel>
+                    <Select
+                      label="Tier / Category"
+                      name="tier_category"
+                      value={formData.tier_category}
+                      onChange={(e) => handleChange(e as any)}
+                      size="medium"
+                    >
+                      {TIER_CATEGORY_OPTIONS.map((tier) => (
+                        <MenuItem key={tier} value={tier}>
+                          {tier}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
 
                 <Grid size={{ xs: 12, md: 6 }}>
