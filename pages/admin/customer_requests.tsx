@@ -133,6 +133,8 @@ const CustomerRequests = () => {
   // Edit mode states
   const [isEditMode, setIsEditMode] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<CustomerRequest>>({});
+  const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
+  const [newStatus, setNewStatus] = useState<'pending' | 'rejected'>('pending');
 
   useEffect(() => {
     fetchRequests();
@@ -298,6 +300,53 @@ const CustomerRequests = () => {
       toast.error(errorMessage, {
         autoClose: 10000, // Show for 10 seconds to give user time to read
         style: { whiteSpace: 'pre-wrap' } // Preserve line breaks
+      });
+    }
+  };
+
+  const handleOpenStatusChangeDialog = () => {
+    if (selectedRequest) {
+      // Default to pending when changing from rejected
+      setNewStatus('pending');
+      setStatusChangeDialogOpen(true);
+    }
+  };
+
+  const handleCloseStatusChangeDialog = () => {
+    setStatusChangeDialogOpen(false);
+    setNewStatus('pending');
+  };
+
+  const handleConfirmStatusChange = async () => {
+    if (!selectedRequest) return;
+
+    try {
+      await axiosInstance.put(`/customer_creation_requests/${selectedRequest._id}/status`, null, {
+        params: { status: newStatus },
+      });
+
+      toast.success(`Request status changed to ${newStatus} successfully`);
+
+      fetchRequests();
+      handleCloseStatusChangeDialog();
+      handleCloseDialog();
+    } catch (error: any) {
+      console.error('Error changing request status:', error);
+
+      // Extract detailed error message from response
+      let errorMessage = 'Failed to change request status';
+
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage, {
+        autoClose: 10000,
+        style: { whiteSpace: 'pre-wrap' }
       });
     }
   };
@@ -804,7 +853,7 @@ const CustomerRequests = () => {
                 <Grid size={{ xs: 12 }}>
                   <TextField
                     fullWidth
-                    label="Margin Details / Special Requests (Do not enter percentage symbol)"
+                    label="Margin Details / Special Requests (DO NOT enter percentage symbol)"
                     value={isEditMode ? editFormData.margin_details || '' : (selectedRequest.margin_details || '')}
                     onChange={(e) => handleEditFormChange('margin_details', e.target.value)}
                     InputProps={{ readOnly: !isEditMode }}
@@ -915,28 +964,35 @@ const CustomerRequests = () => {
                         Edit Request
                       </Button>
                     )}
-                  {selectedRequest.status !== 'created_on_zoho' &&
-                    selectedRequest.status !== 'rejected' &&
-                    selectedRequest.status !== 'approved' && (
-                      <>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          startIcon={<Close />}
-                          onClick={() => handleUpdateStatus(selectedRequest._id, 'rejected')}
-                        >
-                          Reject
-                        </Button>
-                        <Button
-                          variant="contained"
-                          color="success"
-                          startIcon={<Check />}
-                          onClick={() => handleUpdateStatus(selectedRequest._id, 'approved')}
-                        >
-                          Approve & Create in Zoho
-                        </Button>
-                      </>
-                    )}
+                  {selectedRequest.status === 'pending' && (
+                    <>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<Close />}
+                        onClick={() => handleUpdateStatus(selectedRequest._id, 'rejected')}
+                      >
+                        Reject
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<Check />}
+                        onClick={() => handleUpdateStatus(selectedRequest._id, 'approved')}
+                      >
+                        Approve & Create in Zoho
+                      </Button>
+                    </>
+                  )}
+                  {selectedRequest.status === 'rejected' && (
+                    <Button
+                      variant="contained"
+                      color="warning"
+                      onClick={handleOpenStatusChangeDialog}
+                    >
+                      Change Status
+                    </Button>
+                  )}
                   {selectedRequest.status === 'created_on_zoho' && selectedRequest.zoho_contact_id && (
                     <Typography variant="body2" color="success.main" sx={{ fontWeight: 500 }}>
                       Zoho Contact ID: {selectedRequest.zoho_contact_id}
@@ -947,6 +1003,42 @@ const CustomerRequests = () => {
             </DialogActions>
           </>
         )}
+      </Dialog>
+
+      {/* Status Change Confirmation Dialog */}
+      <Dialog
+        open={statusChangeDialogOpen}
+        onClose={handleCloseStatusChangeDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Change Request Status</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Change the status of this customer request:
+          </Typography>
+          <FormControl fullWidth>
+            <InputLabel>New Status</InputLabel>
+            <Select
+              value={newStatus}
+              onChange={(e) => setNewStatus(e.target.value as 'pending' | 'rejected')}
+              label="New Status"
+            >
+              <MenuItem value="pending">Pending</MenuItem>
+              <MenuItem value="rejected">Rejected</MenuItem>
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseStatusChangeDialog}>Cancel</Button>
+          <Button
+            onClick={handleConfirmStatusChange}
+            variant="contained"
+            color="primary"
+          >
+            Confirm Change
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );
