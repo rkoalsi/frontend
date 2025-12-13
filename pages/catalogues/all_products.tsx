@@ -266,6 +266,7 @@ export default function AllProductsCatalouge() {
         page: 1,
         per_page: 200,
         group_by_name: true, // Request backend grouping
+        sort: sortOrder, // Pass sort order to prioritize new products
       };
 
       // When searching, search across all brands (don't filter by brand/category)
@@ -299,6 +300,7 @@ export default function AllProductsCatalouge() {
             page,
             per_page: 200,
             group_by_name: true,
+            sort: sortOrder, // Pass sort order to maintain consistency
           };
           // When searching, search across all brands (don't filter by brand/category)
           if (searchTerm) {
@@ -330,6 +332,32 @@ export default function AllProductsCatalouge() {
       }
 
       // Store the items in productsByBrandCategory for the rendering logic
+      // Sort items to prioritize new products first
+      const sortedItems = [...allItems].sort((a, b) => {
+        // Extract the product from the item (handle both group and product types)
+        const getProduct = (item: any) => {
+          if (item.type === 'group') return item.primaryProduct;
+          if (item.type === 'product') return item.product;
+          return null;
+        };
+
+        const productA = getProduct(a);
+        const productB = getProduct(b);
+
+        // If both products exist, prioritize new products
+        if (productA && productB) {
+          const isNewA = productA.new === true;
+          const isNewB = productB.new === true;
+
+          // New products come first
+          if (isNewA && !isNewB) return -1;
+          if (!isNewA && isNewB) return 1;
+        }
+
+        // Keep original order if both are new or both are not new
+        return 0;
+      });
+
       const key = searchTerm.trim() !== ""
         ? "search"
         : groupByCategory
@@ -340,14 +368,14 @@ export default function AllProductsCatalouge() {
 
       setProductsByBrandCategory((prev) => ({
         ...prev,
-        [key]: { items: allItems } as any
+        [key]: { items: sortedItems } as any
       }));
 
-      // Convert backend-grouped items to frontend format (maintains sort order)
+      // Convert sorted backend-grouped items to frontend format
       const groups: ProductGroup[] = [];
       const ungrouped: Product[] = [];
 
-      allItems.forEach(item => {
+      sortedItems.forEach(item => {
         if (item.type === 'group' && item.products && item.primaryProduct) {
           groups.push({
             groupId: item.groupId || '',
@@ -360,7 +388,7 @@ export default function AllProductsCatalouge() {
         }
       });
 
-      setTotal(allItems.length);
+      setTotal(sortedItems.length);
       setDisplayedGroups(groups);
       setDisplayedUngrouped(ungrouped);
     } catch (error) {
@@ -368,7 +396,7 @@ export default function AllProductsCatalouge() {
     } finally {
       setLoading(false);
     }
-  }, [activeBrand, searchTerm, groupByCategory, activeCategory]);
+  }, [activeBrand, searchTerm, groupByCategory, activeCategory, sortOrder]);
 
 
 
@@ -552,10 +580,12 @@ export default function AllProductsCatalouge() {
           position: "sticky",
           top: 0,
           zIndex: 100,
-          boxShadow: 1,
+          boxShadow: { xs: 2, md: 1 },
+          backdropFilter: "blur(8px)",
+          backgroundColor: { xs: "rgba(255, 255, 255, 0.98)", md: "white" },
         }}
       >
-        <Box sx={{ maxWidth: "1400px", margin: "0 auto", p: { xs: 2, md: 3 } }}>
+        <Box sx={{ maxWidth: "1400px", margin: "0 auto", p: { xs: 1.5, sm: 2, md: 3 } }}>
           <Autocomplete
             freeSolo
             options={options}
@@ -573,6 +603,7 @@ export default function AllProductsCatalouge() {
                 placeholder="Search by name or SKU..."
                 variant="outlined"
                 fullWidth
+                size={isMobile ? "small" : "medium"}
                 InputProps={{
                   ...params.InputProps,
                   endAdornment: (
@@ -588,9 +619,9 @@ export default function AllProductsCatalouge() {
         </Box>
       </Box>
 
-      <Box sx={{ maxWidth: "1400px", margin: "0 auto", width: "100%", p: { xs: 1, sm: 2, md: 3 } }}>
+      <Box sx={{ maxWidth: "1400px", margin: "0 auto", width: "100%", p: { xs: 1.5, sm: 2, md: 3 } }}>
         {/* Tabs and Sorting Controls */}
-        <Box display="flex" flexDirection={"column"} gap="8px">
+        <Box display="flex" flexDirection={"column"} gap={{ xs: 1, sm: 1.5, md: 2 }} sx={{ mb: { xs: 2, md: 3 } }}>
           {!groupByCategory && (
             <>
               {isMobile || isTablet ? (
@@ -947,11 +978,13 @@ export default function AllProductsCatalouge() {
           <Box
             sx={{
               bgcolor: 'white',
-              borderRadius: 2,
-              boxShadow: 1,
-              p: { xs: 2, sm: 3 },
+              borderRadius: { xs: 2, md: 3 },
+              boxShadow: { xs: 2, md: 3 },
+              p: { xs: 1.5, sm: 2, md: 3 },
               minHeight: '400px',
               width: '100%',
+              border: '1px solid',
+              borderColor: 'divider',
             }}
           >
           {isMobile || isTablet ? (
@@ -1249,8 +1282,9 @@ export default function AllProductsCatalouge() {
                       sm: 'repeat(2, 1fr)',
                       md: 'repeat(3, 1fr)',
                       lg: 'repeat(4, 1fr)',
+                      xl: 'repeat(5, 1fr)',
                     },
-                    gap: { xs: 1.5, sm: 2, md: 2.5 },
+                    gap: { xs: 1.5, sm: 2, md: 2.5, lg: 3 },
                     width: '100%',
                     maxWidth: '100%',
                     alignItems: 'stretch',
@@ -1311,8 +1345,9 @@ export default function AllProductsCatalouge() {
                       sm: 'repeat(2, 1fr)',
                       md: 'repeat(3, 1fr)',
                       lg: 'repeat(4, 1fr)',
+                      xl: 'repeat(5, 1fr)',
                     },
-                    gap: { xs: 1.5, sm: 2, md: 2.5 },
+                    gap: { xs: 1.5, sm: 2, md: 2.5, lg: 3 },
                     width: '100%',
                     maxWidth: '100%',
                     alignItems: 'stretch',
@@ -1327,36 +1362,50 @@ export default function AllProductsCatalouge() {
                             height: '100%',
                             display: 'flex',
                             flexDirection: 'column',
-                            borderLeft: 'none',
-                            borderLeftColor: 'transparent',
-                            transition: 'all 0.2s ease',
+                            borderLeft: product.new ? '4px solid' : 'none',
+                            borderLeftColor: product.new ? 'primary.main' : 'transparent',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            position: 'relative',
+                            overflow: 'hidden',
                             '&:hover': {
-                              boxShadow: 4,
+                              boxShadow: 6,
                               transform: 'translateY(-4px)',
                             },
+                            '&::before': product.new ? {
+                              content: '""',
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              height: '3px',
+                              background: 'linear-gradient(90deg, #3F51B5, #2196F3)',
+                            } : {},
                           }}
                         >
-                          <Box sx={{ p: 2, position: 'relative' }}>
+                          <Box sx={{ p: { xs: 1.5, sm: 2 }, position: 'relative' }}>
                             {product.new && (
                               <Chip
-                                label="New Arrivals"
+                                label="NEW"
                                 size="small"
                                 sx={{
                                   position: 'absolute',
-                                  top: 8,
-                                  right: 8,
-                                  zIndex: 1,
+                                  top: { xs: 8, sm: 12 },
+                                  right: { xs: 8, sm: 12 },
+                                  zIndex: 2,
                                   fontFamily: 'Poppins, sans-serif',
-                                  fontWeight: 700,
-                                  fontSize: '0.75rem',
-                                  backgroundColor: 'white',
-                                  color: 'primary.main',
-                                  letterSpacing: '0.5px',
+                                  fontWeight: 800,
+                                  fontSize: { xs: '0.65rem', sm: '0.7rem' },
+                                  background: 'linear-gradient(135deg, #3F51B5 0%, #2196F3 100%)',
+                                  color: 'white',
+                                  letterSpacing: '0.8px',
                                   textTransform: 'uppercase',
-                                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                                  '&:hover': {
-                                    backgroundColor: 'primary.light',
-                                    color: 'white',
+                                  boxShadow: '0 3px 8px rgba(63, 81, 181, 0.4)',
+                                  border: '2px solid white',
+                                  animation: 'pulse 2s infinite',
+                                  '@keyframes pulse': {
+                                    '0%': { boxShadow: '0 3px 8px rgba(63, 81, 181, 0.4)' },
+                                    '50%': { boxShadow: '0 3px 12px rgba(63, 81, 181, 0.6)' },
+                                    '100%': { boxShadow: '0 3px 8px rgba(63, 81, 181, 0.4)' },
                                   },
                                 }}
                               />
@@ -1364,16 +1413,17 @@ export default function AllProductsCatalouge() {
                             <Box
                               sx={{
                                 width: '100%',
-                                height: 200,
+                                height: { xs: 180, sm: 200, md: 220 },
                                 position: 'relative',
-                                mb: 2,
-                                borderRadius: 2,
+                                mb: { xs: 1.5, sm: 2 },
+                                borderRadius: { xs: 1.5, sm: 2 },
                                 overflow: 'hidden',
                                 border: '1px solid',
                                 borderColor: 'divider',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
+                                bgcolor: 'grey.50',
                               }}
                             >
                               <ImageCarousel
@@ -1386,20 +1436,22 @@ export default function AllProductsCatalouge() {
                               variant="h6"
                               sx={{
                                 fontWeight: 600,
-                                mb: 2,
-                                minHeight: 64,
+                                mb: { xs: 1.5, sm: 2 },
+                                minHeight: { xs: 56, sm: 64 },
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 display: '-webkit-box',
                                 WebkitLineClamp: 3,
                                 WebkitBoxOrient: 'vertical',
                                 lineHeight: 1.3,
+                                fontSize: { xs: '0.95rem', sm: '1.1rem', md: '1.25rem' },
+                                color: product.new ? 'primary.dark' : 'text.primary',
                               }}
                             >
                               {product.name}
                             </Typography>
 
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 0.75, sm: 1 } }}>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <Typography variant="body2" color="text.secondary">
                                   Brand:
@@ -1533,63 +1585,69 @@ export default function AllProductsCatalouge() {
         <Box
           sx={{
             position: 'fixed',
-            bottom: { xs: theme.spacing(20), sm: theme.spacing(12), md: theme.spacing(16) },
-            right: { xs: theme.spacing(1), sm: theme.spacing(3), md: theme.spacing(2) },
+            bottom: { xs: theme.spacing(3), sm: theme.spacing(4), md: theme.spacing(5) },
+            right: { xs: theme.spacing(1.5), sm: theme.spacing(2), md: theme.spacing(3) },
             display: 'flex',
             flexDirection: 'column',
-            gap: 1.5,
+            gap: { xs: 1, sm: 1.5 },
             zIndex: 1000,
             pointerEvents: 'none',
           }}
           className='no-pdf'
         >
-          <IconButton
-            color='primary'
-            onClick={scrollToTop}
-            sx={{
-              backgroundColor: 'primary.main',
-              color: 'white',
-              width: { xs: 48, sm: 56 },
-              height: { xs: 48, sm: 56 },
-              boxShadow: 6,
-              '&:hover': {
-                backgroundColor: 'primary.dark',
-                boxShadow: 8,
-                transform: 'scale(1.1) translateY(-2px)',
-              },
-              '&:active': {
-                transform: 'scale(0.95)',
-              },
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', // Enhanced smooth transition
-              pointerEvents: 'auto',
-            }}
-          >
-            <ArrowUpward fontSize={isMobile ? 'medium' : 'large'} />
-          </IconButton>
+          <Tooltip title="Scroll to top" placement="left">
+            <IconButton
+              color='primary'
+              onClick={scrollToTop}
+              sx={{
+                backgroundColor: 'primary.main',
+                color: 'white',
+                width: { xs: 44, sm: 52, md: 56 },
+                height: { xs: 44, sm: 52, md: 56 },
+                boxShadow: { xs: 4, md: 6 },
+                border: '2px solid white',
+                '&:hover': {
+                  backgroundColor: 'primary.dark',
+                  boxShadow: 8,
+                  transform: 'scale(1.1) translateY(-3px)',
+                },
+                '&:active': {
+                  transform: 'scale(0.95)',
+                },
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                pointerEvents: 'auto',
+              }}
+            >
+              <ArrowUpward fontSize={isMobile ? 'medium' : 'large'} />
+            </IconButton>
+          </Tooltip>
 
-          <IconButton
-            color='primary'
-            onClick={scrollToBottom}
-            sx={{
-              backgroundColor: 'primary.main',
-              color: 'white',
-              width: { xs: 48, sm: 56 },
-              height: { xs: 48, sm: 56 },
-              boxShadow: 6,
-              '&:hover': {
-                backgroundColor: 'primary.dark',
-                boxShadow: 8,
-                transform: 'scale(1.1) translateY(2px)',
-              },
-              '&:active': {
-                transform: 'scale(0.95)',
-              },
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', // Enhanced smooth transition
-              pointerEvents: 'auto',
-            }}
-          >
-            <ArrowDownward fontSize={isMobile ? 'medium' : 'large'} />
-          </IconButton>
+          <Tooltip title="Scroll to bottom" placement="left">
+            <IconButton
+              color='primary'
+              onClick={scrollToBottom}
+              sx={{
+                backgroundColor: 'primary.main',
+                color: 'white',
+                width: { xs: 44, sm: 52, md: 56 },
+                height: { xs: 44, sm: 52, md: 56 },
+                boxShadow: { xs: 4, md: 6 },
+                border: '2px solid white',
+                '&:hover': {
+                  backgroundColor: 'primary.dark',
+                  boxShadow: 8,
+                  transform: 'scale(1.1) translateY(3px)',
+                },
+                '&:active': {
+                  transform: 'scale(0.95)',
+                },
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                pointerEvents: 'auto',
+              }}
+            >
+              <ArrowDownward fontSize={isMobile ? 'medium' : 'large'} />
+            </IconButton>
+          </Tooltip>
         </Box>
 
         <ImagePopupDialog
