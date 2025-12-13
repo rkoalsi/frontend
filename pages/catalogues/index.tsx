@@ -377,7 +377,7 @@ function Catalogue(props: Props) {
               animate='visible'
             >
               <Stack spacing={2}>
-                {/* New Arrivals Catalogue - Always shown at top */}
+                {/* All Products Catalogue - Always shown at top */}
                 <motion.div
                   variants={itemVariants}
                   whileHover={{ scale: 1.005 }}
@@ -424,7 +424,7 @@ function Catalogue(props: Props) {
                             letterSpacing: '0.3px',
                           }}
                         >
-                          New Arrivals Catalogue
+                          All Products Catalogue
                         </Typography>
                         <Chip
                           icon={
@@ -456,7 +456,7 @@ function Catalogue(props: Props) {
                           fontWeight: 500,
                         }}
                       >
-                        Browse products added in the last 3 months
+                        Browse all products across all brands
                       </Typography>
                     </Box>
 
@@ -474,7 +474,7 @@ function Catalogue(props: Props) {
                             navigator.clipboard
                               .writeText(url)
                               .then(() => {
-                                toast.success('New Arrivals catalogue link copied!');
+                                toast.success('All Products catalogue link copied!');
                               })
                               .catch(() => {
                                 toast.error('Failed to copy link');

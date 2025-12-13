@@ -217,12 +217,6 @@ const menuSections = [
     title: 'Resources',
     items: [
       {
-        icon: <NewReleases />,
-        text: 'New Arrivals',
-        color: '#ec4899',
-        action: 'new_arrivals',
-      },
-      {
         icon: <MenuBook />,
         text: 'Catalogues',
         color: '#0d9488',
