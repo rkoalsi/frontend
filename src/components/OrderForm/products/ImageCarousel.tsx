@@ -13,7 +13,7 @@ interface Props {
 
 function ImageCarousel(props: Props) {
   const { product, handleImageClick, small = false } = props;
-  const images = product.images || [product.image_url];
+  const images = (product.images && product.images.length > 0) ? product.images : [product.image_url];
   const hasMultipleImages = images.length > 1;
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
