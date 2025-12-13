@@ -32,6 +32,7 @@ import {
   Rocket,
   PersonAdd,
   Assignment,
+  NewReleases,
 } from '@mui/icons-material';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -216,6 +217,12 @@ const menuSections = [
     title: 'Resources',
     items: [
       {
+        icon: <NewReleases />,
+        text: 'New Arrivals',
+        color: '#ec4899',
+        action: 'new_arrivals',
+      },
+      {
         icon: <MenuBook />,
         text: 'Catalogues',
         color: '#0d9488',
@@ -322,6 +329,9 @@ const Home = () => {
         break;
       case 'shipments':
         router.push('/shipments');
+        break;
+      case 'new_arrivals':
+        router.push('/catalogues');
         break;
       default:
         router.push(action);

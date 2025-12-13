@@ -11,6 +11,7 @@ interface Product {
   cf_sku_code?: string;
   rate: number;
   stock: number;
+  images?: string[];
   image_url?: string;
   new?: boolean;
   item_tax_preferences: any;

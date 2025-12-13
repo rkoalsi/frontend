@@ -359,67 +359,69 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                   </Typography>
                 </Box>
 
-                {/* Stock */}
-                <Box sx={{ textAlign: 'right' }}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{
-                      fontSize: '0.65rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.3px',
-                      display: 'block',
-                      mb: 0.5,
-                    }}
-                  >
-                    Stock
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'end', gap: 0.5, justifyContent: 'flex-end' }}>
+                {/* Stock - Hidden when isShared */}
+                {!isShared && (
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.3px',
+                        display: 'block',
+                        mb: 0.5,
+                      }}
+                    >
+                      Stock
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'end', gap: 0.5, justifyContent: 'flex-end' }}>
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: '0.95rem',
+                          fontFamily: 'system-ui',
+                          color: product.stock > 10 ? 'success.main' : product.stock > 0 ? 'error.main' : 'primary',
+                          letterSpacing: '-0.3px',
+                        }}
+                      >
+                        {product.stock.toLocaleString('en-IN')}
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Selling Price - Hidden when isShared */}
+                {!isShared && (
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.3px',
+                        display: 'block',
+                        mb: 0.5,
+                      }}
+                    >
+                      Selling Price
+                    </Typography>
                     <Typography
                       variant="body1"
                       sx={{
-                        fontWeight: 700,
-                        fontSize: '0.95rem',
+                        fontWeight: 800,
+                        fontSize: '1.05rem',
                         fontFamily: 'system-ui',
-                        color: product.stock > 10 ? 'success.main' : product.stock > 0 ? 'error.main' : 'primary',
-                        letterSpacing: '-0.3px',
+                        color: 'primary.main',
+                        letterSpacing: '-0.5px',
                       }}
                     >
-                      {product.stock.toLocaleString('en-IN')}
+                      ₹{sellingPrice?.toLocaleString('en-IN')}
                     </Typography>
-                  </Box>
-                </Box>
-
-                {/* Selling Price */}
-                <Box>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{
-                      fontSize: '0.65rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.3px',
-                      display: 'block',
-                      mb: 0.5,
-                    }}
-                  >
-                    Selling Price
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{
-                      fontWeight: 800,
-                      fontSize: '1.05rem',
-                      fontFamily: 'system-ui',
-                      color: 'primary.main',
-                      letterSpacing: '-0.5px',
-                    }}
-                  >
-                    ₹{sellingPrice?.toLocaleString('en-IN')}
-                  </Typography>
-                  {!isShared && (
                     <Typography
                       variant="caption"
                       sx={{
@@ -430,8 +432,8 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                     >
                       {specialMargins[productId] || customerMargin} margin
                     </Typography>
-                  )}
-                </Box>
+                  </Box>
+                )}
 
                 {/* GST */}
                 <Box sx={{ textAlign: 'right' }}>
@@ -508,85 +510,89 @@ const ProductCard: React.FC<ProductCardProps> = memo(
             {/* Spacer to push content to bottom */}
             <Box sx={{ flexGrow: 1 }} />
 
-            {/* Quantity Selector */}
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                mb: 1.5,
-              }}
-            >
-              <Typography
-                variant="caption"
-                color="text.secondary"
+            {/* Quantity Selector - Hidden when isShared */}
+            {!isShared && (
+              <Box
                 sx={{
-                  fontWeight: 600,
-                  mb: 0.75,
-                  fontSize: '0.7rem',
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  mb: 1.5,
                 }}
               >
-                Quantity
-              </Typography>
-              <QuantitySelector
-                quantity={quantity}
-                max={product.stock}
-                onChange={(newQuantity) =>
-                  handleQuantityChange(productId, newQuantity)
-                }
-                disabled={isDisabled}
-              />
-              {isQuantityExceedingStock && (
-                <Alert
-                  severity="error"
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
                   sx={{
-                    mt: 0.75,
-                    py: 0,
-                    px: 1,
-                    fontSize: '0.65rem',
-                    '& .MuiAlert-message': { py: 0 }
-                  }}
-                >
-                  Exceeds stock!
-                </Alert>
-              )}
-            </Box>
-
-            {/* Action Button */}
-            <Tooltip title={selectedProduct ? "Remove from cart" : "Add to cart"}>
-              <span>
-                <Button
-                  variant="contained"
-                  color={selectedProduct ? "error" : "primary"}
-                  startIcon={
-                    selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />
-                  }
-                  onClick={() => handleAddOrRemove(product)}
-                  disabled={isDisabled}
-                  fullWidth
-                  size="medium"
-                  sx={{
-                    textTransform: "none",
-                    borderRadius: 2,
                     fontWeight: 600,
-                    py: 1,
-                    fontSize: '0.85rem',
-                    boxShadow: 2,
-                    '&:hover': {
-                      boxShadow: 4,
-                      transform: 'translateY(-1px)',
-                    },
-                    '&:disabled': {
-                      backgroundColor: 'action.disabledBackground',
-                      color: 'action.disabled',
-                    },
-                    transition: 'all 0.2s ease-in-out',
+                    mb: 0.75,
+                    fontSize: '0.7rem',
                   }}
                 >
-                  {selectedProduct ? "Remove from Cart" : "Add to Cart"}
-                </Button>
-              </span>
-            </Tooltip>
+                  Quantity
+                </Typography>
+                <QuantitySelector
+                  quantity={quantity}
+                  max={product.stock}
+                  onChange={(newQuantity) =>
+                    handleQuantityChange(productId, newQuantity)
+                  }
+                  disabled={isDisabled}
+                />
+                {isQuantityExceedingStock && (
+                  <Alert
+                    severity="error"
+                    sx={{
+                      mt: 0.75,
+                      py: 0,
+                      px: 1,
+                      fontSize: '0.65rem',
+                      '& .MuiAlert-message': { py: 0 }
+                    }}
+                  >
+                    Exceeds stock!
+                  </Alert>
+                )}
+              </Box>
+            )}
+
+            {/* Action Button - Hidden when isShared */}
+            {!isShared && (
+              <Tooltip title={selectedProduct ? "Remove from cart" : "Add to cart"}>
+                <span>
+                  <Button
+                    variant="contained"
+                    color={selectedProduct ? "error" : "primary"}
+                    startIcon={
+                      selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />
+                    }
+                    onClick={() => handleAddOrRemove(product)}
+                    disabled={isDisabled}
+                    fullWidth
+                    size="medium"
+                    sx={{
+                      textTransform: "none",
+                      borderRadius: 2,
+                      fontWeight: 600,
+                      py: 1,
+                      fontSize: '0.85rem',
+                      boxShadow: 2,
+                      '&:hover': {
+                        boxShadow: 4,
+                        transform: 'translateY(-1px)',
+                      },
+                      '&:disabled': {
+                        backgroundColor: 'action.disabledBackground',
+                        color: 'action.disabled',
+                      },
+                      transition: 'all 0.2s ease-in-out',
+                    }}
+                  >
+                    {selectedProduct ? "Remove from Cart" : "Add to Cart"}
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
           </CardContent>
         </Card>
       </Grid>
