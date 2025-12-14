@@ -44,6 +44,10 @@ function ImageCarousel(props: Props) {
 
   const onTouchMove = (e: React.TouchEvent) => {
     setTouchEnd(e.targetTouches[0].clientX);
+    // Prevent page scroll while swiping on images
+    if (hasMultipleImages) {
+      e.preventDefault();
+    }
   };
 
   const onTouchEnd = () => {
@@ -73,6 +77,7 @@ function ImageCarousel(props: Props) {
         width: '100%',
         height: '100%',
         overflow: 'hidden',
+        touchAction: hasMultipleImages ? 'none' : 'auto',
       }}
       onTouchStart={hasMultipleImages ? onTouchStart : undefined}
       onTouchMove={hasMultipleImages ? onTouchMove : undefined}
