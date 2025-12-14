@@ -215,7 +215,7 @@ const CustomerRequests = () => {
     if (!selectedRequest) return;
 
     // Validation
-    if (!editFormData.shop_name || !editFormData.customer_name || !editFormData.address ||
+    if (!editFormData.shop_name || !editFormData.customer_name ||
         !editFormData.whatsapp_no || !editFormData.payment_terms || !editFormData.tier_category ||
         !editFormData.billing_address || !editFormData.shipping_address || !editFormData.place_of_supply ||
         !editFormData.customer_mail_id || !editFormData.gst_treatment || !editFormData.pincode) {
@@ -232,7 +232,6 @@ const CustomerRequests = () => {
       await axiosInstance.put(`/customer_creation_requests/${selectedRequest._id}`, {
         shop_name: editFormData.shop_name,
         customer_name: editFormData.customer_name,
-        address: editFormData.address,
         gst_no: editFormData.gst_no,
         pan_card_no: editFormData.pan_card_no,
         whatsapp_no: editFormData.whatsapp_no,
@@ -704,19 +703,6 @@ const CustomerRequests = () => {
                     variant="outlined"
                   />
                 </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Address"
-                    value={isEditMode ? editFormData.address || '' : selectedRequest.address}
-                    onChange={(e) => handleEditFormChange('address', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                    multiline
-                    rows={2}
-                  />
-                </Grid>
                 {/* Billing Address Section */}
                 <Grid size={{ xs: 12 }}>
                   <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, mt: 2, color: 'primary.main' }}>
@@ -1023,7 +1009,7 @@ const CustomerRequests = () => {
                 <Grid size={{ xs: 12 }}>
                   <TextField
                     fullWidth
-                    label="Margin Details / Special Requests"
+                    label="Margin Details / Special Requests (DO NOT enter percentage symbol)"
                     value={isEditMode ? editFormData.margin_details || '' : (selectedRequest.margin_details || '')}
                     onChange={(e) => handleEditFormChange('margin_details', e.target.value)}
                     InputProps={{ readOnly: !isEditMode }}

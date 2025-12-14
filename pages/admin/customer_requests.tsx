@@ -22,12 +22,18 @@ import {
   Tooltip,
   Grid,
   Divider,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
-import { Visibility, Check, Close } from '@mui/icons-material';
+import { Visibility, Check, Close, Edit as EditIcon } from '@mui/icons-material';
 import CommentIcon from '@mui/icons-material/Comment';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+
 
 interface Comment {
   _id: string;
@@ -124,6 +130,12 @@ const CustomerRequests = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [commentText, setCommentText] = useState('');
 
+  // Edit mode states
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editFormData, setEditFormData] = useState<Partial<CustomerRequest>>({});
+  const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
+  const [newStatus, setNewStatus] = useState<'pending' | 'rejected'>('pending');
+
   useEffect(() => {
     fetchRequests();
   }, [page, rowsPerPage]);
@@ -149,12 +161,116 @@ const CustomerRequests = () => {
 
   const handleViewDetails = (request: CustomerRequest) => {
     setSelectedRequest(request);
+    setEditFormData(request);
+    setIsEditMode(false);
     setDetailsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setDetailsDialogOpen(false);
     setSelectedRequest(null);
+    setIsEditMode(false);
+    setEditFormData({});
+  };
+
+  const handleEnterEditMode = () => {
+    if (selectedRequest) {
+      setEditFormData(selectedRequest);
+      setIsEditMode(true);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    if (selectedRequest) {
+      setEditFormData(selectedRequest);
+    }
+    setIsEditMode(false);
+  };
+
+  const handleEditFormChange = (field: keyof CustomerRequest, value: string) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleAddressChange = (
+    addressType: 'billing_address' | 'shipping_address',
+    field: string,
+    value: string
+  ) => {
+    setEditFormData(prev => {
+      const currentAddress = prev[addressType];
+      const updatedAddress = typeof currentAddress === 'object' && currentAddress !== null
+        ? { ...currentAddress, [field]: value }
+        : { [field]: value };
+
+      return {
+        ...prev,
+        [addressType]: updatedAddress
+      };
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedRequest) return;
+
+    // Validation
+    if (!editFormData.shop_name || !editFormData.customer_name ||
+        !editFormData.whatsapp_no || !editFormData.payment_terms || !editFormData.tier_category ||
+        !editFormData.billing_address || !editFormData.shipping_address || !editFormData.place_of_supply ||
+        !editFormData.customer_mail_id || !editFormData.gst_treatment || !editFormData.pincode) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    if (!editFormData.gst_no && !editFormData.pan_card_no) {
+      toast.error('Please provide either GST No. or PAN Card No.');
+      return;
+    }
+
+    try {
+      await axiosInstance.put(`/customer_creation_requests/${selectedRequest._id}`, {
+        shop_name: editFormData.shop_name,
+        customer_name: editFormData.customer_name,
+        gst_no: editFormData.gst_no,
+        pan_card_no: editFormData.pan_card_no,
+        whatsapp_no: editFormData.whatsapp_no,
+        payment_terms: editFormData.payment_terms,
+        multiple_branches: editFormData.multiple_branches,
+        tier_category: editFormData.tier_category,
+        sales_person: editFormData.sales_person,
+        margin_details: editFormData.margin_details,
+        billing_address: editFormData.billing_address,
+        shipping_address: editFormData.shipping_address,
+        place_of_supply: editFormData.place_of_supply,
+        customer_mail_id: editFormData.customer_mail_id,
+        gst_treatment: editFormData.gst_treatment,
+        pincode: editFormData.pincode,
+        in_ex: editFormData.in_ex,
+      });
+      toast.success('Request updated successfully');
+
+      // Refresh data
+      fetchRequests();
+
+      // Update selected request
+      const response = await axiosInstance.get('/customer_creation_requests/', {
+        params: { page: 1, limit: 1000 },
+      });
+      const updatedRequest = response.data.requests.find(
+        (req: CustomerRequest) => req._id === selectedRequest._id
+      );
+      if (updatedRequest) {
+        setSelectedRequest(updatedRequest);
+        setEditFormData(updatedRequest);
+      }
+
+      setIsEditMode(false);
+    } catch (error: any) {
+      console.error('Error updating request:', error);
+      toast.error(error?.response?.data?.detail || 'Failed to update request');
+    }
   };
 
   const handleUpdateStatus = async (requestId: string, status: 'approved' | 'rejected') => {
@@ -167,7 +283,71 @@ const CustomerRequests = () => {
       handleCloseDialog();
     } catch (error: any) {
       console.error('Error updating request status:', error);
-      toast.error('Failed to update request status');
+
+      // Extract detailed error message from response
+      let errorMessage = 'Failed to update request status';
+
+      if (error.response?.data?.detail) {
+        // FastAPI returns error details in the 'detail' field
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      // Display the detailed error message
+      toast.error(errorMessage, {
+        autoClose: 10000, // Show for 10 seconds to give user time to read
+        style: { whiteSpace: 'pre-wrap' } // Preserve line breaks
+      });
+    }
+  };
+
+  const handleOpenStatusChangeDialog = () => {
+    if (selectedRequest) {
+      // Default to pending when changing from rejected
+      setNewStatus('pending');
+      setStatusChangeDialogOpen(true);
+    }
+  };
+
+  const handleCloseStatusChangeDialog = () => {
+    setStatusChangeDialogOpen(false);
+    setNewStatus('pending');
+  };
+
+  const handleConfirmStatusChange = async () => {
+    if (!selectedRequest) return;
+
+    try {
+      await axiosInstance.put(`/customer_creation_requests/${selectedRequest._id}/status`, null, {
+        params: { status: newStatus },
+      });
+
+      toast.success(`Request status changed to ${newStatus} successfully`);
+
+      fetchRequests();
+      handleCloseStatusChangeDialog();
+      handleCloseDialog();
+    } catch (error: any) {
+      console.error('Error changing request status:', error);
+
+      // Extract detailed error message from response
+      let errorMessage = 'Failed to change request status';
+
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage, {
+        autoClose: 10000,
+        style: { whiteSpace: 'pre-wrap' }
+      });
     }
   };
 
@@ -223,6 +403,8 @@ const CustomerRequests = () => {
     return <Chip label={config.label} color={config.color} size="small" />;
   };
 
+
+
   if (loading && requests.length === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -233,7 +415,7 @@ const CustomerRequests = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" sx={{ mb: 3, fontWeight: 600, color:'white'}}>
+      <Typography variant="h4" sx={{ mb: 3, fontWeight: 600, color: 'white' }}>
         Customer Creation Requests
       </Typography>
 
@@ -261,8 +443,8 @@ const CustomerRequests = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              requests.map((request) => (
-                <TableRow key={request._id} hover>
+              requests.map((request) => {
+                return (<TableRow key={request._id} hover>
                   <TableCell>{request.shop_name}</TableCell>
                   <TableCell>{request.customer_name}</TableCell>
                   <TableCell>{request.sales_person}</TableCell>
@@ -271,7 +453,10 @@ const CustomerRequests = () => {
                   <TableCell>{getStatusChip(request.status)}</TableCell>
                   <TableCell>
                     {request.created_at
-                      ? format(new Date(request.created_at), 'MMM dd, yyyy HH:mm')
+                      ? format(
+                        toZonedTime(new Date(request.created_at), 'Asia/Kolkata'),
+                        'MMM dd, yyyy HH:mm'
+                      )
                       : 'N/A'}
                   </TableCell>
                   <TableCell>
@@ -286,7 +471,8 @@ const CustomerRequests = () => {
                     </Tooltip>
                   </TableCell>
                 </TableRow>
-              ))
+                )
+              })
             )}
           </TableBody>
         </Table>
@@ -312,7 +498,9 @@ const CustomerRequests = () => {
           <>
             <DialogTitle>
               <Box display="flex" justifyContent="space-between" alignItems="center">
-                <Typography variant="h6">Customer Request Details</Typography>
+                <Typography variant="h6">
+                  {isEditMode ? 'Edit Customer Request' : 'Customer Request Details'}
+                </Typography>
                 {getStatusChip(selectedRequest.status)}
               </Box>
             </DialogTitle>
@@ -321,30 +509,23 @@ const CustomerRequests = () => {
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
+                    required
                     label="Shop Name"
-                    value={selectedRequest.shop_name}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? editFormData.shop_name || '' : selectedRequest.shop_name}
+                    onChange={(e) => handleEditFormChange('shop_name', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
+                    required
                     label="Customer Name"
-                    value={selectedRequest.customer_name}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? editFormData.customer_name || '' : selectedRequest.customer_name}
+                    onChange={(e) => handleEditFormChange('customer_name', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
-                  />
-                </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <TextField
-                    fullWidth
-                    label="Address"
-                    value={selectedRequest.address}
-                    InputProps={{ readOnly: true }}
-                    variant="outlined"
-                    multiline
-                    rows={2}
                   />
                 </Grid>
                 {/* Billing Address Section */}
@@ -358,8 +539,9 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="Street Address"
-                    value={getAddressField(selectedRequest.billing_address, 'address') || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? getAddressField(editFormData.billing_address, 'address') : (getAddressField(selectedRequest.billing_address, 'address') || 'N/A')}
+                    onChange={(e) => handleAddressChange('billing_address', 'address', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
@@ -367,8 +549,9 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="Street 2"
-                    value={getAddressField(selectedRequest.billing_address, 'street2') || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? getAddressField(editFormData.billing_address, 'street2') : (getAddressField(selectedRequest.billing_address, 'street2') || 'N/A')}
+                    onChange={(e) => handleAddressChange('billing_address', 'street2', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
@@ -376,8 +559,9 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="City"
-                    value={getAddressField(selectedRequest.billing_address, 'city') || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? getAddressField(editFormData.billing_address, 'city') : (getAddressField(selectedRequest.billing_address, 'city') || 'N/A')}
+                    onChange={(e) => handleAddressChange('billing_address', 'city', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
@@ -385,8 +569,9 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="State"
-                    value={getAddressField(selectedRequest.billing_address, 'state') || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? getAddressField(editFormData.billing_address, 'state') : (getAddressField(selectedRequest.billing_address, 'state') || 'N/A')}
+                    onChange={(e) => handleAddressChange('billing_address', 'state', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
@@ -394,8 +579,9 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="Pincode / ZIP"
-                    value={getAddressField(selectedRequest.billing_address, 'zip') || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? getAddressField(editFormData.billing_address, 'zip') : (getAddressField(selectedRequest.billing_address, 'zip') || 'N/A')}
+                    onChange={(e) => handleAddressChange('billing_address', 'zip', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
@@ -403,8 +589,9 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="Phone"
-                    value={getAddressField(selectedRequest.billing_address, 'phone') || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? getAddressField(editFormData.billing_address, 'phone') : (getAddressField(selectedRequest.billing_address, 'phone') || 'N/A')}
+                    onChange={(e) => handleAddressChange('billing_address', 'phone', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
@@ -412,8 +599,9 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="Attention"
-                    value={getAddressField(selectedRequest.billing_address, 'attention') || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? getAddressField(editFormData.billing_address, 'attention') : (getAddressField(selectedRequest.billing_address, 'attention') || 'N/A')}
+                    onChange={(e) => handleAddressChange('billing_address', 'attention', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
@@ -429,8 +617,9 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="Street Address"
-                    value={getAddressField(selectedRequest.shipping_address, 'address') || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? getAddressField(editFormData.shipping_address, 'address') : (getAddressField(selectedRequest.shipping_address, 'address') || 'N/A')}
+                    onChange={(e) => handleAddressChange('shipping_address', 'address', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
@@ -438,8 +627,9 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="Street 2"
-                    value={getAddressField(selectedRequest.shipping_address, 'street2') || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? getAddressField(editFormData.shipping_address, 'street2') : (getAddressField(selectedRequest.shipping_address, 'street2') || 'N/A')}
+                    onChange={(e) => handleAddressChange('shipping_address', 'street2', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
@@ -447,8 +637,9 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="City"
-                    value={getAddressField(selectedRequest.shipping_address, 'city') || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? getAddressField(editFormData.shipping_address, 'city') : (getAddressField(selectedRequest.shipping_address, 'city') || 'N/A')}
+                    onChange={(e) => handleAddressChange('shipping_address', 'city', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
@@ -456,8 +647,9 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="State"
-                    value={getAddressField(selectedRequest.shipping_address, 'state') || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? getAddressField(editFormData.shipping_address, 'state') : (getAddressField(selectedRequest.shipping_address, 'state') || 'N/A')}
+                    onChange={(e) => handleAddressChange('shipping_address', 'state', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
@@ -465,8 +657,9 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="Pincode / ZIP"
-                    value={getAddressField(selectedRequest.shipping_address, 'zip') || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? getAddressField(editFormData.shipping_address, 'zip') : (getAddressField(selectedRequest.shipping_address, 'zip') || 'N/A')}
+                    onChange={(e) => handleAddressChange('shipping_address', 'zip', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
@@ -474,8 +667,9 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="Phone"
-                    value={getAddressField(selectedRequest.shipping_address, 'phone') || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? getAddressField(editFormData.shipping_address, 'phone') : (getAddressField(selectedRequest.shipping_address, 'phone') || 'N/A')}
+                    onChange={(e) => handleAddressChange('shipping_address', 'phone', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
@@ -483,35 +677,42 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="Attention"
-                    value={getAddressField(selectedRequest.shipping_address, 'attention') || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? getAddressField(editFormData.shipping_address, 'attention') : (getAddressField(selectedRequest.shipping_address, 'attention') || 'N/A')}
+                    onChange={(e) => handleAddressChange('shipping_address', 'attention', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
+                    required
                     label="Place Of Supply"
-                    value={selectedRequest.place_of_supply || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? editFormData.place_of_supply || '' : (selectedRequest.place_of_supply || '')}
+                    onChange={(e) => handleEditFormChange('place_of_supply', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
+                    required
                     label="Pincode"
-                    value={selectedRequest.pincode || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? editFormData.pincode || '' : (selectedRequest.pincode || '')}
+                    onChange={(e) => handleEditFormChange('pincode', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
+                    required
                     label="Customer Mail Id"
-                    value={selectedRequest.customer_mail_id || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? editFormData.customer_mail_id || '' : (selectedRequest.customer_mail_id || '')}
+                    onChange={(e) => handleEditFormChange('customer_mail_id', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                     type="email"
                   />
@@ -519,9 +720,11 @@ const CustomerRequests = () => {
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
+                    required
                     label="GST Treatment"
-                    value={selectedRequest.gst_treatment || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? editFormData.gst_treatment || '' : (selectedRequest.gst_treatment || '')}
+                    onChange={(e) => handleEditFormChange('gst_treatment', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
@@ -529,35 +732,43 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="GST No."
-                    value={selectedRequest.gst_no || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? editFormData.gst_no || '' : (selectedRequest.gst_no || 'N/A')}
+                    onChange={(e) => handleEditFormChange('gst_no', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
+                    helperText={isEditMode ? "GST No. or PAN Card No. is required" : ""}
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
                     label="PAN Card No."
-                    value={selectedRequest.pan_card_no || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? editFormData.pan_card_no || '' : (selectedRequest.pan_card_no || 'N/A')}
+                    onChange={(e) => handleEditFormChange('pan_card_no', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
+                    helperText={isEditMode ? "GST No. or PAN Card No. is required" : ""}
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
+                    required
                     label="WhatsApp No."
-                    value={selectedRequest.whatsapp_no}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? editFormData.whatsapp_no || '' : selectedRequest.whatsapp_no}
+                    onChange={(e) => handleEditFormChange('whatsapp_no', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
+                    required
                     label="Payment Terms"
-                    value={selectedRequest.payment_terms}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? editFormData.payment_terms || '' : selectedRequest.payment_terms}
+                    onChange={(e) => handleEditFormChange('payment_terms', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
@@ -565,37 +776,70 @@ const CustomerRequests = () => {
                   <TextField
                     fullWidth
                     label="Multiple Branches"
-                    value={selectedRequest.multiple_branches || 'N/A'}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? editFormData.multiple_branches || '' : (selectedRequest.multiple_branches || 'N/A')}
+                    onChange={(e) => handleEditFormChange('multiple_branches', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Tier/Category"
-                    value={selectedRequest.tier_category}
-                    InputProps={{ readOnly: true }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <FormControl fullWidth required>
+                      <InputLabel>Tier/Category</InputLabel>
+                      <Select
+                        label="Tier/Category"
+                        value={editFormData.tier_category || ''}
+                        onChange={(e) => handleEditFormChange('tier_category', e.target.value)}
+                      >
+                        <MenuItem value="A+">A+</MenuItem>
+                        <MenuItem value="A">A</MenuItem>
+                        <MenuItem value="B">B</MenuItem>
+                        <MenuItem value="C">C</MenuItem>
+                        <MenuItem value="D">D</MenuItem>
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      label="Tier/Category"
+                      value={selectedRequest.tier_category}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
                     label="Sales Person"
-                    value={selectedRequest.sales_person}
-                    InputProps={{ readOnly: true }}
+                    value={isEditMode ? editFormData.sales_person || '' : selectedRequest.sales_person}
+                    onChange={(e) => handleEditFormChange('sales_person', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
                     variant="outlined"
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Tax Treatment"
-                    value={selectedRequest.in_ex || 'N/A'}
-                    InputProps={{ readOnly: true }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <FormControl fullWidth>
+                      <InputLabel>Tax Treatment</InputLabel>
+                      <Select
+                        label="Tax Treatment"
+                        value={editFormData.in_ex || ''}
+                        onChange={(e) => handleEditFormChange('in_ex', e.target.value)}
+                      >
+                        <MenuItem value="Inclusive">Inclusive</MenuItem>
+                        <MenuItem value="Exclusive">Exclusive</MenuItem>
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      label="Tax Treatment"
+                      value={selectedRequest.in_ex || 'N/A'}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
@@ -606,19 +850,18 @@ const CustomerRequests = () => {
                     variant="outlined"
                   />
                 </Grid>
-                {selectedRequest.margin_details && (
-                  <Grid size={{ xs: 12 }}>
-                    <TextField
-                      fullWidth
-                      label="Margin Details / Special Requests"
-                      value={selectedRequest.margin_details}
-                      InputProps={{ readOnly: true }}
-                      variant="outlined"
-                      multiline
-                      rows={3}
-                    />
-                  </Grid>
-                )}
+                <Grid size={{ xs: 12 }}>
+                  <TextField
+                    fullWidth
+                    label="Margin Details / Special Requests (DO NOT enter percentage symbol)"
+                    value={isEditMode ? editFormData.margin_details || '' : (selectedRequest.margin_details || '')}
+                    onChange={(e) => handleEditFormChange('margin_details', e.target.value)}
+                    InputProps={{ readOnly: !isEditMode }}
+                    variant="outlined"
+                    multiline
+                    rows={3}
+                  />
+                </Grid>
               </Grid>
 
               {/* Admin Comments Section */}
@@ -667,7 +910,10 @@ const CustomerRequests = () => {
                           </Typography>
                           <Typography variant="body2">{comment.text}</Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {format(new Date(comment.created_at), 'MMM dd, yyyy HH:mm')}
+                            {format(
+                              toZonedTime(new Date(comment.created_at), 'Asia/Kolkata'),
+                              'MMM dd, yyyy HH:mm'
+                            )}
                             {comment.updated_at && ' (edited)'}
                           </Typography>
                         </Box>
@@ -680,7 +926,10 @@ const CustomerRequests = () => {
                             </Typography>
                             <Typography variant="body2">{comment.reply.text}</Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {format(new Date(comment.reply.created_at), 'MMM dd, yyyy HH:mm')}
+                              {format(
+                                toZonedTime(new Date(comment.reply.created_at), 'Asia/Kolkata'),
+                                'MMM dd, yyyy HH:mm'
+                              )}
                               {comment.reply.updated_at && ' (edited)'}
                             </Typography>
                           </Paper>
@@ -692,37 +941,104 @@ const CustomerRequests = () => {
               </Box>
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 2 }}>
-              <Button onClick={handleCloseDialog}>Close</Button>
-              {selectedRequest.status !== 'created_on_zoho' &&
-                selectedRequest.status !== 'rejected' &&
-                selectedRequest.status !== 'approved' && (
+              {isEditMode ? (
                 <>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={<Close />}
-                    onClick={() => handleUpdateStatus(selectedRequest._id, 'rejected')}
-                  >
-                    Reject
+                  <Button onClick={handleCancelEdit}>
+                    Cancel
                   </Button>
-                  <Button
-                    variant="contained"
-                    color="success"
-                    startIcon={<Check />}
-                    onClick={() => handleUpdateStatus(selectedRequest._id, 'approved')}
-                  >
-                    Approve & Create in Zoho
+                  <Button onClick={handleSaveEdit} variant="contained" color="primary">
+                    Save Changes
                   </Button>
                 </>
-              )}
-              {selectedRequest.status === 'created_on_zoho' && selectedRequest.zoho_contact_id && (
-                <Typography variant="body2" color="success.main" sx={{ fontWeight: 500 }}>
-                  Zoho Contact ID: {selectedRequest.zoho_contact_id}
-                </Typography>
+              ) : (
+                <>
+                  <Button onClick={handleCloseDialog}>Close</Button>
+                  {selectedRequest.status !== 'created_on_zoho' &&
+                    selectedRequest.status !== 'rejected' && (
+                      <Button
+                        onClick={handleEnterEditMode}
+                        variant="outlined"
+                        color="primary"
+                        startIcon={<EditIcon />}
+                      >
+                        Edit Request
+                      </Button>
+                    )}
+                  {selectedRequest.status === 'pending' && (
+                    <>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<Close />}
+                        onClick={() => handleUpdateStatus(selectedRequest._id, 'rejected')}
+                      >
+                        Reject
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<Check />}
+                        onClick={() => handleUpdateStatus(selectedRequest._id, 'approved')}
+                      >
+                        Approve & Create in Zoho
+                      </Button>
+                    </>
+                  )}
+                  {selectedRequest.status === 'rejected' && (
+                    <Button
+                      variant="contained"
+                      color="warning"
+                      onClick={handleOpenStatusChangeDialog}
+                    >
+                      Change Status
+                    </Button>
+                  )}
+                  {selectedRequest.status === 'created_on_zoho' && selectedRequest.zoho_contact_id && (
+                    <Typography variant="body2" color="success.main" sx={{ fontWeight: 500 }}>
+                      Zoho Contact ID: {selectedRequest.zoho_contact_id}
+                    </Typography>
+                  )}
+                </>
               )}
             </DialogActions>
           </>
         )}
+      </Dialog>
+
+      {/* Status Change Confirmation Dialog */}
+      <Dialog
+        open={statusChangeDialogOpen}
+        onClose={handleCloseStatusChangeDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Change Request Status</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Change the status of this customer request:
+          </Typography>
+          <FormControl fullWidth>
+            <InputLabel>New Status</InputLabel>
+            <Select
+              value={newStatus}
+              onChange={(e) => setNewStatus(e.target.value as 'pending' | 'rejected')}
+              label="New Status"
+            >
+              <MenuItem value="pending">Pending</MenuItem>
+              <MenuItem value="rejected">Rejected</MenuItem>
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseStatusChangeDialog}>Cancel</Button>
+          <Button
+            onClick={handleConfirmStatusChange}
+            variant="contained"
+            color="primary"
+          >
+            Confirm Change
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );

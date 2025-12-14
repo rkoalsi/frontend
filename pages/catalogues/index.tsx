@@ -27,7 +27,9 @@ import {
   PictureAsPdf,
   OpenInNew,
   CheckCircle,
+  NewReleases,
 } from '@mui/icons-material';
+import { useRouter } from 'next/router';
 
 // Modern List Item Design
 const ListItemCard = styled(Paper)(({ theme }) => ({
@@ -223,6 +225,7 @@ const CatalogueSkeleton = () => {
 
 function Catalogue(props: Props) {
   const {} = props;
+  const router = useRouter();
   const [brands, setBrands] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -368,14 +371,154 @@ function Catalogue(props: Props) {
         {/* Catalogues List */}
         {!loading && !error && (
           <AnimatePresence mode='wait'>
-            {brands.length > 0 ? (
-              <motion.div
-                variants={containerVariants}
-                initial='hidden'
-                animate='visible'
-              >
-                <Stack spacing={2}>
-                  {brands.map((b: any, index: number) => (
+            <motion.div
+              variants={containerVariants}
+              initial='hidden'
+              animate='visible'
+            >
+              <Stack spacing={2}>
+                {/* All Products Catalogue - Always shown at top */}
+                <motion.div
+                  variants={itemVariants}
+                  whileHover={{ scale: 1.005 }}
+                  whileTap={{ scale: 0.995 }}
+                >
+                  <ListItemCard
+                    elevation={4}
+                    onClick={() => router.push('/catalogues/all_products')}
+                    sx={{
+                      background: `linear-gradient(135deg, ${alpha(
+                        theme.palette.secondary.main,
+                        0.95
+                      )}, ${alpha(theme.palette.secondary.dark, 0.98)})`,
+                    }}
+                  >
+                    {/* Icon */}
+                    <IconWrapper
+                      sx={{
+                        background: alpha(theme.palette.secondary.light, 0.3),
+                        border: `2px solid ${alpha(theme.palette.secondary.light, 0.4)}`,
+                      }}
+                    >
+                      <NewReleases
+                        sx={{
+                          fontSize: '36px',
+                          color: theme.palette.secondary.light,
+                        }}
+                      />
+                    </IconWrapper>
+
+                    {/* Catalogue Info */}
+                    <Box flex={1}>
+                      <Box
+                        display='flex'
+                        alignItems='center'
+                        gap={1.5}
+                        mb={0.5}
+                      >
+                        <Typography
+                          variant='h6'
+                          fontWeight='700'
+                          sx={{
+                            color: 'white',
+                            letterSpacing: '0.3px',
+                          }}
+                        >
+                          All Products Catalogue
+                        </Typography>
+                        <Chip
+                          icon={
+                            <CheckCircle
+                              sx={{ fontSize: '14px !important' }}
+                            />
+                          }
+                          label='Latest'
+                          size='small'
+                          sx={{
+                            background: alpha(
+                              theme.palette.warning.main,
+                              0.25
+                            ),
+                            color: theme.palette.warning.light,
+                            border: `1px solid ${alpha(
+                              theme.palette.warning.main,
+                              0.5
+                            )}`,
+                            fontWeight: 600,
+                            height: '24px',
+                          }}
+                        />
+                      </Box>
+                      <Typography
+                        variant='body2'
+                        sx={{
+                          color: alpha('#fff', 0.85),
+                          fontWeight: 500,
+                        }}
+                      >
+                        Browse all products across all brands
+                      </Typography>
+                    </Box>
+
+                    {/* Action Buttons */}
+                    <Box
+                      display='flex'
+                      gap={1}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Tooltip title='Copy link' arrow>
+                        <ActionButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const url = `${window.location.origin}/catalogues/all_products`;
+                            navigator.clipboard
+                              .writeText(url)
+                              .then(() => {
+                                toast.success('All Products catalogue link copied!');
+                              })
+                              .catch(() => {
+                                toast.error('Failed to copy link');
+                              });
+                          }}
+                          size='small'
+                        >
+                          <ContentCopy fontSize='small' />
+                          <Typography
+                            variant='caption'
+                            sx={{
+                              ml: 0.5,
+                              fontWeight: 600,
+                              display: { xs: 'none', sm: 'inline' },
+                            }}
+                          >
+                            Copy
+                          </Typography>
+                        </ActionButton>
+                      </Tooltip>
+                      <Tooltip title='Open catalogue' arrow>
+                        <ActionButton
+                          onClick={() => router.push('/catalogues/all_products')}
+                          size='small'
+                        >
+                          <OpenInNew fontSize='small' />
+                          <Typography
+                            variant='caption'
+                            sx={{
+                              ml: 0.5,
+                              fontWeight: 600,
+                              display: { xs: 'none', sm: 'inline' },
+                            }}
+                          >
+                            Open
+                          </Typography>
+                        </ActionButton>
+                      </Tooltip>
+                    </Box>
+                  </ListItemCard>
+                </motion.div>
+
+                {/* Regular Brand Catalogues */}
+                {brands.length > 0 && brands.map((b: any, index: number) => (
                     <motion.div
                       key={b._id || index}
                       variants={itemVariants}
@@ -500,33 +643,35 @@ function Catalogue(props: Props) {
                       </ListItemCard>
                     </motion.div>
                   ))}
-                </Stack>
-              </motion.div>
-            ) : (
-              <Fade in>
-                <Paper
-                  sx={{
-                    padding: 4,
-                    textAlign: 'center',
-                    background: alpha(theme.palette.primary.main, 0.1),
-                    borderRadius: 4,
-                  }}
-                >
-                  <MenuBook
-                    sx={{ fontSize: '64px', color: alpha('#fff', 0.3), mb: 2 }}
-                  />
-                  <Typography
-                    variant='h6'
-                    sx={{
-                      color: alpha('#fff', 0.7),
-                      fontWeight: 500,
-                    }}
-                  >
-                    No catalogues available at the moment
-                  </Typography>
-                </Paper>
-              </Fade>
-            )}
+
+                {/* No catalogues message - only show if no brand catalogues */}
+                {brands.length === 0 && (
+                  <Fade in>
+                    <Paper
+                      sx={{
+                        padding: 4,
+                        textAlign: 'center',
+                        background: alpha(theme.palette.primary.main, 0.1),
+                        borderRadius: 4,
+                      }}
+                    >
+                      <MenuBook
+                        sx={{ fontSize: '64px', color: alpha('#fff', 0.3), mb: 2 }}
+                      />
+                      <Typography
+                        variant='h6'
+                        sx={{
+                          color: alpha('#fff', 0.7),
+                          fontWeight: 500,
+                        }}
+                      >
+                        No brand catalogues available at the moment
+                      </Typography>
+                    </Paper>
+                  </Fade>
+                )}
+              </Stack>
+            </motion.div>
           </AnimatePresence>
         )}
       </Container>

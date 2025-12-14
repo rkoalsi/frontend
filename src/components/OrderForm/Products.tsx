@@ -290,10 +290,16 @@ const Products: React.FC<ProductsProps> = ({
       try {
         setLoadingMore(true);
         const sortToUse = sortOverride || sortOrder;
+
+        // Handle "New Arrivals" brand specially - don't pass brand or category parameter, but pass new_only=true
+        const brandParam = brand === "New Arrivals" ? undefined : brand;
+        const categoryParam = brand === "New Arrivals" || category === "All Products" ? undefined : category;
+        const newOnly = brand === "New Arrivals" ? true : undefined;
+
         const response = await axios.get(`${process.env.api_url}/products`, {
           params: {
-            brand,
-            category,
+            brand: brandParam,
+            category: categoryParam,
             search,
             page,
             per_page: 100,
@@ -303,6 +309,8 @@ const Products: React.FC<ProductsProps> = ({
               sortToUse === "catalogue" ? cataloguePage : undefined,
             // Pass group_by_name flag from the frontend state
             group_by_name: groupByProductName,
+            // Pass new_only flag for "New Arrivals" brand
+            new_only: newOnly,
           },
           signal: controller.signal,
         });
@@ -362,12 +370,20 @@ const Products: React.FC<ProductsProps> = ({
       );
       const allBrands: { brand: string; url: string }[] =
         response.data.brands || [];
-      setBrandList(allBrands);
-      if (!activeBrand && allBrands[0]) {
-        setActiveBrand(allBrands[0].brand);
+
+      // Add "New Arrivals" as the first brand with a professional badge
+      const newArrivalsBrand = {
+        brand: "New Arrivals",
+        url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='10' fill='white'/%3E%3Ctext x='50' y='43' font-family='Poppins, sans-serif' font-size='18' font-weight='bold' fill='%233F51B5' text-anchor='middle'%3ENEW%3C/text%3E%3Ctext x='50' y='63' font-family='Poppins, sans-serif' font-size='18' font-weight='bold' fill='%233F51B5' text-anchor='middle'%3EARRIVALS%3C/text%3E%3C/svg%3E"
+      };
+      const brandsWithNewArrivals = [newArrivalsBrand, ...allBrands];
+
+      setBrandList(brandsWithNewArrivals);
+      if (!activeBrand && brandsWithNewArrivals[0]) {
+        setActiveBrand(brandsWithNewArrivals[0].brand);
       }
       setProductsByBrandCategory((prev) =>
-        allBrands.reduce(
+        brandsWithNewArrivals.reduce(
           (acc, brandObj) => ({ ...acc, [brandObj.brand]: [] }),
           { ...prev }
         )
@@ -413,6 +429,25 @@ const Products: React.FC<ProductsProps> = ({
   const fetchCategories = useCallback(
     async (brand: string) => {
       try {
+        // Handle "New Arrivals" brand specially
+        if (brand === "New Arrivals") {
+          const categories = ["All Products"];
+          setCategoriesByBrand((prev) => ({
+            ...prev,
+            [brand]: categories,
+          }));
+
+          const defaultCategory = categories[0];
+          if (!activeCategory && defaultCategory) {
+            setActiveCategory(defaultCategory);
+            // Immediately trigger the API call for the new category
+            setTimeout(() => {
+              resetPaginationAndFetch(brand, defaultCategory);
+            }, 0);
+          }
+          return;
+        }
+
         const response = await axios.get(
           `${process.env.api_url}/products/categories`,
           { params: { brand } }
@@ -1115,10 +1150,10 @@ const Products: React.FC<ProductsProps> = ({
                       );
                       return (
                         <Box display="flex" alignItems="center" gap={1}>
-                          {selectedBrand?.image && (
+                          {(selectedBrand?.image || selectedBrand?.url) && (
                             <Box
                               component="img"
-                              src={selectedBrand.image}
+                              src={selectedBrand.image || selectedBrand.url}
                               alt={selectedBrand.brand}
                               sx={{
                                 width: 64,
@@ -1150,9 +1185,9 @@ const Products: React.FC<ProductsProps> = ({
                             gap={1.5}
                             width="100%"
                           >
-                            {b.image && (
+                            {(b.image || b.url) && (
                               <Image
-                                src={b.image}
+                                src={b.image || b.url}
                                 alt={b.brand}
                                 width={80}
                                 height={80}
@@ -1217,6 +1252,7 @@ const Products: React.FC<ProductsProps> = ({
                     }}
                   >
                     {brandList.map((b: any) => {
+                      // Calculate brand count for all brands including "New Arrivals"
                       const brandCount = productCounts[b.brand]
                         ? Object.values(productCounts[b.brand]).reduce(
                           (a, b) => a + b,
@@ -1234,9 +1270,9 @@ const Products: React.FC<ProductsProps> = ({
                               alignItems="center"
                               gap={1}
                             >
-                              {b.image && (
+                              {(b.image || b.url) && (
                                 <Image
-                                  src={b.image}
+                                  src={b.image || b.url}
                                   alt={b.brand}
                                   className="brand-image"
                                   width={80}
@@ -1988,15 +2024,25 @@ const Products: React.FC<ProductsProps> = ({
                         <Box sx={{ p: 2, position: 'relative' }}>
                           {product.new && (
                             <Chip
-                              label="New"
-                              color="secondary"
+                              label="New Arrivals"
                               size="small"
                               sx={{
                                 position: 'absolute',
                                 top: 8,
                                 right: 8,
                                 zIndex: 1,
-                                fontWeight: 600,
+                                fontFamily: 'Poppins, sans-serif',
+                                fontWeight: 700,
+                                fontSize: '0.75rem',
+                                backgroundColor: 'white',
+                                color: 'primary.main',
+                                letterSpacing: '0.5px',
+                                textTransform: 'uppercase',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                '&:hover': {
+                                  backgroundColor: 'primary.light',
+                                  color: 'white',
+                                },
                               }}
                             />
                           )}

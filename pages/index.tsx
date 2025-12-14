@@ -32,6 +32,7 @@ import {
   Rocket,
   PersonAdd,
   Assignment,
+  NewReleases,
 } from '@mui/icons-material';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -322,6 +323,9 @@ const Home = () => {
         break;
       case 'shipments':
         router.push('/shipments');
+        break;
+      case 'new_arrivals':
+        router.push('/catalogues');
         break;
       default:
         router.push(action);

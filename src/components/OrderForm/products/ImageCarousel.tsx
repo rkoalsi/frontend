@@ -13,7 +13,7 @@ interface Props {
 
 function ImageCarousel(props: Props) {
   const { product, handleImageClick, small = false } = props;
-  const images = product.images || [product.image_url];
+  const images = (product.images && product.images.length > 0) ? product.images : [product.image_url];
   const hasMultipleImages = images.length > 1;
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -44,6 +44,10 @@ function ImageCarousel(props: Props) {
 
   const onTouchMove = (e: React.TouchEvent) => {
     setTouchEnd(e.targetTouches[0].clientX);
+    // Prevent page scroll while swiping on images
+    if (hasMultipleImages) {
+      e.preventDefault();
+    }
   };
 
   const onTouchEnd = () => {
@@ -73,6 +77,7 @@ function ImageCarousel(props: Props) {
         width: '100%',
         height: '100%',
         overflow: 'hidden',
+        touchAction: hasMultipleImages ? 'none' : 'auto',
       }}
       onTouchStart={hasMultipleImages ? onTouchStart : undefined}
       onTouchMove={hasMultipleImages ? onTouchMove : undefined}
