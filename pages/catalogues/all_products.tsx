@@ -141,6 +141,7 @@ export default function AllProductsCatalouge() {
   }>({});
   const tableScrollRef = useRef<DoubleScrollTableRef>(null);
   const cardScrollRef = useRef<HTMLDivElement>(null);
+  const [searchExpanded, setSearchExpanded] = useState<boolean>(false);
   const handleImageClick = useCallback((srcList: string[], index: number) => {
     if (Array.isArray(srcList)) {
       const formattedImages = srcList?.map((src) => ({ src }));
@@ -571,7 +572,7 @@ export default function AllProductsCatalouge() {
       {/* Reference for top of page */}
       <div ref={pageTopRef} />
 
-      {/* Search Bar Section */}
+      {/* Header Section with Title and Search */}
       <Box
         sx={{
           bgcolor: "white",
@@ -585,41 +586,108 @@ export default function AllProductsCatalouge() {
           backgroundColor: { xs: "rgba(255, 255, 255, 0.98)", md: "white" },
         }}
       >
-        <Box sx={{ maxWidth: "1400px", margin: "0 auto", p: { xs: 1.5, sm: 2, md: 3 } }}>
-          <Autocomplete
-            freeSolo
-            options={options}
-            value={null}
-            inputValue={inputValue}
-            getOptionLabel={(option: any) =>
-              typeof option === "string" ? option : option.name
-            }
-            onInputChange={handleInputChange}
-            loading={loading}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Search Products"
-                placeholder="Search by name or SKU..."
-                variant="outlined"
-                fullWidth
-                size={isMobile ? "small" : "medium"}
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {loading && <CircularProgress color="inherit" size={20} />}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
+        <Box sx={{ maxWidth: "1400px", margin: "0 auto", p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+          {/* Page Title */}
+          <Box sx={{ mb: { xs: 1.5, sm: 2 }, textAlign: 'center' }}>
+            <Typography
+              variant="h3"
+              sx={{
+                fontWeight: 800,
+                fontSize: { xs: '2rem', sm: '2rem', md: '2.5rem' },
+                background: 'linear-gradient(135deg, #3F51B5 0%, #2196F3 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                mb: { xs: 0.25, sm: 0.5 },
+                letterSpacing: '-0.5px',
+              }}
+            >
+              All Products
+            </Typography>
+            <Typography
+              variant="subtitle1"
+              color="text.secondary"
+              sx={{
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                fontWeight: 400,
+              }}
+            >
+              Browse our complete product catalogue across all brands
+            </Typography>
+          </Box>
+
+          {/* Compact Search Bar */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, maxWidth: '600px', margin: '0 auto' }}>
+            {/* Animated Search Icon */}
+            <IconButton
+              onClick={() => setSearchExpanded(!searchExpanded)}
+              sx={{
+                color: 'primary.main',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                '&:hover': {
+                  transform: 'scale(1.1) rotate(90deg)',
+                },
+                transform: searchExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                flexShrink: 0,
+                width: { xs: 36, sm: 40 },
+                height: { xs: 36, sm: 40 },
+              }}
+              aria-label="toggle search"
+            >
+              <Search fontSize={isMobile ? "small" : "medium"} />
+            </IconButton>
+
+            {/* Expandable Search Bar */}
+            <Box
+              sx={{
+                flex: 1,
+                overflow: 'hidden',
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                maxWidth: searchExpanded ? '100%' : { xs: 0, md: '100%' },
+                opacity: searchExpanded ? 1 : { xs: 0, md: 1 },
+              }}
+            >
+              <Autocomplete
+                freeSolo
+                options={options}
+                value={null}
+                inputValue={inputValue}
+                getOptionLabel={(option: any) =>
+                  typeof option === "string" ? option : option.name
+                }
+                onInputChange={handleInputChange}
+                loading={loading}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Search by name or SKU..."
+                    variant="outlined"
+                    fullWidth
+                    size="small"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        fontSize: { xs: '0.875rem', sm: '0.9375rem' },
+                      },
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {loading && <CircularProgress color="inherit" size={18} />}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
               />
-            )}
-          />
+            </Box>
+          </Box>
         </Box>
       </Box>
 
-      <Box sx={{ maxWidth: "1400px", margin: "0 auto", width: "100%", p: { xs: 1.5, sm: 2, md: 3 } }}>
+      <Box sx={{ maxWidth: "1400px", margin: "0 auto", width: "100%", p: { xs: 2, sm: 2.5, md: 3 } }}>
+
         {/* Tabs and Sorting Controls */}
         <Box display="flex" flexDirection={"column"} gap={{ xs: 1, sm: 1.5, md: 2 }} sx={{ mb: { xs: 2, md: 3 } }}>
           {!groupByCategory && (
@@ -980,7 +1048,7 @@ export default function AllProductsCatalouge() {
               bgcolor: 'white',
               borderRadius: { xs: 2, md: 3 },
               boxShadow: { xs: 2, md: 3 },
-              p: { xs: 1.5, sm: 2, md: 3 },
+              p: { xs: 2, sm: 2.5, md: 3 },
               minHeight: '400px',
               width: '100%',
               border: '1px solid',
@@ -1008,9 +1076,16 @@ export default function AllProductsCatalouge() {
                   sx={{
                     display: 'grid',
                     gridTemplateColumns: '1fr',
-                    gap: { xs: 1.5, sm: 2 },
+                    gap: { xs: 2, sm: 2.5 },
                     width: '100%',
                     alignItems: 'stretch',
+                    // Override MRP label margin-bottom and card padding-bottom for this page only
+                    '& .MuiCardContent-root': {
+                      pb: 0,
+                      '& .MuiTypography-caption': {
+                        mb: 0,
+                      },
+                    },
                   }}
                 >
                   {/* Render items in exact order from backend */}
@@ -1064,7 +1139,7 @@ export default function AllProductsCatalouge() {
                   sx={{
                     display: 'grid',
                     gridTemplateColumns: '1fr',
-                    gap: { xs: 1.5, sm: 2 },
+                    gap: { xs: 2, sm: 2.5 },
                     width: '100%',
                     alignItems: 'stretch',
                   }}
@@ -1284,10 +1359,17 @@ export default function AllProductsCatalouge() {
                       lg: 'repeat(4, 1fr)',
                       xl: 'repeat(5, 1fr)',
                     },
-                    gap: { xs: 1.5, sm: 2, md: 2.5, lg: 3 },
+                    gap: { xs: 2, sm: 2, md: 2.5, lg: 3 },
                     width: '100%',
                     maxWidth: '100%',
                     alignItems: 'stretch',
+                    // Override MRP label margin-bottom and card padding-bottom for this page only
+                    '& .MuiCardContent-root': {
+                      pb: 0,
+                      '& .MuiTypography-caption': {
+                        mb: 0,
+                      },
+                    },
                   }}
                 >
                   {/* Render items in exact order from backend */}
@@ -1347,7 +1429,7 @@ export default function AllProductsCatalouge() {
                       lg: 'repeat(4, 1fr)',
                       xl: 'repeat(5, 1fr)',
                     },
-                    gap: { xs: 1.5, sm: 2, md: 2.5, lg: 3 },
+                    gap: { xs: 2, sm: 2, md: 2.5, lg: 3 },
                     width: '100%',
                     maxWidth: '100%',
                     alignItems: 'stretch',
@@ -1382,7 +1464,7 @@ export default function AllProductsCatalouge() {
                             } : {},
                           }}
                         >
-                          <Box sx={{ p: { xs: 1.5, sm: 2 }, position: 'relative' }}>
+                          <Box sx={{ p: { xs: 1.5, sm: 2 }, pb: 0, position: 'relative' }}>
                             {product.new && (
                               <Chip
                                 label="NEW"
@@ -1394,7 +1476,7 @@ export default function AllProductsCatalouge() {
                                   zIndex: 2,
                                   fontFamily: 'Poppins, sans-serif',
                                   fontWeight: 800,
-                                  fontSize: { xs: '0.65rem', sm: '0.7rem' },
+                                  fontSize: { xs: '0.6rem', sm: '0.65rem' },
                                   background: 'linear-gradient(135deg, #3F51B5 0%, #2196F3 100%)',
                                   color: 'white',
                                   letterSpacing: '0.8px',
@@ -1413,7 +1495,7 @@ export default function AllProductsCatalouge() {
                             <Box
                               sx={{
                                 width: '100%',
-                                height: { xs: 180, sm: 200, md: 220 },
+                                height: { xs: 160, sm: 180, md: 200 },
                                 position: 'relative',
                                 mb: { xs: 1.5, sm: 2 },
                                 borderRadius: { xs: 1.5, sm: 2 },
@@ -1436,22 +1518,22 @@ export default function AllProductsCatalouge() {
                               variant="h6"
                               sx={{
                                 fontWeight: 600,
-                                mb: { xs: 1.5, sm: 2 },
-                                minHeight: { xs: 56, sm: 64 },
+                                mb: { xs: 1, sm: 1.5 },
+                                minHeight: { xs: 48, sm: 56 },
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 display: '-webkit-box',
-                                WebkitLineClamp: 3,
+                                WebkitLineClamp: 2,
                                 WebkitBoxOrient: 'vertical',
                                 lineHeight: 1.3,
-                                fontSize: { xs: '0.95rem', sm: '1.1rem', md: '1.25rem' },
+                                fontSize: { xs: '0.875rem', sm: '1rem', md: '1.1rem' },
                                 color: product.new ? 'primary.dark' : 'text.primary',
                               }}
                             >
                               {product.name}
                             </Typography>
 
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 0.75, sm: 1 } }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 0.5, sm: 0.75 } }}>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <Typography variant="body2" color="text.secondary">
                                   Brand:
