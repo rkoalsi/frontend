@@ -1146,9 +1146,9 @@ const AdminDashboard = () => {
                             ))}
                           </Pie>
                           <RechartsTooltip
-                            formatter={(value: any, name: string, props: any) => [
+                            formatter={(value: any, name: string | number | undefined, props: any) => [
                               `${(typeof value === 'number' ? value : 0).toLocaleString()} products (${props.payload.percentage}%)`,
-                              name
+                              String(name || '')
                             ]}
                           />
                           <Legend />
