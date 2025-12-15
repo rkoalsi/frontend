@@ -89,12 +89,32 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
             m: { xs: 0, md: 2 },
             maxHeight: { xs: '95vh', md: '90vh' },
             height: { xs: 'auto', md: 'auto' },
-            width: { xs: '100vw', md: 'auto' },
+            width: { xs: '100vw', md: '85%' },
+            maxWidth: { xs: '100vw', md: '1000px' },
           },
         },
       }}
     >
-      <DialogContent sx={{ p: 0, overflow: { xs: 'auto', md: 'hidden' }, height: '100%', position: 'relative' }}>
+      <DialogContent sx={{ p: 0, overflow: 'auto', height: '100%', position: 'relative' }}>
+        {/* Desktop Close Button */}
+        <IconButton
+          onClick={onClose}
+          sx={{
+            display: { xs: 'none', md: 'flex' },
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            zIndex: 10,
+            bgcolor: 'rgba(255, 255, 255, 0.95)',
+            boxShadow: 2,
+            '&:hover': {
+              bgcolor: 'white',
+            },
+          }}
+        >
+          <Close />
+        </IconButton>
+
         {/* Mobile Close Button */}
         <IconButton
           onClick={onClose}
@@ -116,17 +136,31 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
         >
           <Close />
         </IconButton>
-        <Box>
+
+        {/* Main Content - Side by side on desktop, stacked on mobile */}
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          minHeight: { xs: 'auto', md: '500px' },
+          gap: { xs: 0, md: 3 },
+        }}>
           {/* Image Section */}
-          <Box sx={{ position: 'relative', display: 'flex', justifyContent: { xs: 'center', md: 'flex-end' }, p: { xs: 0, md: 3 } }}>
+          <Box sx={{
+            position: 'relative',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            p: { xs: 0, md: 3 },
+            flex: { xs: '0 0 auto', md: '0 0 45%' },
+          }}>
             <Box
               sx={{
                 position: 'relative',
                 bgcolor: 'grey.50',
-                width: { xs: '100%', sm: 400, md: 500 },
-                height: { xs: 'auto', sm: 400, md: 500 },
+                width: { xs: '100%', md: '100%' },
+                height: { xs: 'auto', md: '100%' },
+                maxHeight: { md: '500px' },
                 aspectRatio: { xs: '1/1', md: 'auto' },
-                maxWidth: '100%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -167,15 +201,20 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
           </Box>
 
           {/* Details Section */}
-          <Box>
+          <Box sx={{
+            flex: { xs: '1', md: '1' },
+            overflow: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
             <Box sx={{
               px: { xs: 2, sm: 2.5, md: 3 },
               pb: { xs: 2, md: 3 },
-              pt: { xs: 1.5, md: 2.5 },
+              pt: { xs: 1.5, md: 3 },
               display: 'flex',
               flexDirection: 'column',
-              alignItems: { xs: 'flex-start', md: 'center' },
-              textAlign: { xs: 'left', md: 'center' },
+              alignItems: 'flex-start',
+              textAlign: 'left',
             }}>
               {/* Product Name */}
               <Typography
@@ -192,7 +231,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
               </Typography>
 
               {/* Brand & Category */}
-              <Box sx={{ display: 'flex', gap: 1, mb: { xs: 2, md: 2.5 }, flexWrap: 'wrap', justifyContent: { xs: 'flex-start', md: 'center' } }}>
+              <Box sx={{ display: 'flex', gap: 1, mb: { xs: 2, md: 2.5 }, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
                 {currentProduct.brand && (
                   <Chip
                     label={currentProduct.brand}
@@ -247,7 +286,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                   >
                     Select Size
                   </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: { xs: 'flex-start', md: 'center' } }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'flex-start' }}>
                     {variants.map(([sizeLabel, variantProduct]) => (
                       <Chip
                         key={variantProduct._id}
