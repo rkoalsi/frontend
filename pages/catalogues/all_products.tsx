@@ -1,26 +1,16 @@
 import {
   Box,
   Typography,
-  Container,
-  Grid,
-  Card,
-  CardContent,
   Chip,
   TextField,
-  InputAdornment,
   Select,
   MenuItem,
   FormControl,
   InputLabel,
-  Stack,
-  Skeleton,
-  alpha,
   useTheme,
   useMediaQuery,
   IconButton,
   Tooltip,
-  Dialog,
-  DialogContent,
   Button,
   Autocomplete,
   CircularProgress,
@@ -31,11 +21,11 @@ import {
   TableBody,
   TableHead,
   Table,
+  Card,
 } from '@mui/material';
-import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
-import { Search, FilterList, Share, ChevronLeft, ChevronRight, Close, ArrowDownward, ArrowUpward } from '@mui/icons-material';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Search, ArrowDownward, ArrowUpward } from '@mui/icons-material';
 import axios from 'axios';
-import Head from 'next/head';
 import {
   type Product as GroupProduct,
   type ProductGroup as GroupProductGroup
@@ -51,6 +41,11 @@ import ProductCard from '../../src/components/OrderForm/products/ProductCard';
 import ProductGroupCard from '../../src/components/OrderForm/products/ProductGroupCard';
 import ProductRow from '../../src/components/OrderForm/products/ProductRow';
 import DoubleScrollTable, { DoubleScrollTableRef } from '../../src/components/OrderForm/DoubleScrollTable';
+import CatalogueProductCard from '../../src/components/OrderForm/products/CatalogueProductCard';
+import CatalogueProductGroupCard from '../../src/components/OrderForm/products/CatalogueProductGroupCard';
+import CatalogueFilters from '../../src/components/OrderForm/products/CatalogueFilters';
+import CatalogueToolbar, { type ViewDensity, type SortOption } from '../../src/components/OrderForm/products/CatalogueToolbar';
+import QuickViewModal from '../../src/components/OrderForm/products/QuickViewModal';
 
 interface Product extends GroupProduct {
   category: string;
@@ -142,6 +137,18 @@ export default function AllProductsCatalouge() {
   const tableScrollRef = useRef<DoubleScrollTableRef>(null);
   const cardScrollRef = useRef<HTMLDivElement>(null);
   const [searchExpanded, setSearchExpanded] = useState<boolean>(false);
+
+  // Catalogue-specific state
+  const [viewDensity, setViewDensity] = useState<ViewDensity>('4x4');
+  const [sortOption, setSortOption] = useState<SortOption>('default');
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
+  const [selectedFilterCategories, setSelectedFilterCategories] = useState<string[]>([]);
+  const [selectedFilterBrands, setSelectedFilterBrands] = useState<string[]>([]);
+  const [showNewOnly, setShowNewOnly] = useState<boolean>(false);
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  const [quickViewVariants, setQuickViewVariants] = useState<Product[]>([]);
+  const [showQuickView, setShowQuickView] = useState<boolean>(false);
+  const [filtersOpen, setFiltersOpen] = useState<boolean>(false);
   const handleImageClick = useCallback((srcList: string[], index: number) => {
     if (Array.isArray(srcList)) {
       const formattedImages = srcList?.map((src) => ({ src }));
@@ -184,6 +191,110 @@ export default function AllProductsCatalouge() {
     const data = productsByBrandCategory[productsKey];
     return data || [];
   }, [productsByBrandCategory, productsKey, itemsData]);
+
+  // Get all unique categories and brands for filters
+  const allFilterCategories = useMemo(() => {
+    const categories = new Set<string>();
+    if (itemsData) {
+      itemsData.forEach((item: any) => {
+        const product = item.type === 'group' ? item.primaryProduct : item.product;
+        if (product?.category) categories.add(product.category);
+      });
+    }
+    return Array.from(categories).sort();
+  }, [itemsData]);
+
+  const allFilterBrands = useMemo(() => {
+    const brands = new Set<string>();
+    if (itemsData) {
+      itemsData.forEach((item: any) => {
+        const product = item.type === 'group' ? item.primaryProduct : item.product;
+        if (product?.brand) brands.add(product.brand);
+      });
+    }
+    return Array.from(brands).sort();
+  }, [itemsData]);
+
+  // Calculate max price for filter slider
+  const maxPrice = useMemo(() => {
+    if (!itemsData || itemsData.length === 0) return 100000;
+    let max = 0;
+    itemsData.forEach((item: any) => {
+      const product = item.type === 'group' ? item.primaryProduct : item.product;
+      if (product?.rate && product.rate > max) max = product.rate;
+    });
+    return Math.ceil(max / 1000) * 1000; // Round up to nearest 1000
+  }, [itemsData]);
+
+  // Update price range when max price changes
+  useEffect(() => {
+    setPriceRange([0, maxPrice]);
+  }, [maxPrice]);
+
+  // Filter and sort items
+  const filteredAndSortedItems = useMemo(() => {
+    if (!itemsData) return [];
+
+    // Apply filters
+    let filtered = itemsData.filter((item: any) => {
+      const product = item.type === 'group' ? item.primaryProduct : item.product;
+      if (!product) return false;
+
+      // Price filter
+      if (product.rate < priceRange[0] || product.rate > priceRange[1]) return false;
+
+      // Category filter
+      if (selectedFilterCategories.length > 0 && !selectedFilterCategories.includes(product.category)) return false;
+
+      // Brand filter
+      if (selectedFilterBrands.length > 0 && !selectedFilterBrands.includes(product.brand)) return false;
+
+      // New only filter
+      if (showNewOnly && !product.new) return false;
+
+      return true;
+    });
+
+    // Apply sorting
+    filtered = [...filtered].sort((a, b) => {
+      const productA = a.type === 'group' ? a.primaryProduct : a.product;
+      const productB = b.type === 'group' ? b.primaryProduct : b.product;
+
+      switch (sortOption) {
+        case 'price-low':
+          return (productA?.rate || 0) - (productB?.rate || 0);
+        case 'price-high':
+          return (productB?.rate || 0) - (productA?.rate || 0);
+        case 'name-asc':
+          return (productA?.name || '').localeCompare(productB?.name || '');
+        case 'name-desc':
+          return (productB?.name || '').localeCompare(productA?.name || '');
+        case 'newest':
+          // New products first
+          if (productA?.new && !productB?.new) return -1;
+          if (!productA?.new && productB?.new) return 1;
+          return 0;
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [itemsData, priceRange, selectedFilterCategories, selectedFilterBrands, showNewOnly, sortOption]);
+
+  // Calculate total product count including all variants
+  const totalProductCount = useMemo(() => {
+    if (!filteredAndSortedItems) return 0;
+    return filteredAndSortedItems.reduce((total: number, item: any) => {
+      if (item.type === 'group') {
+        // For groups, count all products in the group
+        return total + (item.products?.length || 1);
+      } else {
+        // For individual products, count as 1
+        return total + 1;
+      }
+    }, 0);
+  }, [filteredAndSortedItems]);
   const [productCounts, setProductCounts] = useState<{
     [brand: string]: { [category: string]: number };
   }>({});
@@ -422,6 +533,42 @@ export default function AllProductsCatalouge() {
   // ]);
 
   const handleClosePopup = useCallback(() => setOpenImagePopup(false), []);
+
+  // Catalogue handlers
+  const handleQuickView = useCallback((product: Product, variants: Product[] = []) => {
+    setQuickViewProduct(product);
+    setQuickViewVariants(variants);
+    setShowQuickView(true);
+  }, []);
+
+  const handleCloseQuickView = useCallback(() => {
+    setShowQuickView(false);
+    setQuickViewProduct(null);
+    setQuickViewVariants([]);
+  }, []);
+
+  const handleCategoryFilterChange = useCallback((category: string) => {
+    setSelectedFilterCategories(prev =>
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  }, []);
+
+  const handleBrandFilterChange = useCallback((brand: string) => {
+    setSelectedFilterBrands(prev =>
+      prev.includes(brand)
+        ? prev.filter(b => b !== brand)
+        : [...prev, brand]
+    );
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setPriceRange([0, maxPrice]);
+    setSelectedFilterCategories([]);
+    setSelectedFilterBrands([]);
+    setShowNewOnly(false);
+  }, [maxPrice]);
 
   const handleBrandChange = (brand: string) => {
     setSelectedBrand(brand);
@@ -1042,19 +1189,165 @@ export default function AllProductsCatalouge() {
               )}
             </Box>
           )}
-          {/* Products Display */}
-          <Box
-            sx={{
-              bgcolor: 'white',
-              borderRadius: { xs: 2, md: 3 },
-              boxShadow: { xs: 2, md: 3 },
-              p: { xs: 2, sm: 2.5, md: 3 },
-              minHeight: '400px',
-              width: '100%',
-              border: '1px solid',
-              borderColor: 'divider',
-            }}
-          >
+          {/* Catalogue Toolbar */}
+          <CatalogueToolbar
+            totalProducts={totalProductCount}
+            sortBy={sortOption}
+            onSortChange={setSortOption}
+            viewDensity={viewDensity}
+            onViewDensityChange={setViewDensity}
+            onToggleFilters={() => setFiltersOpen(true)}
+            showFilterButton={isMobile || isTablet}
+          />
+
+          {/* Main Content with Filters and Products */}
+          <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start' }}>
+            {/* Filters Sidebar - Desktop */}
+            {!isMobile && !isTablet && (
+              <CatalogueFilters
+                priceRange={priceRange}
+                maxPrice={maxPrice}
+                onPriceChange={setPriceRange}
+                selectedCategories={selectedFilterCategories}
+                allCategories={allFilterCategories}
+                onCategoryChange={handleCategoryFilterChange}
+                selectedBrands={selectedFilterBrands}
+                allBrands={allFilterBrands}
+                onBrandChange={handleBrandFilterChange}
+                showNewOnly={showNewOnly}
+                onNewOnlyChange={setShowNewOnly}
+                onClearFilters={handleClearFilters}
+                activeBrand={activeBrand}
+              />
+            )}
+
+            {/* Filters Drawer - Mobile */}
+            {(isMobile || isTablet) && (
+              <CatalogueFilters
+                priceRange={priceRange}
+                maxPrice={maxPrice}
+                onPriceChange={setPriceRange}
+                selectedCategories={selectedFilterCategories}
+                allCategories={allFilterCategories}
+                onCategoryChange={handleCategoryFilterChange}
+                selectedBrands={selectedFilterBrands}
+                allBrands={allFilterBrands}
+                onBrandChange={handleBrandFilterChange}
+                showNewOnly={showNewOnly}
+                onNewOnlyChange={setShowNewOnly}
+                onClearFilters={handleClearFilters}
+                activeBrand={activeBrand}
+                open={filtersOpen}
+                onClose={() => setFiltersOpen(false)}
+              />
+            )}
+
+            {/* Products Grid */}
+            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+              <Box
+                sx={{
+                  bgcolor: 'white',
+                  borderRadius: { xs: 2, md: 3 },
+                  boxShadow: { xs: 2, md: 3 },
+                  p: { xs: 2, sm: 2.5, md: 3 },
+                  minHeight: '400px',
+                  width: '100%',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                }}
+              >
+                {loading ? (
+                  // Loading skeletons
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: {
+                        xs: '1fr',
+                        sm: 'repeat(2, 1fr)',
+                        md: viewDensity === '5x5' ? 'repeat(4, 1fr)' : viewDensity === '4x4' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+                        lg: viewDensity === '5x5' ? 'repeat(4, 1fr)' : viewDensity === '4x4' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+                        xl: viewDensity === '5x5' ? 'repeat(5, 1fr)' : viewDensity === '4x4' ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
+                      },
+                      gap: { xs: 2, sm: 2, md: viewDensity === '5x5' ? 2 : 2.5 },
+                      width: '100%',
+                    }}
+                  >
+                    {Array.from({ length: 12 }).map((_, i) => (
+                      <ProductCardSkeleton key={i} variant="card" />
+                    ))}
+                  </Box>
+                ) : filteredAndSortedItems.length > 0 ? (
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: {
+                        xs: '1fr',
+                        sm: 'repeat(2, 1fr)',
+                        md: viewDensity === '5x5' ? 'repeat(4, 1fr)' : viewDensity === '4x4' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+                        lg: viewDensity === '5x5' ? 'repeat(4, 1fr)' : viewDensity === '4x4' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+                        xl: viewDensity === '5x5' ? 'repeat(5, 1fr)' : viewDensity === '4x4' ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
+                      },
+                      gap: { xs: 2, sm: 2, md: viewDensity === '5x5' ? 2 : 2.5 },
+                      width: '100%',
+                    }}
+                  >
+                    {filteredAndSortedItems.map((item: any, index: number) => {
+                      if (item.type === 'group') {
+                        return (
+                          <CatalogueProductGroupCard
+                            key={item.groupId}
+                            baseName={item.baseName}
+                            products={item.products}
+                            primaryProduct={item.primaryProduct}
+                            onQuickView={(product, variants) => handleQuickView(product, variants)}
+                            viewDensity={viewDensity}
+                          />
+                        );
+                      } else {
+                        return (
+                          <CatalogueProductCard
+                            key={item.product._id}
+                            product={item.product}
+                            onQuickView={(product) => handleQuickView(product, [])}
+                            viewDensity={viewDensity}
+                          />
+                        );
+                      }
+                    })}
+                  </Box>
+                ) : (
+                  <Box
+                    sx={{
+                      mt: 4,
+                      p: 6,
+                      width: '100%',
+                      borderRadius: 3,
+                      border: '2px dashed',
+                      borderColor: 'grey.300',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                      No products found
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Try adjusting your filters or search criteria
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      onClick={handleClearFilters}
+                      sx={{ mt: 2 }}
+                    >
+                      Clear Filters
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Keep old display for reference - can be removed later */}
+          <Box sx={{ display: 'none' }}>
           {isMobile || isTablet ? (
             <Box>
               {loading ? (
@@ -1740,6 +2033,15 @@ export default function AllProductsCatalouge() {
           setIndex={(newIndex: number) => {
             setPopupImageIndex(newIndex);
           }}
+        />
+
+        {/* Quick View Modal */}
+        <QuickViewModal
+          open={showQuickView}
+          onClose={handleCloseQuickView}
+          product={quickViewProduct}
+          allVariants={quickViewVariants}
+          handleImageClick={handleImageClick}
         />
 
         {/* Reference for bottom of page */}
