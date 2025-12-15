@@ -706,89 +706,85 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
           {/* Spacer to push content to bottom */}
           <Box sx={{ flexGrow: 1 }} />
 
-          {/* Quantity Selector - Hidden when isShared */}
-          {!isShared && (
-            <Box
+          {/* Quantity Selector */}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              mb: 1.5,
+            }}
+          >
+            <Typography
+              variant="caption"
+              color="text.secondary"
               sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                mb: 1.5,
+                fontWeight: 600,
+                mb: 0.75,
+                fontSize: '0.7rem',
               }}
             >
-              <Typography
-                variant="caption"
-                color="text.secondary"
+              Quantity
+            </Typography>
+            <QuantitySelector
+              quantity={quantity}
+              max={currentVariant.stock}
+              onChange={(newQuantity) =>
+                handleQuantityChange(productId, newQuantity)
+              }
+              disabled={isDisabled}
+            />
+            {isQuantityExceedingStock && (
+              <Alert
+                severity="error"
                 sx={{
-                  fontWeight: 600,
-                  mb: 0.75,
-                  fontSize: '0.7rem',
+                  mt: 0.75,
+                  py: 0,
+                  px: 1,
+                  fontSize: '0.65rem',
+                  '& .MuiAlert-message': { py: 0 }
                 }}
               >
-                Quantity
-              </Typography>
-              <QuantitySelector
-                quantity={quantity}
-                max={currentVariant.stock}
-                onChange={(newQuantity) =>
-                  handleQuantityChange(productId, newQuantity)
-                }
-                disabled={isDisabled}
-              />
-              {isQuantityExceedingStock && (
-                <Alert
-                  severity="error"
-                  sx={{
-                    mt: 0.75,
-                    py: 0,
-                    px: 1,
-                    fontSize: '0.65rem',
-                    '& .MuiAlert-message': { py: 0 }
-                  }}
-                >
-                  Exceeds stock!
-                </Alert>
-              )}
-            </Box>
-          )}
+                Exceeds stock!
+              </Alert>
+            )}
+          </Box>
 
-          {/* Action Button - Hidden when isShared */}
-          {!isShared && (
-            <Tooltip title={selectedProduct ? "Remove from cart" : "Add to cart"}>
-              <span>
-                <Button
-                  variant="contained"
-                  color={selectedProduct ? "error" : "primary"}
-                  startIcon={
-                    selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />
-                  }
-                  onClick={() => handleAddOrRemove(currentVariant)}
-                  disabled={isDisabled}
-                  fullWidth
-                  size="medium"
-                  sx={{
-                    textTransform: "none",
-                    borderRadius: 2,
-                    fontWeight: 600,
-                    py: 1,
-                    fontSize: '0.85rem',
-                    boxShadow: 2,
-                    '&:hover': {
-                      boxShadow: 4,
-                      transform: 'translateY(-1px)',
-                    },
-                    '&:disabled': {
-                      backgroundColor: 'action.disabledBackground',
-                      color: 'action.disabled',
-                    },
-                    transition: 'all 0.2s ease-in-out',
-                  }}
-                >
-                  {selectedProduct ? "Remove from Cart" : "Add to Cart"}
-                </Button>
-              </span>
-            </Tooltip>
-          )}
+          {/* Action Button */}
+          <Tooltip title={selectedProduct ? "Remove from cart" : "Add to cart"}>
+            <span>
+              <Button
+                variant="contained"
+                color={selectedProduct ? "error" : "primary"}
+                startIcon={
+                  selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />
+                }
+                onClick={() => handleAddOrRemove(currentVariant)}
+                disabled={isDisabled}
+                fullWidth
+                size="medium"
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                  fontWeight: 600,
+                  py: 1,
+                  fontSize: '0.85rem',
+                  boxShadow: 2,
+                  '&:hover': {
+                    boxShadow: 4,
+                    transform: 'translateY(-1px)',
+                  },
+                  '&:disabled': {
+                    backgroundColor: 'action.disabledBackground',
+                    color: 'action.disabled',
+                  },
+                  transition: 'all 0.2s ease-in-out',
+                }}
+              >
+                {selectedProduct ? "Remove from Cart" : "Add to Cart"}
+              </Button>
+            </span>
+          </Tooltip>
         </CardContent>
       </Card>
     );
