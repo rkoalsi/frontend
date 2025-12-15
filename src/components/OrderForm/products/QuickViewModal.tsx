@@ -7,13 +7,9 @@ import {
   Box,
   Typography,
   Chip,
-  Grid,
-  Divider,
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  useMediaQuery,
-  useTheme,
 } from "@mui/material";
 import { Close, ExpandMore } from "@mui/icons-material";
 import ImageCarousel from "./ImageCarousel";
@@ -54,8 +50,6 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
   allVariants = [],
   handleImageClick,
 }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [selectedVariantId, setSelectedVariantId] = useState<string>(product?._id || '');
 
   if (!product) return null;
@@ -88,13 +82,15 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
       onClose={onClose}
       maxWidth="lg"
       fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: { xs: 0, md: 3 },
-          m: { xs: 0, md: 2 },
-          maxHeight: { xs: '95vh', md: '90vh' },
-          height: { xs: 'auto', md: 'auto' },
-          width: { xs: '100vw', md: 'auto' },
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: { xs: 0, md: 3 },
+            m: { xs: 0, md: 2 },
+            maxHeight: { xs: '95vh', md: '90vh' },
+            height: { xs: 'auto', md: 'auto' },
+            width: { xs: '100vw', md: 'auto' },
+          },
         },
       }}
     >
@@ -120,9 +116,9 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
         >
           <Close />
         </IconButton>
-        <Grid container spacing={0}>
+        <Box>
           {/* Image Section */}
-          <Grid item xs={12} sx={{ position: 'relative', display: 'flex', justifyContent: { xs: 'center', md: 'flex-end' }, p: { xs: 0, md: 3 } }}>
+          <Box sx={{ position: 'relative', display: 'flex', justifyContent: { xs: 'center', md: 'flex-end' }, p: { xs: 0, md: 3 } }}>
             <Box
               sx={{
                 position: 'relative',
@@ -168,10 +164,10 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                 />
               </Box>
             </Box>
-          </Grid>
+          </Box>
 
           {/* Details Section */}
-          <Grid item xs={12}>
+          <Box>
             <Box sx={{
               px: { xs: 2, sm: 2.5, md: 3 },
               pb: { xs: 2, md: 3 },
@@ -316,34 +312,34 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                 </Box>
 
                 {/* Product Details */}
-                <Grid container spacing={{ xs: 1.5, md: 2.5 }}>
-                  <Grid item xs={6} md={4}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1.5, md: 2.5 } }}>
+                  <Box sx={{ flex: { xs: '0 0 calc(50% - 12px)', md: '0 0 calc(33.333% - 20px)' } }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                       SKU
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '0.875rem', mt: 0.5 }}>
                       {currentProduct.cf_sku_code || '-'}
                     </Typography>
-                  </Grid>
-                  <Grid item xs={6} md={4}>
+                  </Box>
+                  <Box sx={{ flex: { xs: '0 0 calc(50% - 12px)', md: '0 0 calc(33.333% - 20px)' } }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                       UPC/EAN
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '0.875rem', mt: 0.5 }}>
                       {currentProduct.upc_code || '-'}
                     </Typography>
-                  </Grid>
+                  </Box>
                   {currentProduct.sub_category && (
-                    <Grid item xs={12} md={4}>
+                    <Box sx={{ flex: { xs: '0 0 100%', md: '0 0 calc(33.333% - 20px)' } }}>
                       <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                         Sub-Category
                       </Typography>
                       <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem', mt: 0.5 }}>
                         {currentProduct.sub_category}
                       </Typography>
-                    </Grid>
+                    </Box>
                   )}
-                </Grid>
+                </Box>
               </Box>
 
               {/* Dimensions */}
@@ -363,44 +359,44 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                       </Typography>
                     </AccordionSummary>
                     <AccordionDetails sx={{ pt: 0 }}>
-                      <Grid container spacing={1.5}>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
                         {currentProduct.dimensions.length !== undefined && (
-                          <Grid item xs={4}>
+                          <Box sx={{ flex: '0 0 calc(33.333% - 12px)' }}>
                             <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                               Length
                             </Typography>
                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
                               {currentProduct.dimensions.length} cm
                             </Typography>
-                          </Grid>
+                          </Box>
                         )}
                         {currentProduct.dimensions.breadth !== undefined && (
-                          <Grid item xs={4}>
+                          <Box sx={{ flex: '0 0 calc(33.333% - 12px)' }}>
                             <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                               Breadth
                             </Typography>
                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
                               {currentProduct.dimensions.breadth} cm
                             </Typography>
-                          </Grid>
+                          </Box>
                         )}
                         {currentProduct.dimensions.height !== undefined && (
-                          <Grid item xs={4}>
+                          <Box sx={{ flex: '0 0 calc(33.333% - 12px)' }}>
                             <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                               Height
                             </Typography>
                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
                               {currentProduct.dimensions.height} cm
                             </Typography>
-                          </Grid>
+                          </Box>
                         )}
-                      </Grid>
+                      </Box>
                     </AccordionDetails>
                   </Accordion>
                 )}
             </Box>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </DialogContent>
     </Dialog>
   );

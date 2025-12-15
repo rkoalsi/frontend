@@ -31,7 +31,7 @@ import Address from '../../../src/components/OrderForm/SelectAddress';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { ContentCopy, Sort } from '@mui/icons-material';
+import { ContentCopy } from '@mui/icons-material';
 import useDebounce from '../../../src/util/useDebounce';
 import AuthContext from '../../../src/components/Auth';
 import SheetsDisplay from '../../../src/components/OrderForm/SheetDisplay';
@@ -589,9 +589,17 @@ const NewOrder: React.FC = () => {
           },
         }
       );
-      const { google_sheet_url = '' } = data;
+      const { google_sheet_url = '', cart_products_added = 0 } = data;
       setLink(google_sheet_url);
-      toast.success('Sheet Successfully Created');
+
+      // Display success message based on whether cart products were added
+      if (cart_products_added > 0) {
+        toast.success(
+          `Sheet Successfully Created with ${cart_products_added} product${cart_products_added > 1 ? 's' : ''} from cart`
+        );
+      } else {
+        toast.success('Sheet Successfully Created');
+      }
     } catch (error) {
       console.error(error);
       toast.error('Error setting report. Try again Later');
