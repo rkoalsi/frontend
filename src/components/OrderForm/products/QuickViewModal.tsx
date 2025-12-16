@@ -87,8 +87,8 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
           sx: {
             borderRadius: { xs: 0, md: 3 },
             m: { xs: 0, md: 2 },
-            maxHeight: { xs: '95vh', md: '90vh' },
-            height: { xs: 'auto', md: 'auto' },
+            maxHeight: { xs: '60vh', md: '90vh' },
+            height: { xs: '100vh', md: 'auto' },
             width: { xs: '100vw', md: '85%' },
             maxWidth: { xs: '100vw', md: '1000px' },
           },
@@ -121,20 +121,22 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
           sx={{
             display: { xs: 'flex', md: 'none' },
             position: 'sticky',
-            top: 8,
-            right: 8,
+            top: 4,
+            right: 4,
             zIndex: 10,
             bgcolor: 'rgba(255, 255, 255, 0.95)',
             boxShadow: 2,
             ml: 'auto',
-            mr: 1,
-            mt: 1,
+            mr: 0.5,
+            mt: 0.5,
+            width: 36,
+            height: 36,
             '&:hover': {
               bgcolor: 'white',
             },
           }}
         >
-          <Close />
+          <Close fontSize="small" />
         </IconButton>
 
         {/* Main Content - Side by side on desktop, stacked on mobile */}
@@ -158,9 +160,8 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                 position: 'relative',
                 bgcolor: 'grey.50',
                 width: { xs: '100%', md: '100%' },
-                height: { xs: 'auto', md: '100%' },
+                height: { xs: '240px', sm: '280px', md: '100%' },
                 maxHeight: { md: '500px' },
-                aspectRatio: { xs: '1/1', md: 'auto' },
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -177,11 +178,12 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                   size="small"
                   sx={{
                     position: 'absolute',
-                    top: 12,
-                    right: 12,
+                    top: { xs: 8, md: 12 },
+                    right: { xs: 8, md: 12 },
                     zIndex: 2,
                     fontWeight: 800,
-                    fontSize: '0.7rem',
+                    fontSize: { xs: '0.6rem', md: '0.7rem' },
+                    height: { xs: 20, md: 24 },
                     background: 'linear-gradient(135deg, #3F51B5 0%, #2196F3 100%)',
                     color: 'white',
                     letterSpacing: '0.8px',
@@ -208,9 +210,9 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
             flexDirection: 'column',
           }}>
             <Box sx={{
-              px: { xs: 2, sm: 2.5, md: 3 },
-              pb: { xs: 2, md: 3 },
-              pt: { xs: 1.5, md: 3 },
+              px: { xs: 1.5, sm: 2, md: 3 },
+              pb: { xs: 1.5, sm: 2, md: 3 },
+              pt: { xs: 1, sm: 1.5, md: 3 },
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'flex-start',
@@ -221,8 +223,8 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                 variant="h5"
                 sx={{
                   fontWeight: 700,
-                  mb: { xs: 1.5, md: 2 },
-                  fontSize: { xs: '1rem', md: '1.25rem' },
+                  mb: { xs: 1, sm: 1.5, md: 2 },
+                  fontSize: { xs: '0.9rem', sm: '1rem', md: '1.25rem' },
                   color: currentProduct.new ? 'primary.dark' : 'text.primary',
                   lineHeight: 1.3,
                 }}
@@ -231,13 +233,13 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
               </Typography>
 
               {/* Brand & Category */}
-              <Box sx={{ display: 'flex', gap: 1, mb: { xs: 2, md: 2.5 }, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+              <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 0.75, md: 1 }, mb: { xs: 1, sm: 1.5, md: 2.5 }, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
                 {currentProduct.brand && (
                   <Chip
                     label={currentProduct.brand}
                     sx={{
-                      height: 28,
-                      fontSize: '0.75rem',
+                      height: { xs: 22, sm: 24, md: 28 },
+                      fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
                       fontWeight: 600,
                       bgcolor: 'grey.100',
                       color: 'text.secondary',
@@ -248,8 +250,8 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                   <Chip
                     label={currentProduct.category}
                     sx={{
-                      height: 28,
-                      fontSize: '0.75rem',
+                      height: { xs: 22, sm: 24, md: 28 },
+                      fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
                       fontWeight: 600,
                       bgcolor: 'primary.50',
                       color: 'primary.dark',
@@ -260,8 +262,8 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                   <Chip
                     label={currentProduct.series}
                     sx={{
-                      height: 28,
-                      fontSize: '0.75rem',
+                      height: { xs: 22, sm: 24, md: 28 },
+                      fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
                       fontWeight: 600,
                       bgcolor: 'secondary.50',
                       color: 'secondary.dark',
@@ -272,13 +274,13 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
               {/* Variants Selection */}
               {variants.length > 0 && (
-                <Box sx={{ mb: { xs: 2, md: 2.5 } }}>
+                <Box sx={{ mb: { xs: 1, sm: 1.5, md: 2.5 }, width: '100%' }}>
                   <Typography
                     variant="subtitle2"
                     sx={{
                       fontWeight: 700,
-                      mb: { xs: 1, md: 1.5 },
-                      fontSize: { xs: '0.75rem', md: '0.8rem' },
+                      mb: { xs: 0.75, sm: 1, md: 1.5 },
+                      fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' },
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px',
                       color: 'text.secondary',
@@ -286,7 +288,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                   >
                     Select Size
                   </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'flex-start' }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 0.5, sm: 0.75, md: 1 }, justifyContent: 'flex-start' }}>
                     {variants.map(([sizeLabel, variantProduct]) => (
                       <Chip
                         key={variantProduct._id}
@@ -295,12 +297,12 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                         color={selectedVariantId === variantProduct._id ? "primary" : "default"}
                         variant={selectedVariantId === variantProduct._id ? "filled" : "outlined"}
                         sx={{
-                          height: 36,
-                          fontSize: '0.875rem',
+                          height: { xs: 28, sm: 32, md: 36 },
+                          fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' },
                           fontWeight: 600,
                           cursor: 'pointer',
                           transition: 'all 0.2s ease',
-                          minWidth: 60,
+                          minWidth: { xs: 50, sm: 55, md: 60 },
                           '&:hover': {
                             transform: 'translateY(-2px)',
                             boxShadow: 2,
@@ -313,16 +315,16 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
               )}
 
               {/* Price & Product Details Combined */}
-              <Box sx={{ mb: { xs: 2, md: 2.5 } }}>
+              <Box sx={{ mb: { xs: 1, sm: 1.5, md: 2.5 }, width: '100%' }}>
                 {/* Price Section */}
-                <Box sx={{ mb: { xs: 1.5, md: 2 } }}>
+                <Box sx={{ mb: { xs: 1, sm: 1.5, md: 2 } }}>
                   <Typography
                     variant="subtitle2"
                     color="text.secondary"
                     sx={{
-                      fontSize: { xs: '0.75rem', md: '0.8rem' },
+                      fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.8rem' },
                       fontWeight: 600,
-                      mb: 0.5,
+                      mb: { xs: 0.25, sm: 0.5 },
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px',
                     }}
@@ -333,7 +335,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                     variant="h4"
                     sx={{
                       fontWeight: 800,
-                      fontSize: { xs: '1.25rem', md: '1.75rem' },
+                      fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.75rem' },
                       fontFamily: 'system-ui',
                       color: 'primary.main',
                       letterSpacing: '-0.5px',
@@ -344,36 +346,36 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                   <Typography
                     variant="caption"
                     color="text.secondary"
-                    sx={{ fontSize: { xs: '0.65rem', md: '0.7rem' }, mt: 0.5, display: 'block', mb: { xs: 1.5, md: 2 } }}
+                    sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }, mt: { xs: 0.25, sm: 0.5 }, display: 'block', mb: { xs: 1, sm: 1.5, md: 2 } }}
                   >
                     GST: {currentProduct?.item_tax_preferences[currentProduct?.item_tax_preferences.length - 1].tax_percentage}%
                   </Typography>
                 </Box>
 
                 {/* Product Details */}
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1.5, md: 2.5 } }}>
-                  <Box sx={{ flex: { xs: '0 0 calc(50% - 12px)', md: '0 0 calc(33.333% - 20px)' } }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 1.5, md: 2.5 } }}>
+                  <Box sx={{ flex: { xs: '0 0 calc(50% - 8px)', sm: '0 0 calc(50% - 12px)', md: '0 0 calc(33.333% - 20px)' } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                       SKU
                     </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '0.875rem', mt: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace', fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }, mt: { xs: 0.25, sm: 0.5 } }}>
                       {currentProduct.cf_sku_code || '-'}
                     </Typography>
                   </Box>
-                  <Box sx={{ flex: { xs: '0 0 calc(50% - 12px)', md: '0 0 calc(33.333% - 20px)' } }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                  <Box sx={{ flex: { xs: '0 0 calc(50% - 8px)', sm: '0 0 calc(50% - 12px)', md: '0 0 calc(33.333% - 20px)' } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                       UPC/EAN
                     </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '0.875rem', mt: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace', fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }, mt: { xs: 0.25, sm: 0.5 } }}>
                       {currentProduct.upc_code || '-'}
                     </Typography>
                   </Box>
                   {currentProduct.sub_category && (
                     <Box sx={{ flex: { xs: '0 0 100%', md: '0 0 calc(33.333% - 20px)' } }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                         Sub-Category
                       </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem', mt: 0.5 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }, mt: { xs: 0.25, sm: 0.5 } }}>
                         {currentProduct.sub_category}
                       </Typography>
                     </Box>
@@ -392,39 +394,46 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                       '&:before': { display: 'none' },
                     }}
                   >
-                    <AccordionSummary expandIcon={<ExpandMore />} sx={{ minHeight: 40, '&.Mui-expanded': { minHeight: 40 } }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                    <AccordionSummary
+                      expandIcon={<ExpandMore fontSize="small" />}
+                      sx={{
+                        minHeight: { xs: 36, sm: 40 },
+                        '&.Mui-expanded': { minHeight: { xs: 36, sm: 40 } },
+                        py: { xs: 0.5, sm: 1 }
+                      }}
+                    >
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' } }}>
                         Dimensions
                       </Typography>
                     </AccordionSummary>
-                    <AccordionDetails sx={{ pt: 0 }}>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+                    <AccordionDetails sx={{ pt: 0, pb: { xs: 1.5, sm: 2 } }}>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 1.5 } }}>
                         {currentProduct.dimensions.length !== undefined && (
-                          <Box sx={{ flex: '0 0 calc(33.333% - 12px)' }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                          <Box sx={{ flex: { xs: '0 0 calc(33.333% - 8px)', sm: '0 0 calc(33.333% - 12px)' } }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' } }}>
                               Length
                             </Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }, mt: { xs: 0.25, sm: 0.5 } }}>
                               {currentProduct.dimensions.length} cm
                             </Typography>
                           </Box>
                         )}
                         {currentProduct.dimensions.breadth !== undefined && (
-                          <Box sx={{ flex: '0 0 calc(33.333% - 12px)' }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                          <Box sx={{ flex: { xs: '0 0 calc(33.333% - 8px)', sm: '0 0 calc(33.333% - 12px)' } }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' } }}>
                               Breadth
                             </Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }, mt: { xs: 0.25, sm: 0.5 } }}>
                               {currentProduct.dimensions.breadth} cm
                             </Typography>
                           </Box>
                         )}
                         {currentProduct.dimensions.height !== undefined && (
-                          <Box sx={{ flex: '0 0 calc(33.333% - 12px)' }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                          <Box sx={{ flex: { xs: '0 0 calc(33.333% - 8px)', sm: '0 0 calc(33.333% - 12px)' } }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' } }}>
                               Height
                             </Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }, mt: { xs: 0.25, sm: 0.5 } }}>
                               {currentProduct.dimensions.height} cm
                             </Typography>
                           </Box>
