@@ -87,7 +87,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
           sx: {
             borderRadius: { xs: 0, md: 3 },
             m: { xs: 0, md: 2 },
-            maxHeight: { xs: '60vh', md: '90vh' },
+            maxHeight: { xs: '75vh', md: '90vh' },
             height: { xs: '100vh', md: 'auto' },
             width: { xs: '100vw', md: '85%' },
             maxWidth: { xs: '100vw', md: '1000px' },
