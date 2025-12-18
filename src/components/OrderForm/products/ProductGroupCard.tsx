@@ -113,10 +113,11 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
           backgroundColor: "background.paper",
           border: selectedProduct ? '2px solid' : '1px solid',
           borderColor: selectedProduct ? 'primary.main' : 'divider',
-          transition: 'all 0.3s ease-in-out',
+          transition: 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
+          willChange: 'transform',
           '&:hover': {
             boxShadow: 6,
-            transform: 'translateY(-4px)',
+            transform: 'translate3d(0, -4px, 0)',
             borderColor: 'primary.light',
           },
         }}
@@ -338,7 +339,8 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                       sx={{
                         fontWeight: 600,
                         cursor: 'pointer',
-                        transition: 'all 0.2s ease',
+                        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                        willChange: 'transform',
                         fontSize: '0.8rem',
                         height: '28px',
                         minWidth: '44px',
@@ -346,7 +348,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                           px: 1.5,
                         },
                         '&:hover': {
-                          transform: 'translateY(-2px)',
+                          transform: 'translate3d(0, -2px, 0)',
                           boxShadow: 2,
                         },
                       }}
@@ -770,15 +772,16 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                   py: 1,
                   fontSize: '0.85rem',
                   boxShadow: 2,
+                  transition: 'box-shadow 0.15s ease, transform 0.15s ease',
+                  willChange: 'transform',
                   '&:hover': {
                     boxShadow: 4,
-                    transform: 'translateY(-1px)',
+                    transform: 'translate3d(0, -1px, 0)',
                   },
                   '&:disabled': {
                     backgroundColor: 'action.disabledBackground',
                     color: 'action.disabled',
                   },
-                  transition: 'all 0.2s ease-in-out',
                 }}
               >
                 {selectedProduct ? "Remove from Cart" : "Add to Cart"}

@@ -100,6 +100,289 @@ interface ProductsProps {
   setSort: any;
 }
 
+// Memoized desktop product card wrapper to prevent unnecessary re-renders
+const MemoizedDesktopProductCard = memo(({
+  product,
+  selectedProducts,
+  temporaryQuantities,
+  specialMargins,
+  customer,
+  order,
+  getSellingPrice,
+  handleImageClick,
+  handleQuantityChange,
+  handleRemoveProduct,
+  handleAddProducts,
+  isShared
+}: any) => {
+  const productId = product._id;
+  const selectedProduct: any = selectedProducts.find((p: any) => p._id === productId);
+  const quantity: any = selectedProduct?.quantity || temporaryQuantities[productId] || "";
+  const sellingPrice = getSellingPrice(product);
+  const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
+  const isQuantityExceedingStock = quantity > product.stock;
+  const isDisabled =
+    order?.status?.toLowerCase().includes("accepted") ||
+    order?.status?.toLowerCase().includes("declined");
+
+  return (
+    <Box key={productId}>
+      <Card
+        sx={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          borderLeft: selectedProduct ? '4px solid' : 'none',
+          borderLeftColor: selectedProduct ? 'primary.main' : 'transparent',
+          transition: 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
+          willChange: 'transform',
+          '&:hover': {
+            boxShadow: 4,
+            transform: 'translate3d(0, -4px, 0)',
+          },
+        }}
+      >
+        <Box sx={{ p: 2, position: 'relative' }}>
+          {product.new && (
+            <Chip
+              label="New Arrivals"
+              size="small"
+              sx={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                zIndex: 1,
+                fontFamily: 'Poppins, sans-serif',
+                fontWeight: 700,
+                fontSize: '0.75rem',
+                backgroundColor: 'white',
+                color: 'primary.main',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                '&:hover': {
+                  backgroundColor: 'primary.light',
+                  color: 'white',
+                },
+              }}
+            />
+          )}
+          <Box
+            sx={{
+              width: '100%',
+              height: 200,
+              position: 'relative',
+              mb: 2,
+              borderRadius: 2,
+              overflow: 'hidden',
+              border: '1px solid',
+              borderColor: 'divider',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ImageCarousel
+              product={product}
+              handleImageClick={handleImageClick}
+            />
+          </Box>
+
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 600,
+              mb: 2,
+              minHeight: 64,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              lineHeight: 1.3,
+            }}
+          >
+            {product.name}
+          </Typography>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Brand:
+              </Typography>
+              <Typography variant="body2" fontWeight={500}>
+                {product.brand}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Category:
+              </Typography>
+              <Typography variant="body2" fontWeight={500}>
+                {product.category || '-'}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Sub-Category:
+              </Typography>
+              <Typography variant="body2" fontWeight={500}>
+                {product.sub_category || '-'}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Series:
+              </Typography>
+              <Typography variant="body2" fontWeight={500}>
+                {product.series || '-'}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                SKU:
+              </Typography>
+              <Typography variant="body2" fontWeight={500}>
+                {product.cf_sku_code || '-'}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                MRP:
+              </Typography>
+              <Typography variant="body1" fontWeight={600}>
+                ₹{product.rate?.toLocaleString()}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Stock:
+              </Typography>
+              <Chip
+                label={product.stock}
+                size="small"
+                color={product.stock > 10 ? 'success' : 'error'}
+                variant={product.stock > 10 ? 'filled' : 'outlined'}
+              />
+            </Box>
+
+            {!isShared && (
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Margin:
+                </Typography>
+                <Chip
+                  label={specialMargins[productId] || customer?.cf_margin || "40%"}
+                  size="small"
+                  sx={{
+                    backgroundColor: 'info.light',
+                    color: 'info.contrastText',
+                  }}
+                />
+              </Box>
+            )}
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Selling Price:
+              </Typography>
+              <Typography variant="h6" color="primary.main" fontWeight={700}>
+                ₹{sellingPrice?.toLocaleString()}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                GST:
+              </Typography>
+              <Typography variant="body2" fontWeight={500}>
+                {product.item_tax_preferences[product?.item_tax_preferences.length - 1].tax_percentage}%
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        <Box sx={{ p: 2, pt: 0, mt: 'auto' }}>
+          <Box sx={{ mb: 2 }}>
+            <QuantitySelector
+              quantity={quantity}
+              max={product.stock}
+              onChange={(newQuantity: number) => handleQuantityChange(productId, newQuantity)}
+              disabled={isDisabled}
+            />
+            {isQuantityExceedingStock && (
+              <Alert severity="error" sx={{ mt: 1, py: 0 }}>
+                Exceeds stock!
+              </Alert>
+            )}
+          </Box>
+
+          {selectedProduct && (
+            <Box
+              sx={{
+                mb: 2,
+                p: 1.5,
+                borderRadius: 1,
+                textAlign: 'center',
+              }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                Total
+              </Typography>
+              <Typography variant="h6" color="success.main" fontWeight={700}>
+                ₹{itemTotal?.toLocaleString()}
+              </Typography>
+            </Box>
+          )}
+
+          <Button
+            fullWidth
+            variant={selectedProduct ? "outlined" : "contained"}
+            color={selectedProduct ? "error" : "primary"}
+            disabled={isDisabled}
+            onClick={() => {
+              if (selectedProduct) {
+                handleRemoveProduct(productId);
+              } else {
+                handleAddProducts(product);
+              }
+            }}
+            startIcon={selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+              py: 1.5,
+              transition: 'box-shadow 0.15s ease, transform 0.15s ease',
+              willChange: 'transform',
+              '&:hover': {
+                transform: 'translate3d(0, -1px, 0)',
+              },
+            }}
+          >
+            {selectedProduct ? "Remove from Cart" : "Add to Cart"}
+          </Button>
+        </Box>
+      </Card>
+    </Box>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison function for better memoization
+  return (
+    prevProps.product._id === nextProps.product._id &&
+    prevProps.selectedProducts.some((p: any) => p._id === prevProps.product._id) ===
+      nextProps.selectedProducts.some((p: any) => p._id === nextProps.product._id) &&
+    prevProps.temporaryQuantities[prevProps.product._id] === nextProps.temporaryQuantities[nextProps.product._id] &&
+    prevProps.specialMargins[prevProps.product._id] === nextProps.specialMargins[nextProps.product._id] &&
+    prevProps.order?.status === nextProps.order?.status
+  );
+});
+
 const Products: React.FC<ProductsProps> = ({
   label = "Search",
   selectedProducts = [],
@@ -666,7 +949,7 @@ const Products: React.FC<ProductsProps> = ({
           },
         ];
 
-        // Use startTransition to mark this as a non-urgent update
+        // Batch all state updates together to prevent multiple re-renders
         startTransition(() => {
           setSelectedProducts(updatedProducts);
           setTemporaryQuantities((prev) => {
@@ -674,17 +957,16 @@ const Products: React.FC<ProductsProps> = ({
             delete updated[productId];
             return updated;
           });
+          setOptions((prev) => Array.isArray(prev) ? prev.filter((opt) => opt._id !== product._id) : []);
         });
 
-        debouncedSuccess(`Added ${product.name} (x${quantity}) to cart.`);
+        // Show toast after state update to avoid blocking
+        requestAnimationFrame(() => {
+          debouncedSuccess(`Added ${product.name} (x${quantity}) to cart.`);
+        });
       } else {
         debouncedWarn(`${product.name} is already in the cart.`);
       }
-
-      // Update options in a separate transition to avoid blocking
-      startTransition(() => {
-        setOptions((prev) => Array.isArray(prev) ? prev.filter((opt) => opt._id !== product._id) : []);
-      });
     },
     [
       selectedProducts,
@@ -700,9 +982,17 @@ const Products: React.FC<ProductsProps> = ({
     (id: string) => {
       const removedProduct = selectedProducts.find((p) => p._id === id);
       if (!removedProduct) return;
-      setSelectedProducts(selectedProducts.filter((p) => p._id !== id));
-      setOptions((prev) => Array.isArray(prev) ? [...prev, removedProduct] : [removedProduct]);
-      debouncedSuccess(`Removed ${removedProduct.name} from cart`);
+
+      // Batch state updates to prevent multiple re-renders
+      startTransition(() => {
+        setSelectedProducts(selectedProducts.filter((p) => p._id !== id));
+        setOptions((prev) => Array.isArray(prev) ? [...prev, removedProduct] : [removedProduct]);
+      });
+
+      // Show toast after state update to avoid blocking
+      requestAnimationFrame(() => {
+        debouncedSuccess(`Removed ${removedProduct.name} from cart`);
+      });
     },
     [selectedProducts, debouncedSuccess, setSelectedProducts]
   );
@@ -2035,272 +2325,23 @@ const Products: React.FC<ProductsProps> = ({
                   alignItems: 'stretch',
                 }}
               >
-                {displayedProducts.map((product: any) => {
-                  const productId = product._id;
-                  const selectedProduct: any = selectedProducts.find(
-                    (p) => p._id === productId
-                  );
-                  const quantity: any =
-                    selectedProduct?.quantity || temporaryQuantities[productId] || "";
-                  const sellingPrice = getSellingPrice(product);
-                  const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
-                  const isQuantityExceedingStock = quantity > product.stock;
-                  const isDisabled =
-                    order?.status?.toLowerCase().includes("accepted") ||
-                    order?.status?.toLowerCase().includes("declined");
-
-                  return (
-                    <Box key={productId}>
-                      <Card
-                        sx={{
-                          height: '100%',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          borderLeft: selectedProduct ? '4px solid' : 'none',
-                          borderLeftColor: selectedProduct ? 'primary.main' : 'transparent',
-                          transition: 'all 0.2s ease',
-                          '&:hover': {
-                            boxShadow: 4,
-                            transform: 'translateY(-4px)',
-                          },
-                        }}
-                      >
-                        <Box sx={{ p: 2, position: 'relative' }}>
-                          {product.new && (
-                            <Chip
-                              label="New Arrivals"
-                              size="small"
-                              sx={{
-                                position: 'absolute',
-                                top: 8,
-                                right: 8,
-                                zIndex: 1,
-                                fontFamily: 'Poppins, sans-serif',
-                                fontWeight: 700,
-                                fontSize: '0.75rem',
-                                backgroundColor: 'white',
-                                color: 'primary.main',
-                                letterSpacing: '0.5px',
-                                textTransform: 'uppercase',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                                '&:hover': {
-                                  backgroundColor: 'primary.light',
-                                  color: 'white',
-                                },
-                              }}
-                            />
-                          )}
-                          <Box
-                            sx={{
-                              width: '100%',
-                              height: 200,
-                              position: 'relative',
-                              mb: 2,
-                              borderRadius: 2,
-                              overflow: 'hidden',
-                              border: '1px solid',
-                              borderColor: 'divider',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            <ImageCarousel
-                              product={product}
-                              handleImageClick={handleImageClick}
-                            />
-                          </Box>
-
-                          <Typography
-                            variant="h6"
-                            sx={{
-                              fontWeight: 600,
-                              mb: 2,
-                              minHeight: 64,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 3,
-                              WebkitBoxOrient: 'vertical',
-                              lineHeight: 1.3,
-                            }}
-                          >
-                            {product.name}
-                          </Typography>
-
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography variant="body2" color="text.secondary">
-                                Brand:
-                              </Typography>
-                              <Typography variant="body2" fontWeight={500}>
-                                {product.brand}
-                              </Typography>
-                            </Box>
-
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography variant="body2" color="text.secondary">
-                                Category:
-                              </Typography>
-                              <Typography variant="body2" fontWeight={500}>
-                                {product.category || '-'}
-                              </Typography>
-                            </Box>
-
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography variant="body2" color="text.secondary">
-                                Sub-Category:
-                              </Typography>
-                              <Typography variant="body2" fontWeight={500}>
-                                {product.sub_category || '-'}
-                              </Typography>
-                            </Box>
-
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography variant="body2" color="text.secondary">
-                                Series:
-                              </Typography>
-                              <Typography variant="body2" fontWeight={500}>
-                                {product.series || '-'}
-                              </Typography>
-                            </Box>
-
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography variant="body2" color="text.secondary">
-                                SKU:
-                              </Typography>
-                              <Typography variant="body2" fontWeight={500}>
-                                {product.cf_sku_code || '-'}
-                              </Typography>
-                            </Box>
-
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography variant="body2" color="text.secondary">
-                                MRP:
-                              </Typography>
-                              <Typography variant="body1" fontWeight={600}>
-                                ₹{product.rate?.toLocaleString()}
-                              </Typography>
-                            </Box>
-
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography variant="body2" color="text.secondary">
-                                Stock:
-                              </Typography>
-                              <Chip
-                                label={product.stock}
-                                size="small"
-                                color={product.stock > 10 ? 'success' : 'error'}
-                                variant={product.stock > 10 ? 'filled' : 'outlined'}
-                              />
-                            </Box>
-
-                            {!isShared && (
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                  Margin:
-                                </Typography>
-                                <Chip
-                                  label={specialMargins[productId] || customer?.cf_margin || "40%"}
-                                  size="small"
-                                  sx={{
-                                    backgroundColor: 'info.light',
-                                    color: 'info.contrastText',
-                                  }}
-                                />
-                              </Box>
-                            )}
-
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography variant="body2" color="text.secondary">
-                                Selling Price:
-                              </Typography>
-                              <Typography variant="h6" color="primary.main" fontWeight={700}>
-                                ₹{sellingPrice?.toLocaleString()}
-                              </Typography>
-                            </Box>
-
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography variant="body2" color="text.secondary">
-                                GST:
-                              </Typography>
-                              <Typography variant="body2" fontWeight={500}>
-                                {product.item_tax_preferences[product?.item_tax_preferences.length - 1].tax_percentage}%
-                              </Typography>
-                            </Box>
-
-                            {showUPC && (
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                  UPC/EAN:
-                                </Typography>
-                                <Typography variant="body2" fontWeight={500}>
-                                  {product.upc_code || '-'}
-                                </Typography>
-                              </Box>
-                            )}
-                          </Box>
-                        </Box>
-
-                        <Box sx={{ p: 2, pt: 0, mt: 'auto' }}>
-                          <Box sx={{ mb: 2 }}>
-                            <QuantitySelector
-                              quantity={quantity}
-                              max={product.stock}
-                              onChange={(newQuantity) => handleQuantityChange(productId, newQuantity)}
-                              disabled={isDisabled}
-                            />
-                            {isQuantityExceedingStock && (
-                              <Alert severity="error" sx={{ mt: 1, py: 0 }}>
-                                Exceeds stock!
-                              </Alert>
-                            )}
-                          </Box>
-
-                          {selectedProduct && (
-                            <Box
-                              sx={{
-                                mb: 2,
-                                p: 1.5,
-                                borderRadius: 1,
-                                textAlign: 'center',
-                              }}
-                            >
-                              <Typography variant="body2" color="text.secondary">
-                                Total
-                              </Typography>
-                              <Typography variant="h6" color="success.main" fontWeight={700}>
-                                ₹{itemTotal?.toLocaleString()}
-                              </Typography>
-                            </Box>
-                          )}
-
-                          <Button
-                            fullWidth
-                            variant={selectedProduct ? "outlined" : "contained"}
-                            color={selectedProduct ? "error" : "primary"}
-                            disabled={isDisabled}
-                            onClick={() => {
-                              if (selectedProduct) {
-                                handleRemoveProduct(productId);
-                              } else {
-                                handleAddProducts(product);
-                              }
-                            }}
-                            startIcon={selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />}
-                            sx={{
-                              textTransform: 'none',
-                              fontWeight: 600,
-                              py: 1.5,
-                            }}
-                          >
-                            {selectedProduct ? "Remove from Cart" : "Add to Cart"}
-                          </Button>
-                        </Box>
-                      </Card>
-                    </Box>
-                  );
-                })}
+                {displayedProducts.map((product: any) => (
+                  <MemoizedDesktopProductCard
+                    key={product._id}
+                    product={product}
+                    selectedProducts={selectedProducts}
+                    temporaryQuantities={temporaryQuantities}
+                    specialMargins={specialMargins}
+                    customer={customer}
+                    order={order}
+                    getSellingPrice={getSellingPrice}
+                    handleImageClick={handleImageClick}
+                    handleQuantityChange={handleQuantityChange}
+                    handleRemoveProduct={handleRemoveProduct}
+                    handleAddProducts={handleAddProducts}
+                    isShared={isShared}
+                  />
+                ))}
               </Box>
             ) : (
               <Box mt={2}>
@@ -2367,12 +2408,13 @@ const Products: React.FC<ProductsProps> = ({
             '&:hover': {
               backgroundColor: 'primary.dark',
               boxShadow: 8,
-              transform: 'scale(1.1) translateY(-2px)',
+              transform: 'scale3d(1.1, 1.1, 1) translate3d(0, -2px, 0)',
             },
             '&:active': {
-              transform: 'scale(0.95)',
+              transform: 'scale3d(0.95, 0.95, 1)',
             },
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', // Enhanced smooth transition
+            transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
+            willChange: 'transform',
             pointerEvents: 'auto',
           }}
         >
@@ -2391,12 +2433,13 @@ const Products: React.FC<ProductsProps> = ({
             '&:hover': {
               backgroundColor: 'primary.dark',
               boxShadow: 8,
-              transform: 'scale(1.1) translateY(2px)',
+              transform: 'scale3d(1.1, 1.1, 1) translate3d(0, 2px, 0)',
             },
             '&:active': {
-              transform: 'scale(0.95)',
+              transform: 'scale3d(0.95, 0.95, 1)',
             },
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', // Enhanced smooth transition
+            transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
+            willChange: 'transform',
             pointerEvents: 'auto',
           }}
         >
@@ -2420,9 +2463,10 @@ const Products: React.FC<ProductsProps> = ({
           "&:hover": {
             backgroundColor: "background.default",
             boxShadow: 8,
-            transform: "scale(1.1)",
+            transform: "scale3d(1.1, 1.1, 1)",
           },
-          transition: "all 0.2s ease-in-out",
+          transition: "background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease",
+          willChange: 'transform',
           zIndex: 1000,
           pointerEvents: "auto",
         }}
