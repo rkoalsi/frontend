@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useRef,
   memo,
+  startTransition,
 } from "react";
 import axios from "axios";
 import { useProducts, useBrands, useCategories, useAllCategories, useProductCounts } from "../../hooks/useProducts";
@@ -353,7 +354,12 @@ const Products: React.FC<ProductsProps> = ({
           if (!hasMore) setNoMoreProducts((prev) => ({ ...prev, [key]: true }));
         }
       } catch (error) {
-        if (!axios.isCancel(error)) showError("Failed to fetch products.");
+        if (!axios.isCancel(error)) {
+          showError("Failed to fetch products.");
+          // Mark as no more products to prevent infinite retry on error
+          setPaginationState((prev) => ({ ...prev, [key]: { page, hasMore: false } }));
+          setNoMoreProducts((prev) => ({ ...prev, [key]: true }));
+        }
       } finally {
         isFetching.current[key] = false;
         setLoadingMore(false);
@@ -659,17 +665,26 @@ const Products: React.FC<ProductsProps> = ({
             added_by: isShared ? "customer" : "sales_person",
           },
         ];
-        setSelectedProducts(updatedProducts);
-        debouncedSuccess(`Added ${product.name} (x${quantity}) to cart.`);
-        setTemporaryQuantities((prev) => {
-          const updated = { ...prev };
-          delete updated[productId];
-          return updated;
+
+        // Use startTransition to mark this as a non-urgent update
+        startTransition(() => {
+          setSelectedProducts(updatedProducts);
+          setTemporaryQuantities((prev) => {
+            const updated = { ...prev };
+            delete updated[productId];
+            return updated;
+          });
         });
+
+        debouncedSuccess(`Added ${product.name} (x${quantity}) to cart.`);
       } else {
         debouncedWarn(`${product.name} is already in the cart.`);
       }
-      setOptions((prev) => Array.isArray(prev) ? prev.filter((opt) => opt._id !== product._id) : []);
+
+      // Update options in a separate transition to avoid blocking
+      startTransition(() => {
+        setOptions((prev) => Array.isArray(prev) ? prev.filter((opt) => opt._id !== product._id) : []);
+      });
     },
     [
       selectedProducts,
@@ -703,7 +718,12 @@ const Products: React.FC<ProductsProps> = ({
         const updated = selectedProducts.map((p) =>
           p._id === id ? { ...p, quantity: sanitized } : p
         );
-        setSelectedProducts(updated);
+
+        // Use startTransition for non-blocking update
+        startTransition(() => {
+          setSelectedProducts(updated);
+        });
+
         debouncedSuccess(
           `Updated ${productInCart.name} to quantity ${sanitized}`
         );
@@ -754,7 +774,12 @@ const Products: React.FC<ProductsProps> = ({
               added_by: isShared ? "customer" : "sales_person",
             },
           ];
-          setSelectedProducts(updated);
+
+          // Use startTransition for non-blocking update
+          startTransition(() => {
+            setSelectedProducts(updated);
+          });
+
           debouncedSuccess(`Added ${product.name} (x${sanitized}) to cart.`);
         }
       }
@@ -858,29 +883,61 @@ const Products: React.FC<ProductsProps> = ({
     setCataloguePage(parseInt(value));
   };
 
+  // ------------------ productsKey must be defined before loadMore ------------------
+  const productsKey = useMemo(() => {
+    if (searchTerm.trim() !== "") {
+      return "search";
+    }
+    if (sortOrder === "catalogue") {
+      return activeBrand ? `${activeBrand}-catalogue` : "catalogue";
+    }
+    return groupByCategory && activeCategory
+      ? `all-${activeCategory}`
+      : activeBrand && activeCategory
+        ? `${activeBrand}-${activeCategory}`
+        : "all";
+  }, [searchTerm, activeBrand, activeCategory, groupByCategory, sortOrder]);
+
   // ------------------ Infinite Scroll with Intersection Observer (Performance Optimized) ------------------
   const loadMore = useCallback(() => {
-    const key = groupByCategory
-      ? `all-${activeCategory}`
-      : `${activeBrand}-${activeCategory}`;
+    // Use productsKey to ensure consistency with intersection observer
+    // Check if already fetching for this key
+    if (isFetching.current[productsKey]) {
+      return;
+    }
 
-    if (!loadingMore && paginationState[key]?.hasMore) {
-      const nextPage = (paginationState[key]?.page || 1) + 1;
+    if (!loadingMore && paginationState[productsKey]?.hasMore && !noMoreProducts[productsKey]) {
+      const nextPage = (paginationState[productsKey]?.page || 1) + 1;
+
+      // Determine brand and category based on current state
+      let brandParam: string | undefined = groupByCategory ? undefined : activeBrand;
+      let categoryParam: string | undefined = activeCategory;
+      let searchParam: string | undefined = searchTerm.trim() !== "" ? searchTerm : undefined;
+
+      // In catalogue mode, category should be undefined
+      if (sortOrder === "catalogue") {
+        categoryParam = undefined;
+      }
+
       fetchProducts(
-        key,
-        groupByCategory ? undefined : activeBrand,
-        activeCategory,
-        undefined,
+        productsKey,
+        brandParam,
+        categoryParam,
+        searchParam,
         nextPage
       );
     }
   }, [
+    productsKey,
     activeBrand,
     activeCategory,
     groupByCategory,
     loadingMore,
     paginationState,
+    noMoreProducts,
     fetchProducts,
+    searchTerm,
+    sortOrder,
   ]);
 
   useEffect(() => {
@@ -932,20 +989,6 @@ const Products: React.FC<ProductsProps> = ({
       );
     }
   }, [cataloguePage, sortOrder, activeBrand, searchTerm, fetchProducts]);
-
-  const productsKey = useMemo(() => {
-    if (searchTerm.trim() !== "") {
-      return "search";
-    }
-    if (sortOrder === "catalogue") {
-      return activeBrand ? `${activeBrand}-catalogue` : "catalogue";
-    }
-    return groupByCategory && activeCategory
-      ? `all-${activeCategory}`
-      : activeBrand && activeCategory
-        ? `${activeBrand}-${activeCategory}`
-        : "all";
-  }, [searchTerm, activeBrand, activeCategory, groupByCategory, sortOrder]);
 
   // Get items data (ordered mix of groups and products) from backend
   const itemsData = useMemo(() => {
