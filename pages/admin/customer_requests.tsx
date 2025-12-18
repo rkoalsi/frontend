@@ -135,6 +135,9 @@ const CustomerRequests = () => {
   const [editFormData, setEditFormData] = useState<Partial<CustomerRequest>>({});
   const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<'pending' | 'rejected'>('pending');
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateCustomerInfo, setDuplicateCustomerInfo] = useState<{ contact_name: string; contact_id: string } | null>(null);
+  const [pendingApprovalRequestId, setPendingApprovalRequestId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRequests();
@@ -273,10 +276,10 @@ const CustomerRequests = () => {
     }
   };
 
-  const handleUpdateStatus = async (requestId: string, status: 'approved' | 'rejected') => {
+  const handleUpdateStatus = async (requestId: string, status: 'approved' | 'rejected', forceCreate: boolean = false) => {
     try {
       await axiosInstance.put(`/customer_creation_requests/${requestId}/status`, null, {
-        params: { status },
+        params: { status, force_create: forceCreate },
       });
       toast.success(`Request ${status} successfully`);
       fetchRequests();
@@ -284,12 +287,28 @@ const CustomerRequests = () => {
     } catch (error: any) {
       console.error('Error updating request status:', error);
 
+      // Check if it's a duplicate customer error (409 status code)
+      if (error.response?.status === 409 && error.response?.data?.detail?.error === 'duplicate_customer') {
+        const existingCustomer = error.response.data.detail.existing_customer;
+        setDuplicateCustomerInfo({
+          contact_name: existingCustomer.contact_name,
+          contact_id: existingCustomer.contact_id,
+        });
+        setPendingApprovalRequestId(requestId);
+        setDuplicateDialogOpen(true);
+        return;
+      }
+
       // Extract detailed error message from response
       let errorMessage = 'Failed to update request status';
 
       if (error.response?.data?.detail) {
         // FastAPI returns error details in the 'detail' field
-        errorMessage = error.response.data.detail;
+        if (typeof error.response.data.detail === 'string') {
+          errorMessage = error.response.data.detail;
+        } else if (error.response.data.detail.message) {
+          errorMessage = error.response.data.detail.message;
+        }
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {
@@ -301,6 +320,19 @@ const CustomerRequests = () => {
         autoClose: 10000, // Show for 10 seconds to give user time to read
         style: { whiteSpace: 'pre-wrap' } // Preserve line breaks
       });
+    }
+  };
+
+  const handleCloseDuplicateDialog = () => {
+    setDuplicateDialogOpen(false);
+    setDuplicateCustomerInfo(null);
+    setPendingApprovalRequestId(null);
+  };
+
+  const handleConfirmDuplicateCreation = async () => {
+    if (pendingApprovalRequestId) {
+      await handleUpdateStatus(pendingApprovalRequestId, 'approved', true);
+      handleCloseDuplicateDialog();
     }
   };
 
@@ -1037,6 +1069,39 @@ const CustomerRequests = () => {
             color="primary"
           >
             Confirm Change
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Duplicate Customer Confirmation Dialog */}
+      <Dialog
+        open={duplicateDialogOpen}
+        onClose={handleCloseDuplicateDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ color: 'warning.main' }}>Duplicate Customer Found</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            A customer with the name <strong>{duplicateCustomerInfo?.contact_name}</strong> already exists in the system.
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Contact ID: {duplicateCustomerInfo?.contact_id}
+          </Typography>
+          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+            Do you want to continue and create this customer anyway?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDuplicateDialog} variant="outlined">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDuplicateCreation}
+            variant="contained"
+            color="warning"
+          >
+            Continue Anyway
           </Button>
         </DialogActions>
       </Dialog>
