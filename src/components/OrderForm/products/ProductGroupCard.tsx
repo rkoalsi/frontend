@@ -205,7 +205,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                   let sizeLabel = '';
 
                   // First, check for (SIZE/measurement) format like (XXL/62CM), (M/32CM), （XL/48CM）
-                  const sizeMeasurementMatch = product.name.match(/[（(]\s*(XXXXL|XXXL|XXL|XL|XXS|XS|S|M|L)\s*\/\s*\d+\s*[Cc]?[Mm]\s*[)）]/i);
+                  const sizeMeasurementMatch = product.name.match(/[（(]\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|S|M|L)\s*\/\s*\d+\s*[Cc]?[Mm]\s*[)）]/i);
                   if (sizeMeasurementMatch) {
                     sizeLabel = sizeMeasurementMatch[1].toUpperCase();
                   } else if (product.name.match(/#(\d+)/)) {
@@ -246,14 +246,14 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                       // If no full word size found, try abbreviated sizes
                       if (!sizeLabel) {
                         const patterns = [
-                          /-\s*(XXXXL|XXXL|XXL|XL|XXS|XS|L|M|S)$/i,    // "Product - XL" or "Product-XL" at end (check longer sizes first)
-                          /\s+(XXXXL|XXXL|XXL|XL|XXS|XS|L|M|S)$/i,      // "Product XL" at end (check longer sizes first)
-                          /\s+(XXXXL|XXXL|XXL|XL|XXS|XS|L|M|S)-[A-Za-z]/i,  // "Product L-orange" (size before color with dash)
-                          /\s+(XXXXL|XXXL|XXL|XL|XXS|XS|L|M|S)\s+-/i,  // "Product XS - color"
-                          /-\s*(XXXXL|XXXL|XXL|XL|XXS|XS|L|M|S)\s+-/i,  // "Product - XS - color"
-                          /-\s*(XXXXL|XXXL|XXL|XL|XXS|XS|L|M|S)\s+/i,   // "Product - XS color"
-                          /-(XXXXL|XXXL|XXL|XL|XXS|XS|L|M|S)-/i,        // "Product-XS-color"
-                          /-(XXXXL|XXXL|XXL|XL|XXS|XS|L|M|S)\s/i,       // "Product-XS color"
+                          /-\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)$/i,    // "Product - XL" or "Product-XL" at end (check longer sizes first)
+                          /\s+(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)$/i,      // "Product XL" at end (check longer sizes first)
+                          /\s+(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)-[A-Za-z]/i,  // "Product L-orange" (size before color with dash)
+                          /\s+(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s+-/i,  // "Product XS - color"
+                          /-\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s+-/i,  // "Product - XS - color"
+                          /-\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s+/i,   // "Product - XS color"
+                          /-(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)-/i,        // "Product-XS-color"
+                          /-(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s/i,       // "Product-XS color"
                           /\(([SMLX]{1,4})\)$/i,                  // "Product (M)" or "Product (L)" or "Product (XXXXL)"
                         ];
 
@@ -311,7 +311,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                     return -1; // Letter sizes come before number/measurement sizes
                   } else {
                     // Define letter size order
-                    const sizeOrder = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
+                    const sizeOrder = ['XXXXS', 'XXXS', 'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
                     const indexA = sizeOrder.indexOf(a.sizeLabel);
                     const indexB = sizeOrder.indexOf(b.sizeLabel);
                     return indexA - indexB;
