@@ -128,7 +128,9 @@ const PastOrders = () => {
     if (!orderToDelete) return;
 
     try {
-      await axios.delete(`${process.env.api_url}/orders/${orderToDelete}`);
+      await axios.delete(`${process.env.api_url}/orders/${orderToDelete}`, {
+        params: { deleted_by: user?.data?._id }
+      });
       toast.success(`Order Deleted Successfully`);
       setDeleteDialogOpen(false);
       setOrderToDelete(null);
