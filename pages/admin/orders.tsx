@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import {
   Typography,
   Box,
@@ -44,10 +44,12 @@ import {
 import axiosInstance from '../../src/util/axios';
 import axios from 'axios';
 import SingleImagePopupDialog from '../../src/components/common/SingleImagePopUp';
+import AuthContext from '../../src/components/Auth';
 
 const Orders = () => {
   const router = useRouter();
   const theme: any = useTheme();
+  const { user }: any = useContext(AuthContext);
   // Orders data
   const [orders, setOrders] = useState([]);
 
@@ -326,7 +328,9 @@ const Orders = () => {
   const handleDelete = async (order: any) => {
     setOrderLoading(true);
     try {
-      const resp = await axiosInstance.delete(`/orders/${order._id}`);
+      const resp = await axiosInstance.delete(`/orders/${order._id}`, {
+        params: { deleted_by: user?.data?._id }
+      });
       console.log(resp.data);
       if (resp.status === 200) {
         toast.success('Order Deleted Successfully');
