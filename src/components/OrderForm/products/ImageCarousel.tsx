@@ -11,10 +11,23 @@ interface Props {
   small?: boolean;
 }
 
+interface MediaItem {
+  type: 'image' | 'video';
+  url: string;
+}
+
 function ImageCarousel(props: Props) {
   const { product, handleImageClick, small = false } = props;
   const images = (product.images && product.images.length > 0) ? product.images : [product.image_url];
-  const hasMultipleImages = images.length > 1;
+  const videos = product.videos && Array.isArray(product.videos) ? product.videos : [];
+
+  // Combine images and videos into a single media array
+  const mediaItems: MediaItem[] = [
+    ...images.map((url: string) => ({ type: 'image' as const, url })),
+    ...videos.map((url: string) => ({ type: 'video' as const, url }))
+  ];
+
+  const hasMultipleImages = mediaItems.length > 1;
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null);
@@ -25,12 +38,12 @@ function ImageCarousel(props: Props) {
 
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+    setCurrentImageIndex((prev) => (prev === 0 ? mediaItems.length - 1 : prev - 1));
   };
 
   const handleNextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+    setCurrentImageIndex((prev) => (prev === mediaItems.length - 1 ? 0 : prev + 1));
   };
 
   const handleDotClick = (index: number) => {
@@ -77,11 +90,11 @@ function ImageCarousel(props: Props) {
 
       if (isLeftSwipe) {
         // Swipe left - go to next image
-        setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+        setCurrentImageIndex((prev) => (prev === mediaItems.length - 1 ? 0 : prev + 1));
       }
       if (isRightSwipe) {
         // Swipe right - go to previous image
-        setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+        setCurrentImageIndex((prev) => (prev === 0 ? mediaItems.length - 1 : prev - 1));
       }
     }
   };
@@ -102,22 +115,39 @@ function ImageCarousel(props: Props) {
       onTouchMove={hasMultipleImages ? onTouchMove : undefined}
       onTouchEnd={hasMultipleImages ? onTouchEnd : undefined}
     >
-      {/* Main Image */}
-      <Box
-        component='img'
-        src={images[currentImageIndex]}
-        alt={`${product.name} - Image ${currentImageIndex + 1}`}
-        sx={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'contain',
-          cursor: 'pointer',
-          transition: 'transform 0.3s ease-in-out',
-          userSelect: 'none',
-          '&:hover': { transform: 'scale(1.05)' },
-        }}
-        onClick={() => handleImageClick(images, currentImageIndex)}
-      />
+      {/* Main Image or Video */}
+      {mediaItems[currentImageIndex]?.type === 'image' ? (
+        <Box
+          component='img'
+          src={mediaItems[currentImageIndex].url}
+          alt={`${product.name} - Image ${currentImageIndex + 1}`}
+          sx={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            cursor: 'pointer',
+            transition: 'transform 0.3s ease-in-out',
+            userSelect: 'none',
+            '&:hover': { transform: 'scale(1.05)' },
+          }}
+          onClick={() => handleImageClick(
+            mediaItems.map(item => ({ src: item.url, type: item.type })),
+            currentImageIndex
+          )}
+        />
+      ) : (
+        <Box
+          component='video'
+          src={mediaItems[currentImageIndex]?.url}
+          controls
+          sx={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            userSelect: 'none',
+          }}
+        />
+      )}
       {/* Navigation Arrows - Only show if multiple images */}
       {hasMultipleImages && (
         <>
@@ -207,7 +237,7 @@ function ImageCarousel(props: Props) {
             zIndex: 2,
           }}
         >
-          {currentImageIndex + 1} / {images.length}
+          {currentImageIndex + 1} / {mediaItems.length}
         </Box>
       )}
     </Box>

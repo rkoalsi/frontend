@@ -166,8 +166,12 @@ const Review: React.FC<Props> = React.memo((props) => {
     [products, setSelectedProducts]
   );
 
-  const handleImageClick = useCallback((srcList: string[], index: number) => {
-    const formattedImages = srcList.map((src) => ({ src }));
+  const handleImageClick = useCallback((srcList: any, index: number) => {
+    // Check if items already have src property (media items with type)
+    // Make sure src is a string, not an object
+    const formattedImages = srcList[0]?.src && typeof srcList[0].src === 'string'
+      ? srcList
+      : srcList.map((src: string) => ({ src }));
     setPopupImageSrc(formattedImages);
     setPopupImageIndex(index);
     setOpenImagePopup(true);

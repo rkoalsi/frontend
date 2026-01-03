@@ -14,8 +14,14 @@ import KeyboardArrowLeft from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRight from '@mui/icons-material/KeyboardArrowRight';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 
+interface MediaSource {
+  src: string;
+  alt?: string;
+  type?: 'image' | 'video';
+}
+
 interface ImageCarouselProps {
-  imageSources: Array<{ src: string; alt?: string }>;
+  imageSources: Array<MediaSource>;
   initialSlide?: number;
   onIndexChange?: (index: number) => void;
   autoPlay?: boolean;
@@ -39,12 +45,23 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   const [activeIndex, setActiveIndex] = useState(initialSlide);
   const [isLoading, setIsLoading] = useState(true);
   const [showControls, setShowControls] = useState(false);
-  const maxSteps = imageSources.length;
+  const maxSteps = imageSources?.length || 0;
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Early return if no images
+  if (!imageSources || imageSources.length === 0) {
+    return null;
+  }
+
   // Update activeIndex if initialSlide prop changes
   useEffect(() => {
     setActiveIndex(initialSlide);
   }, [initialSlide]);
+
+  // Reset loading state when activeIndex changes
+  useEffect(() => {
+    setIsLoading(true);
+  }, [activeIndex]);
 
   // Auto-play functionality
   useEffect(() => {
@@ -159,21 +176,42 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
             />
           )}
 
-          {/* Main Image */}
-          <Box
-            component='img'
-            src={imageSources[activeIndex].src}
-            alt={imageSources[activeIndex].alt || `Image ${activeIndex + 1}`}
-            sx={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain', // Changed from "cover" to "contain"
-              transition: 'opacity 0.3s ease-in-out',
-              opacity: isLoading ? 0 : 1,
-            }}
-            onLoad={() => setIsLoading(false)}
-            onError={() => setIsLoading(false)}
-          />
+          {/* Main Image or Video */}
+          {imageSources[activeIndex] && (
+            <>
+              {(!imageSources[activeIndex].type || imageSources[activeIndex].type === 'image') ? (
+                <Box
+                  component='img'
+                  src={imageSources[activeIndex].src}
+                  alt={imageSources[activeIndex].alt || `Image ${activeIndex + 1}`}
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain', // Changed from "cover" to "contain"
+                    transition: 'opacity 0.3s ease-in-out',
+                    opacity: isLoading ? 0 : 1,
+                  }}
+                  onLoad={() => setIsLoading(false)}
+                  onError={() => setIsLoading(false)}
+                />
+              ) : (
+                <Box
+                  component='video'
+                  src={imageSources[activeIndex].src}
+                  controls
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    transition: 'opacity 0.3s ease-in-out',
+                    opacity: isLoading ? 0 : 1,
+                  }}
+                  onLoadedData={() => setIsLoading(false)}
+                  onError={() => setIsLoading(false)}
+                />
+              )}
+            </>
+          )}
 
           {/* Gradient Overlays for Better Button Visibility */}
           <Box
