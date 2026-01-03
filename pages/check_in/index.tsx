@@ -132,7 +132,7 @@ const Checkin = () => {
   const handleAttendance = async () => {
     setIsLoading(true);
      let cleanPhone;
-    
+
     // Check if phone is already a number
     if (typeof userData.phone === 'number') {
       cleanPhone = userData.phone.toString();
@@ -149,13 +149,55 @@ const Checkin = () => {
         .replace(/\s+/g, '')
         .replace(/[^\d]/g, '');
     }
-    const payload = {
-      phone: cleanPhone,
-      user_id: userData._id,
-      action: checkedIn ? 'checkout' : 'checkin',
+
+    // Get user's location
+    const getLocation = (): Promise<{ latitude: number; longitude: number; accuracy: number } | null> => {
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+          console.warn('Geolocation is not supported by this browser');
+          resolve(null);
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            resolve({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+            });
+          },
+          (error) => {
+            console.error('Location error:', error);
+            toast.warning('Location access denied. Attendance will be recorded without location.');
+            resolve(null);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+          }
+        );
+      });
     };
 
     try {
+      // Get location
+      const location = await getLocation();
+
+      // Build payload with or without location
+      const payload: any = {
+        phone: cleanPhone,
+        user_id: userData._id,
+        action: checkedIn ? 'checkout' : 'checkin',
+      };
+
+      if (location) {
+        payload.latitude = location.latitude;
+        payload.longitude = location.longitude;
+        payload.accuracy = location.accuracy;
+      }
+
       const response = await axios.post(
         `${process.env.api_url}/attendance/check_in`,
         payload
@@ -167,11 +209,12 @@ const Checkin = () => {
           setAnimation(false);
         }, 500);
         await fetchAttendanceData();
-        const { message = '', is_check_in } = response.data;
+        const { message = '', is_check_in, location_recorded } = response.data;
+        const locationStatus = location_recorded ? ' with location' : '';
         toast.success(
           is_check_in
-            ? `${message} Checked-in Successfully`
-            : `${message} Checked-out Successfully`
+            ? `${message} Checked-in Successfully${locationStatus}`
+            : `${message} Checked-out Successfully${locationStatus}`
         );
       } else {
         toast.error('Failed to update attendance');
