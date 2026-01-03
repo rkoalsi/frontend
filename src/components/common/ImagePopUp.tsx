@@ -9,12 +9,19 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '@mui/material/styles';
 import ImageCarousel from './ImageCarousel';
+
+interface MediaSource {
+  src: string;
+  alt?: string;
+  type?: 'image' | 'video';
+}
+
 interface ImagePopupDialogProps {
   open: boolean;
   onClose: () => void;
-  imageSources: Array<{ src: string; alt?: string }>;
+  imageSources: Array<MediaSource>;
   initialSlide?: number;
-  setIndex: (index: number) => void; // Make sure type is specific
+  setIndex: (index: number) => void;
 }
 
 const ImagePopupDialog: React.FC<ImagePopupDialogProps> = ({

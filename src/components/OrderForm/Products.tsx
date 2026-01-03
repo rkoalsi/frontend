@@ -1107,9 +1107,13 @@ const Products: React.FC<ProductsProps> = ({
   const handleCloseConfirmModal = () => {
     setConfirmModalOpen(false);
   };
-  const handleImageClick = useCallback((srcList: string[], index: number) => {
+  const handleImageClick = useCallback((srcList: any, index: number) => {
     if (Array.isArray(srcList)) {
-      const formattedImages = srcList?.map((src) => ({ src }));
+      // Check if items already have src property (media items with type)
+      // Make sure src is a string, not an object
+      const formattedImages = srcList[0]?.src && typeof srcList[0].src === 'string'
+        ? srcList
+        : srcList?.map((src) => ({ src }));
       setPopupImageSrc(formattedImages);
       setPopupImageIndex(index);
       setOpenImagePopup(true);

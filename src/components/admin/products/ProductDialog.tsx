@@ -16,6 +16,8 @@ import {
   IconButton,
 } from '@mui/material';
 import ImageDropzone from '../../common/ImageDropzone';
+import VideoDropzone from '../../common/VideoDropzone';
+import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
@@ -39,6 +41,9 @@ const ProductDialog = ({
   handleImageReorder,
   handleImageDelete,
   handleMakePrimary,
+  handleVideoUpload,
+  handleVideoReorder,
+  handleVideoDelete,
 }: any) => {
   const onDragEnd = (result: any) => {
     // Check if drop was successful
@@ -58,6 +63,17 @@ const ProductDialog = ({
 
     // Call the handler with reordered items
     handleImageReorder(items);
+  };
+
+  const onVideoDragEnd = (result: any) => {
+    if (!result.destination) return;
+    if (result.destination.index === result.source.index) return;
+
+    const items = Array.from(selectedProduct.videos || []);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    handleVideoReorder(items);
   };
 
   return (
@@ -375,6 +391,225 @@ const ProductDialog = ({
                   >
                     Drag images to reorder • Click "Make Primary" to set main
                     image • First image is always primary
+                  </Typography>
+                </Paper>
+
+                {/* Videos Section */}
+                <Paper
+                  elevation={0}
+                  sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2, mt: 2 }}
+                >
+                  <Typography
+                    variant='subtitle2'
+                    color='primary'
+                    gutterBottom
+                    fontWeight={600}
+                  >
+                    Product Videos ({selectedProduct.videos?.length || 0})
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+
+                  {/* Video List */}
+                  {selectedProduct.videos &&
+                  selectedProduct.videos.length > 0 ? (
+                    <DragDropContext onDragEnd={onVideoDragEnd}>
+                      <Droppable droppableId='product-videos' type='video'>
+                        {(provided: any, snapshot: any) => (
+                          <Box
+                            {...provided.droppableProps}
+                            ref={provided.innerRef}
+                            sx={{
+                              mb: 2,
+                              minHeight: snapshot.isDraggingOver
+                                ? '100px'
+                                : 'auto',
+                              backgroundColor: snapshot.isDraggingOver
+                                ? '#f5f5f5'
+                                : 'transparent',
+                              borderRadius: 1,
+                              transition: 'background-color 0.2s ease',
+                            }}
+                          >
+                            {selectedProduct.videos.map(
+                              (videoUrl: string, index: number) => (
+                                <Draggable
+                                  key={`video-${index}-${videoUrl.slice(-10)}`}
+                                  draggableId={`video-${index}-${videoUrl.slice(
+                                    -10
+                                  )}`}
+                                  index={index}
+                                >
+                                  {(provided: any, snapshot: any) => (
+                                    <Paper
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      elevation={snapshot.isDragging ? 4 : 1}
+                                      sx={{
+                                        mb: 1,
+                                        p: 1.5,
+                                        borderRadius: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 1.5,
+                                        backgroundColor: snapshot.isDragging
+                                          ? '#e3f2fd'
+                                          : '#fff',
+                                        border: '1px solid #e0e0e0',
+                                        position: 'relative',
+                                        minHeight: 80,
+                                        transform: snapshot.isDragging
+                                          ? 'rotate(2deg)'
+                                          : 'none',
+                                        transition: snapshot.isDragging
+                                          ? 'none'
+                                          : 'transform 0.2s ease',
+                                        cursor: snapshot.isDragging
+                                          ? 'grabbing'
+                                          : 'default',
+                                      }}
+                                    >
+                                      {/* Drag Handle */}
+                                      <Box
+                                        {...provided.dragHandleProps}
+                                        sx={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          cursor: 'grab',
+                                          color: snapshot.isDragging
+                                            ? '#1976d2'
+                                            : '#666',
+                                          '&:hover': {
+                                            color: '#1976d2',
+                                            backgroundColor: '#f5f5f5',
+                                          },
+                                          '&:active': {
+                                            cursor: 'grabbing',
+                                            color: '#1565c0',
+                                          },
+                                          padding: '4px',
+                                          borderRadius: '4px',
+                                        }}
+                                      >
+                                        <DragIndicatorIcon fontSize='small' />
+                                      </Box>
+
+                                      {/* Video Preview */}
+                                      <Box
+                                        sx={{
+                                          width: 70,
+                                          height: 70,
+                                          borderRadius: 1,
+                                          overflow: 'hidden',
+                                          backgroundColor: '#f5f5f5',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          flexShrink: 0,
+                                          position: 'relative',
+                                        }}
+                                      >
+                                        <video
+                                          src={videoUrl}
+                                          style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            objectFit: 'cover',
+                                          }}
+                                        />
+                                        <PlayCircleOutlineIcon
+                                          sx={{
+                                            position: 'absolute',
+                                            fontSize: 32,
+                                            color: 'white',
+                                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
+                                          }}
+                                        />
+                                      </Box>
+
+                                      {/* Video Info and Actions */}
+                                      <Box
+                                        sx={{
+                                          flex: 1,
+                                          minWidth: 0,
+                                          display: 'flex',
+                                          flexDirection: 'column',
+                                          gap: 1,
+                                        }}
+                                      >
+                                        <Box
+                                          sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1,
+                                            flexWrap: 'wrap',
+                                          }}
+                                        >
+                                          <Typography
+                                            variant='caption'
+                                            color='textSecondary'
+                                            sx={{
+                                              fontWeight: 500,
+                                            }}
+                                          >
+                                            Video {index + 1}
+                                          </Typography>
+                                        </Box>
+
+                                        {/* Action Buttons */}
+                                        <Box
+                                          sx={{
+                                            display: 'flex',
+                                            gap: 0.5,
+                                            alignItems: 'center',
+                                          }}
+                                        >
+                                          <IconButton
+                                            size='small'
+                                            onClick={() =>
+                                              handleVideoDelete(index)
+                                            }
+                                            sx={{
+                                              color: '#f44336',
+                                              width: 28,
+                                              height: 28,
+                                              '&:hover': {
+                                                backgroundColor: '#ffebee',
+                                              },
+                                            }}
+                                          >
+                                            <DeleteIcon sx={{ fontSize: 16 }} />
+                                          </IconButton>
+                                        </Box>
+                                      </Box>
+                                    </Paper>
+                                  )}
+                                </Draggable>
+                              )
+                            )}
+                            {provided.placeholder}
+                          </Box>
+                        )}
+                      </Droppable>
+                    </DragDropContext>
+                  ) : (
+                    <Box sx={{ mb: 2, textAlign: 'center', py: 2 }}>
+                      <Typography variant='body2' color='textSecondary'>
+                        No videos available
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {/* Upload Section */}
+                  <VideoDropzone
+                    onVideoUpload={handleVideoUpload}
+                    updating={updating}
+                  />
+                  <Typography
+                    variant='caption'
+                    color='textSecondary'
+                    sx={{ mt: 1, display: 'block', textAlign: 'center' }}
+                  >
+                    Drag videos to reorder • Videos display after images in carousel
                   </Typography>
                 </Paper>
               </Box>
