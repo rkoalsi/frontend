@@ -149,9 +149,10 @@ const SalesPeople = () => {
         status: 'active',
         role: 'sales_person',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Failed to add salesperson');
+      const errorMessage = error?.response?.data?.detail || 'Failed to add salesperson';
+      toast.error(errorMessage);
     }
   }, [baseApiUrl, newSalesPerson]);
 
