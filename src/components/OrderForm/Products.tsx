@@ -473,105 +473,12 @@ const Products: React.FC<ProductsProps> = ({
   const lastScrollTimeRef = useRef<number>(0);
 
   const scrollToTop = useCallback(() => {
-    // Prevent rapid clicks - if already scrolling, ignore
-    if (isScrollingRef.current || isScrollButtonDisabled) {
-      return;
-    }
-
-    // Enforce minimum time between clicks (debounce)
-    const now = Date.now();
-    const timeSinceLastScroll = now - lastScrollTimeRef.current;
-    const minDelay = isMobile ? 1500 : 1000; // 1.5 seconds on mobile, 1 second on desktop
-
-    if (timeSinceLastScroll < minDelay) {
-      return;
-    }
-
-    lastScrollTimeRef.current = now;
-
-    // Clear any existing timeout
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
-    }
-
-    isScrollingRef.current = true;
-    setIsScrollButtonDisabled(true);
-
-    // Use window.scrollTo instead of scrollIntoView for better mobile compatibility
-    if (isMobile) {
-      window.scrollTo({ top: 0, behavior: 'auto' });
-    } else {
-      pageTopRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    // Set new timeout with longer delay on mobile
-    scrollTimeoutRef.current = setTimeout(() => {
-      isScrollingRef.current = false;
-      setIsScrollButtonDisabled(false);
-      scrollTimeoutRef.current = null;
-    }, isMobile ? 1000 : 1200);
-  }, [isMobile, isScrollButtonDisabled]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   const scrollToBottom = useCallback(() => {
-    // Prevent rapid clicks - if already scrolling, ignore
-    if (isScrollingRef.current || isScrollButtonDisabled) {
-      return;
-    }
-
-    // Enforce minimum time between clicks (debounce)
-    const now = Date.now();
-    const timeSinceLastScroll = now - lastScrollTimeRef.current;
-    const minDelay = isMobile ? 1500 : 1000; // 1.5 seconds on mobile, 1 second on desktop
-
-    if (timeSinceLastScroll < minDelay) {
-      return;
-    }
-
-    lastScrollTimeRef.current = now;
-
-    // Clear any existing timeout
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
-    }
-
-    isScrollingRef.current = true;
-    setIsScrollButtonDisabled(true);
-
-    // Use window.scrollTo instead of scrollIntoView for better mobile compatibility
-    if (isMobile) {
-      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' });
-    } else {
-      pageBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    // Set new timeout with longer delay on mobile
-    scrollTimeoutRef.current = setTimeout(() => {
-      isScrollingRef.current = false;
-      setIsScrollButtonDisabled(false);
-      scrollTimeoutRef.current = null;
-
-      // After scroll completes, check if we need to load more products
-      // This ensures the loader appears when scrolling to bottom via button
-      const key = searchTerm.trim() !== ""
-        ? "search"
-        : sortOrder === "catalogue"
-          ? activeBrand ? `${activeBrand}-catalogue` : "catalogue"
-          : groupByCategory && activeCategory
-            ? `all-${activeCategory}`
-            : activeBrand && activeCategory
-              ? `${activeBrand}-${activeCategory}`
-              : "all";
-
-      // Check if we're at the bottom and should load more
-      if (paginationState[key]?.hasMore && !noMoreProducts[key] && !isFetching.current[key]) {
-        // Small delay to ensure DOM has updated
-        setTimeout(() => {
-          loadMore();
-        }, 50);
-      }
-    }, isMobile ? 1000 : 1200);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMobile, searchTerm, sortOrder, activeBrand, activeCategory, groupByCategory, paginationState, noMoreProducts, isScrollButtonDisabled]);
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+  }, []);
 
   const COLUMNS = useMemo(() => {
     const baseColumns = isShared
@@ -689,7 +596,7 @@ const Products: React.FC<ProductsProps> = ({
             category: categoryParam,
             search,
             page,
-            per_page: 100,
+            per_page: isMobile || isTablet ? 25 : 100, // Reduced for mobile performance
             sort: sortToUse,
             // Pass catalogue_page only in catalogue mode:
             catalogue_page:
@@ -701,6 +608,8 @@ const Products: React.FC<ProductsProps> = ({
           },
           signal: controller.signal,
         });
+
+        const perPage = isMobile || isTablet ? 25 : 100;
 
         // Handle both grouped and ungrouped responses
         if (groupByProductName && response.data.items !== undefined) {
@@ -715,7 +624,7 @@ const Products: React.FC<ProductsProps> = ({
             return count + 1; // Single product
           }, 0);
 
-          const hasMore = totalProductsFetched >= 100;
+          const hasMore = totalProductsFetched >= perPage;
 
           setProductsByBrandCategory((prev: any) => ({
             ...prev,
@@ -729,7 +638,7 @@ const Products: React.FC<ProductsProps> = ({
         } else {
           // Normal ungrouped response
           const newProducts = response.data.products || [];
-          const hasMore = newProducts.length >= 100;
+          const hasMore = newProducts.length >= perPage;
           setProductsByBrandCategory((prev) => ({
             ...prev,
             [key]:
