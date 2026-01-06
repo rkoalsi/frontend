@@ -469,12 +469,25 @@ const Products: React.FC<ProductsProps> = ({
 
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isScrollButtonDisabled, setIsScrollButtonDisabled] = useState(false);
+  const lastScrollTimeRef = useRef<number>(0);
 
   const scrollToTop = useCallback(() => {
     // Prevent rapid clicks - if already scrolling, ignore
-    if (isScrollingRef.current) {
+    if (isScrollingRef.current || isScrollButtonDisabled) {
       return;
     }
+
+    // Enforce minimum time between clicks (debounce)
+    const now = Date.now();
+    const timeSinceLastScroll = now - lastScrollTimeRef.current;
+    const minDelay = isMobile ? 1500 : 1000; // 1.5 seconds on mobile, 1 second on desktop
+
+    if (timeSinceLastScroll < minDelay) {
+      return;
+    }
+
+    lastScrollTimeRef.current = now;
 
     // Clear any existing timeout
     if (scrollTimeoutRef.current) {
@@ -482,6 +495,7 @@ const Products: React.FC<ProductsProps> = ({
     }
 
     isScrollingRef.current = true;
+    setIsScrollButtonDisabled(true);
 
     // Use window.scrollTo instead of scrollIntoView for better mobile compatibility
     if (isMobile) {
@@ -490,18 +504,30 @@ const Products: React.FC<ProductsProps> = ({
       pageTopRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Set new timeout
+    // Set new timeout with longer delay on mobile
     scrollTimeoutRef.current = setTimeout(() => {
       isScrollingRef.current = false;
+      setIsScrollButtonDisabled(false);
       scrollTimeoutRef.current = null;
-    }, isMobile ? 300 : 1000);
-  }, [isMobile]);
+    }, isMobile ? 1000 : 1200);
+  }, [isMobile, isScrollButtonDisabled]);
 
   const scrollToBottom = useCallback(() => {
     // Prevent rapid clicks - if already scrolling, ignore
-    if (isScrollingRef.current) {
+    if (isScrollingRef.current || isScrollButtonDisabled) {
       return;
     }
+
+    // Enforce minimum time between clicks (debounce)
+    const now = Date.now();
+    const timeSinceLastScroll = now - lastScrollTimeRef.current;
+    const minDelay = isMobile ? 1500 : 1000; // 1.5 seconds on mobile, 1 second on desktop
+
+    if (timeSinceLastScroll < minDelay) {
+      return;
+    }
+
+    lastScrollTimeRef.current = now;
 
     // Clear any existing timeout
     if (scrollTimeoutRef.current) {
@@ -509,6 +535,7 @@ const Products: React.FC<ProductsProps> = ({
     }
 
     isScrollingRef.current = true;
+    setIsScrollButtonDisabled(true);
 
     // Use window.scrollTo instead of scrollIntoView for better mobile compatibility
     if (isMobile) {
@@ -517,9 +544,10 @@ const Products: React.FC<ProductsProps> = ({
       pageBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Set new timeout
+    // Set new timeout with longer delay on mobile
     scrollTimeoutRef.current = setTimeout(() => {
       isScrollingRef.current = false;
+      setIsScrollButtonDisabled(false);
       scrollTimeoutRef.current = null;
 
       // After scroll completes, check if we need to load more products
@@ -541,9 +569,9 @@ const Products: React.FC<ProductsProps> = ({
           loadMore();
         }, 50);
       }
-    }, isMobile ? 300 : 1000);
+    }, isMobile ? 1000 : 1200);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMobile, searchTerm, sortOrder, activeBrand, activeCategory, groupByCategory, paginationState, noMoreProducts]);
+  }, [isMobile, searchTerm, sortOrder, activeBrand, activeCategory, groupByCategory, paginationState, noMoreProducts, isScrollButtonDisabled]);
 
   const COLUMNS = useMemo(() => {
     const baseColumns = isShared
@@ -2482,12 +2510,18 @@ const Products: React.FC<ProductsProps> = ({
         <IconButton
           color='primary'
           onClick={scrollToTop}
+          disabled={isScrollButtonDisabled}
           sx={{
             backgroundColor: 'primary.main',
             color: 'white',
             width: { xs: 48, sm: 56 },
             height: { xs: 48, sm: 56 },
             boxShadow: 6,
+            '&:disabled': {
+              backgroundColor: 'action.disabledBackground',
+              color: 'action.disabled',
+              opacity: 0.5,
+            },
             '&:hover:not(:disabled)': {
               backgroundColor: 'primary.dark',
               boxShadow: 8,
@@ -2496,7 +2530,7 @@ const Products: React.FC<ProductsProps> = ({
             '&:active:not(:disabled)': {
               transform: isMobile ? 'none' : 'scale3d(0.95, 0.95, 1)',
             },
-            transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
+            transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease',
             pointerEvents: 'auto',
           }}
         >
@@ -2506,12 +2540,18 @@ const Products: React.FC<ProductsProps> = ({
         <IconButton
           color='primary'
           onClick={scrollToBottom}
+          disabled={isScrollButtonDisabled}
           sx={{
             backgroundColor: 'primary.main',
             color: 'white',
             width: { xs: 48, sm: 56 },
             height: { xs: 48, sm: 56 },
             boxShadow: 6,
+            '&:disabled': {
+              backgroundColor: 'action.disabledBackground',
+              color: 'action.disabled',
+              opacity: 0.5,
+            },
             '&:hover:not(:disabled)': {
               backgroundColor: 'primary.dark',
               boxShadow: 8,
@@ -2520,7 +2560,7 @@ const Products: React.FC<ProductsProps> = ({
             '&:active:not(:disabled)': {
               transform: isMobile ? 'none' : 'scale3d(0.95, 0.95, 1)',
             },
-            transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
+            transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease',
             pointerEvents: 'auto',
           }}
         >
