@@ -471,36 +471,79 @@ const Products: React.FC<ProductsProps> = ({
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToTop = useCallback(() => {
+    // Prevent rapid clicks - if already scrolling, ignore
+    if (isScrollingRef.current) {
+      return;
+    }
+
     // Clear any existing timeout
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current);
     }
 
     isScrollingRef.current = true;
-    pageTopRef.current?.scrollIntoView({ behavior: isMobile ? 'auto' : 'smooth' });
+
+    // Use window.scrollTo instead of scrollIntoView for better mobile compatibility
+    if (isMobile) {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    } else {
+      pageTopRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
 
     // Set new timeout
     scrollTimeoutRef.current = setTimeout(() => {
       isScrollingRef.current = false;
       scrollTimeoutRef.current = null;
-    }, isMobile ? 500 : 1000);
+    }, isMobile ? 300 : 1000);
   }, [isMobile]);
 
   const scrollToBottom = useCallback(() => {
+    // Prevent rapid clicks - if already scrolling, ignore
+    if (isScrollingRef.current) {
+      return;
+    }
+
     // Clear any existing timeout
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current);
     }
 
     isScrollingRef.current = true;
-    pageBottomRef.current?.scrollIntoView({ behavior: isMobile ? 'auto' : 'smooth' });
+
+    // Use window.scrollTo instead of scrollIntoView for better mobile compatibility
+    if (isMobile) {
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' });
+    } else {
+      pageBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
 
     // Set new timeout
     scrollTimeoutRef.current = setTimeout(() => {
       isScrollingRef.current = false;
       scrollTimeoutRef.current = null;
-    }, isMobile ? 500 : 1000);
-  }, [isMobile]);
+
+      // After scroll completes, check if we need to load more products
+      // This ensures the loader appears when scrolling to bottom via button
+      const key = searchTerm.trim() !== ""
+        ? "search"
+        : sortOrder === "catalogue"
+          ? activeBrand ? `${activeBrand}-catalogue` : "catalogue"
+          : groupByCategory && activeCategory
+            ? `all-${activeCategory}`
+            : activeBrand && activeCategory
+              ? `${activeBrand}-${activeCategory}`
+              : "all";
+
+      // Check if we're at the bottom and should load more
+      if (paginationState[key]?.hasMore && !noMoreProducts[key] && !isFetching.current[key]) {
+        // Small delay to ensure DOM has updated
+        setTimeout(() => {
+          loadMore();
+        }, 50);
+      }
+    }, isMobile ? 300 : 1000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile, searchTerm, sortOrder, activeBrand, activeCategory, groupByCategory, paginationState, noMoreProducts]);
 
   const COLUMNS = useMemo(() => {
     const baseColumns = isShared
@@ -2445,16 +2488,15 @@ const Products: React.FC<ProductsProps> = ({
             width: { xs: 48, sm: 56 },
             height: { xs: 48, sm: 56 },
             boxShadow: 6,
-            '&:hover': {
+            '&:hover:not(:disabled)': {
               backgroundColor: 'primary.dark',
               boxShadow: 8,
-              transform: 'scale3d(1.1, 1.1, 1) translate3d(0, -2px, 0)',
+              transform: isMobile ? 'none' : 'scale3d(1.1, 1.1, 1) translate3d(0, -2px, 0)',
             },
-            '&:active': {
-              transform: 'scale3d(0.95, 0.95, 1)',
+            '&:active:not(:disabled)': {
+              transform: isMobile ? 'none' : 'scale3d(0.95, 0.95, 1)',
             },
             transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
-            willChange: 'transform',
             pointerEvents: 'auto',
           }}
         >
@@ -2470,16 +2512,15 @@ const Products: React.FC<ProductsProps> = ({
             width: { xs: 48, sm: 56 },
             height: { xs: 48, sm: 56 },
             boxShadow: 6,
-            '&:hover': {
+            '&:hover:not(:disabled)': {
               backgroundColor: 'primary.dark',
               boxShadow: 8,
-              transform: 'scale3d(1.1, 1.1, 1) translate3d(0, 2px, 0)',
+              transform: isMobile ? 'none' : 'scale3d(1.1, 1.1, 1) translate3d(0, 2px, 0)',
             },
-            '&:active': {
-              transform: 'scale3d(0.95, 0.95, 1)',
+            '&:active:not(:disabled)': {
+              transform: isMobile ? 'none' : 'scale3d(0.95, 0.95, 1)',
             },
             transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
-            willChange: 'transform',
             pointerEvents: 'auto',
           }}
         >
