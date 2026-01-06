@@ -468,21 +468,38 @@ const Products: React.FC<ProductsProps> = ({
   const showError = useCallback((msg: string) => toast.error(msg), []); // No debounce for errors
 
   const isScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToTop = useCallback(() => {
+    // Clear any existing timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+
     isScrollingRef.current = true;
     pageTopRef.current?.scrollIntoView({ behavior: isMobile ? 'auto' : 'smooth' });
-    setTimeout(() => {
+
+    // Set new timeout
+    scrollTimeoutRef.current = setTimeout(() => {
       isScrollingRef.current = false;
-    }, 1000);
+      scrollTimeoutRef.current = null;
+    }, isMobile ? 500 : 1000);
   }, [isMobile]);
 
   const scrollToBottom = useCallback(() => {
+    // Clear any existing timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+
     isScrollingRef.current = true;
     pageBottomRef.current?.scrollIntoView({ behavior: isMobile ? 'auto' : 'smooth' });
-    setTimeout(() => {
+
+    // Set new timeout
+    scrollTimeoutRef.current = setTimeout(() => {
       isScrollingRef.current = false;
-    }, 1000);
+      scrollTimeoutRef.current = null;
+    }, isMobile ? 500 : 1000);
   }, [isMobile]);
 
   const COLUMNS = useMemo(() => {
@@ -534,6 +551,10 @@ const Products: React.FC<ProductsProps> = ({
     return () => {
       debouncedSuccess.cancel();
       debouncedWarn.cancel();
+      // Clear scroll timeout on unmount
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
     };
   }, [debouncedSuccess, debouncedWarn]);
   useEffect(() => {
