@@ -596,7 +596,7 @@ const Products: React.FC<ProductsProps> = ({
             category: categoryParam,
             search,
             page,
-            per_page: isMobile || isTablet ? 25 : 100, // Reduced for mobile performance
+            per_page: isMobile || isTablet ? 75 : 100, // Optimized for mobile performance
             sort: sortToUse,
             // Pass catalogue_page only in catalogue mode:
             catalogue_page:
@@ -609,7 +609,7 @@ const Products: React.FC<ProductsProps> = ({
           signal: controller.signal,
         });
 
-        const perPage = isMobile || isTablet ? 25 : 100;
+        const perPage = isMobile || isTablet ? 75 : 100;
 
         // Handle both grouped and ungrouped responses
         if (groupByProductName && response.data.items !== undefined) {
