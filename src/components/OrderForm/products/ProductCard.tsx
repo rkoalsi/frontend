@@ -15,6 +15,8 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { AddShoppingCart, RemoveShoppingCart, ExpandMore } from "@mui/icons-material";
 import QuantitySelector from "../QuantitySelector";
@@ -83,6 +85,10 @@ const ProductCard: React.FC<ProductCardProps> = memo(
       orderStatus?.toLowerCase().includes("accepted") ||
       orderStatus?.toLowerCase().includes("declined");
 
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+    const isTablet = useMediaQuery(theme.breakpoints.down("md"));
+
     return (
       <Grid sx={{ height: '100%' }}>
         <Card
@@ -97,11 +103,11 @@ const ProductCard: React.FC<ProductCardProps> = memo(
             backgroundColor: "background.paper",
             border: selectedProduct ? '2px solid' : '1px solid',
             borderColor: selectedProduct ? 'primary.main' : 'divider',
-            transition: 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
-            willChange: 'transform',
+            transition: isMobile || isTablet ? 'none' : 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
+            contain: 'layout style paint',
             '&:hover': {
               boxShadow: 6,
-              transform: 'translate3d(0, -4px, 0)',
+              transform: isMobile || isTablet ? 'none' : 'translate3d(0, -4px, 0)',
               borderColor: 'primary.light',
             },
           }}
@@ -575,11 +581,10 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                     py: 1,
                     fontSize: '0.85rem',
                     boxShadow: 2,
-                    transition: 'box-shadow 0.15s ease, transform 0.15s ease',
-                    willChange: 'transform',
+                    transition: isMobile || isTablet ? 'none' : 'box-shadow 0.15s ease, transform 0.15s ease',
                     '&:hover': {
                       boxShadow: 4,
-                      transform: 'translate3d(0, -1px, 0)',
+                      transform: isMobile || isTablet ? 'none' : 'translate3d(0, -1px, 0)',
                     },
                     '&:disabled': {
                       backgroundColor: 'action.disabledBackground',

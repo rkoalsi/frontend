@@ -121,14 +121,15 @@ function ImageCarousel(props: Props) {
           component='img'
           src={mediaItems[currentImageIndex].url}
           alt={`${product.name} - Image ${currentImageIndex + 1}`}
+          loading="lazy"
           sx={{
             width: '100%',
             height: '100%',
             objectFit: 'contain',
             cursor: 'pointer',
-            transition: 'transform 0.3s ease-in-out',
+            transition: isMobile || isTablet ? 'none' : 'transform 0.3s ease-in-out',
             userSelect: 'none',
-            '&:hover': { transform: 'scale(1.05)' },
+            '&:hover': { transform: isMobile || isTablet ? 'none' : 'scale(1.05)' },
           }}
           onClick={() => handleImageClick(
             mediaItems.map(item => ({ src: item.url, type: item.type })),
