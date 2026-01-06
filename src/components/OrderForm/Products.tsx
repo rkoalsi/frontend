@@ -467,13 +467,23 @@ const Products: React.FC<ProductsProps> = ({
   );
   const showError = useCallback((msg: string) => toast.error(msg), []); // No debounce for errors
 
+  const isScrollingRef = useRef(false);
+
   const scrollToTop = useCallback(() => {
-    pageTopRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+    isScrollingRef.current = true;
+    pageTopRef.current?.scrollIntoView({ behavior: isMobile ? 'auto' : 'smooth' });
+    setTimeout(() => {
+      isScrollingRef.current = false;
+    }, 1000);
+  }, [isMobile]);
 
   const scrollToBottom = useCallback(() => {
-    pageBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+    isScrollingRef.current = true;
+    pageBottomRef.current?.scrollIntoView({ behavior: isMobile ? 'auto' : 'smooth' });
+    setTimeout(() => {
+      isScrollingRef.current = false;
+    }, 1000);
+  }, [isMobile]);
 
   const COLUMNS = useMemo(() => {
     const baseColumns = isShared
@@ -1194,6 +1204,11 @@ const Products: React.FC<ProductsProps> = ({
 
   // ------------------ Infinite Scroll with Intersection Observer (Performance Optimized) ------------------
   const loadMore = useCallback(() => {
+    // Prevent loading during programmatic scrolls (scroll buttons)
+    if (isScrollingRef.current) {
+      return;
+    }
+
     // Use productsKey to ensure consistency with intersection observer
     // Check if already fetching for this key
     if (isFetching.current[productsKey]) {
