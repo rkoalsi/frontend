@@ -675,7 +675,7 @@ const Products: React.FC<ProductsProps> = ({
       // Add "New Arrivals" as the first brand with a professional badge
       const newArrivalsBrand = {
         brand: "New Arrivals",
-        url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='10' fill='white'/%3E%3Ctext x='50' y='43' font-family='Poppins, sans-serif' font-size='18' font-weight='bold' fill='%233F51B5' text-anchor='middle'%3ENEW%3C/text%3E%3Ctext x='50' y='63' font-family='Poppins, sans-serif' font-size='18' font-weight='bold' fill='%233F51B5' text-anchor='middle'%3EARRIVALS%3C/text%3E%3C/svg%3E"
+        url: "https://assets.pupscribe.in/brands/new-arrivals.svg"
       };
       const brandsWithNewArrivals = [newArrivalsBrand, ...allBrands];
 
