@@ -125,6 +125,16 @@ const Layout = ({ children }: any) => {
                   text={'Admin'}
                 />
               )}
+            {user &&
+              user.data &&
+              user.data.role === 'customer' &&
+              !router.pathname.includes('customer') && (
+                <CustomButton
+                  color='secondary'
+                  onClick={() => router.push('/customer')}
+                  text={'My Account'}
+                />
+              )}
             {user && (
               <CustomButton color='error' onClick={logout} text={'Logout'} />
             )}

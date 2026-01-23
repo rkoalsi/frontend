@@ -605,6 +605,19 @@ const AdminDashboard = () => {
       ],
       icon: <MiscellaneousServices color='primary' />,
     },
+    {
+      label: 'Customer Management',
+      route: 'customer_management',
+      value: 0,
+      subStats: [
+        {
+          label: 'Manage Users',
+          value: 0,
+          color: 'info',
+        },
+      ],
+      icon: <PeopleOutlined color='primary' />,
+    },
   ];
 
   // Filter cards based on backend permissions instead of frontend role checking

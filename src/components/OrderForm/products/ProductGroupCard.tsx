@@ -59,6 +59,8 @@ interface ProductGroupCardProps {
   handleAddOrRemove: (product: SearchResult) => void;
   index: number;
   isShared: boolean;
+  isOutOfStock?: boolean;
+  handleNotifyMe?: (productId: string, productName: string) => void;
 }
 
 const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
@@ -77,6 +79,8 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
     handleAddOrRemove,
     index,
     isShared = false,
+    isOutOfStock = false,
+    handleNotifyMe,
   }) => {
     const [selectedVariantId, setSelectedVariantId] = useState<string>(
       primaryProduct._id
@@ -131,25 +135,44 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
             width: '100%',
           }}
         >
-          {currentVariant.new && (
-            <Badge
-              badgeContent="New"
-              color="secondary"
-              overlap="rectangular"
+          {isOutOfStock ? (
+            <Chip
+              label="OUT OF STOCK"
+              size="small"
+              color="error"
               sx={{
                 position: "absolute",
                 top: 20,
                 right: 24,
                 zIndex: 10,
-                "& .MuiBadge-badge": {
-                  fontSize: "0.65rem",
-                  fontWeight: 600,
-                  borderRadius: '12px',
-                  padding: "6px 8px",
-                  boxShadow: 2,
-                },
+                fontWeight: 'bold',
+                fontSize: "0.65rem",
+                borderRadius: '12px',
+                padding: "6px 8px",
+                boxShadow: 2,
               }}
             />
+          ) : (
+            currentVariant.new && (
+              <Badge
+                badgeContent="New"
+                color="secondary"
+                overlap="rectangular"
+                sx={{
+                  position: "absolute",
+                  top: 20,
+                  right: 24,
+                  zIndex: 10,
+                  "& .MuiBadge-badge": {
+                    fontSize: "0.65rem",
+                    fontWeight: 600,
+                    borderRadius: '12px',
+                    padding: "6px 8px",
+                    boxShadow: 2,
+                  },
+                }}
+              />
+            )
           )}
 
           <ImageCarousel
@@ -199,6 +222,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                 // Extract only SIZE from each product
                 const variantMap = new Map<string, typeof products[0]>();
                 let parentProduct: typeof products[0] | null = null;
+                let parentSizeLabel = '';
 
                 products.forEach((product) => {
                   // Extract only the SIZE, not the color
@@ -271,6 +295,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                   // If no size was found, this is a parent product
                   if (!sizeLabel) {
                     parentProduct = product;
+                    parentSizeLabel = 'Standard'; // Label for products without detected size
                   } else {
                     // Only add if we found a size and it's not a duplicate
                     if (!variantMap.has(sizeLabel)) {
@@ -278,6 +303,11 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                     }
                   }
                 });
+
+                // Add parent product to variant map if it exists
+                if (parentProduct && parentSizeLabel && !variantMap.has(parentSizeLabel)) {
+                  variantMap.set(parentSizeLabel, parentProduct);
+                }
 
                 // Convert map to array for sorting
                 return Array.from(variantMap.entries()).map(([sizeLabel, product]) => ({
@@ -287,6 +317,10 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                 }));
               })()
                 .sort((a, b) => {
+                  // "Standard" always comes first
+                  if (a.sizeLabel === 'Standard') return -1;
+                  if (b.sizeLabel === 'Standard') return 1;
+
                   // Check if both are number sizes (#1, #2, etc.)
                   const isNumberA = a.sizeLabel.startsWith('#');
                   const isNumberB = b.sizeLabel.startsWith('#');
@@ -557,8 +591,8 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                 </Typography>
               </Box>
 
-              {/* Stock - Hidden when isShared */}
-              {!isShared && (
+              {/* Stock - Hidden when isShared or isOutOfStock */}
+              {!isShared && !isOutOfStock && (
                 <Box sx={{ textAlign: 'right' }}>
                   <Typography
                     variant="caption"
@@ -591,8 +625,8 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                 </Box>
               )}
 
-              {/* Selling Price - Hidden when isShared */}
-              {!isShared && (
+              {/* Selling Price - Hidden when isShared or isOutOfStock */}
+              {!isShared && !isOutOfStock && (
                 <Box>
                   <Typography
                     variant="caption"
@@ -664,7 +698,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
               </Box>
             </Box>
 
-            {selectedProduct && (
+            {!isOutOfStock && selectedProduct && (
               <Box
                 sx={{
                   p: 1.5,
@@ -708,63 +742,15 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
           {/* Spacer to push content to bottom */}
           <Box sx={{ flexGrow: 1 }} />
 
-          {/* Quantity Selector */}
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              mb: 1.5,
-            }}
-          >
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{
-                fontWeight: 600,
-                mb: 0.75,
-                fontSize: '0.7rem',
-              }}
-            >
-              Quantity
-            </Typography>
-            <QuantitySelector
-              quantity={quantity}
-              max={currentVariant.stock}
-              onChange={(newQuantity) =>
-                handleQuantityChange(productId, newQuantity)
-              }
-              disabled={isDisabled}
-            />
-            {isQuantityExceedingStock && (
-              <Alert
-                severity="error"
-                sx={{
-                  mt: 0.75,
-                  py: 0,
-                  px: 1,
-                  fontSize: '0.65rem',
-                  '& .MuiAlert-message': { py: 0 }
-                }}
-              >
-                Exceeds stock!
-              </Alert>
-            )}
-          </Box>
-
-          {/* Action Button */}
-          <Tooltip title={selectedProduct ? "Remove from cart" : "Add to cart"}>
-            <span>
+          {isOutOfStock ? (
+            /* Notify Me Button for Out of Stock */
+            !isShared && handleNotifyMe && (
               <Button
-                variant="contained"
-                color={selectedProduct ? "error" : "primary"}
-                startIcon={
-                  selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />
-                }
-                onClick={() => handleAddOrRemove(currentVariant)}
-                disabled={isDisabled}
+                variant="outlined"
+                color="secondary"
                 fullWidth
                 size="medium"
+                onClick={() => handleNotifyMe(currentVariant._id, currentVariant.name)}
                 sx={{
                   textTransform: "none",
                   borderRadius: 2,
@@ -778,16 +764,95 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                     boxShadow: 4,
                     transform: 'translate3d(0, -1px, 0)',
                   },
-                  '&:disabled': {
-                    backgroundColor: 'action.disabledBackground',
-                    color: 'action.disabled',
-                  },
                 }}
               >
-                {selectedProduct ? "Remove from Cart" : "Add to Cart"}
+                Notify Me When Available
               </Button>
-            </span>
-          </Tooltip>
+            )
+          ) : (
+            <>
+              {/* Quantity Selector */}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  mb: 1.5,
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{
+                    fontWeight: 600,
+                    mb: 0.75,
+                    fontSize: '0.7rem',
+                  }}
+                >
+                  Quantity
+                </Typography>
+                <QuantitySelector
+                  quantity={quantity}
+                  max={currentVariant.stock}
+                  onChange={(newQuantity) =>
+                    handleQuantityChange(productId, newQuantity)
+                  }
+                  disabled={isDisabled}
+                />
+                {isQuantityExceedingStock && (
+                  <Alert
+                    severity="error"
+                    sx={{
+                      mt: 0.75,
+                      py: 0,
+                      px: 1,
+                      fontSize: '0.65rem',
+                      '& .MuiAlert-message': { py: 0 }
+                    }}
+                  >
+                    Exceeds stock!
+                  </Alert>
+                )}
+              </Box>
+
+              {/* Action Button */}
+              <Tooltip title={selectedProduct ? "Remove from cart" : "Add to cart"}>
+                <span>
+                  <Button
+                    variant="contained"
+                    color={selectedProduct ? "error" : "primary"}
+                    startIcon={
+                      selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />
+                    }
+                    onClick={() => handleAddOrRemove(currentVariant)}
+                    disabled={isDisabled}
+                    fullWidth
+                    size="medium"
+                    sx={{
+                      textTransform: "none",
+                      borderRadius: 2,
+                      fontWeight: 600,
+                      py: 1,
+                      fontSize: '0.85rem',
+                      boxShadow: 2,
+                      transition: 'box-shadow 0.15s ease, transform 0.15s ease',
+                      willChange: 'transform',
+                      '&:hover': {
+                        boxShadow: 4,
+                        transform: 'translate3d(0, -1px, 0)',
+                      },
+                      '&:disabled': {
+                        backgroundColor: 'action.disabledBackground',
+                        color: 'action.disabled',
+                      },
+                    }}
+                  >
+                    {selectedProduct ? "Remove from Cart" : "Add to Cart"}
+                  </Button>
+                </span>
+              </Tooltip>
+            </>
+          )}
         </CardContent>
       </Card>
     );

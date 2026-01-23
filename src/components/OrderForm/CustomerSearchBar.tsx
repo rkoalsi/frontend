@@ -46,19 +46,20 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
     initialValue || null
   );
   const [inputValue, setInputValue] = useState<string>(
-    initialValue ? initialValue.contact_name : ''
+    initialValue ? (initialValue.company_name || initialValue.contact_name || '') : ''
   );
 
   // When an initial value is provided, ensure internal state is in sync.
   useEffect(() => {
-    if (
-      initialValue &&
-      (!selectedOption || selectedOption._id !== initialValue._id) &&
-      inputValue !== initialValue.contact_name
-    ) {
-      setSelectedOption(initialValue);
-      setOptions([initialValue]);
-      setInputValue(initialValue.contact_name);
+    if (initialValue) {
+      const displayName = initialValue.company_name || initialValue.contact_name || '';
+      if (!selectedOption || selectedOption._id !== initialValue._id) {
+        setSelectedOption(initialValue);
+        setOptions([initialValue]);
+      }
+      if (inputValue !== displayName) {
+        setInputValue(displayName);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValue]);
@@ -105,7 +106,7 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
           disabled={disabled}
           freeSolo
           options={options}
-          getOptionLabel={(option: any) => option?.contact_name || 'Unknown Name'}
+          getOptionLabel={(option: any) => option?.company_name || option?.contact_name || 'Unknown Name'}
           isOptionEqualToValue={(option: SearchResult, value: SearchResult) =>
             option._id === value._id
           }

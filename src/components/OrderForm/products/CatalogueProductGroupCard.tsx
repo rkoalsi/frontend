@@ -8,6 +8,7 @@ import {
   Chip,
   IconButton,
   Tooltip,
+  Button,
 } from "@mui/material";
 import { ZoomIn } from "@mui/icons-material";
 import ImageCarousel from "./ImageCarousel";
@@ -39,32 +40,90 @@ interface CatalogueProductGroupCardProps {
   primaryProduct: Product;
   onQuickView: (product: Product, allProducts: Product[]) => void;
   viewDensity?: '3x3' | '4x4' | '5x5';
+  isOutOfStock?: boolean;
+  onNotifyMe?: (productId: string, productName: string) => void;
 }
 
 const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo(
-  ({ baseName, products, primaryProduct, onQuickView, viewDensity = '4x4' }) => {
+  ({ baseName, products, primaryProduct, onQuickView, viewDensity = '4x4', isOutOfStock = false, onNotifyMe }) => {
     const [selectedVariantId, setSelectedVariantId] = useState<string>(primaryProduct._id);
     const isCompact = viewDensity === '5x5';
     const isCozy = viewDensity === '4x4';
 
     const currentVariant = products.find((p) => p._id === selectedVariantId) || primaryProduct;
 
-    // Extract variants (simplified version from ProductGroupCard)
+    // Extract variants (matching ProductGroupCard logic)
     const variants = (() => {
       const variantMap = new Map<string, Product>();
+      let parentProduct: Product | null = null;
+
       products.forEach((product) => {
-        const sizeMatch = product.name.match(/[（(]\s*(XXXXL|XXXL|XXL|XL|XXS|XS|S|M|L)\s*\/\s*\d+\s*[Cc]?[Mm]\s*[)）]/i) ||
-                         product.name.match(/#(\d+)/) ||
-                         product.name.match(/(\d+\.?\d*mm)/i) ||
-                         product.name.match(/-\s*(XXXXL|XXXL|XXL|XL|XXS|XS|L|M|S)$/i);
-        if (sizeMatch) {
-          const sizeLabel = sizeMatch[1].toUpperCase();
+        // Try to extract size from product name
+        let sizeLabel = '';
+
+        // Check for (SIZE/measurement) format
+        const sizeMeasurementMatch = product.name.match(/[（(]\s*(XXXXL|XXXL|XXL|XL|XXS|XS|S|M|L)\s*\/\s*\d+\s*[Cc]?[Mm]\s*[)）]/i);
+        if (sizeMeasurementMatch) {
+          sizeLabel = sizeMeasurementMatch[1].toUpperCase();
+        }
+        // Check for number-based sizes (#1, #2, etc.)
+        else if (product.name.match(/#(\d+)/)) {
+          const numberSizeMatch = product.name.match(/#(\d+)/);
+          sizeLabel = `#${numberSizeMatch![1]}`;
+        }
+        // Check for measurement sizes (4.5mm, etc.)
+        else if (product.name.match(/(\d+\.?\d*mm)/i)) {
+          const measurementMatch = product.name.match(/(\d+\.?\d*mm)/i);
+          sizeLabel = measurementMatch![1];
+        }
+        // Check for abbreviated sizes at the end
+        else {
+          const sizeMatch = product.name.match(/-\s*(XXXXL|XXXL|XXL|XL|XXS|XS|L|M|S)$/i) ||
+                           product.name.match(/\s+(XXXXL|XXXL|XXL|XL|XXS|XS|L|M|S)$/i) ||
+                           product.name.match(/-\s*(Small|Medium|Large)$/i) ||
+                           product.name.match(/\s+(Small|Medium|Large)$/i);
+          if (sizeMatch) {
+            const size = sizeMatch[1];
+            // Normalize full word sizes to abbreviations
+            if (size.toLowerCase() === 'small') sizeLabel = 'S';
+            else if (size.toLowerCase() === 'medium') sizeLabel = 'M';
+            else if (size.toLowerCase() === 'large') sizeLabel = 'L';
+            else sizeLabel = size.toUpperCase();
+          }
+        }
+
+        if (sizeLabel) {
           if (!variantMap.has(sizeLabel)) {
             variantMap.set(sizeLabel, product);
           }
+        } else {
+          // No size found - this is the parent/standard product
+          parentProduct = product;
         }
       });
-      return Array.from(variantMap.entries());
+
+      // Add parent product as "Standard" variant if it exists
+      if (parentProduct && !variantMap.has('Standard')) {
+        variantMap.set('Standard', parentProduct);
+      }
+
+      return Array.from(variantMap.entries()).sort((a, b) => {
+        // "Standard" always comes first
+        if (a[0] === 'Standard') return -1;
+        if (b[0] === 'Standard') return 1;
+
+        // Then sort by size order
+        const sizeOrder = ['XXXXS', 'XXXS', 'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
+        const indexA = sizeOrder.indexOf(a[0]);
+        const indexB = sizeOrder.indexOf(b[0]);
+
+        if (indexA !== -1 && indexB !== -1) {
+          return indexA - indexB;
+        }
+
+        // If not in size order, sort alphabetically
+        return a[0].localeCompare(b[0]);
+      });
     })();
 
     return (
@@ -102,22 +161,37 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
             cursor: 'pointer',
           }}
         >
-          {/* New Badge & Variants Count */}
+          {/* Badge & Variants Count */}
           <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 3, display: 'flex', gap: 1 }}>
-            {currentVariant.new && (
+            {isOutOfStock ? (
               <Chip
-                label="NEW"
+                label="OUT OF STOCK"
                 size="small"
+                color="error"
                 sx={{
                   fontWeight: 800,
                   fontSize: '0.65rem',
-                  background: 'linear-gradient(135deg, #3F51B5 0%, #2196F3 100%)',
-                  color: 'white',
                   letterSpacing: '0.8px',
-                  boxShadow: '0 3px 8px rgba(63, 81, 181, 0.4)',
+                  boxShadow: '0 3px 8px rgba(244, 67, 54, 0.4)',
                   border: '2px solid white',
                 }}
               />
+            ) : (
+              currentVariant.new && (
+                <Chip
+                  label="NEW"
+                  size="small"
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: '0.65rem',
+                    background: 'linear-gradient(135deg, #3F51B5 0%, #2196F3 100%)',
+                    color: 'white',
+                    letterSpacing: '0.8px',
+                    boxShadow: '0 3px 8px rgba(63, 81, 181, 0.4)',
+                    border: '2px solid white',
+                  }}
+                />
+              )
             )}
             {variants.length > 0 && (
               <Chip
@@ -353,6 +427,32 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
               >
                 GST: {currentVariant?.item_tax_preferences[currentVariant?.item_tax_preferences.length - 1].tax_percentage}%
               </Typography>
+            )}
+
+            {/* Notify Me Button for Out of Stock */}
+            {isOutOfStock && onNotifyMe && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                fullWidth
+                size="medium"
+                onClick={() => onNotifyMe(currentVariant._id, currentVariant.name)}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                  fontWeight: 600,
+                  py: 1,
+                  mt: 2,
+                  fontSize: '0.85rem',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: 2,
+                  },
+                }}
+              >
+                Notify Me When Available
+              </Button>
             )}
           </Box>
         </CardContent>
