@@ -22,6 +22,8 @@ import {
   TableHead,
   Table,
   Card,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Search, ArrowDownward, ArrowUpward } from '@mui/icons-material';
@@ -149,6 +151,10 @@ export default function AllProductsCatalouge() {
   const [quickViewVariants, setQuickViewVariants] = useState<Product[]>([]);
   const [showQuickView, setShowQuickView] = useState<boolean>(false);
   const [filtersOpen, setFiltersOpen] = useState<boolean>(false);
+  const [outOfStockProducts, setOutOfStockProducts] = useState<Product[]>([]);
+  const [outOfStockItems, setOutOfStockItems] = useState<any[]>([]);
+  const [loadingOutOfStock, setLoadingOutOfStock] = useState<boolean>(false);
+  const [hideOutOfStock, setHideOutOfStock] = useState<boolean>(false);
   const handleImageClick = useCallback((srcList: string[], index: number) => {
     if (Array.isArray(srcList)) {
       const formattedImages = srcList?.map((src) => ({ src }));
@@ -231,6 +237,9 @@ export default function AllProductsCatalouge() {
     setPriceRange([0, maxPrice]);
   }, [maxPrice]);
 
+  // Display brand list - replace "New Arrivals" with "Out Of Stock" when viewing out of stock products
+  // Also filter out brands without out of stock products
+
   // Filter and sort items
   const filteredAndSortedItems = useMemo(() => {
     if (!itemsData) return [];
@@ -299,6 +308,61 @@ export default function AllProductsCatalouge() {
     [brand: string]: { [category: string]: number };
   }>({});
   const showError = useCallback((msg: string) => toast.error(msg), []); // No debounce for errors
+  const debouncedSuccess = useCallback((msg: string) => {
+    toast.success(msg);
+  }, []);
+
+  const fetchOutOfStockProducts = useCallback(async () => {
+    try {
+      setLoadingOutOfStock(true);
+
+      // Handle "New Arrivals" brand specially - don't pass brand parameter
+      const brandParam = activeBrand === "New Arrivals" ? undefined : activeBrand;
+      const categoryParam = (activeBrand === "New Arrivals" || activeCategory === "All Products") ? undefined : activeCategory;
+
+      const response = await axios.get(`${process.env.api_url}/products/out-of-stock`, {
+        params: {
+          brand: brandParam,
+          category: categoryParam,
+          group_by_name: true,
+        },
+      });
+
+      // Handle grouped response (items) or legacy flat response (products)
+      if (response.data.items) {
+        setOutOfStockItems(response.data.items);
+        // Also extract flat list for backward compatibility
+        const flatProducts: Product[] = [];
+        response.data.items.forEach((item: any) => {
+          if (item.type === 'group') {
+            flatProducts.push(...item.products);
+          } else {
+            flatProducts.push(item.product);
+          }
+        });
+        setOutOfStockProducts(flatProducts);
+      } else {
+        setOutOfStockProducts(response.data.products || []);
+        setOutOfStockItems([]);
+      }
+    } catch (error) {
+      showError("Failed to fetch out of stock products.");
+    } finally {
+      setLoadingOutOfStock(false);
+    }
+  }, [activeBrand, activeCategory, showError]);
+
+  const handleNotifyMe = useCallback(async (productId: string, productName: string) => {
+    try {
+      await axios.post(`${process.env.api_url}/products/notify-me`, {
+        product_id: productId,
+      });
+      debouncedSuccess(`You will be notified when ${productName} is back in stock.`);
+    } catch (error) {
+      showError("Failed to register for notification.");
+    }
+  }, [debouncedSuccess, showError]);
+
   const fetchAllBrands = useCallback(async () => {
     try {
       setLoading(true);
@@ -613,6 +677,13 @@ export default function AllProductsCatalouge() {
     }
   }, [activeBrand, fetchCategoriesForBrand]);
 
+  // Fetch out of stock products when brand or category changes
+  useEffect(() => {
+    if (activeBrand) {
+      fetchOutOfStockProducts();
+    }
+  }, [activeBrand, activeCategory, fetchOutOfStockProducts]);
+
   useEffect(() => {
     // Fetch products when brand, category, or search changes
     // Fetch if we have a brand OR if we have a search term (search across all brands)
@@ -835,6 +906,24 @@ export default function AllProductsCatalouge() {
 
       <Box sx={{ maxWidth: "1400px", margin: "0 auto", width: "100%", p: { xs: 2, sm: 2.5, md: 3 } }}>
 
+        {/* Hide/Show Out of Stock Toggle */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+          <Button
+            variant={hideOutOfStock ? "outlined" : "contained"}
+            color="secondary"
+            size="small"
+            onClick={() => setHideOutOfStock(!hideOutOfStock)}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+              borderRadius: '24px',
+              px: 3,
+            }}
+          >
+            {hideOutOfStock ? "Show Out of Stock Products" : "Hide Out of Stock Products"}
+          </Button>
+        </Box>
+
         {/* Tabs and Sorting Controls */}
         <Box display="flex" flexDirection={"column"} gap={{ xs: 1, sm: 1.5, md: 2 }} sx={{ mb: { xs: 2, md: 3 } }}>
           {!groupByCategory && (
@@ -851,7 +940,7 @@ export default function AllProductsCatalouge() {
                     onChange={(e) => handleTabChange(e.target.value)}
                     renderValue={(selected) => {
                       const selectedBrand: any = brandList.find(
-                        (b) => b.brand === selected
+                        (b: any) => b.brand === selected
                       );
                       return (
                         <Box display="flex" alignItems="center" gap={1}>
@@ -876,11 +965,9 @@ export default function AllProductsCatalouge() {
                     }}
                   >
                     {brandList.map((b: any) => {
-                      const brandCount: any = productCounts[b.brand]
-                        ? Object.values(productCounts[b.brand]).reduce(
-                          (a, b) => a + b,
-                          0
-                        )
+                      const actualBrand = b.brand === "Out Of Stock" ? "New Arrivals" : b.brand;
+                      const brandCount = productCounts[actualBrand]
+                        ? Object.values(productCounts[actualBrand]).reduce((a, b) => a + b, 0)
                         : 0;
                       return (
                         <MenuItem key={b.brand} value={b.brand}>
@@ -972,12 +1059,9 @@ export default function AllProductsCatalouge() {
                     }}
                   >
                     {brandList.map((b: any) => {
-                      // Calculate brand count for all brands including "New Arrivals"
-                      const brandCount = productCounts[b.brand]
-                        ? Object.values(productCounts[b.brand]).reduce(
-                          (a, b) => a + b,
-                          0
-                        )
+                      const actualBrand = b.brand === "Out Of Stock" ? "New Arrivals" : b.brand;
+                      const brandCount = productCounts[actualBrand]
+                        ? Object.values(productCounts[actualBrand]).reduce((a, b) => a + b, 0)
                         : 0;
                       return (
                         <Tab
@@ -1074,7 +1158,8 @@ export default function AllProductsCatalouge() {
                       onChange={(e) => handleCategoryTabChange(e.target.value)}
                     >
                       {categoriesByBrand[activeBrand]?.map((cat) => {
-                        const catCount = productCounts[activeBrand]?.[cat] || 0;
+                        const actualBrand = activeBrand === "Out Of Stock" ? "New Arrivals" : activeBrand;
+                        const catCount = productCounts[actualBrand]?.[cat] || 0;
                         return (
                           <MenuItem key={cat} value={cat}>
                             {cat} ({catCount})
@@ -1175,7 +1260,8 @@ export default function AllProductsCatalouge() {
                     }}
                   >
                     {categoriesByBrand[activeBrand].map((cat) => {
-                      const catCount = productCounts[activeBrand]?.[cat] || 0;
+                      const actualBrand = activeBrand === "Out Of Stock" ? "New Arrivals" : activeBrand;
+                      const catCount = productCounts[actualBrand]?.[cat] || 0;
                       return (
                         <Tab
                           key={cat}
@@ -1256,7 +1342,7 @@ export default function AllProductsCatalouge() {
                   borderColor: 'divider',
                 }}
               >
-                {loading ? (
+                {loading || loadingOutOfStock ? (
                   // Loading skeletons
                   <Box
                     sx={{
@@ -1340,6 +1426,186 @@ export default function AllProductsCatalouge() {
                     >
                       Clear Filters
                     </Button>
+                  </Box>
+                )}
+
+                {/* Out of Stock Products Section - exclude from New Arrivals */}
+                {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && (
+                  <Box sx={{ mt: 4 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                      Out of Stock Products
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: {
+                          xs: '1fr',
+                          sm: 'repeat(2, 1fr)',
+                          md: viewDensity === '5x5' ? 'repeat(4, 1fr)' : viewDensity === '4x4' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+                          lg: viewDensity === '5x5' ? 'repeat(4, 1fr)' : viewDensity === '4x4' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+                          xl: viewDensity === '5x5' ? 'repeat(5, 1fr)' : viewDensity === '4x4' ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
+                        },
+                        gap: { xs: 2, sm: 2, md: viewDensity === '5x5' ? 2 : 2.5 },
+                        width: '100%',
+                      }}
+                    >
+                      {outOfStockItems.length > 0 ? (
+                        outOfStockItems.map((item: any, index: number) => {
+                          if (item.type === 'group') {
+                            return (
+                              <CatalogueProductGroupCard
+                                key={item.groupId}
+                                baseName={item.baseName}
+                                products={item.products}
+                                primaryProduct={item.primaryProduct}
+                                onQuickView={(product, variants) => handleQuickView(product, variants)}
+                                viewDensity={viewDensity}
+                                isOutOfStock={true}
+                                onNotifyMe={handleNotifyMe}
+                              />
+                            );
+                          } else {
+                            const product = item.product;
+                            return (
+                        <Card key={product._id} sx={{ p: 2, opacity: 0.8, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+                            <Box
+                              sx={{
+                                width: '100%',
+                                height: 200,
+                                position: 'relative',
+                                borderRadius: 2,
+                                overflow: 'hidden',
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <ImageCarousel
+                                product={product}
+                                handleImageClick={handleImageClick as any}
+                              />
+                              <Chip
+                                label="OUT OF STOCK"
+                                size="small"
+                                color="error"
+                                sx={{
+                                  position: 'absolute',
+                                  top: 8,
+                                  right: 8,
+                                  fontWeight: 'bold',
+                                }}
+                              />
+                            </Box>
+                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                              {product.name}
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="body2" color="text.secondary">Brand:</Typography>
+                                <Typography variant="body2" fontWeight={500}>{product.brand}</Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="body2" color="text.secondary">Category:</Typography>
+                                <Typography variant="body2" fontWeight={500}>{product.category || '-'}</Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="body2" color="text.secondary">MRP:</Typography>
+                                <Typography variant="body1" fontWeight={600}>₹{product.rate?.toLocaleString()}</Typography>
+                              </Box>
+                            </Box>
+                          </Box>
+                          <Button
+                            variant="outlined"
+                            color="secondary"
+                            fullWidth
+                            onClick={() => handleNotifyMe(product._id, product.name)}
+                            sx={{
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              borderRadius: '24px',
+                              mt: 2,
+                            }}
+                          >
+                            Notify Me When Available
+                          </Button>
+                        </Card>
+                            );
+                          }
+                        })
+                      ) : (
+                        // Fallback for non-grouped response
+                        outOfStockProducts.map((product: Product) => (
+                          <Card key={product._id} sx={{ p: 2, opacity: 0.8, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+                              <Box
+                                sx={{
+                                  width: '100%',
+                                  height: 200,
+                                  position: 'relative',
+                                  borderRadius: 2,
+                                  overflow: 'hidden',
+                                  border: '1px solid',
+                                  borderColor: 'divider',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <ImageCarousel
+                                  product={product}
+                                  handleImageClick={handleImageClick as any}
+                                />
+                                <Chip
+                                  label="OUT OF STOCK"
+                                  size="small"
+                                  color="error"
+                                  sx={{
+                                    position: 'absolute',
+                                    top: 8,
+                                    right: 8,
+                                    fontWeight: 'bold',
+                                  }}
+                                />
+                              </Box>
+                              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                {product.name}
+                              </Typography>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <Typography variant="body2" color="text.secondary">Brand:</Typography>
+                                  <Typography variant="body2" fontWeight={500}>{product.brand}</Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <Typography variant="body2" color="text.secondary">Category:</Typography>
+                                  <Typography variant="body2" fontWeight={500}>{product.category || '-'}</Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <Typography variant="body2" color="text.secondary">MRP:</Typography>
+                                  <Typography variant="body1" fontWeight={600}>₹{product.rate?.toLocaleString()}</Typography>
+                                </Box>
+                              </Box>
+                            </Box>
+                            <Button
+                              variant="outlined"
+                              color="secondary"
+                              fullWidth
+                              onClick={() => handleNotifyMe(product._id, product.name)}
+                              sx={{
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                borderRadius: '24px',
+                                mt: 2,
+                              }}
+                            >
+                              Notify Me When Available
+                            </Button>
+                          </Card>
+                        ))
+                      )}
+                    </Box>
                   </Box>
                 )}
               </Box>

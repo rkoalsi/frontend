@@ -7,6 +7,7 @@ import React, {
   useRef,
   memo,
   startTransition,
+  useContext,
 } from "react";
 import axios from "axios";
 import { useProducts, useBrands, useCategories, useAllCategories, useProductCounts } from "../../hooks/useProducts";
@@ -48,6 +49,7 @@ import {
   Card,
   Chip,
   Alert,
+  Tooltip,
 } from "@mui/material";
 import {
   ArrowDownward,
@@ -71,6 +73,7 @@ import DoubleScrollTable, { DoubleScrollTableRef } from "./DoubleScrollTable";
 import ImageCarousel from "./products/ImageCarousel";
 import QuantitySelector from "./QuantitySelector";
 import { groupProductsByName, ProductGroup, GroupedProducts } from "../../util/groupProducts";
+import AuthContext from "../Auth";
 
 interface SearchResult {
   id?: number;
@@ -376,7 +379,7 @@ const MemoizedDesktopProductCard = memo(({
   return (
     prevProps.product._id === nextProps.product._id &&
     prevProps.selectedProducts.some((p: any) => p._id === prevProps.product._id) ===
-      nextProps.selectedProducts.some((p: any) => p._id === nextProps.product._id) &&
+    nextProps.selectedProducts.some((p: any) => p._id === nextProps.product._id) &&
     prevProps.temporaryQuantities[prevProps.product._id] === nextProps.temporaryQuantities[nextProps.product._id] &&
     prevProps.specialMargins[prevProps.product._id] === nextProps.specialMargins[nextProps.product._id] &&
     prevProps.order?.status === nextProps.order?.status
@@ -400,7 +403,7 @@ const Products: React.FC<ProductsProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
-
+  const { user }: any = useContext(AuthContext);
   // ------------------ States ------------------
   const [query, setQuery] = useState<string>("");
   const [temporaryQuantities, setTemporaryQuantities] = useState<{
@@ -445,6 +448,10 @@ const Products: React.FC<ProductsProps> = ({
   const [groupByProductName, setGroupByProductName] = useState<boolean>(true);
 
   const [confirmModalOpen, setConfirmModalOpen] = useState<boolean>(false);
+  const [outOfStockProducts, setOutOfStockProducts] = useState<SearchResult[]>([]);
+  const [outOfStockItems, setOutOfStockItems] = useState<any[]>([]);
+  const [loadingOutOfStock, setLoadingOutOfStock] = useState<boolean>(false);
+  const [hideOutOfStock, setHideOutOfStock] = useState<boolean>(false);
 
   const [link, setLink] = useState(
     order?.spreadsheet_created ? order?.spreadsheet_url : ""
@@ -662,6 +669,58 @@ const Products: React.FC<ProductsProps> = ({
     },
     [sortOrder, showError, cataloguePage, groupByProductName]
   );
+
+  const fetchOutOfStockProducts = useCallback(async () => {
+    try {
+      setLoadingOutOfStock(true);
+
+      // Handle "New Arrivals" brand specially - don't pass brand parameter
+      const brandParam = activeBrand === "New Arrivals" ? undefined : activeBrand;
+      const categoryParam = (activeBrand === "New Arrivals" || activeCategory === "All Products") ? undefined : activeCategory;
+
+      const response = await axios.get(`${process.env.api_url}/products/out-of-stock`, {
+        params: {
+          brand: brandParam,
+          category: categoryParam,
+          group_by_name: true,
+        },
+      });
+
+      // Handle grouped response (items) or legacy flat response (products)
+      if (response.data.items) {
+        setOutOfStockItems(response.data.items);
+        // Also extract flat list for backward compatibility
+        const flatProducts: SearchResult[] = [];
+        response.data.items.forEach((item: any) => {
+          if (item.type === 'group') {
+            flatProducts.push(...item.products);
+          } else {
+            flatProducts.push(item.product);
+          }
+        });
+        setOutOfStockProducts(flatProducts);
+      } else {
+        setOutOfStockProducts(response.data.products || []);
+        setOutOfStockItems([]);
+      }
+    } catch (error) {
+      showError("Failed to fetch out of stock products.");
+    } finally {
+      setLoadingOutOfStock(false);
+    }
+  }, [activeBrand, activeCategory, showError]);
+
+  const handleNotifyMe = useCallback(async (productId: string, productName: string) => {
+    try {
+      await axios.post(`${process.env.api_url}/products/notify-me`, {
+        product_id: productId,
+        customer_id: customer?._id || customer?.id,
+      });
+      debouncedSuccess(`You will be notified when ${productName} is back in stock.`);
+    } catch (error) {
+      showError("Failed to register for notification.");
+    }
+  }, [customer, debouncedSuccess, showError]);
 
   const fetchAllBrands = useCallback(async () => {
     try {
@@ -956,7 +1015,7 @@ const Products: React.FC<ProductsProps> = ({
               ? specialMargins[productId]
               : customer?.cf_margin || "40%",
             quantity,
-            added_by: isShared ? "customer" : "sales_person",
+            added_by: isShared ? "customer" : user?.data?.role || 'sales_person',
           },
         ];
 
@@ -1279,6 +1338,13 @@ const Products: React.FC<ProductsProps> = ({
       fetchCategories(activeBrand);
     }
   }, [activeBrand, categoriesByBrand, fetchCategories, groupByCategory]);
+
+  // Re-fetch out of stock products when brand or category changes
+  useEffect(() => {
+    if (activeBrand) {
+      fetchOutOfStockProducts();
+    }
+  }, [activeBrand, activeCategory, fetchOutOfStockProducts]);
   useEffect(() => {
     if (sortOrder === "catalogue") {
       const key = activeBrand ? `${activeBrand}-catalogue` : "catalogue";
@@ -1331,6 +1397,7 @@ const Products: React.FC<ProductsProps> = ({
     return groupProductsByName(displayedProducts);
   }, [groupByProductName, displayedProducts]);
 
+
   const allCategoryCounts = useMemo(() => {
     const counts: { [category: string]: number } = {};
     Object.values(productCounts).forEach((brandCounts) => {
@@ -1380,28 +1447,32 @@ const Products: React.FC<ProductsProps> = ({
           </Typography>
           <Box
             display="flex"
-            justifyContent="space-between"
+            justifyContent="flex-end"
             alignItems="center"
             sx={{ mb: 2 }}
           >
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleOpenConfirmModal} // Changed to open modal instead
-              disabled={
-                selectedProducts.length === 0 ||
-                !["draft", "sent"].includes(
-                  order?.status?.toLowerCase() as string
-                )
-              }
-              sx={{
-                textTransform: "none",
-                fontWeight: "bold",
-                borderRadius: "24px",
-              }}
-            >
-              Clear Cart
-            </Button>
+            <Tooltip title="Remove all products from your cart and start fresh" arrow>
+              <span>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleOpenConfirmModal} // Changed to open modal instead
+                  disabled={
+                    selectedProducts.length === 0 ||
+                    !["draft", "sent"].includes(
+                      order?.status?.toLowerCase() as string
+                    )
+                  }
+                  sx={{
+                    textTransform: "none",
+                    fontWeight: "bold",
+                    borderRadius: "24px",
+                  }}
+                >
+                  Clear Cart
+                </Button>
+              </span>
+            </Tooltip>
           </Box>
           <Dialog
             open={confirmModalOpen}
@@ -1446,43 +1517,71 @@ const Products: React.FC<ProductsProps> = ({
             </DialogActions>
           </Dialog>
         </Box>
-        <Autocomplete
-          freeSolo
-          options={options}
-          getOptionLabel={(option: SearchResult | string) =>
-            typeof option === "string" ? option : option.name
-          }
-          isOptionEqualToValue={(
-            option: SearchResult | string,
-            value: SearchResult | string
-          ) =>
-            typeof option === "string" && typeof value === "string"
-              ? option === value
-              : typeof option !== "string" &&
-              typeof value !== "string" &&
-              option._id === value._id
-          }
-          onInputChange={handleInputChange}
-          value={query}
-          loading={loading}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label={label}
-              variant="outlined"
-              fullWidth
-              InputProps={{
-                ...params.InputProps,
-                endAdornment: (
-                  <>
-                    {loading && <CircularProgress color="inherit" size={20} />}
-                    {params.InputProps.endAdornment}
-                  </>
-                ),
+        <Tooltip title="Search for products by name, SKU, or brand. Results will appear as you type." arrow placement="top">
+          <Autocomplete
+            freeSolo
+            options={options}
+            getOptionLabel={(option: SearchResult | string) =>
+              typeof option === "string" ? option : option.name
+            }
+            isOptionEqualToValue={(
+              option: SearchResult | string,
+              value: SearchResult | string
+            ) =>
+              typeof option === "string" && typeof value === "string"
+                ? option === value
+                : typeof option !== "string" &&
+                typeof value !== "string" &&
+                option._id === value._id
+            }
+            onInputChange={handleInputChange}
+            value={query}
+            loading={loading}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={label}
+                variant="outlined"
+                fullWidth
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {loading && <CircularProgress color="inherit" size={20} />}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+          />
+        </Tooltip>
+
+        {/* Hide/Show Out of Stock Toggle */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+          <Tooltip
+            title={hideOutOfStock
+              ? "Show products that are currently out of stock at the bottom of the list"
+              : "Hide products that are currently unavailable to simplify browsing"
+            }
+            arrow
+          >
+            <Button
+              variant={hideOutOfStock ? "outlined" : "contained"}
+              color="secondary"
+              size="small"
+              onClick={() => setHideOutOfStock(!hideOutOfStock)}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                borderRadius: '24px',
+                px: 3,
               }}
-            />
-          )}
-        />
+            >
+              {hideOutOfStock ? "Show Out of Stock Products" : "Hide Out of Stock Products"}
+            </Button>
+          </Tooltip>
+        </Box>
 
         {/* Tabs and Sorting Controls */}
         <Box display="flex" flexDirection={"column"} gap="8px" sx={{ mt: 2 }}>
@@ -1767,7 +1866,8 @@ const Products: React.FC<ProductsProps> = ({
                     }}
                   >
                     {categoriesByBrand[activeBrand].map((cat) => {
-                      const catCount = productCounts[activeBrand]?.[cat] || 0;
+                      const actualBrand = activeBrand === "Out Of Stock" ? "New Arrivals" : activeBrand;
+                      const catCount = productCounts[actualBrand]?.[cat] || 0;
                       return (
                         <Tab
                           key={cat}
@@ -1809,45 +1909,52 @@ const Products: React.FC<ProductsProps> = ({
               </FormControl>
               {sortOrder === "catalogue" && (
                 <>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={catalogueEnabled}
-                        onChange={(e: any) => {
-                          const value = e.target.checked;
-                          setCatalogueEnabled(value);
-                          if (!value) {
-                            setCataloguePage(undefined);
-                          }
-                        }}
-                        color="primary"
-                      />
-                    }
-                    label="Enable Catalogue Page Input"
-                  />
+                  <Tooltip
+                    title="Enable to jump to a specific page in the printed catalogue. Enter the page number to view products from that page."
+                    arrow
+                  >
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={catalogueEnabled}
+                          onChange={(e: any) => {
+                            const value = e.target.checked;
+                            setCatalogueEnabled(value);
+                            if (!value) {
+                              setCataloguePage(undefined);
+                            }
+                          }}
+                          color="primary"
+                        />
+                      }
+                      label="Enable Catalogue Page Input"
+                    />
+                  </Tooltip>
                   {catalogueEnabled && (
                     <FormControl fullWidth variant="outlined" sx={{ mt: 2 }}>
-                      <Autocomplete
-                        freeSolo
-                        options={cataloguePages.map((page: any) =>
-                          page.toString()
-                        )}
-                        value={
-                          cataloguePage !== undefined
-                            ? cataloguePage.toString()
-                            : ""
-                        }
-                        onChange={(event, newValue: any) => {
-                          if (newValue && newValue.trim() !== "") {
-                            setCataloguePage(parseInt(newValue));
-                          } else {
-                            setCataloguePage(undefined);
+                      <Tooltip title="Enter a catalogue page number to view products from that specific page" arrow>
+                        <Autocomplete
+                          freeSolo
+                          options={cataloguePages.map((page: any) =>
+                            page.toString()
+                          )}
+                          value={
+                            cataloguePage !== undefined
+                              ? cataloguePage.toString()
+                              : ""
                           }
-                        }}
-                        renderInput={(params) => (
-                          <TextField {...params} label="Catalogue Page" />
-                        )}
-                      />
+                          onChange={(_, newValue: any) => {
+                            if (newValue && newValue.trim() !== "") {
+                              setCataloguePage(parseInt(newValue));
+                            } else {
+                              setCataloguePage(undefined);
+                            }
+                          }}
+                          renderInput={(params) => (
+                            <TextField {...params} label="Catalogue Page" />
+                          )}
+                        />
+                      </Tooltip>
                     </FormControl>
                   )}
                 </>
@@ -1885,45 +1992,52 @@ const Products: React.FC<ProductsProps> = ({
 
                 {sortOrder === "catalogue" && (
                   <>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={catalogueEnabled}
-                          onChange={(e: any) => {
-                            const value = e.target.checked;
-                            setCatalogueEnabled(value);
-                            if (!value) {
-                              setCataloguePage(undefined);
-                            }
-                          }}
-                          color="primary"
-                        />
-                      }
-                      label="Enable Catalogue Page Input"
-                    />
+                    <Tooltip
+                      title="Enable to jump to a specific page in the printed catalogue. Enter the page number to view products from that page."
+                      arrow
+                    >
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={catalogueEnabled}
+                            onChange={(e: any) => {
+                              const value = e.target.checked;
+                              setCatalogueEnabled(value);
+                              if (!value) {
+                                setCataloguePage(undefined);
+                              }
+                            }}
+                            color="primary"
+                          />
+                        }
+                        label="Enable Catalogue Page Input"
+                      />
+                    </Tooltip>
                     {catalogueEnabled && (
                       <FormControl fullWidth variant="outlined" sx={{ mt: 2 }}>
-                        <Autocomplete
-                          freeSolo
-                          options={cataloguePages.map((page: any) =>
-                            page.toString()
-                          )}
-                          value={
-                            cataloguePage !== undefined
-                              ? cataloguePage.toString()
-                              : ""
-                          }
-                          onChange={(event, newValue: any) => {
-                            if (newValue && newValue.trim() !== "") {
-                              setCataloguePage(parseInt(newValue));
-                            } else {
-                              setCataloguePage(undefined);
+                        <Tooltip title="Enter a catalogue page number to view products from that specific page" arrow>
+                          <Autocomplete
+                            freeSolo
+                            options={cataloguePages.map((page: any) =>
+                              page.toString()
+                            )}
+                            value={
+                              cataloguePage !== undefined
+                                ? cataloguePage.toString()
+                                : ""
                             }
-                          }}
-                          renderInput={(params) => (
-                            <TextField {...params} label="Catalogue Page" />
-                          )}
-                        />
+                            onChange={(_, newValue: any) => {
+                              if (newValue && newValue.trim() !== "") {
+                                setCataloguePage(parseInt(newValue));
+                              } else {
+                                setCataloguePage(undefined);
+                              }
+                            }}
+                            renderInput={(params) => (
+                              <TextField {...params} label="Catalogue Page" />
+                            )}
+                          />
+                        </Tooltip>
                       </FormControl>
                     )}
                   </>
@@ -1933,27 +2047,32 @@ const Products: React.FC<ProductsProps> = ({
           )}
           {sortOrder !== "catalogue" && (
             <Box display="flex" justifyContent="flex-end" gap={2}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={groupByCategory}
-                    onChange={(e) => {
-                      const newValue = e.target.checked;
-                      setGroupByCategory(newValue);
-                      if (!newValue) {
-                        const defaultBrand = brandList[0]?.brand || "";
-                        const defaultCategory =
-                          categoriesByBrand[defaultBrand]?.[0] || "";
-                        setActiveBrand(defaultBrand);
-                        setActiveCategory(defaultCategory);
-                        resetPaginationAndFetch(defaultBrand, defaultCategory);
-                      }
-                    }}
-                    color="primary"
-                  />
-                }
-                label="Group by Category"
-              />
+              <Tooltip
+                title="View all products organized by category instead of by brand. Useful for finding products across different brands in the same category."
+                arrow
+              >
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={groupByCategory}
+                      onChange={(e) => {
+                        const newValue = e.target.checked;
+                        setGroupByCategory(newValue);
+                        if (!newValue) {
+                          const defaultBrand = brandList[0]?.brand || "";
+                          const defaultCategory =
+                            categoriesByBrand[defaultBrand]?.[0] || "";
+                          setActiveBrand(defaultBrand);
+                          setActiveCategory(defaultCategory);
+                          resetPaginationAndFetch(defaultBrand, defaultCategory);
+                        }
+                      }}
+                      color="primary"
+                    />
+                  }
+                  label="Group by Category"
+                />
+              </Tooltip>
             </Box>
           )}
         </Box>
@@ -1961,7 +2080,7 @@ const Products: React.FC<ProductsProps> = ({
         {/* Products Display */}
         {isMobile || isTablet ? (
           <Box>
-            {loading ? (
+            {loading || loadingOutOfStock ? (
               // Loading skeletons for mobile/tablet
               <Box
                 sx={{
@@ -2112,6 +2231,191 @@ const Products: React.FC<ProductsProps> = ({
                 </Typography>
               </Box>
             )}
+
+            {/* Out of Stock Products Section - exclude from New Arrivals */}
+            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && (
+              <Box sx={{ mt: 4 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                  Out of Stock Products
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr',
+                    gap: 2,
+                    width: '100%',
+                    alignItems: 'stretch',
+                  }}
+                >
+                  {outOfStockItems.length > 0 ? (
+                    outOfStockItems.map((item: any, index: number) => {
+                      if (item.type === 'group') {
+                        return (
+                          <ProductGroupCard
+                            key={item.groupId}
+                            baseName={item.baseName}
+                            products={item.products}
+                            primaryProduct={item.primaryProduct}
+                            selectedProducts={selectedProducts}
+                            temporaryQuantities={temporaryQuantities}
+                            specialMargins={specialMargins}
+                            customerMargin={customer?.cf_margin || "40%"}
+                            orderStatus={order?.status}
+                            getSellingPrice={getSellingPrice}
+                            handleImageClick={handleImageClick}
+                            handleQuantityChange={handleQuantityChange}
+                            handleAddOrRemove={(prod: any) =>
+                              selectedProducts.some((p) => p._id === prod._id)
+                                ? handleRemoveProduct(prod._id)
+                                : handleAddProducts(prod)
+                            }
+                            index={index}
+                            isShared={isShared}
+                            isOutOfStock={true}
+                            handleNotifyMe={handleNotifyMe}
+                          />
+                        );
+                      } else {
+                        const product = item.product;
+                        return (
+                          <Card key={product._id} sx={{ p: 2, opacity: 0.8, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+                              <Box
+                                sx={{
+                                  width: '100%',
+                                  height: 200,
+                                  position: 'relative',
+                                  borderRadius: 2,
+                                  overflow: 'hidden',
+                                  border: '1px solid',
+                                  borderColor: 'divider',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <ImageCarousel
+                                  product={product}
+                                  handleImageClick={handleImageClick}
+                                />
+                                <Chip
+                                  label="OUT OF STOCK"
+                                  size="small"
+                                  color="error"
+                                  sx={{
+                                    position: 'absolute',
+                                    top: 8,
+                                    right: 8,
+                                    fontWeight: 'bold',
+                                  }}
+                                />
+                              </Box>
+                              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                {product.name}
+                              </Typography>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <Typography variant="body2" color="text.secondary">Brand:</Typography>
+                                  <Typography variant="body2" fontWeight={500}>{product.brand}</Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <Typography variant="body2" color="text.secondary">MRP:</Typography>
+                                  <Typography variant="body1" fontWeight={600}>₹{product.rate?.toLocaleString()}</Typography>
+                                </Box>
+                              </Box>
+                            </Box>
+                            {!isShared && (
+                              <Button
+                                variant="outlined"
+                                color="secondary"
+                                fullWidth
+                                onClick={() => handleNotifyMe(product._id, product.name)}
+                                sx={{
+                                  textTransform: 'none',
+                                  fontWeight: 600,
+                                  borderRadius: '24px',
+                                  mt: 2,
+                                }}
+                              >
+                                Notify Me When Available
+                              </Button>
+                            )}
+                          </Card>
+                        );
+                      }
+                    })
+                  ) : (
+                    // Fallback for non-grouped response
+                    outOfStockProducts.map((product: any) => (
+                      <Card key={product._id} sx={{ p: 2, opacity: 0.8, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+                          <Box
+                            sx={{
+                              width: '100%',
+                              height: 200,
+                              position: 'relative',
+                              borderRadius: 2,
+                              overflow: 'hidden',
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <ImageCarousel
+                              product={product}
+                              handleImageClick={handleImageClick}
+                            />
+                            <Chip
+                              label="OUT OF STOCK"
+                              size="small"
+                              color="error"
+                              sx={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                fontWeight: 'bold',
+                              }}
+                            />
+                          </Box>
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            {product.name}
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Brand:</Typography>
+                              <Typography variant="body2" fontWeight={500}>{product.brand}</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">MRP:</Typography>
+                              <Typography variant="body1" fontWeight={600}>₹{product.rate?.toLocaleString()}</Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+                        {!isShared && (
+                          <Button
+                            variant="outlined"
+                            color="secondary"
+                            fullWidth
+                            onClick={() => handleNotifyMe(product._id, product.name)}
+                            sx={{
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              borderRadius: '24px',
+                              mt: 2,
+                            }}
+                          >
+                            Notify Me When Available
+                          </Button>
+                        )}
+                      </Card>
+                    ))
+                  )}
+                </Box>
+              </Box>
+            )}
+
             {/* Intersection Observer target for infinite scroll */}
             <div ref={intersectionRef} style={{ height: '20px', margin: '20px 0' }} />
           </Box>
@@ -2241,7 +2545,7 @@ const Products: React.FC<ProductsProps> = ({
         ) : (
           // Desktop Card Grid View
           <Box ref={cardScrollRef}>
-            {loading ? (
+            {loading || loadingOutOfStock ? (
               // Loading skeletons for desktop
               <Box
                 sx={{
@@ -2398,6 +2702,205 @@ const Products: React.FC<ProductsProps> = ({
                 </Typography>
               </Box>
             )}
+
+            {/* Out of Stock Products Section - exclude from New Arrivals */}
+            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && (
+              <Box sx={{ mt: 4 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                  Out of Stock Products
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: {
+                      xs: '1fr',
+                      sm: 'repeat(2, 1fr)',
+                      md: 'repeat(3, 1fr)',
+                      lg: 'repeat(3, 1fr)',
+                    },
+                    gap: 2,
+                    width: '100%',
+                    maxWidth: '100%',
+                    alignItems: 'stretch',
+                  }}
+                >
+                  {outOfStockItems.length > 0 ? (
+                    outOfStockItems.map((item: any, index: number) => {
+                      if (item.type === 'group') {
+                        return (
+                          <ProductGroupCard
+                            key={item.groupId}
+                            baseName={item.baseName}
+                            products={item.products}
+                            primaryProduct={item.primaryProduct}
+                            selectedProducts={selectedProducts}
+                            temporaryQuantities={temporaryQuantities}
+                            specialMargins={specialMargins}
+                            customerMargin={customer?.cf_margin || "40%"}
+                            orderStatus={order?.status}
+                            getSellingPrice={getSellingPrice}
+                            handleImageClick={handleImageClick}
+                            handleQuantityChange={handleQuantityChange}
+                            handleAddOrRemove={(prod: any) =>
+                              selectedProducts.some((p) => p._id === prod._id)
+                                ? handleRemoveProduct(prod._id)
+                                : handleAddProducts(prod)
+                            }
+                            index={index}
+                            isShared={isShared}
+                            isOutOfStock={true}
+                            handleNotifyMe={handleNotifyMe}
+                          />
+                        );
+                      } else {
+                        const product = item.product;
+                        return (
+                          <Card key={product._id} sx={{ p: 2, opacity: 0.8, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+                              <Box
+                                sx={{
+                                  width: '100%',
+                                  height: 200,
+                                  position: 'relative',
+                                  borderRadius: 2,
+                                  overflow: 'hidden',
+                                  border: '1px solid',
+                                  borderColor: 'divider',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <ImageCarousel
+                                  product={product}
+                                  handleImageClick={handleImageClick}
+                                />
+                                <Chip
+                                  label="OUT OF STOCK"
+                                  size="small"
+                                  color="error"
+                                  sx={{
+                                    position: 'absolute',
+                                    top: 8,
+                                    right: 8,
+                                    fontWeight: 'bold',
+                                  }}
+                                />
+                              </Box>
+                              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                {product.name}
+                              </Typography>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <Typography variant="body2" color="text.secondary">Brand:</Typography>
+                                  <Typography variant="body2" fontWeight={500}>{product.brand}</Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <Typography variant="body2" color="text.secondary">Category:</Typography>
+                                  <Typography variant="body2" fontWeight={500}>{product.category || '-'}</Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <Typography variant="body2" color="text.secondary">MRP:</Typography>
+                                  <Typography variant="body1" fontWeight={600}>₹{product.rate?.toLocaleString()}</Typography>
+                                </Box>
+                              </Box>
+                            </Box>
+                            {!isShared && (
+                              <Button
+                                variant="outlined"
+                                color="secondary"
+                                fullWidth
+                                onClick={() => handleNotifyMe(product._id, product.name)}
+                                sx={{
+                                  textTransform: 'none',
+                                  fontWeight: 600,
+                                  borderRadius: '24px',
+                                  mt: 2,
+                                }}
+                              >
+                                Notify Me When Available
+                              </Button>
+                            )}
+                          </Card>
+                        );
+                      }
+                    })
+                  ) : (
+                    // Fallback for non-grouped response
+                    outOfStockProducts.map((product: any) => (
+                      <Card key={product._id} sx={{ p: 2, opacity: 0.8, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+                          <Box
+                            sx={{
+                              width: '100%',
+                              height: 200,
+                              position: 'relative',
+                              borderRadius: 2,
+                              overflow: 'hidden',
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <ImageCarousel
+                              product={product}
+                              handleImageClick={handleImageClick}
+                            />
+                            <Chip
+                              label="OUT OF STOCK"
+                              size="small"
+                              color="error"
+                              sx={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                fontWeight: 'bold',
+                              }}
+                            />
+                          </Box>
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            {product.name}
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Brand:</Typography>
+                              <Typography variant="body2" fontWeight={500}>{product.brand}</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Category:</Typography>
+                              <Typography variant="body2" fontWeight={500}>{product.category || '-'}</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">MRP:</Typography>
+                              <Typography variant="body1" fontWeight={600}>₹{product.rate?.toLocaleString()}</Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+                        {!isShared && (
+                          <Button
+                            variant="outlined"
+                            color="secondary"
+                            fullWidth
+                            onClick={() => handleNotifyMe(product._id, product.name)}
+                            sx={{
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              borderRadius: '24px',
+                              mt: 2,
+                            }}
+                          >
+                            Notify Me When Available
+                          </Button>
+                        )}
+                      </Card>
+                    ))
+                  )}
+                </Box>
+              </Box>
+            )}
+
             {/* Intersection Observer target for infinite scroll - Desktop */}
             <div ref={intersectionRef} style={{ height: '20px', margin: '20px 0' }} />
           </Box>

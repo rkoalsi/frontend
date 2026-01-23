@@ -7,7 +7,8 @@ import CssBaseline from '@mui/material/CssBaseline';
 import theme from '../src/theme';
 import { AuthProvider } from '../src/components/Auth';
 import Layout from '../src/components/Layout';
-import AdminLayout from '../src/components/AdminLayout'; // Import AdminLayout
+import AdminLayout from '../src/components/AdminLayout';
+import CustomerLayout from '../src/components/CustomerLayout';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css'; // Import react-toastify styles
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -28,6 +29,16 @@ export default function MyApp(props: AppProps) {
   const { Component, pageProps } = props;
 
   const isAdminRoute = props.router?.pathname.startsWith('/admin');
+  const isCustomerRoute = props.router?.pathname.startsWith('/customer');
+
+  // Determine which layout to use
+  const getLayoutComponent = () => {
+    if (isAdminRoute) return AdminLayout;
+    if (isCustomerRoute) return CustomerLayout;
+    return Layout;
+  };
+
+  const LayoutComponent = getLayoutComponent();
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -39,15 +50,9 @@ export default function MyApp(props: AppProps) {
           <ThemeProvider theme={theme}>
             <CssBaseline />
             <ToastContainer position='top-left' autoClose={1000} />
-            {isAdminRoute ? (
-              <AdminLayout>
-                <Component {...pageProps} />
-              </AdminLayout>
-            ) : (
-              <Layout>
-                <Component {...pageProps} />
-              </Layout>
-            )}
+            <LayoutComponent>
+              <Component {...pageProps} />
+            </LayoutComponent>
           </ThemeProvider>
         </AuthProvider>
       </AppCacheProvider>
