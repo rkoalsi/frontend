@@ -29,7 +29,7 @@ export default function MyApp(props: AppProps) {
   const { Component, pageProps } = props;
 
   const isAdminRoute = props.router?.pathname.startsWith('/admin');
-  const isCustomerRoute = props.router?.pathname.startsWith('/customer');
+  const isCustomerRoute = props.router?.pathname === '/customer' || props.router?.pathname.startsWith('/customer/');
 
   // Determine which layout to use
   const getLayoutComponent = () => {
