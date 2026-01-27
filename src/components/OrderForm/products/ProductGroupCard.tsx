@@ -412,9 +412,9 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                   }}
                 />
               )}
-              {currentVariant.series && (
+              {currentVariant.sub_category && (
                 <Chip
-                  label={currentVariant.series}
+                  label={currentVariant.sub_category}
                   variant="filled"
                   size="small"
                   sx={{
