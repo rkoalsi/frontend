@@ -31,7 +31,7 @@ import Address from '../../../src/components/OrderForm/SelectAddress';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { ContentCopy, Sort } from '@mui/icons-material';
+import { ContentCopy } from '@mui/icons-material';
 import useDebounce from '../../../src/util/useDebounce';
 import SheetsDisplay from '../../../src/components/OrderForm/SheetDisplay';
 import AuthContext from '../../../src/components/Auth';
@@ -69,6 +69,8 @@ const NewOrder: React.FC = () => {
   const isShared = shared === 'true';
   const { user }: any = useContext(AuthContext);
   const isAdmin = user?.data?.role.includes('admin');
+  const isCustomerUser = user?.data?.role === 'customer';
+  const userCustomerId = user?.data?.customer_id; // contact_id linked to this user
   // States
   const [customer, setCustomer] = useState<any>(null);
   const [referenceNumber, setReferenceNumber] = useState('');
@@ -77,7 +79,7 @@ const NewOrder: React.FC = () => {
   const [billingAddress, setBillingAddress] = useState<any>(null);
   const [shippingAddress, setShippingAddress] = useState<any>(null);
   const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
-  const [activeStep, setActiveStep] = useState<number>(isShared ? 3 : 0);
+  const [activeStep, setActiveStep] = useState<number>(isShared ? 3 : (isCustomerUser ? 1 : 0));
   const [open, setOpen] = useState<boolean>(false);
   const [error, setError] = useState<any>(null);
   const [sharedLink, setSharedLink] = useState<string>('');
@@ -325,6 +327,70 @@ const NewOrder: React.FC = () => {
     if (id) getOrder();
   }, [id, getOrder]);
 
+  // Auto-fetch and pre-select customer for customer users
+  useEffect(() => {
+    const fetchCustomerForUser = async () => {
+      if (isCustomerUser && !customer && id && user?.data) {
+        try {
+          let customerData = null;
+
+          // Try to fetch by customer_id first (if assigned to user)
+          if (userCustomerId) {
+            try {
+              const response = await api.get(`/customers/by_contact_id/${userCustomerId}`);
+              customerData = response.data.customer;
+            } catch (e) {
+              console.log('Customer not found by contact_id, trying email fallback');
+            }
+          }
+
+          // Fallback: Try to match by user's email
+          if (!customerData && user.data.email) {
+            try {
+              const response = await api.get(`/customers/by_user_email/${encodeURIComponent(user.data.email)}`);
+              customerData = response.data.customer;
+            } catch (e) {
+              console.log('Customer not found by email');
+            }
+          }
+
+          if (customerData) {
+            setCustomer(customerData);
+            // Auto-set addresses if available
+            if (customerData.addresses && customerData.addresses.length > 0) {
+              const defaultAddress = customerData.addresses[0];
+              setBillingAddress(defaultAddress);
+              setShippingAddress(defaultAddress);
+              await updateOrderData(id as string, {
+                customer_id: customerData._id,
+                billing_address: defaultAddress,
+                shipping_address: defaultAddress,
+              });
+            } else {
+              await updateOrderData(id as string, {
+                customer_id: customerData._id,
+              });
+            }
+            // Set active step to 1 (Billing Address) for customer users after fetching their data
+            setActiveStep(1);
+          }
+        } catch (error) {
+          console.error('Error fetching customer for user:', error);
+        }
+      }
+    };
+
+    fetchCustomerForUser();
+  }, [isCustomerUser, userCustomerId, user?.data, customer, id]);
+
+  // Set initial step for customer users when user data becomes available
+  useEffect(() => {
+    if (isCustomerUser && !isShared && activeStep === 0) {
+      // Customer users should skip step 0 (customer selection) as it's pre-filled
+      setActiveStep(1);
+    }
+  }, [isCustomerUser, isShared, activeStep]);
+
   // ------------------ Navigation & Finalization ---------------------
   const handleNext = useCallback(async () => {
     const { message, body } = validateAndCollectData(activeStep);
@@ -377,6 +443,11 @@ const NewOrder: React.FC = () => {
 
   const handleStepClick = useCallback(
     async (index: number) => {
+      // Prevent customer users from clicking on Select Customer step (step 0)
+      if (isCustomerUser && index === 0) {
+        return; // Silently ignore - customer selection is pre-filled for customer users
+      }
+
       if (isShared) {
         if (index < 3 || index > 4) {
           setError({
@@ -447,10 +518,11 @@ const NewOrder: React.FC = () => {
         name: 'Select Customer',
         component: isShared ? null : (
           <CustomerSearchBar
-            disabled={['declined', 'accepted'].includes(
-              order?.status?.toLowerCase()
-            )}
-            label='Select Customer'
+            disabled={
+              isCustomerUser || // Disable for customer users - they can't change their linked customer
+              ['declined', 'accepted'].includes(order?.status?.toLowerCase())
+            }
+            label={isCustomerUser ? 'Your Account' : 'Select Customer'}
             onChange={async (value: any) => {
               setCustomer(value);
               if (value?.addresses && value.addresses.length > 0) {
@@ -545,6 +617,7 @@ const NewOrder: React.FC = () => {
     ];
   }, [
     isShared,
+    isCustomerUser,
     customer,
     billingAddress,
     shippingAddress,
@@ -589,9 +662,17 @@ const NewOrder: React.FC = () => {
           },
         }
       );
-      const { google_sheet_url = '' } = data;
+      const { google_sheet_url = '', cart_products_added = 0 } = data;
       setLink(google_sheet_url);
-      toast.success('Sheet Successfully Created');
+
+      // Display success message based on whether cart products were added
+      if (cart_products_added > 0) {
+        toast.success(
+          `Sheet Successfully Created with ${cart_products_added} product${cart_products_added > 1 ? 's' : ''} from cart`
+        );
+      } else {
+        toast.success('Sheet Successfully Created');
+      }
     } catch (error) {
       console.error(error);
       toast.error('Error setting report. Try again Later');
@@ -931,11 +1012,25 @@ const NewOrder: React.FC = () => {
                 },
               }}
             >
-              {steps.map((step, index) => (
-                <Step key={index} onClick={() => handleStepClick(index)}>
-                  <StepLabel sx={{ cursor: 'pointer' }}>{step.name}</StepLabel>
-                </Step>
-              ))}
+              {steps.map((step, index) => {
+                const isDisabledForCustomer = isCustomerUser && index === 0;
+                return (
+                  <Step
+                    key={index}
+                    onClick={() => handleStepClick(index)}
+                    completed={isDisabledForCustomer ? true : undefined}
+                  >
+                    <StepLabel
+                      sx={{
+                        cursor: isDisabledForCustomer ? 'not-allowed' : 'pointer',
+                        opacity: isDisabledForCustomer ? 0.6 : 1,
+                      }}
+                    >
+                      {step.name}
+                    </StepLabel>
+                  </Step>
+                );
+              })}
             </Stepper>
             <Box sx={{ padding: activeStep === 3 ? 0 : { xs: 1.5, sm: 2, md: 3 }, minHeight: '100px' }}>
               <Suspense fallback={

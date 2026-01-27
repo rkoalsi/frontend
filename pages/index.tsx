@@ -106,6 +106,15 @@ const itemVariants = {
   },
 };
 
+// Actions allowed for customer role (scalable - add more as needed)
+const customerAllowedActions = [
+  'newOrder',
+  'pastOrder',
+  'catalogues',
+  'shipments',
+  'customer'
+];
+
 // Grouped menu items for better organization
 const menuSections = [
   {
@@ -210,7 +219,7 @@ const menuSections = [
         text: 'Customer Analytics',
         color: '#64748b',
         action: 'customer_analytics',
-      },
+      }
     ],
   },
   {
@@ -240,6 +249,12 @@ const menuSections = [
         color: '#6b7280',
         action: 'external_links',
       },
+      {
+        icon: <LineAxis />,
+        text: 'Customer Dashboard',
+        color: '#64748b',
+        action: 'customer',
+      },
     ],
   },
 ];
@@ -250,6 +265,33 @@ const Home = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [showCustomerRequestForm, setShowCustomerRequestForm] = useState(false);
+
+  // Filter menu sections based on user role
+  const getFilteredMenuSections = () => {
+    const userRole = user?.data?.role;
+
+    // For customer role, filter to only allowed actions
+    if (userRole === 'customer') {
+      return menuSections
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) =>
+            customerAllowedActions.includes(item.action)
+          ),
+        }))
+        .filter((section) => section.items.length > 0);
+    }
+
+    // For non-customer roles (salesperson, admin), hide Customer Dashboard
+    return menuSections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => item.action !== 'customer'),
+      }))
+      .filter((section) => section.items.length > 0);
+  };
+
+  const filteredMenuSections = getFilteredMenuSections();
 
   const handleNewOrder = async () => {
     try {
@@ -336,7 +378,7 @@ const Home = () => {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        flex: 1,
         background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
         pt: { xs: 2, sm: 3 },
         pb: { xs: 4, sm: 4 },
@@ -372,7 +414,7 @@ const Home = () => {
           </Box>
 
           {/* Menu Sections */}
-          {menuSections.map((section) => (
+          {filteredMenuSections.map((section) => (
             <Box key={section.title} sx={{ mb: 3 }}>
               <SectionTitle>{section.title}</SectionTitle>
               <Grid container spacing={1.5}>

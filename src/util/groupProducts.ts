@@ -37,65 +37,83 @@ function extractBaseName(productName: string): string {
 
   // Define size patterns
   // IMPORTANT: Longer sizes must come first to avoid partial matches (XXXXL before XXXL before XXL before XL before L)
-  const sizePattern = '(XXXXL|XXXL|XXL|XL|XXS|XS|S|M|L)';
+  const sizePattern = "(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|S|M|L)";
 
   // NEW: Remove (SIZE/measurement) pattern first - e.g., (XXL/62CM), (M/32CM), （XL/48CM）
   // Handles both regular parentheses () and full-width parentheses （）
-  baseName = baseName.replace(new RegExp(`[（(]\\s*${sizePattern}\\s*/\\s*\\d+\\s*[Cc]?[Mm]\\s*[)）]`, 'gi'), '');
+  baseName = baseName.replace(
+    new RegExp(
+      `[（(]\\s*${sizePattern}\\s*/\\s*\\d+\\s*[Cc]?[Mm]\\s*[)）]`,
+      "gi"
+    ),
+    ""
+  );
 
   // Pattern 1: Remove "-color-SIZE" at the end (reversed order) but keep color
   // Example: "Product -Vibrant Orange-XL" -> "Product Vibrant Orange"
-  baseName = baseName.replace(new RegExp(`-([A-Za-z][^-]+)-${sizePattern}$`, 'gi'), ' $1');
+  baseName = baseName.replace(
+    new RegExp(`-([A-Za-z][^-]+)-${sizePattern}$`, "gi"),
+    " $1"
+  );
 
   // Pattern 2: Remove " SIZE - color" but keep color -> "Product SIZE - color" -> "Product color"
   // Example: "Product XS - Camouflage blue" -> "Product Camouflage blue"
-  baseName = baseName.replace(new RegExp(`\\s+${sizePattern}\\s+-\\s+`, 'gi'), ' ');
+  baseName = baseName.replace(
+    new RegExp(`\\s+${sizePattern}\\s+-\\s+`, "gi"),
+    " "
+  );
 
   // Pattern 3: Remove " - SIZE color" but keep color -> "Product - SIZE color" -> "Product color"
   // Examples: "Product - XS Blue Coral" -> "Product Blue Coral"
-  baseName = baseName.replace(new RegExp(`\\s+-\\s+${sizePattern}\\s+`, 'gi'), ' ');
+  baseName = baseName.replace(
+    new RegExp(`\\s+-\\s+${sizePattern}\\s+`, "gi"),
+    " "
+  );
 
   // Pattern 4: Remove "-SIZE-color" but keep color -> "Product-SIZE-color" -> "Product color"
   // Examples: "Product-M-fuchsia" -> "Product fuchsia"
-  baseName = baseName.replace(new RegExp(`-${sizePattern}-`, 'gi'), ' ');
+  baseName = baseName.replace(new RegExp(`-${sizePattern}-`, "gi"), " ");
 
   // Pattern 5: Remove "-SIZE " but keep rest -> "Product-SIZE color" -> "Product color"
-  baseName = baseName.replace(new RegExp(`-${sizePattern}\\s+`, 'gi'), ' ');
+  baseName = baseName.replace(new RegExp(`-${sizePattern}\\s+`, "gi"), " ");
 
   // Pattern 6: Remove "-SIZE" at the very end
-  baseName = baseName.replace(new RegExp(`-${sizePattern}$`, 'gi'), '');
+  baseName = baseName.replace(new RegExp(`-${sizePattern}$`, "gi"), "");
 
   // Pattern 7: Remove standalone SIZE at various positions
-  baseName = baseName.replace(new RegExp(`\\s+${sizePattern}\\s+`, 'gi'), ' ');
-  baseName = baseName.replace(new RegExp(`\\s+${sizePattern}$`, 'gi'), '');
-  baseName = baseName.replace(new RegExp(`^${sizePattern}\\s+`, 'gi'), '');
+  baseName = baseName.replace(new RegExp(`\\s+${sizePattern}\\s+`, "gi"), " ");
+  baseName = baseName.replace(new RegExp(`\\s+${sizePattern}$`, "gi"), "");
+  baseName = baseName.replace(new RegExp(`^${sizePattern}\\s+`, "gi"), "");
 
   // Pattern 8: Remove SIZE in parentheses at the end -> "Product Name (M)" -> "Product Name"
-  baseName = baseName.replace(new RegExp(`\\s*\\(${sizePattern}\\)$`, 'gi'), '');
+  baseName = baseName.replace(
+    new RegExp(`\\s*\\(${sizePattern}\\)$`, "gi"),
+    ""
+  );
 
   // Pattern 9: Remove shoe size indicators like #1, #2, #3, etc.
   // Example: "PRODUCT NAME #4 -Color" -> "PRODUCT NAME -Color"
-  baseName = baseName.replace(/\s*#\d+\s*/gi, ' ');
+  baseName = baseName.replace(/\s*#\d+\s*/gi, " ");
 
   // Pattern 10: Remove measurements like 4.5mm, 6mm, 10mm, etc.
   // Example: "Product 4.5mm-Color" -> "Product -Color"
-  baseName = baseName.replace(/\s*\d+\.?\d*mm\s*/gi, ' ');
+  baseName = baseName.replace(/\s*\d+\.?\d*mm\s*/gi, " ");
 
   // Pattern 11: Remove "SIZE-color" pattern at the end (e.g., "Product L-orange" -> "Product orange")
   // This handles cases where size is directly before color with a dash
-  baseName = baseName.replace(new RegExp(`\\s+${sizePattern}-`, 'gi'), ' ');
+  baseName = baseName.replace(new RegExp(`\\s+${sizePattern}-`, "gi"), " ");
 
   // Remove weight indicators like: (Max 12kgs), (Max 25kgs), etc.
-  baseName = baseName.replace(/\s*\(Max\s+\d+kgs?\)/gi, '');
+  baseName = baseName.replace(/\s*\(Max\s+\d+kgs?\)/gi, "");
 
   // Remove weight ranges like: (12-25kg), (12-25kgs)
-  baseName = baseName.replace(/\s*\(\d+-\d+kgs?\)/gi, '');
+  baseName = baseName.replace(/\s*\(\d+-\d+kgs?\)/gi, "");
 
   // Clean up extra spaces and dashes
-  baseName = baseName.replace(/\s*-+\s*$/g, ''); // Remove trailing dashes
-  baseName = baseName.replace(/^\s*-+\s*/g, ''); // Remove leading dashes
-  baseName = baseName.replace(/\s*-\s*/g, ' - '); // Normalize spacing around dashes
-  baseName = baseName.replace(/\s+/g, ' ').trim();
+  baseName = baseName.replace(/\s*-+\s*$/g, ""); // Remove trailing dashes
+  baseName = baseName.replace(/^\s*-+\s*/g, ""); // Remove leading dashes
+  baseName = baseName.replace(/\s*-\s*/g, " - "); // Normalize spacing around dashes
+  baseName = baseName.replace(/\s+/g, " ").trim();
 
   return baseName;
 }
@@ -124,9 +142,9 @@ export interface GroupedProducts {
 function extractColor(productName: string): string {
   // Extract color (last word before parenthesis or end)
   // This mimics the backend MongoDB aggregation logic
-  const beforeParenthesis = productName.split('(')[0].trim();
-  const words = beforeParenthesis.split(' ');
-  return words[words.length - 1] || '';
+  const beforeParenthesis = productName.split("(")[0].trim();
+  const words = beforeParenthesis.split(" ");
+  return words[words.length - 1] || "";
 }
 
 /**
@@ -135,7 +153,9 @@ function extractColor(productName: string): string {
  */
 function getSizeOrder(productName: string): number {
   // Match size pattern: XS, S, M, L, XL, XXL, XXXL, XXXXL with word boundaries
-  const sizeMatch = productName.match(/\b(XXXXL|XXXL|XXL|XL|XXS|XXXS|XS|S|M|L)\b/);
+  const sizeMatch = productName.match(
+    /\b(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|S|M|L)\b/
+  );
 
   if (!sizeMatch) {
     return 99; // Default for no size found
@@ -145,14 +165,17 @@ function getSizeOrder(productName: string): number {
 
   // Size order mapping (matches backend lines 264-273)
   const sizeOrder: { [key: string]: number } = {
-    'XS': 1,
-    'S': 2,
-    'M': 3,
-    'L': 4,
-    'XL': 5,
-    'XXL': 6,
-    'XXXL': 7,
-    'XXXXL': 8,
+    XXXXS: 1,
+    XXXS: 2,
+    XXS: 3,
+    XS: 4,
+    S: 5,
+    M: 6,
+    L: 7,
+    XL: 8,
+    XXL: 9,
+    XXXL: 10,
+    XXXXL: 11,
   };
 
   return sizeOrder[size] || 99;
@@ -167,7 +190,7 @@ export function groupProductsByName(products: Product[]): GroupedProducts {
   const groups: Map<string, Product[]> = new Map();
 
   // Group products by their base name (case-insensitive)
-  products.forEach(product => {
+  products.forEach((product) => {
     const baseName = extractBaseName(product.name);
     const baseNameLower = baseName.toLowerCase();
 
@@ -222,7 +245,7 @@ export function groupProductsByName(products: Product[]): GroupedProducts {
       });
 
       productGroups.push({
-        groupId: `group-${baseName.replace(/\s+/g, '-').toLowerCase()}`,
+        groupId: `group-${baseName.replace(/\s+/g, "-").toLowerCase()}`,
         baseName,
         products: groupProducts,
         primaryProduct: groupProducts[0],
@@ -244,7 +267,7 @@ export function groupProductsByName(products: Product[]): GroupedProducts {
  * Useful for reverting grouping
  */
 export function flattenProductGroups(groups: ProductGroup[]): Product[] {
-  return groups.flatMap(group => group.products);
+  return groups.flatMap((group) => group.products);
 }
 
 /**
@@ -254,18 +277,20 @@ export function flattenProductGroups(groups: ProductGroup[]): Product[] {
  */
 export function extractSize(productName: string): string | null {
   // First try full word sizes
-  const fullWordMatch = productName.match(/\s*-\s*(XXX-Large|XX-Large|X-Large|X-Small|Extra Large|Extra Small|Large|Medium|Small)$/i);
+  const fullWordMatch = productName.match(
+    /\s*-\s*(XXX-Large|XX-Large|X-Large|X-Small|Extra Large|Extra Small|Large|Medium|Small)$/i
+  );
   if (fullWordMatch) {
     const size = fullWordMatch[1].toLowerCase();
-    if (size === 'x-large') return 'XL';
-    if (size === 'xx-large') return 'XXL';
-    if (size === 'xxx-large') return 'XXXL';
-    if (size === 'x-small') return 'XS';
-    if (size === 'extra large') return 'XL';
-    if (size === 'extra small') return 'XS';
-    if (size === 'large') return 'L';
-    if (size === 'medium') return 'M';
-    if (size === 'small') return 'S';
+    if (size === "x-large") return "XL";
+    if (size === "xx-large") return "XXL";
+    if (size === "xxx-large") return "XXXL";
+    if (size === "x-small") return "XS";
+    if (size === "extra large") return "XL";
+    if (size === "extra small") return "XS";
+    if (size === "large") return "L";
+    if (size === "medium") return "M";
+    if (size === "small") return "S";
   }
 
   // Then try abbreviated sizes

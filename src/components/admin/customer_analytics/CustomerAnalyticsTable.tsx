@@ -133,28 +133,39 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
     return ((current - previous) / previous) * 100;
   };
 
-  const highlightSearchTerm = (text: string, searchTerm: string) => {
-    if (!searchTerm || !text) return text;
+  const highlightSearchTerm = (text: any, searchTerm: string) => {
+    // Convert text to string safely (handles arrays, null, undefined)
+    const textString = Array.isArray(text) ? text.join(', ') : String(text || '');
 
-    const regex = new RegExp(`(${searchTerm})`, 'gi');
-    const parts = text.split(regex);
+    if (!searchTerm || !textString) return textString;
 
-    return parts.map((part, index) =>
-      regex.test(part) ? (
-        <Box
-          key={index}
-          component="span"
-          sx={{
-            backgroundColor: alpha(theme.palette.primary.main, 0.2),
-            fontWeight: 700,
-            borderRadius: 0.5,
-            px: 0.5,
-          }}
-        >
-          {part}
-        </Box>
-      ) : part
-    );
+    // Escape special regex characters in searchTerm
+    const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    try {
+      const regex = new RegExp(`(${escapedSearchTerm})`, 'gi');
+      const parts = textString.split(regex);
+
+      return parts.map((part, index) =>
+        regex.test(part) ? (
+          <Box
+            key={index}
+            component="span"
+            sx={{
+              backgroundColor: alpha(theme.palette.primary.main, 0.2),
+              fontWeight: 700,
+              borderRadius: 0.5,
+              px: 0.5,
+            }}
+          >
+            {part}
+          </Box>
+        ) : part
+      );
+    } catch {
+      // If regex fails for any reason, return the original text
+      return textString;
+    }
   };
 
   return (

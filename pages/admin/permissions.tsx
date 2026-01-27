@@ -115,6 +115,7 @@ const UserManagement = () => {
             hr: 'secondary',
             sales_person: 'success',
             warehouse: 'secondary',
+            customer: 'info',
             default: 'default'
         };
         return colors[role] || colors.default;
@@ -127,7 +128,8 @@ const UserManagement = () => {
             hr: 'Human Resources',
             sales_person: 'Sales Person',
             warehouse: 'Warehouse',
-            default: 'Unkown Department'
+            customer: 'Customer',
+            default: 'Unknown Department'
         };
         return roleNames[role] || roleNames.default;
     };
@@ -246,6 +248,7 @@ const UserManagement = () => {
                                     <MenuItem value="sales_person">Sales Person</MenuItem>
                                     <MenuItem value="warehouse">Warehouse</MenuItem>
                                     <MenuItem value="hr">HR</MenuItem>
+                                    <MenuItem value="customer">Customer</MenuItem>
                                 </Select>
                             </FormControl>
                         </Grid>

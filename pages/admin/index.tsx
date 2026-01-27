@@ -605,6 +605,19 @@ const AdminDashboard = () => {
       ],
       icon: <MiscellaneousServices color='primary' />,
     },
+    {
+      label: 'Customer Management',
+      route: 'customer_management',
+      value: 0,
+      subStats: [
+        {
+          label: 'Manage Users',
+          value: 0,
+          color: 'info',
+        },
+      ],
+      icon: <PeopleOutlined color='primary' />,
+    },
   ];
 
   // Filter cards based on backend permissions instead of frontend role checking
@@ -1146,9 +1159,9 @@ const AdminDashboard = () => {
                             ))}
                           </Pie>
                           <RechartsTooltip
-                            formatter={(value: number, name: string, props: any) => [
-                              `${value.toLocaleString()} products (${props.payload.percentage}%)`,
-                              name
+                            formatter={(value: any, name: string | number | undefined, props: any) => [
+                              `${(typeof value === 'number' ? value : 0).toLocaleString()} products (${props.payload.percentage}%)`,
+                              String(name || '')
                             ]}
                           />
                           <Legend />

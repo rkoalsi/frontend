@@ -93,9 +93,17 @@ const CustomerAnalytics = () => {
         }
 
         const searchTerm = query.toLowerCase().trim();
-        return data.filter(customer => 
+
+        // Helper to safely convert salesPerson (could be string or array) to searchable string
+        const getSalesPersonString = (sp: any): string => {
+            if (!sp) return '';
+            if (Array.isArray(sp)) return sp.join(', ').toLowerCase();
+            return String(sp).toLowerCase();
+        };
+
+        return data.filter(customer =>
             customer.customerName?.toLowerCase().includes(searchTerm) ||
-            customer.salesPerson?.toLowerCase().includes(searchTerm) ||
+            getSalesPersonString(customer.salesPerson).includes(searchTerm) ||
             customer.address?.toLowerCase().includes(searchTerm) ||
             customer.city?.toLowerCase().includes(searchTerm) ||
             customer.tier?.toLowerCase().includes(searchTerm)

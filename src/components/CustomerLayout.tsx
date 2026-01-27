@@ -20,32 +20,12 @@ import {
 import {
   Menu as MenuIcon,
   Dashboard,
-  Group as CustomersIcon,
-  ShoppingCart as ProductsIcon,
-  Receipt as OrdersIcon,
-  PeopleAlt as SalesPeopleIcon,
-  Payment,
-  LibraryBooks,
-  VideoLibrary,
-  Campaign,
-  Checklist,
-  Phishing,
-  Category,
-  Insights,
-  Radar,
-  Repeat,
-  DeliveryDining,
-  KeyboardReturn,
-  PaidOutlined,
-  PendingActionsOutlined,
-  BrandingWatermark,
-  Link,
+  ShoppingCart as OrdersIcon,
   Analytics,
-  CalendarMonth,
-  AssignmentInd,
-  LocalShipping,
-  AccessTime,
   ManageAccounts,
+  History,
+  Receipt,
+  CreditCard,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -53,41 +33,34 @@ import AuthContext from './Auth';
 // Icon mapping for dynamic icon rendering
 const iconMap: { [key: string]: React.ReactElement } = {
   Dashboard: <Dashboard />,
-  CustomersIcon: <CustomersIcon />,
-  ProductsIcon: <ProductsIcon />,
   OrdersIcon: <OrdersIcon />,
-  SalesPeopleIcon: <SalesPeopleIcon />,
-  Payment: <Payment />,
-  LibraryBooks: <LibraryBooks />,
-  VideoLibrary: <VideoLibrary />,
-  Campaign: <Campaign />,
-  Checklist: <Checklist />,
-  Category: <Category />,
-  Phishing: <Phishing />,
-  Insights: <Insights />,
-  Radar: <Radar />,
-  Repeat: <Repeat />,
-  DeliveryDining: <DeliveryDining />,
-  KeyboardReturn: <KeyboardReturn />,
-  PaidOutlined: <PaidOutlined />,
-  PendingActionsOutlined: <PendingActionsOutlined />,
-  BrandingWatermark: <BrandingWatermark />,
-  Link: <Link />,
   Analytics: <Analytics />,
-  CalendarMonth: <CalendarMonth />,
-  AssignmentInd: <AssignmentInd />,
-  LocalShipping: <LocalShipping />,
-  AccessTime: <AccessTime />,
   ManageAccounts: <ManageAccounts />,
+  History: <History />,
+  Receipt: <Receipt />,
+  CreditCard: <CreditCard />,
 };
 
-const AdminLayout = ({ children }: any) => {
-  const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
-  const router = useRouter();
+// Default customer menu items (fallback if backend doesn't provide)
+const defaultCustomerMenuItems = [
+  { text: 'Dashboard', icon: 'Dashboard', path: '/customer' },
+  { text: 'My Orders (Estimates)', icon: 'History', path: '/customer/orders' },
+  { text: 'My Account', icon: 'ManageAccounts', path: '/customer/account' },
+  { text: 'Analytics', icon: 'Analytics', path: '/customer/analytics' },
+];
+
+const CustomerLayout = ({ children }: any) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [isSidebarOpen, setSidebarOpen] = useState(!isMobile);
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
+  const router = useRouter();
   const { user, loading, logout, permissions, checkRouteAccess }: any = useContext(AuthContext);
+
+  // Keep sidebar open on desktop, closed on mobile
+  useEffect(() => {
+    setSidebarOpen(!isMobile);
+  }, [isMobile]);
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -98,9 +71,20 @@ const AdminLayout = ({ children }: any) => {
           return;
         }
 
-        // Check if user can access current route
+        // For customer routes, allow access if user has customer role
+        // This is a frontend fallback until backend permissions are configured
+        const isCustomerRole = user?.data?.role === 'customer';
+        const isCustomerRoute = router.pathname.startsWith('/customer');
+
+        if (isCustomerRoute && isCustomerRole) {
+          // Customer accessing customer routes - allow
+          setIsCheckingAccess(false);
+          return;
+        }
+
+        // For non-customer users or if backend check is needed
         const canAccess = await checkRouteAccess(router.pathname);
-        if (!canAccess) {
+        if (!canAccess && !isCustomerRole) {
           toast.error('You are not authorized to access this page.');
           router.replace('/');
         }
@@ -112,47 +96,67 @@ const AdminLayout = ({ children }: any) => {
   }, [user, loading, router.pathname, checkRouteAccess]);
 
   // Show loading while checking permissions
-  if (loading || isCheckingAccess || !permissions) {
+  if (loading || isCheckingAccess) {
     return (
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh' 
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          background: 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 50%, #1a365d 100%)',
         }}
       >
-        <CircularProgress />
+        <CircularProgress sx={{ color: '#38a169' }} />
       </Box>
     );
   }
 
-  // Don't render if user is not authenticated or doesn't have access
+  // Don't render if user is not authenticated
   if (!user) {
     return null;
   }
 
   const handleMenuItemClick = (path: string) => {
     router.push(path);
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
   };
+
+  // Get menu items - use backend permissions if available, otherwise use defaults
+  const getMenuItems = () => {
+    if (permissions?.menu_items && permissions.menu_items.length > 0) {
+      // Filter for customer routes only
+      const customerItems = permissions.menu_items.filter(
+        (item: any) => item.path.startsWith('/customer')
+      );
+      if (customerItems.length > 0) {
+        return customerItems;
+      }
+    }
+    return defaultCustomerMenuItems;
+  };
+
+  const menuItems = getMenuItems();
 
   return (
     <Box
       sx={{
         display: 'flex',
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #5A7CA4, #2B4864, #172335)',
+        background: 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 50%, #1a365d 100%)',
       }}
     >
       <CssBaseline />
-      
+
       {/* App Bar */}
       <AppBar
         position='fixed'
         sx={{
           zIndex: 1300,
-          backgroundColor: '#2C3E50',
-          boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
+          backgroundColor: '#1a365d',
+          boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between' }}>
@@ -173,23 +177,26 @@ const AdminLayout = ({ children }: any) => {
                 color: 'white',
                 fontFamily: 'Roboto, sans-serif',
               }}
-              onClick={() => router.push('/admin')}
+              onClick={() => router.push('/customer')}
             >
-              Admin Dashboard
+              Customer Portal
             </Typography>
           </Box>
-          
+
           <Box display='flex' gap='16px' flexDirection='row'>
-            {user && router.pathname.includes('/admin') && (
+            {user && router.pathname.includes('/customer') && (
               <Button
                 variant='contained'
-                color='primary'
-                onClick={() => router.push('/')}
                 sx={{
                   textTransform: 'none',
                   fontWeight: 'bold',
                   paddingX: 3,
+                  backgroundColor: '#38a169',
+                  '&:hover': {
+                    backgroundColor: '#2f855a',
+                  },
                 }}
+                onClick={() => router.push('/')}
               >
                 Home
               </Button>
@@ -222,7 +229,7 @@ const AdminLayout = ({ children }: any) => {
           [`& .MuiDrawer-paper`]: {
             width: isSidebarOpen ? 240 : 0,
             boxSizing: 'border-box',
-            backgroundColor: '#344d69',
+            backgroundColor: '#2d4a6f',
             color: 'white',
             paddingTop: 2,
           },
@@ -242,7 +249,7 @@ const AdminLayout = ({ children }: any) => {
           }}
         >
           <List>
-            {permissions.menu_items.sort((a:any, b:any) => a.text.localeCompare(b.text)).map(({ text, icon, path }:any, index:number) => (
+            {menuItems.sort((a: any, b: any) => a.text.localeCompare(b.text)).map(({ text, icon, path }: any, index: number) => (
               <ListItem
                 component='a'
                 key={index}
@@ -254,11 +261,11 @@ const AdminLayout = ({ children }: any) => {
                   borderRadius: 2,
                   cursor: 'pointer',
                   backgroundColor:
-                    router.pathname === path ? '#78354f' : '#344d69',
+                    router.pathname === path ? '#38a169' : '#2d4a6f',
                   color: 'white',
                   transition: 'background-color 0.3s, color 0.3s',
                   '&:hover': {
-                    backgroundColor: '#78354f',
+                    backgroundColor: '#38a169',
                     color: 'white',
                   },
                 }}
@@ -292,7 +299,7 @@ const AdminLayout = ({ children }: any) => {
         component='main'
         sx={{
           flexGrow: 1,
-          background: 'linear-gradient(135deg, #5A7CA4, #2B4864, #172335)',
+          background: 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 50%, #1a365d 100%)',
           minHeight: '100vh',
           padding: 3,
           transition: 'margin-left 0.3s',
@@ -305,4 +312,4 @@ const AdminLayout = ({ children }: any) => {
   );
 };
 
-export default AdminLayout;
+export default CustomerLayout;
