@@ -187,9 +187,9 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                     }}
                   />
                 )}
-                {product.sub_category && (
+                {product.series && (
                   <Chip
-                    label={product.sub_category}
+                    label={product.series}
                     variant="filled"
                     size="small"
                     sx={{
