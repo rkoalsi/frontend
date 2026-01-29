@@ -154,7 +154,7 @@ export default function AllProductsCatalouge() {
   const [outOfStockProducts, setOutOfStockProducts] = useState<Product[]>([]);
   const [outOfStockItems, setOutOfStockItems] = useState<any[]>([]);
   const [loadingOutOfStock, setLoadingOutOfStock] = useState<boolean>(false);
-  const [hideOutOfStock, setHideOutOfStock] = useState<boolean>(false);
+  const [hideOutOfStock, setHideOutOfStock] = useState<boolean>(true);
   const handleImageClick = useCallback((srcList: string[], index: number) => {
     if (Array.isArray(srcList)) {
       const formattedImages = srcList?.map((src) => ({ src }));
