@@ -451,7 +451,7 @@ const Products: React.FC<ProductsProps> = ({
   const [outOfStockProducts, setOutOfStockProducts] = useState<SearchResult[]>([]);
   const [outOfStockItems, setOutOfStockItems] = useState<any[]>([]);
   const [loadingOutOfStock, setLoadingOutOfStock] = useState<boolean>(false);
-  const [hideOutOfStock, setHideOutOfStock] = useState<boolean>(false);
+  const [hideOutOfStock, setHideOutOfStock] = useState<boolean>(true);
 
   const [link, setLink] = useState(
     order?.spreadsheet_created ? order?.spreadsheet_url : ""
