@@ -40,6 +40,7 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
   ref_no = true,
 }) => {
   const { user }: any = useContext(AuthContext);
+  const isAdmin = user?.data?.role?.includes('admin');
   const [options, setOptions] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedOption, setSelectedOption] = useState<SearchResult | null>(
@@ -70,10 +71,9 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
     try {
       const base = `${process.env.api_url}`;
       const response = await axios.get(`${base}/customers`, {
-        params: {
-          user_code: user.data.code,
-          name: value,
-        },
+        params: isAdmin
+          ? { role: 'admin', name: value }
+          : { user_code: user.data.code, name: value },
       });
       setOptions(response.data.customers);
     } catch (error) {

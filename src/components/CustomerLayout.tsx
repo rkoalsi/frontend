@@ -26,6 +26,7 @@ import {
   History,
   Receipt,
   CreditCard,
+  Payment,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -39,6 +40,7 @@ const iconMap: { [key: string]: React.ReactElement } = {
   History: <History />,
   Receipt: <Receipt />,
   CreditCard: <CreditCard />,
+  Payment: <Payment />,
 };
 
 // Default customer menu items (fallback if backend doesn't provide)
@@ -47,6 +49,7 @@ const defaultCustomerMenuItems = [
   { text: 'My Orders (Estimates)', icon: 'History', path: '/customer/orders' },
   { text: 'My Account', icon: 'ManageAccounts', path: '/customer/account' },
   { text: 'Analytics', icon: 'Analytics', path: '/customer/analytics' },
+  { text: 'Payments', icon: 'Payment', path: '/customer/payments' },
 ];
 
 const CustomerLayout = ({ children }: any) => {

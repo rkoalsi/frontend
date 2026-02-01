@@ -35,6 +35,9 @@ import {
   Person,
   ShoppingCart,
   Download,
+  Sync,
+  CheckCircle,
+  Error as ErrorIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
@@ -54,6 +57,7 @@ const ReturnOrders = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [downloadLoading, setDownloadLoading] = useState(false);
+  const [zohoLoading, setZohoLoading] = useState(false);
   // Dialog state for viewing details
   const [selectedOrder, setSelectedOrder]: any = useState(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -180,31 +184,81 @@ const ReturnOrders = () => {
   const handleStatusUpdate = async (order: any, newStatus: any) => {
     setActionLoading(true);
     try {
-      await axiosInstance.put(`/admin/return_orders/${order._id}`, {
+      const response = await axiosInstance.put(`/admin/return_orders/${order._id}/status`, {
         status: newStatus,
       });
 
-      // Update the selectedOrder state to reflect the new status
-      setSelectedOrder((prev: any) => ({
-        ...prev,
-        status: newStatus,
-      }));
+      const updatedOrder = response.data.return_order;
+
+      // Update the selectedOrder state to reflect the new status and Zoho data
+      setSelectedOrder(updatedOrder);
 
       // Update the corresponding order in the returnOrders array
       setReturnOrders((prevOrders: any) =>
         prevOrders.map((returnOrder: any) =>
-          returnOrder._id === order._id
-            ? { ...returnOrder, status: newStatus }
-            : returnOrder
+          returnOrder._id === order._id ? updatedOrder : returnOrder
         )
       );
 
       toast.success(`Return order status updated to ${newStatus}`);
+
+      // Show Zoho sales return result if applicable
+      if (response.data.zoho_salesreturn) {
+        if (response.data.zoho_salesreturn.created) {
+          toast.success(`Zoho Sales Return created: ${response.data.zoho_salesreturn.salesreturn_number}`);
+        } else if (response.data.zoho_salesreturn.error) {
+          toast.warning(`Zoho Sales Return failed: ${response.data.zoho_salesreturn.error}`);
+        }
+      }
     } catch (error) {
       console.error(error);
       toast.error('Error updating return order status');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  // Create Zoho Sales Return manually
+  const handleCreateZohoSalesReturn = async (orderId: string) => {
+    setZohoLoading(true);
+    try {
+      const response = await axiosInstance.post(`/admin/return_orders/${orderId}/create-zoho-salesreturn`);
+
+      // Update the selectedOrder state with Zoho data
+      setSelectedOrder((prev: any) => ({
+        ...prev,
+        zoho_salesreturn_id: response.data.zoho_salesreturn?.salesreturn_id,
+        zoho_salesreturn_number: response.data.zoho_salesreturn?.salesreturn_number,
+        zoho_salesorder_id: response.data.zoho_salesreturn?.salesorder_id,
+        zoho_salesorder_number: response.data.zoho_salesreturn?.salesorder_number,
+        zoho_salesreturn_status: response.data.zoho_salesreturn?.status,
+      }));
+
+      // Update the corresponding order in the returnOrders array
+      setReturnOrders((prevOrders: any) =>
+        prevOrders.map((returnOrder: any) =>
+          returnOrder._id === orderId
+            ? {
+                ...returnOrder,
+                zoho_salesreturn_id: response.data.zoho_salesreturn?.salesreturn_id,
+                zoho_salesreturn_number: response.data.zoho_salesreturn?.salesreturn_number,
+              }
+            : returnOrder
+        )
+      );
+
+      toast.success(`Zoho Sales Return created: ${response.data.zoho_salesreturn?.salesreturn_number}`);
+    } catch (error: any) {
+      console.error(error);
+      const errorDetail = error.response?.data?.detail;
+      if (typeof errorDetail === 'object') {
+        toast.error(errorDetail.message || 'Error creating Zoho Sales Return');
+        console.log('Zoho Error Details:', errorDetail);
+      } else {
+        toast.error(errorDetail || 'Error creating Zoho Sales Return');
+      }
+    } finally {
+      setZohoLoading(false);
     }
   };
 
@@ -228,6 +282,8 @@ const ReturnOrders = () => {
         return 'warning';
       case 'approved':
         return 'success';
+      case 'picked_up':
+        return 'info';
       case 'rejected':
         return 'error';
       case 'completed':
@@ -679,7 +735,7 @@ const ReturnOrders = () => {
                       Update Status
                     </Typography>
                     <Box display='flex' gap={1} flexWrap='wrap'>
-                      {['draft', 'picked_up', 'rejected', 'completed'].map(
+                      {['draft', 'approved', 'picked_up', 'rejected', 'completed'].map(
                         (status) => (
                           <Button
                             key={status}
@@ -702,6 +758,75 @@ const ReturnOrders = () => {
                         )
                       )}
                     </Box>
+                  </CardContent>
+                </Card>
+              </Box>
+
+              {/* Zoho Sales Return Info */}
+              <Box>
+                <Card variant='outlined'>
+                  <CardContent>
+                    <Typography variant='h6' gutterBottom color='primary'>
+                      Zoho Sales Return
+                    </Typography>
+                    {selectedOrder.zoho_salesreturn_id ? (
+                      <Box>
+                        <Box display='flex' alignItems='center' gap={1} mb={1}>
+                          <CheckCircle color='success' fontSize='small' />
+                          <Typography variant='body2' color='success.main'>
+                            Sales Return Created
+                          </Typography>
+                        </Box>
+                        <Typography variant='body2' gutterBottom>
+                          <strong>Sales Return Number:</strong>{' '}
+                          {selectedOrder.zoho_salesreturn_doc?.salesreturn_number || selectedOrder.zoho_salesreturn_number || 'N/A'}
+                        </Typography>
+                        <Typography variant='body2' gutterBottom>
+                          <strong>Sales Return ID:</strong>{' '}
+                          {selectedOrder.zoho_salesreturn_id}
+                        </Typography>
+                        {(selectedOrder.zoho_salesreturn_doc?.salesorder_number || selectedOrder.zoho_salesorder_number) && (
+                          <Typography variant='body2' gutterBottom>
+                            <strong>Sales Order Number:</strong>{' '}
+                            {selectedOrder.zoho_salesreturn_doc?.salesorder_number || selectedOrder.zoho_salesorder_number}
+                          </Typography>
+                        )}
+                        {(selectedOrder.zoho_salesreturn_doc?.status || selectedOrder.zoho_salesreturn_status) && (
+                          <Typography variant='body2' gutterBottom>
+                            <strong>Status:</strong>{' '}
+                            <Chip
+                              label={(selectedOrder.zoho_salesreturn_doc?.status || selectedOrder.zoho_salesreturn_status).toUpperCase()}
+                              size='small'
+                              color='info'
+                            />
+                          </Typography>
+                        )}
+                      </Box>
+                    ) : (
+                      <Box>
+                        <Box display='flex' alignItems='center' gap={1} mb={2}>
+                          <ErrorIcon color='warning' fontSize='small' />
+                          <Typography variant='body2' color='text.secondary'>
+                            No Zoho Sales Return created yet
+                          </Typography>
+                        </Box>
+                        <Button
+                          variant='contained'
+                          color='primary'
+                          size='small'
+                          startIcon={zohoLoading ? <CircularProgress size={16} color='inherit' /> : <Sync />}
+                          onClick={() => handleCreateZohoSalesReturn(selectedOrder._id)}
+                          disabled={zohoLoading || selectedOrder.status === 'draft'}
+                        >
+                          {zohoLoading ? 'Creating...' : 'Create Zoho Sales Return'}
+                        </Button>
+                        {selectedOrder.status === 'draft' && (
+                          <Typography variant='caption' display='block' color='text.secondary' mt={1}>
+                            Change status to create sales return
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
                   </CardContent>
                 </Card>
               </Box>
