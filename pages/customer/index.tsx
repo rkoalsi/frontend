@@ -36,6 +36,7 @@ import {
   CheckCircle,
   ReceiptLong,
   Download,
+  Payment,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
@@ -768,6 +769,17 @@ const CustomerDashboard = () => {
                     sx={{ textTransform: 'none', flex: { xs: '1 1 45%', sm: '0 0 auto' } }}
                   >
                     View Invoices
+                  </Button>
+                )}
+                {user?.data?.customer_id && (
+                  <Button
+                    variant='outlined'
+                    startIcon={<Payment />}
+                    onClick={() => router.push('/customer/payments')}
+                    size={isMobile ? 'small' : 'medium'}
+                    sx={{ textTransform: 'none', flex: { xs: '1 1 45%', sm: '0 0 auto' } }}
+                  >
+                    View Payments
                   </Button>
                 )}
                 {user?.data?.customer_id && (
