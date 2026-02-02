@@ -202,12 +202,12 @@ const ReturnOrders = () => {
 
       toast.success(`Return order status updated to ${newStatus}`);
 
-      // Show Zoho sales return result if applicable
-      if (response.data.zoho_salesreturn) {
-        if (response.data.zoho_salesreturn.created) {
-          toast.success(`Zoho Sales Return created: ${response.data.zoho_salesreturn.salesreturn_number}`);
-        } else if (response.data.zoho_salesreturn.error) {
-          toast.warning(`Zoho Sales Return failed: ${response.data.zoho_salesreturn.error}`);
+      // Show Zoho credit note result if applicable
+      if (response.data.zoho_creditnote) {
+        if (response.data.zoho_creditnote.created) {
+          toast.success(`Credit Note created: ${response.data.zoho_creditnote.creditnote_number}`);
+        } else if (response.data.zoho_creditnote.error) {
+          toast.warning(`Credit Note creation failed: ${response.data.zoho_creditnote.error}`);
         }
       }
     } catch (error) {
@@ -218,20 +218,18 @@ const ReturnOrders = () => {
     }
   };
 
-  // Create Zoho Sales Return manually
-  const handleCreateZohoSalesReturn = async (orderId: string) => {
+  // Create Zoho Credit Note manually
+  const handleCreateCreditNote = async (orderId: string) => {
     setZohoLoading(true);
     try {
-      const response = await axiosInstance.post(`/admin/return_orders/${orderId}/create-zoho-salesreturn`);
+      const response = await axiosInstance.post(`/admin/return_orders/${orderId}/create-zoho-creditnote`);
 
       // Update the selectedOrder state with Zoho data
       setSelectedOrder((prev: any) => ({
         ...prev,
-        zoho_salesreturn_id: response.data.zoho_salesreturn?.salesreturn_id,
-        zoho_salesreturn_number: response.data.zoho_salesreturn?.salesreturn_number,
-        zoho_salesorder_id: response.data.zoho_salesreturn?.salesorder_id,
-        zoho_salesorder_number: response.data.zoho_salesreturn?.salesorder_number,
-        zoho_salesreturn_status: response.data.zoho_salesreturn?.status,
+        zoho_creditnote_id: response.data.zoho_creditnote?.creditnote_id,
+        zoho_creditnote_number: response.data.zoho_creditnote?.creditnote_number,
+        zoho_creditnote_status: response.data.zoho_creditnote?.status,
       }));
 
       // Update the corresponding order in the returnOrders array
@@ -240,23 +238,73 @@ const ReturnOrders = () => {
           returnOrder._id === orderId
             ? {
                 ...returnOrder,
-                zoho_salesreturn_id: response.data.zoho_salesreturn?.salesreturn_id,
-                zoho_salesreturn_number: response.data.zoho_salesreturn?.salesreturn_number,
+                zoho_creditnote_id: response.data.zoho_creditnote?.creditnote_id,
+                zoho_creditnote_number: response.data.zoho_creditnote?.creditnote_number,
               }
             : returnOrder
         )
       );
 
-      toast.success(`Zoho Sales Return created: ${response.data.zoho_salesreturn?.salesreturn_number}`);
+      toast.success(`Credit Note created: ${response.data.zoho_creditnote?.creditnote_number}`);
     } catch (error: any) {
       console.error(error);
       const errorDetail = error.response?.data?.detail;
       if (typeof errorDetail === 'object') {
-        toast.error(errorDetail.message || 'Error creating Zoho Sales Return');
+        toast.error(errorDetail.message || 'Error creating Credit Note');
         console.log('Zoho Error Details:', errorDetail);
       } else {
-        toast.error(errorDetail || 'Error creating Zoho Sales Return');
+        toast.error(errorDetail || 'Error creating Credit Note');
       }
+    } finally {
+      setZohoLoading(false);
+    }
+  };
+
+  // Update Zoho Credit Note (redo)
+  const handleUpdateCreditNote = async (orderId: string) => {
+    setZohoLoading(true);
+    try {
+      const response = await axiosInstance.put(`/admin/return_orders/${orderId}/update-zoho-creditnote`);
+
+      setSelectedOrder((prev: any) => ({
+        ...prev,
+        zoho_creditnote_id: response.data.zoho_creditnote?.creditnote_id,
+        zoho_creditnote_number: response.data.zoho_creditnote?.creditnote_number,
+        zoho_creditnote_status: response.data.zoho_creditnote?.status,
+      }));
+
+      toast.success('Credit Note updated successfully');
+    } catch (error: any) {
+      console.error(error);
+      const errorDetail = error.response?.data?.detail;
+      toast.error(typeof errorDetail === 'string' ? errorDetail : 'Error updating Credit Note');
+    } finally {
+      setZohoLoading(false);
+    }
+  };
+
+  // Download Credit Note PDF
+  const handleDownloadCreditNotePdf = async (orderId: string) => {
+    setZohoLoading(true);
+    try {
+      const response = await axiosInstance.get(
+        `/admin/return_orders/${orderId}/download-creditnote-pdf`,
+        { responseType: 'blob' }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `credit_note_${orderId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Credit Note PDF downloaded');
+    } catch (error: any) {
+      console.error(error);
+      toast.error('Error downloading Credit Note PDF');
     } finally {
       setZohoLoading(false);
     }
@@ -633,22 +681,37 @@ const ReturnOrders = () => {
                     <Typography variant='body2' gutterBottom>
                       <strong>Reason:</strong> {selectedOrder.return_reason}
                     </Typography>
-                    {selectedOrder.debit_note_document && (
-                      <Typography variant='body2' gutterBottom>
-                        <strong>Debit Note Document:</strong>{' '}
-                        <a
-                          href={selectedOrder.debit_note_document}
-                          target='_blank'
-                          rel='noopener noreferrer'
-                          style={{
-                            color: '#1976d2',
-                            textDecoration: 'underline',
-                          }}
-                        >
-                          View Document
-                        </a>
-                      </Typography>
-                    )}
+                    {(() => {
+                      const docs = selectedOrder.debit_note_documents?.length
+                        ? selectedOrder.debit_note_documents
+                        : selectedOrder.debit_note_document
+                        ? [selectedOrder.debit_note_document]
+                        : [];
+                      return docs.length > 0 ? (
+                        <Box sx={{ mt: 1 }}>
+                          <Typography variant='body2' gutterBottom>
+                            <strong>Debit Note Documents ({docs.length}):</strong>
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, ml: 1 }}>
+                            {docs.map((doc: string, idx: number) => (
+                              <Typography key={idx} variant='body2'>
+                                <a
+                                  href={doc}
+                                  target='_blank'
+                                  rel='noopener noreferrer'
+                                  style={{
+                                    color: '#1976d2',
+                                    textDecoration: 'underline',
+                                  }}
+                                >
+                                  Document {idx + 1}
+                                </a>
+                              </Typography>
+                            ))}
+                          </Box>
+                        </Box>
+                      ) : null;
+                    })()}
                   </CardContent>
                 </Card>
               </Box>
@@ -762,52 +825,68 @@ const ReturnOrders = () => {
                 </Card>
               </Box>
 
-              {/* Zoho Sales Return Info */}
+              {/* Zoho Credit Note Info */}
               <Box>
                 <Card variant='outlined'>
                   <CardContent>
                     <Typography variant='h6' gutterBottom color='primary'>
-                      Zoho Sales Return
+                      Zoho Credit Note
                     </Typography>
-                    {selectedOrder.zoho_salesreturn_id ? (
+                    {selectedOrder.zoho_creditnote_id ? (
                       <Box>
                         <Box display='flex' alignItems='center' gap={1} mb={1}>
                           <CheckCircle color='success' fontSize='small' />
                           <Typography variant='body2' color='success.main'>
-                            Sales Return Created
+                            Credit Note Created
                           </Typography>
                         </Box>
                         <Typography variant='body2' gutterBottom>
-                          <strong>Sales Return Number:</strong>{' '}
-                          {selectedOrder.zoho_salesreturn_doc?.salesreturn_number || selectedOrder.zoho_salesreturn_number || 'N/A'}
+                          <strong>Credit Note Number:</strong>{' '}
+                          {selectedOrder.zoho_creditnote_number || 'N/A'}
                         </Typography>
                         <Typography variant='body2' gutterBottom>
-                          <strong>Sales Return ID:</strong>{' '}
-                          {selectedOrder.zoho_salesreturn_id}
+                          <strong>Credit Note ID:</strong>{' '}
+                          {selectedOrder.zoho_creditnote_id}
                         </Typography>
-                        {(selectedOrder.zoho_salesreturn_doc?.salesorder_number || selectedOrder.zoho_salesorder_number) && (
-                          <Typography variant='body2' gutterBottom>
-                            <strong>Sales Order Number:</strong>{' '}
-                            {selectedOrder.zoho_salesreturn_doc?.salesorder_number || selectedOrder.zoho_salesorder_number}
-                          </Typography>
-                        )}
-                        {(selectedOrder.zoho_salesreturn_doc?.status || selectedOrder.zoho_salesreturn_status) && (
+                        {selectedOrder.zoho_creditnote_status && (
                           <Typography variant='body2' gutterBottom>
                             <strong>Status:</strong>{' '}
                             <Chip
-                              label={(selectedOrder.zoho_salesreturn_doc?.status || selectedOrder.zoho_salesreturn_status).toUpperCase()}
+                              label={selectedOrder.zoho_creditnote_status.toUpperCase()}
                               size='small'
                               color='info'
                             />
                           </Typography>
                         )}
+                        <Box display='flex' gap={1} mt={2} flexWrap='wrap'>
+                          <Button
+                            variant='outlined'
+                            color='primary'
+                            size='small'
+                            startIcon={zohoLoading ? <CircularProgress size={16} color='inherit' /> : <Sync />}
+                            onClick={() => handleUpdateCreditNote(selectedOrder._id)}
+                            disabled={zohoLoading}
+                          >
+                            {zohoLoading ? 'Updating...' : 'Update Credit Note'}
+                          </Button>
+                          <Button
+                            variant='outlined'
+                            color='secondary'
+                            size='small'
+                            startIcon={zohoLoading ? <CircularProgress size={16} color='inherit' /> : <Download />}
+                            onClick={() => handleDownloadCreditNotePdf(selectedOrder._id)}
+                            disabled={zohoLoading}
+                          >
+                            Download PDF
+                          </Button>
+                        </Box>
                       </Box>
                     ) : (
                       <Box>
                         <Box display='flex' alignItems='center' gap={1} mb={2}>
                           <ErrorIcon color='warning' fontSize='small' />
                           <Typography variant='body2' color='text.secondary'>
-                            No Zoho Sales Return created yet
+                            No Credit Note created yet
                           </Typography>
                         </Box>
                         <Button
@@ -815,14 +894,14 @@ const ReturnOrders = () => {
                           color='primary'
                           size='small'
                           startIcon={zohoLoading ? <CircularProgress size={16} color='inherit' /> : <Sync />}
-                          onClick={() => handleCreateZohoSalesReturn(selectedOrder._id)}
+                          onClick={() => handleCreateCreditNote(selectedOrder._id)}
                           disabled={zohoLoading || selectedOrder.status === 'draft'}
                         >
-                          {zohoLoading ? 'Creating...' : 'Create Zoho Sales Return'}
+                          {zohoLoading ? 'Creating...' : 'Create Credit Note'}
                         </Button>
                         {selectedOrder.status === 'draft' && (
                           <Typography variant='caption' display='block' color='text.secondary' mt={1}>
-                            Change status to create sales return
+                            Change status to create credit note
                           </Typography>
                         )}
                       </Box>

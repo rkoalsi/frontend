@@ -55,6 +55,11 @@ interface Shop {
   potential_customer_address?: string | null;
   potential_customer_tier?: string | null;
   potential_customer_mobile?: string | null;
+  potential_customer_state_city?: string | null;
+  potential_customer_customer_name?: string | null;
+  potential_customer_follow_up_date?: string | null;
+  potential_customer_comments?: string | null;
+  potential_customer_status?: string | null;
   order_expected?: boolean;
 }
 
@@ -62,8 +67,13 @@ interface PotentialCustomer {
   _id: string;
   name: string;
   address: string;
+  state_city?: string;
   tier: string;
+  customer_name?: string;
   mobile?: string;
+  follow_up_date?: string;
+  comments?: string;
+  status?: string;
   created_by: string;
 }
 
@@ -141,6 +151,21 @@ const ShopsDialog = ({
                 : null,
               potential_customer_mobile: shop.potential_customer
                 ? shop.potential_customer_mobile
+                : null,
+              potential_customer_state_city: shop.potential_customer
+                ? shop.potential_customer_state_city
+                : null,
+              potential_customer_customer_name: shop.potential_customer
+                ? shop.potential_customer_customer_name
+                : null,
+              potential_customer_follow_up_date: shop.potential_customer
+                ? shop.potential_customer_follow_up_date
+                : null,
+              potential_customer_comments: shop.potential_customer
+                ? shop.potential_customer_comments
+                : null,
+              potential_customer_status: shop.potential_customer
+                ? shop.potential_customer_status
                 : null,
               address: !shop.potential_customer ? shop.address : {},
               reason: shop.reason || '',
@@ -250,6 +275,31 @@ const ShopsDialog = ({
         'potential_customer_mobile',
         potentialCustomer.mobile || ''
       );
+      updateShop(
+        index,
+        'potential_customer_state_city',
+        potentialCustomer.state_city || ''
+      );
+      updateShop(
+        index,
+        'potential_customer_customer_name',
+        potentialCustomer.customer_name || ''
+      );
+      updateShop(
+        index,
+        'potential_customer_follow_up_date',
+        potentialCustomer.follow_up_date || ''
+      );
+      updateShop(
+        index,
+        'potential_customer_comments',
+        potentialCustomer.comments || ''
+      );
+      updateShop(
+        index,
+        'potential_customer_status',
+        potentialCustomer.status || ''
+      );
     } else {
       // Clear potential customer fields if selection is removed
       updateShop(index, 'potential_customer_id', null);
@@ -257,6 +307,11 @@ const ShopsDialog = ({
       updateShop(index, 'potential_customer_address', '');
       updateShop(index, 'potential_customer_tier', '');
       updateShop(index, 'potential_customer_mobile', '');
+      updateShop(index, 'potential_customer_state_city', '');
+      updateShop(index, 'potential_customer_customer_name', '');
+      updateShop(index, 'potential_customer_follow_up_date', '');
+      updateShop(index, 'potential_customer_comments', '');
+      updateShop(index, 'potential_customer_status', '');
     }
   };
 
@@ -295,6 +350,11 @@ const ShopsDialog = ({
         potential_customer_address: shop.potential_customer_address,
         potential_customer_tier: shop.potential_customer_tier,
         potential_customer_mobile: shop.potential_customer_mobile,
+        potential_customer_state_city: shop.potential_customer_state_city,
+        potential_customer_customer_name: shop.potential_customer_customer_name,
+        potential_customer_follow_up_date: shop.potential_customer_follow_up_date,
+        potential_customer_comments: shop.potential_customer_comments,
+        potential_customer_status: shop.potential_customer_status,
         address: shop.address,
         reason: shop.reason,
         order_expected: shop.order_expected,
@@ -501,7 +561,7 @@ const ShopsDialog = ({
                           )}
                         />
                         <TextField
-                          label='Customer Name'
+                          label='Store Name'
                           fullWidth
                           value={shop.potential_customer_name || ''}
                           onChange={(e) =>
@@ -514,7 +574,7 @@ const ShopsDialog = ({
                           required
                         />
                         <TextField
-                          label='Customer Address'
+                          label='Address'
                           fullWidth
                           value={shop.potential_customer_address || ''}
                           onChange={(e) =>
@@ -526,8 +586,20 @@ const ShopsDialog = ({
                           }
                           required
                         />
+                        <TextField
+                          label='State/City'
+                          fullWidth
+                          value={shop.potential_customer_state_city || ''}
+                          onChange={(e) =>
+                            updateShop(
+                              index,
+                              'potential_customer_state_city',
+                              e.target.value
+                            )
+                          }
+                        />
                         <FormControl fullWidth required>
-                          <InputLabel>Customer Tier</InputLabel>
+                          <InputLabel>Tier</InputLabel>
                           <Select
                             value={shop.potential_customer_tier || ''}
                             onChange={(e) =>
@@ -545,7 +617,19 @@ const ShopsDialog = ({
                           </Select>
                         </FormControl>
                         <TextField
-                          label='Customer Phone'
+                          label='Customer Name'
+                          fullWidth
+                          value={shop.potential_customer_customer_name || ''}
+                          onChange={(e) =>
+                            updateShop(
+                              index,
+                              'potential_customer_customer_name',
+                              e.target.value
+                            )
+                          }
+                        />
+                        <TextField
+                          label='Mobile'
                           fullWidth
                           value={shop.potential_customer_mobile || ''}
                           onChange={(e) =>
@@ -556,6 +640,52 @@ const ShopsDialog = ({
                             )
                           }
                         />
+                        <TextField
+                          label='Follow Up Date'
+                          type='date'
+                          fullWidth
+                          value={shop.potential_customer_follow_up_date || ''}
+                          onChange={(e) =>
+                            updateShop(
+                              index,
+                              'potential_customer_follow_up_date',
+                              e.target.value
+                            )
+                          }
+                          InputLabelProps={{ shrink: true }}
+                        />
+                        <TextField
+                          label='Comments'
+                          fullWidth
+                          multiline
+                          rows={3}
+                          value={shop.potential_customer_comments || ''}
+                          onChange={(e) =>
+                            updateShop(
+                              index,
+                              'potential_customer_comments',
+                              e.target.value
+                            )
+                          }
+                        />
+                        <FormControl fullWidth>
+                          <InputLabel>Status</InputLabel>
+                          <Select
+                            value={shop.potential_customer_status || ''}
+                            onChange={(e) =>
+                              updateShop(
+                                index,
+                                'potential_customer_status',
+                                e.target.value
+                              )
+                            }
+                          >
+                            <MenuItem value='Onboard'>Onboard</MenuItem>
+                            <MenuItem value='Decline'>Decline</MenuItem>
+                            <MenuItem value='Intalks'>Intalks</MenuItem>
+                            <MenuItem value='Issue'>Issue</MenuItem>
+                          </Select>
+                        </FormControl>
                       </>
                     ) : (
                       <>
@@ -628,6 +758,20 @@ const ShopsDialog = ({
                     </Typography>
                     {shop?.potential_customer && (
                       <>
+                        {shop.potential_customer_state_city && (
+                          <>
+                            <Typography
+                              variant='body2'
+                              color='text.secondary'
+                              gutterBottom
+                            >
+                              <strong>State/City:</strong>
+                            </Typography>
+                            <Typography variant='body2' paragraph>
+                              {shop.potential_customer_state_city}
+                            </Typography>
+                          </>
+                        )}
                         <Typography
                           variant='body2'
                           color='text.secondary'
@@ -638,6 +782,20 @@ const ShopsDialog = ({
                         <Typography variant='body2' paragraph>
                           {shop.potential_customer_tier}
                         </Typography>
+                        {shop.potential_customer_customer_name && (
+                          <>
+                            <Typography
+                              variant='body2'
+                              color='text.secondary'
+                              gutterBottom
+                            >
+                              <strong>Customer Name:</strong>
+                            </Typography>
+                            <Typography variant='body2' paragraph>
+                              {shop.potential_customer_customer_name}
+                            </Typography>
+                          </>
+                        )}
                         {shop.potential_customer_mobile && (
                           <>
                             <Typography
@@ -645,10 +803,52 @@ const ShopsDialog = ({
                               color='text.secondary'
                               gutterBottom
                             >
-                              <strong>Phone:</strong>
+                              <strong>Mobile:</strong>
                             </Typography>
                             <Typography variant='body2' paragraph>
                               {shop.potential_customer_mobile}
+                            </Typography>
+                          </>
+                        )}
+                        {shop.potential_customer_follow_up_date && (
+                          <>
+                            <Typography
+                              variant='body2'
+                              color='text.secondary'
+                              gutterBottom
+                            >
+                              <strong>Follow Up Date:</strong>
+                            </Typography>
+                            <Typography variant='body2' paragraph>
+                              {shop.potential_customer_follow_up_date}
+                            </Typography>
+                          </>
+                        )}
+                        {shop.potential_customer_comments && (
+                          <>
+                            <Typography
+                              variant='body2'
+                              color='text.secondary'
+                              gutterBottom
+                            >
+                              <strong>Comments:</strong>
+                            </Typography>
+                            <Typography variant='body2' paragraph>
+                              {shop.potential_customer_comments}
+                            </Typography>
+                          </>
+                        )}
+                        {shop.potential_customer_status && (
+                          <>
+                            <Typography
+                              variant='body2'
+                              color='text.secondary'
+                              gutterBottom
+                            >
+                              <strong>Status:</strong>
+                            </Typography>
+                            <Typography variant='body2' paragraph>
+                              {shop.potential_customer_status}
                             </Typography>
                           </>
                         )}

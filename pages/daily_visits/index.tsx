@@ -106,6 +106,31 @@ const ShopCard = memo(function ShopCard({
         'potential_customer_mobile',
         potentialCustomer.mobile || ''
       );
+      updateShop(
+        index,
+        'potential_customer_state_city',
+        potentialCustomer.state_city || ''
+      );
+      updateShop(
+        index,
+        'potential_customer_customer_name',
+        potentialCustomer.customer_name || ''
+      );
+      updateShop(
+        index,
+        'potential_customer_follow_up_date',
+        potentialCustomer.follow_up_date || ''
+      );
+      updateShop(
+        index,
+        'potential_customer_comments',
+        potentialCustomer.comments || ''
+      );
+      updateShop(
+        index,
+        'potential_customer_status',
+        potentialCustomer.status || ''
+      );
     } else {
       // Clear potential customer fields if selection is removed
       updateShop(index, 'potential_customer_id', null);
@@ -113,6 +138,11 @@ const ShopCard = memo(function ShopCard({
       updateShop(index, 'potential_customer_address', '');
       updateShop(index, 'potential_customer_tier', '');
       updateShop(index, 'potential_customer_mobile', '');
+      updateShop(index, 'potential_customer_state_city', '');
+      updateShop(index, 'potential_customer_customer_name', '');
+      updateShop(index, 'potential_customer_follow_up_date', '');
+      updateShop(index, 'potential_customer_comments', '');
+      updateShop(index, 'potential_customer_status', '');
     }
   };
 
@@ -222,19 +252,6 @@ const ShopCard = memo(function ShopCard({
             />
           )}
 
-          {/* If potential customer, show TextField for customer name */}
-          {shop.potentialCustomer && (
-            <TextField
-              label='Enter Customer Name'
-              fullWidth
-              value={shop.potential_customer_name || ''}
-              onChange={(e) =>
-                updateShop(index, 'potential_customer_name', e.target.value)
-              }
-              required
-            />
-          )}
-
           {/* If not potential customer, use the customer search bar */}
           {!shop.potentialCustomer && (
             <CustomerSearchBar
@@ -250,47 +267,100 @@ const ShopCard = memo(function ShopCard({
             />
           )}
 
-          {/* Potential Customer Address */}
+          {/* Potential Customer Fields */}
           {shop.potentialCustomer && (
-            <TextField
-              label='Enter Customer Address'
-              fullWidth
-              value={shop.potential_customer_address || ''}
-              onChange={(e) =>
-                updateShop(index, 'potential_customer_address', e.target.value)
-              }
-              required
-            />
-          )}
-
-          {/* Potential Customer Tier */}
-          {shop.potentialCustomer && (
-            <FormControl fullWidth required>
-              <InputLabel>Customer Tier</InputLabel>
-              <Select
-                value={shop.potential_customer_tier || ''}
+            <>
+              <TextField
+                label='Store Name'
+                fullWidth
+                value={shop.potential_customer_name || ''}
                 onChange={(e) =>
-                  updateShop(index, 'potential_customer_tier', e.target.value)
+                  updateShop(index, 'potential_customer_name', e.target.value)
                 }
-              >
-                <MenuItem value='A'>A</MenuItem>
-                <MenuItem value='B'>B</MenuItem>
-                <MenuItem value='C'>C</MenuItem>
-                <MenuItem value='D'>D</MenuItem>
-              </Select>
-            </FormControl>
-          )}
-
-          {/* Potential Customer Mobile */}
-          {shop.potentialCustomer && (
-            <TextField
-              label='Enter Customer Mobile Number'
-              fullWidth
-              value={shop.potential_customer_mobile || ''}
-              onChange={(e) =>
-                updateShop(index, 'potential_customer_mobile', e.target.value)
-              }
-            />
+                required
+              />
+              <TextField
+                label='Address'
+                fullWidth
+                value={shop.potential_customer_address || ''}
+                onChange={(e) =>
+                  updateShop(index, 'potential_customer_address', e.target.value)
+                }
+                required
+              />
+              <TextField
+                label='State/City'
+                fullWidth
+                value={shop.potential_customer_state_city || ''}
+                onChange={(e) =>
+                  updateShop(index, 'potential_customer_state_city', e.target.value)
+                }
+              />
+              <FormControl fullWidth required>
+                <InputLabel>Tier</InputLabel>
+                <Select
+                  value={shop.potential_customer_tier || ''}
+                  onChange={(e) =>
+                    updateShop(index, 'potential_customer_tier', e.target.value)
+                  }
+                >
+                  <MenuItem value='A'>A</MenuItem>
+                  <MenuItem value='B'>B</MenuItem>
+                  <MenuItem value='C'>C</MenuItem>
+                  <MenuItem value='D'>D</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label='Customer Name'
+                fullWidth
+                value={shop.potential_customer_customer_name || ''}
+                onChange={(e) =>
+                  updateShop(index, 'potential_customer_customer_name', e.target.value)
+                }
+              />
+              <TextField
+                label='Mobile'
+                fullWidth
+                value={shop.potential_customer_mobile || ''}
+                onChange={(e) =>
+                  updateShop(index, 'potential_customer_mobile', e.target.value)
+                }
+              />
+              <TextField
+                label='Follow Up Date'
+                type='date'
+                fullWidth
+                value={shop.potential_customer_follow_up_date || ''}
+                onChange={(e) =>
+                  updateShop(index, 'potential_customer_follow_up_date', e.target.value)
+                }
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                label='Comments'
+                fullWidth
+                multiline
+                rows={3}
+                value={shop.potential_customer_comments || ''}
+                onChange={(e) =>
+                  updateShop(index, 'potential_customer_comments', e.target.value)
+                }
+              />
+              <FormControl fullWidth>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={shop.potential_customer_status || ''}
+                  onChange={(e) =>
+                    updateShop(index, 'potential_customer_status', e.target.value)
+                  }
+                >
+                  <MenuItem value='Onboard'>Onboard</MenuItem>
+                  <MenuItem value='Decline'>Decline</MenuItem>
+                  <MenuItem value='Intalks'>Intalks</MenuItem>
+                  <MenuItem value='Issue'>Issue</MenuItem>
+                </Select>
+              </FormControl>
+            </>
           )}
 
           {/* Render address component if not potential customer AND when a customer is selected */}
@@ -437,6 +507,20 @@ const ShopCard = memo(function ShopCard({
             </Typography>
           </Box>
 
+          {shop.potentialCustomer && shop.potential_customer_state_city && (
+            <>
+              <Divider variant='middle' />
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant='subtitle1' fontWeight='bold'>
+                  State/City:
+                </Typography>
+                <Typography variant='body1' sx={{ ml: 1 }}>
+                  {shop.potential_customer_state_city}
+                </Typography>
+              </Box>
+            </>
+          )}
+
           {shop.potentialCustomer && shop.potential_customer_tier && (
             <>
               <Divider variant='middle' />
@@ -451,15 +535,71 @@ const ShopCard = memo(function ShopCard({
             </>
           )}
 
+          {shop.potentialCustomer && shop.potential_customer_customer_name && (
+            <>
+              <Divider variant='middle' />
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant='subtitle1' fontWeight='bold'>
+                  Customer Name:
+                </Typography>
+                <Typography variant='body1' sx={{ ml: 1 }}>
+                  {shop.potential_customer_customer_name}
+                </Typography>
+              </Box>
+            </>
+          )}
+
           {shop.potentialCustomer && shop.potential_customer_mobile && (
             <>
               <Divider variant='middle' />
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Typography variant='subtitle1' fontWeight='bold'>
-                  Phone:
+                  Mobile:
                 </Typography>
                 <Typography variant='body1' sx={{ ml: 1 }}>
                   {shop.potential_customer_mobile}
+                </Typography>
+              </Box>
+            </>
+          )}
+
+          {shop.potentialCustomer && shop.potential_customer_follow_up_date && (
+            <>
+              <Divider variant='middle' />
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant='subtitle1' fontWeight='bold'>
+                  Follow Up Date:
+                </Typography>
+                <Typography variant='body1' sx={{ ml: 1 }}>
+                  {shop.potential_customer_follow_up_date}
+                </Typography>
+              </Box>
+            </>
+          )}
+
+          {shop.potentialCustomer && shop.potential_customer_comments && (
+            <>
+              <Divider variant='middle' />
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant='subtitle1' fontWeight='bold'>
+                  Comments:
+                </Typography>
+                <Typography variant='body1' sx={{ ml: 1 }}>
+                  {shop.potential_customer_comments}
+                </Typography>
+              </Box>
+            </>
+          )}
+
+          {shop.potentialCustomer && shop.potential_customer_status && (
+            <>
+              <Divider variant='middle' />
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant='subtitle1' fontWeight='bold'>
+                  Status:
+                </Typography>
+                <Typography variant='body1' sx={{ ml: 1 }}>
+                  {shop.potential_customer_status}
                 </Typography>
               </Box>
             </>
@@ -730,6 +870,11 @@ function DailyVisits() {
         body['potential_customer_address'] = shop.potential_customer_address;
         body['potential_customer_tier'] = shop.potential_customer_tier;
         body['potential_customer_mobile'] = shop.potential_customer_mobile;
+        body['potential_customer_state_city'] = shop.potential_customer_state_city;
+        body['potential_customer_customer_name'] = shop.potential_customer_customer_name;
+        body['potential_customer_follow_up_date'] = shop.potential_customer_follow_up_date;
+        body['potential_customer_comments'] = shop.potential_customer_comments;
+        body['potential_customer_status'] = shop.potential_customer_status;
       } else {
         body['customer_id'] = shop.selectedCustomer._id;
         body['customer_name'] = shop.selectedCustomer.contact_name;

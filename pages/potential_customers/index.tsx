@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import {
   Box,
   Typography,
@@ -8,6 +8,9 @@ import {
   CardContent,
   Alert,
   Container,
+  Chip,
+  Divider,
+  Stack,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import Header from '../../src/components/common/Header';
@@ -15,164 +18,200 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import AuthContext from '../../src/components/Auth';
 import EditIcon from '@mui/icons-material/Edit';
+import StorefrontIcon from '@mui/icons-material/Storefront';
+import PlaceIcon from '@mui/icons-material/Place';
+import PersonIcon from '@mui/icons-material/Person';
+import PhoneIcon from '@mui/icons-material/Phone';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import CommentIcon from '@mui/icons-material/Comment';
 import PotentialCustomerDialog from '../../src/components/daily_visits/PotentialCustomerDialog';
-// ---------- ShopHookCard Component ----------
 
-interface Address {
-  address_id: string;
-  attention: string;
-  address: string;
-  street2: string;
-  city: string;
-  state_code: string;
-  state: string;
-  zip: string;
-  country: string;
-  county: string;
-  country_code: string;
-  phone: string;
-  fax: string;
-}
+const statusColor: Record<string, 'success' | 'error' | 'warning' | 'info'> = {
+  Onboard: 'success',
+  Decline: 'error',
+  Intalks: 'info',
+  Issue: 'warning',
+};
 
-interface HookEntry {
-  entryId: string;
-  potential_customersAvailable: number;
-  totalHooks: number;
-  editing: boolean;
-  category_name: string;
-  // We'll use category_id as string for simplicity.
-  category_id: string;
-}
+const InfoRow = ({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) => (
+  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+    <Box sx={{ color: 'text.secondary', mt: 0.2, flexShrink: 0 }}>{icon}</Box>
+    <Box sx={{ minWidth: 0 }}>
+      <Typography
+        variant='caption'
+        color='text.secondary'
+        sx={{ lineHeight: 1.2 }}
+      >
+        {label}
+      </Typography>
+      <Typography
+        variant='body2'
+        fontWeight={500}
+        sx={{ wordBreak: 'break-word' }}
+      >
+        {value}
+      </Typography>
+    </Box>
+  </Box>
+);
 
-interface ShopHook {
-  _id: string;
-  customer_id: string;
-  customer_name: string;
-  customer_address: Address;
-  potential_customers: HookEntry[];
-  created_by: string;
-  created_at: string;
-}
-
-const ShopHookCard = ({ hookData, onEdit }: any) => {
+const PotentialCustomerCard = ({
+  data,
+  onEdit,
+}: {
+  data: any;
+  onEdit: (d: any) => void;
+}) => {
   return (
     <Card
       sx={{
         width: '100%',
-        maxWidth: 600,
-        margin: 'auto',
-        borderRadius: 2,
-        boxShadow: 3,
-        transition: 'transform 0.2s ease-in-out',
+        borderRadius: 3,
+        overflow: 'hidden',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        '&:hover': {
+          transform: 'translateY(-3px)',
+          boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+        },
       }}
     >
-      {/* Header Section */}
-      <div
-        style={{
-          backgroundColor: '#1976d2', // Primary color
+      {/* Header */}
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #1976d2, #1565c0)',
           color: 'white',
-          padding: '16px',
-          textAlign: 'center',
+          px: 2.5,
+          py: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          flexWrap: 'wrap',
         }}
       >
-        <Typography variant='h6' color='inherit'>
-          {hookData.name}
-        </Typography>
-      </div>
-
-      <CardContent>
-        {/* Address Section */}
-        <div
-          style={{
-            backgroundColor: '#f5f5f5',
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 16,
+        <Box
+          sx={{
             display: 'flex',
-            alignItems: 'start',
-            flexDirection: 'column',
-            gap: 12,
+            alignItems: 'center',
+            gap: 1.5,
+            minWidth: 0,
           }}
         >
-          <div>
-            <Typography variant='body2' color='textSecondary'>
-              Potential Customer Name
-            </Typography>
-            <Typography variant='subtitle1' fontWeight='bold'>
-              {hookData.name}
-            </Typography>
-          </div>
-          <div>
-            <Typography variant='body2' color='textSecondary'>
-              Shop Address
-            </Typography>
-            <Typography variant='subtitle1' fontWeight='bold'>
-              {hookData.address}
-            </Typography>
-          </div>
-          <div>
-            <Typography variant='body2' color='textSecondary'>
-              Tier
-            </Typography>
-            <Typography variant='subtitle1' fontWeight='bold'>
-              {hookData.tier}
-            </Typography>
-          </div>
-          {hookData?.mobile && (
-            <div>
-              <Typography variant='body2' color='textSecondary'>
-                Mobile
-              </Typography>
-              <Typography variant='subtitle1' fontWeight='bold'>
-                {hookData.mobile}
-              </Typography>
-            </div>
+          <StorefrontIcon fontSize='small' />
+          <Typography variant='subtitle1' fontWeight={700} noWrap>
+            {data.name}
+          </Typography>
+        </Box>
+        <Box
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}
+        >
+          {data.status && (
+            <Chip
+              label={data.status}
+              size='small'
+              color={statusColor[data.status] || 'default'}
+              sx={{ fontWeight: 600, color: 'white', height: 24 }}
+            />
           )}
-        </div>
-
-        {/* Edit Button */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            marginTop: 16,
-          }}
-        >
-          <Button
-            variant='contained'
-            color='primary'
-            startIcon={<EditIcon />}
-            onClick={() => onEdit(hookData)}
+          <Chip
+            label={`Tier ${data.tier}`}
+            size='small'
             sx={{
-              textTransform: 'none',
-              borderRadius: 2,
-              px: 3,
-              py: 1,
+              fontWeight: 600,
+              bgcolor: 'rgba(255,255,255,0.2)',
+              color: 'white',
+              height: 24,
             }}
+          />
+        </Box>
+      </Box>
+
+      <CardContent sx={{ px: 2.5, py: 2 }}>
+        <Stack spacing={1.5}>
+          <InfoRow
+            icon={<PlaceIcon fontSize='small' />}
+            label='Address'
+            value={`${data.address}${data.state_city ? `, ${data.state_city}` : ''}`}
+          />
+
+          {data.customer_name && (
+            <InfoRow
+              icon={<PersonIcon fontSize='small' />}
+              label='Customer Name'
+              value={data.customer_name}
+            />
+          )}
+
+          {data.mobile && (
+            <InfoRow
+              icon={<PhoneIcon fontSize='small' />}
+              label='Mobile'
+              value={data.mobile}
+            />
+          )}
+
+          {data.follow_up_date && (
+            <InfoRow
+              icon={<CalendarTodayIcon fontSize='small' />}
+              label='Follow Up Date'
+              value={data.follow_up_date}
+            />
+          )}
+
+          {data.comments && (
+            <InfoRow
+              icon={<CommentIcon fontSize='small' />}
+              label='Comments'
+              value={data.comments}
+            />
+          )}
+        </Stack>
+
+        <Divider sx={{ my: 2 }} />
+
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button
+            variant='outlined'
+            size='small'
+            startIcon={<EditIcon />}
+            onClick={() => onEdit(data)}
+            sx={{ textTransform: 'none', borderRadius: 2 }}
           >
-            Edit Details
+            Edit
           </Button>
-        </div>
+        </Box>
       </CardContent>
     </Card>
   );
 };
 
-// ---------- PotentialCustomers Component ----------
-
 function PotentialCustomers() {
   const { user }: any = useContext(AuthContext);
   const [open, setOpen] = useState(false);
-  const [potentialCustomers, setPotentialCustomers] = useState<ShopHook[]>([]);
+  const [potentialCustomers, setPotentialCustomers] = useState<any[]>([]);
   const [formData, setFormData]: any = useState({
-    mobile: '',
-    name: null as any,
+    name: '',
     address: '',
+    state_city: '',
     tier: '',
+    customer_name: '',
+    mobile: '',
+    follow_up_date: '',
+    comments: '',
+    status: '',
   });
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState(''); // New state for search query
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchPotentialCustomers = async () => {
     try {
@@ -189,12 +228,10 @@ function PotentialCustomers() {
     }
   };
 
-  // Fetch hook categories and potential_customers on mount.
   useEffect(() => {
     fetchPotentialCustomers();
   }, []);
 
-  // Compute filtered potential_customers based on search query.
   const filteredPotentialCustomers = potentialCustomers.filter(
     (potentialCustomer: any) =>
       potentialCustomer?.name?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -209,40 +246,49 @@ function PotentialCustomers() {
     }
   };
 
-  const handleEditHook = async (hookData: any) => {
+  const handleEdit = async (data: any) => {
     setFormData({
-      _id: hookData._id,
-      name: hookData.name,
-      address: hookData.address,
-      tier: hookData.tier,
-      mobile: hookData.mobile,
+      _id: data._id,
+      name: data.name,
+      address: data.address,
+      state_city: data.state_city || '',
+      tier: data.tier,
+      customer_name: data.customer_name || '',
+      mobile: data.mobile || '',
+      follow_up_date: data.follow_up_date || '',
+      comments: data.comments || '',
+      status: data.status || '',
     });
-    setEditingId(hookData._id);
+    setEditingId(data._id);
     setIsEditing(true);
     setOpen(true);
   };
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    console.log(editingId);
     if (!formData.name) {
-      toast.error('Please enter a customer name');
+      toast.error('Please enter a store name');
       return;
     }
     if (!formData.address) {
-      toast.error('Please enter an address address');
+      toast.error('Please enter an address');
       return;
     }
     if (!formData.tier) {
-      toast.error('Please enter a tier');
+      toast.error('Please select a tier');
       return;
     }
     const payload = {
       _id: formData._id,
       name: formData.name,
       address: formData.address,
+      state_city: formData.state_city,
       tier: formData.tier,
+      customer_name: formData.customer_name,
       mobile: formData.mobile,
+      follow_up_date: formData.follow_up_date,
+      comments: formData.comments,
+      status: formData.status,
     };
 
     try {
@@ -251,18 +297,24 @@ function PotentialCustomers() {
           `${process.env.api_url}/potential_customers/${editingId}`,
           payload
         );
-        toast.success('Hook details updated successfully');
+        toast.success('Potential customer updated successfully');
       } else {
         await axios.post(`${process.env.api_url}/potential_customers`, {
           ...payload,
           created_by: user?.data?._id,
         });
-        toast.success('Hook details submitted successfully');
+        toast.success('Potential customer created successfully');
       }
       setFormData({
-        name: null,
+        name: '',
         address: '',
-        tier: [],
+        state_city: '',
+        tier: '',
+        customer_name: '',
+        mobile: '',
+        follow_up_date: '',
+        comments: '',
+        status: '',
       });
       setOpen(false);
       setIsEditing(false);
@@ -270,7 +322,7 @@ function PotentialCustomers() {
       await fetchPotentialCustomers();
     } catch (err) {
       console.error(err);
-      toast.error('Failed to submit hook details');
+      toast.error('Failed to submit potential customer details');
     }
   };
 
@@ -299,22 +351,19 @@ function PotentialCustomers() {
           }}
         >
           <TextField
-            label='Search by Potential Customer Name'
+            label='Search by Store Name'
             variant='outlined'
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             sx={{
               width: '100%',
               maxWidth: 400,
-              // Style for the input text
               '& .MuiInputBase-input': {
                 color: 'white',
               },
-              // Style for the label
               '& .MuiInputLabel-root': {
                 color: 'white',
               },
-              // Style for the outline
               '& .MuiOutlinedInput-notchedOutline': {
                 borderColor: 'white',
               },
@@ -348,9 +397,15 @@ function PotentialCustomers() {
             }}
             onClick={() => {
               setFormData({
-                selectedCustomer: null,
-                customerAddress: '',
-                hookEntries: [],
+                name: '',
+                address: '',
+                state_city: '',
+                tier: '',
+                customer_name: '',
+                mobile: '',
+                follow_up_date: '',
+                comments: '',
+                status: '',
               });
               setIsEditing(false);
               setEditingId(null);
@@ -379,12 +434,19 @@ function PotentialCustomers() {
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'repeat(auto-fill, minmax(300px, 1fr))',
+              },
               gap: 3,
             }}
           >
-            {filteredPotentialCustomers.map((h: any) => (
-              <ShopHookCard key={h._id} hookData={h} onEdit={handleEditHook} />
+            {filteredPotentialCustomers.map((pc: any) => (
+              <PotentialCustomerCard
+                key={pc._id}
+                data={pc}
+                onEdit={handleEdit}
+              />
             ))}
           </Box>
         )}
