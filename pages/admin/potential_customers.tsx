@@ -279,30 +279,42 @@ const PotentialCustomers = () => {
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Created At</TableCell>
-                        <TableCell>Name</TableCell>
+                        <TableCell>Store Name</TableCell>
                         <TableCell>Address</TableCell>
+                        <TableCell>State/City</TableCell>
                         <TableCell>Tier</TableCell>
+                        <TableCell>Customer Name</TableCell>
                         <TableCell>Mobile</TableCell>
-                        <TableCell>Created By</TableCell>
+                        <TableCell>Created At</TableCell>
+                        <TableCell>Created By/SP</TableCell>
+                        <TableCell>Follow Up Date</TableCell>
+                        <TableCell>Comments</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell>Onboard Date</TableCell>
                         <TableCell>Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {potentialCustomers.map((customer: any) => (
                         <TableRow key={customer._id}>
+                          <TableCell>{customer.name}</TableCell>
+                          <TableCell>{customer.address}</TableCell>
+                          <TableCell>{customer?.state_city || '-'}</TableCell>
+                          <TableCell>{customer.tier}</TableCell>
+                          <TableCell>{customer?.customer_name || '-'}</TableCell>
+                          <TableCell>{customer?.mobile || '-'}</TableCell>
                           <TableCell>
                             {new Date(
                               customer?.created_at
                             ).toLocaleDateString()}
                           </TableCell>
-                          <TableCell>{customer.name}</TableCell>
-                          <TableCell>{customer.address}</TableCell>
-                          <TableCell>{customer.tier}</TableCell>
-                          <TableCell>{customer?.mobile || '-'}</TableCell>
                           <TableCell>
                             {customer?.created_by_info?.name}
                           </TableCell>
+                          <TableCell>{customer?.follow_up_date || '-'}</TableCell>
+                          <TableCell>{customer?.comments || '-'}</TableCell>
+                          <TableCell>{customer?.status || '-'}</TableCell>
+                          <TableCell>{customer?.onboard_date || '-'}</TableCell>
                           <TableCell>
                             <Box
                               display={'flex'}
@@ -395,11 +407,11 @@ const PotentialCustomers = () => {
           </>
         )}
       </Paper>
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} fullWidth maxWidth='sm'>
         <DialogTitle>Edit Potential Customer</DialogTitle>
         <DialogContent>
           <TextField
-            label='Name'
+            label='Store Name'
             fullWidth
             margin='dense'
             value={editedCustomer.name || ''}
@@ -417,13 +429,94 @@ const PotentialCustomers = () => {
             }
           />
           <TextField
-            label='Tier'
+            label='State/City'
             fullWidth
             margin='dense'
-            value={editedCustomer.tier || ''}
+            value={editedCustomer.state_city || ''}
             onChange={(e) =>
-              setEditedCustomer({ ...editedCustomer, tier: e.target.value })
+              setEditedCustomer({ ...editedCustomer, state_city: e.target.value })
             }
+          />
+          <FormControl fullWidth sx={{ mt: 1 }}>
+            <InputLabel>Tier</InputLabel>
+            <Select
+              value={editedCustomer.tier || ''}
+              label='Tier'
+              onChange={(e) =>
+                setEditedCustomer({ ...editedCustomer, tier: e.target.value })
+              }
+            >
+              <MenuItem value='A'>A</MenuItem>
+              <MenuItem value='B'>B</MenuItem>
+              <MenuItem value='C'>C</MenuItem>
+              <MenuItem value='D'>D</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            label='Customer Name'
+            fullWidth
+            margin='dense'
+            value={editedCustomer.customer_name || ''}
+            onChange={(e) =>
+              setEditedCustomer({ ...editedCustomer, customer_name: e.target.value })
+            }
+          />
+          <TextField
+            label='Mobile'
+            fullWidth
+            margin='dense'
+            value={editedCustomer.mobile || ''}
+            onChange={(e) =>
+              setEditedCustomer({ ...editedCustomer, mobile: e.target.value })
+            }
+          />
+          <TextField
+            label='Follow Up Date'
+            type='date'
+            fullWidth
+            margin='dense'
+            value={editedCustomer.follow_up_date || ''}
+            onChange={(e) =>
+              setEditedCustomer({ ...editedCustomer, follow_up_date: e.target.value })
+            }
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label='Comments'
+            fullWidth
+            margin='dense'
+            multiline
+            rows={3}
+            value={editedCustomer.comments || ''}
+            onChange={(e) =>
+              setEditedCustomer({ ...editedCustomer, comments: e.target.value })
+            }
+          />
+          <FormControl fullWidth sx={{ mt: 1 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={editedCustomer.status || ''}
+              label='Status'
+              onChange={(e) =>
+                setEditedCustomer({ ...editedCustomer, status: e.target.value })
+              }
+            >
+              <MenuItem value='Onboard'>Onboard</MenuItem>
+              <MenuItem value='Decline'>Decline</MenuItem>
+              <MenuItem value='Intalks'>Intalks</MenuItem>
+              <MenuItem value='Issue'>Issue</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            label='Onboard Date'
+            type='date'
+            fullWidth
+            margin='dense'
+            value={editedCustomer.onboard_date || ''}
+            onChange={(e) =>
+              setEditedCustomer({ ...editedCustomer, onboard_date: e.target.value })
+            }
+            InputLabelProps={{ shrink: true }}
           />
         </DialogContent>
         <DialogActions>

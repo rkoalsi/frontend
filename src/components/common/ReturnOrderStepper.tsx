@@ -341,9 +341,9 @@ const ReturnOrderStepper = ({
   );
   const [contactNo, setContactNo] = useState(initialData?.contactNo || '');
   const [boxCount, setBoxCount] = useState(initialData?.boxCount || 1);
-  const [debitNoteFile, setDebitNoteFile] = useState<File | null>(null);
-  const [debitNoteDocument, setDebitNoteDocument] = useState(
-    initialData?.debitNoteDocument || ''
+  const [debitNoteFiles, setDebitNoteFiles] = useState<File[]>([]);
+  const [debitNoteDocuments, setDebitNoteDocuments] = useState<string[]>(
+    initialData?.debitNoteDocuments || (initialData?.debitNoteDocument ? [initialData.debitNoteDocument] : [])
   );
   const [loading, setLoading] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -468,15 +468,17 @@ const ReturnOrderStepper = ({
         toast.success('Return order created successfully');
       }
 
-      // Upload file if one was selected
-      if (debitNoteFile && returnOrderId) {
+      // Upload files if any were selected
+      if (debitNoteFiles.length > 0 && returnOrderId) {
         try {
           setUploadingFile(true);
           const formData = new FormData();
-          formData.append('file', debitNoteFile);
+          debitNoteFiles.forEach((file) => {
+            formData.append('files', file);
+          });
 
           await axios.post(
-            `${process.env.api_url}/return_orders/${returnOrderId}/upload-document`,
+            `${process.env.api_url}/return_orders/${returnOrderId}/upload-documents`,
             formData,
             {
               headers: {
@@ -484,10 +486,10 @@ const ReturnOrderStepper = ({
               },
             }
           );
-          toast.success('Document uploaded successfully');
+          toast.success(`${debitNoteFiles.length} document(s) uploaded successfully`);
         } catch (uploadError) {
-          console.error('Error uploading document:', uploadError);
-          toast.error('Failed to upload document');
+          console.error('Error uploading documents:', uploadError);
+          toast.error('Failed to upload documents');
         } finally {
           setUploadingFile(false);
         }
@@ -1026,10 +1028,11 @@ const ReturnOrderStepper = ({
                   <input
                     type='file'
                     accept='.xlsx,.xls,.csv,.jpg,.jpeg,.png,.pdf'
+                    multiple
                     onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setDebitNoteFile(file);
+                      const files = e.target.files;
+                      if (files && files.length > 0) {
+                        setDebitNoteFiles((prev) => [...prev, ...Array.from(files)]);
                       }
                     }}
                     style={{ display: 'none' }}
@@ -1043,42 +1046,55 @@ const ReturnOrderStepper = ({
                       startIcon={<Description />}
                       sx={{
                         mb: 1,
-                        backgroundColor: debitNoteFile
+                        backgroundColor: debitNoteFiles.length > 0
                           ? 'success.main'
                           : 'primary.main',
                         '&:hover': {
-                          backgroundColor: debitNoteFile
+                          backgroundColor: debitNoteFiles.length > 0
                             ? 'success.dark'
                             : 'primary.dark',
                         },
                       }}
                     >
-                      {debitNoteFile
-                        ? `Selected: ${debitNoteFile.name}`
-                        : debitNoteDocument
-                        ? 'Change Document'
-                        : 'Choose File'}
+                      {debitNoteFiles.length > 0
+                        ? `${debitNoteFiles.length} file(s) selected`
+                        : debitNoteDocuments.length > 0
+                        ? 'Add More Documents'
+                        : 'Choose Files'}
                     </Button>
                   </label>
 
-                  {debitNoteFile && (
-                    <Alert severity='success' sx={{ mt: 1 }}>
-                      File ready to upload: {debitNoteFile.name}
-                    </Alert>
+                  {debitNoteFiles.length > 0 && (
+                    <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      {debitNoteFiles.map((file, index) => (
+                        <Alert
+                          key={index}
+                          severity='success'
+                          onClose={() => {
+                            setDebitNoteFiles((prev) => prev.filter((_, i) => i !== index));
+                          }}
+                        >
+                          {file.name}
+                        </Alert>
+                      ))}
+                    </Box>
                   )}
 
-                  {debitNoteDocument && !debitNoteFile && (
-                    <Alert severity='info' sx={{ mt: 1 }}>
-                      Current document:{' '}
-                      <a
-                        href={debitNoteDocument}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        style={{ color: 'inherit', textDecoration: 'underline' }}
-                      >
-                        View Document
-                      </a>
-                    </Alert>
+                  {debitNoteDocuments.length > 0 && (
+                    <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      {debitNoteDocuments.map((doc, index) => (
+                        <Alert key={index} severity='info'>
+                          <a
+                            href={doc}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            style={{ color: 'inherit', textDecoration: 'underline' }}
+                          >
+                            Existing Document {index + 1}
+                          </a>
+                        </Alert>
+                      ))}
+                    </Box>
                   )}
                 </Box>
               </Box>
@@ -1246,32 +1262,37 @@ const ReturnOrderStepper = ({
                     </Typography>
                   </Box>
 
-                  {(debitNoteFile || debitNoteDocument) && (
+                  {(debitNoteFiles.length > 0 || debitNoteDocuments.length > 0) && (
                     <Box>
                       <Typography
                         variant='subtitle2'
                         color='textSecondary'
                         sx={{ mb: 0.5 }}
                       >
-                        Debit Note Document
+                        Debit Note Documents
                       </Typography>
-                      <Typography variant='body1' fontWeight={500}>
-                        {debitNoteFile
-                          ? debitNoteFile.name
-                          : debitNoteDocument && (
-                              <a
-                                href={debitNoteDocument}
-                                target='_blank'
-                                rel='noopener noreferrer'
-                                style={{
-                                  color: 'inherit',
-                                  textDecoration: 'underline',
-                                }}
-                              >
-                                View Document
-                              </a>
-                            )}
-                      </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        {debitNoteFiles.map((file, index) => (
+                          <Typography key={`new-${index}`} variant='body2' fontWeight={500}>
+                            {file.name} (new)
+                          </Typography>
+                        ))}
+                        {debitNoteDocuments.map((doc, index) => (
+                          <Typography key={`existing-${index}`} variant='body2' fontWeight={500}>
+                            <a
+                              href={doc}
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              style={{
+                                color: 'inherit',
+                                textDecoration: 'underline',
+                              }}
+                            >
+                              Existing Document {index + 1}
+                            </a>
+                          </Typography>
+                        ))}
+                      </Box>
                     </Box>
                   )}
                 </Box>
