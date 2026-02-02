@@ -61,25 +61,33 @@ const PotentialCustomerDialog: React.FC<PotentialCustomerDialogProps> = ({
           <Grid container spacing={2} direction='column'>
             <Grid>
               <TextField
-                label='Enter Customer Name'
+                label='Store Name'
                 fullWidth
-                value={formData.name}
+                value={formData.name || ''}
                 onChange={(e) => handleChange('name', e.target.value)}
               />
             </Grid>
             <Grid>
               <TextField
-                label='Enter Customer Address'
+                label='Address'
                 fullWidth
-                value={formData.address}
+                value={formData.address || ''}
                 onChange={(e) => handleChange('address', e.target.value)}
               />
             </Grid>
             <Grid>
+              <TextField
+                label='State/City'
+                fullWidth
+                value={formData.state_city || ''}
+                onChange={(e) => handleChange('state_city', e.target.value)}
+              />
+            </Grid>
+            <Grid>
               <FormControl fullWidth>
-                <InputLabel>Customer Tier</InputLabel>
+                <InputLabel>Tier</InputLabel>
                 <Select
-                  value={formData.tier}
+                  value={formData.tier || ''}
                   onChange={(e: any) => handleChange('tier', e.target.value)}
                 >
                   <MenuItem value='A'>A</MenuItem>
@@ -91,11 +99,53 @@ const PotentialCustomerDialog: React.FC<PotentialCustomerDialogProps> = ({
             </Grid>
             <Grid>
               <TextField
-                label='Enter Customer Phone'
+                label='Customer Name'
+                fullWidth
+                value={formData.customer_name || ''}
+                onChange={(e) => handleChange('customer_name', e.target.value)}
+              />
+            </Grid>
+            <Grid>
+              <TextField
+                label='Mobile'
                 fullWidth
                 value={formData.mobile || ''}
                 onChange={(e) => handleChange('mobile', e.target.value)}
               />
+            </Grid>
+            <Grid>
+              <TextField
+                label='Follow Up Date'
+                type='date'
+                fullWidth
+                value={formData.follow_up_date || ''}
+                onChange={(e) => handleChange('follow_up_date', e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid>
+              <TextField
+                label='Comments'
+                fullWidth
+                multiline
+                rows={3}
+                value={formData.comments || ''}
+                onChange={(e) => handleChange('comments', e.target.value)}
+              />
+            </Grid>
+            <Grid>
+              <FormControl fullWidth>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={formData.status || ''}
+                  onChange={(e: any) => handleChange('status', e.target.value)}
+                >
+                  <MenuItem value='Onboard'>Onboard</MenuItem>
+                  <MenuItem value='Decline'>Decline</MenuItem>
+                  <MenuItem value='Intalks'>Intalks</MenuItem>
+                  <MenuItem value='Issue'>Issue</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
           </Grid>
           <DialogActions sx={{ mt: 2 }}>

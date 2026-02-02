@@ -29,6 +29,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import PhoneIcon from '@mui/icons-material/Phone';
 import DescriptionIcon from '@mui/icons-material/Description';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import DownloadIcon from '@mui/icons-material/Download';
 import Header from '../../src/components/common/Header';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -43,6 +45,36 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [expanded, setExpanded] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const handleDownloadCreditNotePdf = async () => {
+    setPdfLoading(true);
+    try {
+      const response = await axios.get(
+        `${process.env.api_url}/return_orders/${returnOrder._id}/download-creditnote-pdf`,
+        {
+          params: { created_by: user?.data?._id },
+          responseType: 'blob',
+        }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `credit_note_${returnOrder._id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Credit Note PDF downloaded');
+    } catch (error: any) {
+      console.error(error);
+      toast.error('Error downloading Credit Note PDF');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   const handleAccordionChange = (
     _event: React.SyntheticEvent,
@@ -222,37 +254,90 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
           </Box>
         )}
 
-        {/* Debit Note Document */}
-        {returnOrder.debit_note_document && (
+        {/* Debit Note Documents */}
+        {(() => {
+          const docs = returnOrder.debit_note_documents?.length
+            ? returnOrder.debit_note_documents
+            : returnOrder.debit_note_document
+            ? [returnOrder.debit_note_document]
+            : [];
+          return docs.length > 0 ? (
+            <Box sx={{ mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <DescriptionIcon color='primary' fontSize='small' />
+                <Typography variant='body2' color='textSecondary'>
+                  Debit Note Documents ({docs.length})
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {docs.map((doc: string, idx: number) => (
+                  <Alert
+                    key={idx}
+                    severity='success'
+                    sx={{
+                      backgroundColor: '#f0fdf4',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <DescriptionIcon fontSize='small' />
+                      <a
+                        href={doc}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        style={{
+                          color: 'inherit',
+                          textDecoration: 'underline',
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        Document {idx + 1}
+                      </a>
+                    </Box>
+                  </Alert>
+                ))}
+              </Box>
+            </Box>
+          ) : null;
+        })()}
+
+        {/* Credit Note Info */}
+        {returnOrder.zoho_creditnote_id && (
           <Box sx={{ mb: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <DescriptionIcon color='primary' fontSize='small' />
+              <ReceiptLongIcon color='primary' fontSize='small' />
               <Typography variant='body2' color='textSecondary'>
-                Debit Note Document
+                Credit Note
               </Typography>
             </Box>
             <Alert
               severity='success'
-              sx={{
-                backgroundColor: '#f0fdf4',
-                display: 'flex',
-                alignItems: 'center',
-              }}
+              sx={{ backgroundColor: '#f0fdf4' }}
+              action={
+                <Button
+                  color='inherit'
+                  size='small'
+                  startIcon={pdfLoading ? <CircularProgress size={14} /> : <DownloadIcon />}
+                  onClick={handleDownloadCreditNotePdf}
+                  disabled={pdfLoading}
+                >
+                  {pdfLoading ? 'Downloading...' : 'Download PDF'}
+                </Button>
+              }
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <DescriptionIcon fontSize='small' />
-                <a
-                  href={returnOrder.debit_note_document}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  style={{
-                    color: 'inherit',
-                    textDecoration: 'underline',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  View Document
-                </a>
+                <Typography variant='body2' fontWeight='bold'>
+                  {returnOrder.zoho_creditnote_number || 'Credit Note'}
+                </Typography>
+                {returnOrder.zoho_creditnote_status && (
+                  <Chip
+                    label={returnOrder.zoho_creditnote_status.toUpperCase()}
+                    size='small'
+                    color='info'
+                    sx={{ ml: 1 }}
+                  />
+                )}
               </Box>
             </Alert>
           </Box>
@@ -464,7 +549,11 @@ function ReturnOrders() {
         : '',
       contactNo: currentReturnOrder.contact_no || '',
       boxCount: currentReturnOrder.box_count || 1,
-      debitNoteDocument: currentReturnOrder.debit_note_document || '',
+      debitNoteDocuments: currentReturnOrder.debit_note_documents?.length
+        ? currentReturnOrder.debit_note_documents
+        : currentReturnOrder.debit_note_document
+        ? [currentReturnOrder.debit_note_document]
+        : [],
       referenceNumber: currentReturnOrder.reference_number || '',
     };
   };
