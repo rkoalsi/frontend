@@ -24,6 +24,10 @@ import {
   CardContent,
   Grid,
   Divider,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import {
@@ -61,6 +65,7 @@ const ReturnOrders = () => {
   // Dialog state for viewing details
   const [selectedOrder, setSelectedOrder]: any = useState(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [invoiceType, setInvoiceType] = useState<string>('registered');
 
   // Fetch return orders from the server
   const fetchReturnOrders = async () => {
@@ -117,6 +122,13 @@ const ReturnOrders = () => {
   // Handle view details
   const handleViewDetails = (order: any) => {
     setSelectedOrder(order);
+    // Set default invoice type based on customer's gst_treatment
+    const gstTreatment = order.customer?.gst_treatment || order.gst_treatment;
+    if (gstTreatment === 'consumer') {
+      setInvoiceType('b2c_others');
+    } else {
+      setInvoiceType('registered');
+    }
     setDetailDialogOpen(true);
   };
 
@@ -222,7 +234,9 @@ const ReturnOrders = () => {
   const handleCreateCreditNote = async (orderId: string) => {
     setZohoLoading(true);
     try {
-      const response = await axiosInstance.post(`/admin/return_orders/${orderId}/create-zoho-creditnote`);
+      const response = await axiosInstance.post(`/admin/return_orders/${orderId}/create-zoho-creditnote`, {
+        reference_invoice_type: invoiceType,
+      });
 
       // Update the selectedOrder state with Zoho data
       setSelectedOrder((prev: any) => ({
@@ -889,16 +903,25 @@ const ReturnOrders = () => {
                             No Credit Note created yet
                           </Typography>
                         </Box>
-                        <Button
-                          variant='contained'
-                          color='primary'
+                        <TextField
                           size='small'
-                          startIcon={zohoLoading ? <CircularProgress size={16} color='inherit' /> : <Sync />}
-                          onClick={() => handleCreateCreditNote(selectedOrder._id)}
-                          disabled={zohoLoading || selectedOrder.status === 'draft'}
-                        >
-                          {zohoLoading ? 'Creating...' : 'Create Credit Note'}
-                        </Button>
+                          label='Invoice Type'
+                          value={invoiceType === 'registered' ? 'Registered Business' : 'B2C Others'}
+                          disabled
+                          sx={{ minWidth: 200, mb: 2 }}
+                        />
+                        <Box>
+                          <Button
+                            variant='contained'
+                            color='primary'
+                            size='small'
+                            startIcon={zohoLoading ? <CircularProgress size={16} color='inherit' /> : <Sync />}
+                            onClick={() => handleCreateCreditNote(selectedOrder._id)}
+                            disabled={zohoLoading || selectedOrder.status === 'draft'}
+                          >
+                            {zohoLoading ? 'Creating...' : 'Create Credit Note'}
+                          </Button>
+                        </Box>
                         {selectedOrder.status === 'draft' && (
                           <Typography variant='caption' display='block' color='text.secondary' mt={1}>
                             Change status to create credit note
