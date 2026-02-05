@@ -49,12 +49,15 @@ const SalesPeople = () => {
   const [newSalesPerson, setNewSalesPerson] = useState({
     name: '',
     code: '',
+    salesperson_id: '',
     designation: '',
     email: '',
     phone: '',
     status: 'active',
     role: 'sales_person',
   });
+  const [zohoSalespersons, setZohoSalespersons]: any = useState([]);
+  const [zohoLoading, setZohoLoading] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerLoading, setCustomerLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -103,6 +106,20 @@ const SalesPeople = () => {
     [baseApiUrl]
   );
 
+  // Fetch Zoho salespersons for dropdown
+  const fetchZohoSalespersons = useCallback(async () => {
+    try {
+      setZohoLoading(true);
+      const response = await axiosInstance.get('/admin/salespeople/zoho/salespersons');
+      setZohoSalespersons(response.data.salespersons || []);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to fetch Zoho salespersons');
+    } finally {
+      setZohoLoading(false);
+    }
+  }, []);
+
   // Handle opening the drawer with selected person's details
   const handleViewDetails = useCallback(
     async (person: any) => {
@@ -114,6 +131,8 @@ const SalesPeople = () => {
         const updatedSalesPerson = data.sales_person || data;
         setSelectedPerson(updatedSalesPerson);
         setDrawerOpen(true);
+        // Fetch Zoho salespersons for dropdown
+        fetchZohoSalespersons();
       } catch (err) {
         console.error(err);
         toast.error('Failed to load person details.');
@@ -121,7 +140,7 @@ const SalesPeople = () => {
         setLoading(false);
       }
     },
-    [baseApiUrl]
+    [baseApiUrl, fetchZohoSalespersons]
   );
 
   const handleCloseDrawer = useCallback(() => {
@@ -143,6 +162,7 @@ const SalesPeople = () => {
       setNewSalesPerson({
         name: '',
         code: '',
+        salesperson_id: '',
         designation: '',
         email: '',
         phone: '',
@@ -162,6 +182,23 @@ const SalesPeople = () => {
       ...prev,
       [field]: value,
     }));
+  }, []);
+
+  // Handle Zoho salesperson selection
+  const handleZohoSalespersonSelect = useCallback((salesperson: any) => {
+    if (salesperson) {
+      setNewSalesPerson((prev) => ({
+        ...prev,
+        code: salesperson.salesperson_name,
+        salesperson_id: salesperson.salesperson_id,
+      }));
+    } else {
+      setNewSalesPerson((prev) => ({
+        ...prev,
+        code: '',
+        salesperson_id: '',
+      }));
+    }
   }, []);
 
   // Handle field changes in selected person
@@ -360,6 +397,26 @@ const SalesPeople = () => {
     }
   }, [baseApiUrl, refetchSelectedPerson, selectedCustomers, selectedPerson]);
 
+  // Save salesperson details (name, status, code, salesperson_id)
+  const handleSaveSalesperson = useCallback(async () => {
+    if (!selectedPerson) return;
+    try {
+      await axiosInstance.put(`/admin/salespeople/${selectedPerson._id}`, {
+        name: selectedPerson.name,
+        status: selectedPerson.status,
+        code: selectedPerson.code,
+        salesperson_id: selectedPerson.salesperson_id,
+      });
+      toast.success('Salesperson updated successfully.');
+      await refetchSelectedPerson(selectedPerson._id);
+      // Also refresh the list
+      fetchSalesPeople();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update salesperson');
+    }
+  }, [selectedPerson, refetchSelectedPerson, fetchSalesPeople]);
+
   // Bulk save customer changes
   const handleBulkSaveCustomers = useCallback(async () => {
     if (!selectedPerson) return;
@@ -413,7 +470,10 @@ const SalesPeople = () => {
             <Button
               variant='contained'
               color='primary'
-              onClick={() => setAddDialogOpen(true)}
+              onClick={() => {
+                setAddDialogOpen(true);
+                fetchZohoSalespersons();
+              }}
             >
               Add Salesperson
             </Button>
@@ -437,14 +497,32 @@ const SalesPeople = () => {
               fullWidth
               margin='normal'
             />
-            <TextField
-              label='Code'
-              variant='outlined'
-              value={newSalesPerson.code}
-              onChange={(e) => handleAddFieldChange('code', e.target.value)}
-              fullWidth
-              margin='normal'
-            />
+            <FormControl fullWidth margin='normal'>
+              <InputLabel>Code (Zoho Salesperson)</InputLabel>
+              <Select
+                label='Code (Zoho Salesperson)'
+                value={newSalesPerson.salesperson_id}
+                onChange={(e) => {
+                  const selected = zohoSalespersons.find(
+                    (sp: any) => sp.salesperson_id === e.target.value
+                  );
+                  handleZohoSalespersonSelect(selected);
+                }}
+                disabled={zohoLoading}
+              >
+                {zohoLoading ? (
+                  <MenuItem disabled>Loading...</MenuItem>
+                ) : zohoSalespersons.length === 0 ? (
+                  <MenuItem disabled>No salespersons found</MenuItem>
+                ) : (
+                  zohoSalespersons.map((sp: any) => (
+                    <MenuItem key={sp.salesperson_id} value={sp.salesperson_id}>
+                      {sp.salesperson_name} - {sp.email}
+                    </MenuItem>
+                  ))
+                )}
+              </Select>
+            </FormControl>
             <TextField
               label='Designation'
               variant='outlined'
@@ -617,6 +695,35 @@ const SalesPeople = () => {
                   disabled
                   fullWidth
                 />
+                <FormControl fullWidth>
+                  <InputLabel>Zoho Salesperson</InputLabel>
+                  <Select
+                    label='Zoho Salesperson'
+                    value={selectedPerson.salesperson_id || ''}
+                    onChange={(e) => {
+                      const selected = zohoSalespersons.find(
+                        (sp: any) => sp.salesperson_id === e.target.value
+                      );
+                      if (selected) {
+                        handleFieldChange('code', selected.salesperson_name);
+                        handleFieldChange('salesperson_id', selected.salesperson_id);
+                      }
+                    }}
+                    disabled={zohoLoading}
+                  >
+                    {zohoLoading ? (
+                      <MenuItem disabled>Loading...</MenuItem>
+                    ) : zohoSalespersons.length === 0 ? (
+                      <MenuItem disabled>No salespersons found</MenuItem>
+                    ) : (
+                      zohoSalespersons.map((sp: any) => (
+                        <MenuItem key={sp.salesperson_id} value={sp.salesperson_id}>
+                          {sp.salesperson_name} - {sp.email}
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                </FormControl>
                 <TextField
                   select
                   label='Status'
@@ -641,7 +748,7 @@ const SalesPeople = () => {
                   <Button
                     variant='contained'
                     color='primary'
-                    onClick={handleBulkSaveCustomers}
+                    onClick={handleSaveSalesperson}
                     size='small'
                   >
                     Save Changes
