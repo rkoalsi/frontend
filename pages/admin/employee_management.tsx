@@ -98,10 +98,10 @@ const EmployeeManagement: React.FC = () => {
     const [debouncedSearch, setDebouncedSearch] = useState<string>('');
     const [departmentFilter, setDepartmentFilter] = useState<string>('');
     const [pagination, setPagination] = useState<PaginationData>({ 
-        total: 0, 
-        skip: 0, 
-        limit: 50, 
-        has_more: false 
+        total: 0,
+        skip: 0,
+        limit: 100,
+        has_more: false
     });
     
     // Dialog states
@@ -119,7 +119,8 @@ const EmployeeManagement: React.FC = () => {
         employee_number: '',
         department: '',
         designation: '',
-        joining_date: ''
+        joining_date: '',
+        status: 'active'
     });
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState<boolean>(false);
@@ -189,7 +190,7 @@ const EmployeeManagement: React.FC = () => {
 
     useEffect(() => {
         fetchEmployees();
-    }, []);
+    }, [pagination.skip]);
 
     // Handle form changes
     const handleFormChange = (field: string, value: string) => {
@@ -238,7 +239,8 @@ const EmployeeManagement: React.FC = () => {
             employee_number: '',
             department: '',
             designation: '',
-            joining_date: ''
+            joining_date: '',
+            status: 'active'
         });
         setFormErrors({});
         setSelectedEmployee(null);
@@ -255,7 +257,8 @@ const EmployeeManagement: React.FC = () => {
             employee_number: employee.employee_number || '',
             department: employee.department || '',
             designation: employee.designation || '',
-            joining_date: employee.joining_date || ''
+            joining_date: employee.joining_date || '',
+            status: employee.status || 'active'
         });
         setFormErrors({});
         setSelectedEmployee(employee);
@@ -282,7 +285,8 @@ const EmployeeManagement: React.FC = () => {
                 employee_number: formData.employee_number.trim() || undefined,
                 department: formData.department || undefined,
                 designation: formData.designation || undefined,
-                joining_date: formData.joining_date || undefined
+                joining_date: formData.joining_date || undefined,
+                status: formData.status || 'active'
             };
 
             if (dialogMode === 'create') {
@@ -528,6 +532,7 @@ const EmployeeManagement: React.FC = () => {
                         <Table>
                             <TableHead>
                                 <TableRow sx={{ backgroundColor: '#f8fafc' }}>
+                                    <TableCell sx={{ fontWeight: 600, width: 60 }}>Sr. No.</TableCell>
                                     <TableCell sx={{ fontWeight: 600 }}>Employee</TableCell>
                                     <TableCell sx={{ fontWeight: 600 }}>Contact Info</TableCell>
                                     <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
@@ -535,8 +540,13 @@ const EmployeeManagement: React.FC = () => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {employees.map((employee) => (
+                                {employees.map((employee, index) => (
                                     <TableRow key={employee.id} hover sx={{ '&:hover': { backgroundColor: '#f8fafc' } }}>
+                                        <TableCell>
+                                            <Typography variant='body2' sx={{ fontWeight: 600 }}>
+                                                {pagination.skip + index + 1}
+                                            </Typography>
+                                        </TableCell>
                                         <TableCell>
                                             <Box display="flex" alignItems="center" gap={2}>
                                                 <Avatar
@@ -629,6 +639,35 @@ const EmployeeManagement: React.FC = () => {
                         >
                             Add First Employee
                         </Button>
+                    </Box>
+                )}
+
+                {/* Pagination Controls */}
+                {pagination.total > 0 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, borderTop: '1px solid #e2e8f0' }}>
+                        <Typography variant='body2' color='text.secondary'>
+                            Showing {pagination.skip + 1}–{Math.min(pagination.skip + employees.length, pagination.total)} of {pagination.total} employees
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                                variant='outlined'
+                                size='small'
+                                disabled={pagination.skip === 0}
+                                onClick={() => setPagination(prev => ({ ...prev, skip: Math.max(0, prev.skip - prev.limit) }))}
+                                sx={{ borderRadius: 2 }}
+                            >
+                                Previous
+                            </Button>
+                            <Button
+                                variant='outlined'
+                                size='small'
+                                disabled={!pagination.has_more}
+                                onClick={() => setPagination(prev => ({ ...prev, skip: prev.skip + prev.limit }))}
+                                sx={{ borderRadius: 2 }}
+                            >
+                                Next
+                            </Button>
+                        </Box>
                     </Box>
                 )}
             </Paper>
@@ -724,7 +763,7 @@ const EmployeeManagement: React.FC = () => {
                         </Grid>
                     ) : (
                         <Grid container spacing={3}>
-                            <Grid>
+                            <Grid size={{ xs: 12, md: 4 }}>
                                 <TextField
                                     fullWidth
                                     label="Full Name *"
@@ -735,7 +774,7 @@ const EmployeeManagement: React.FC = () => {
                                     disabled={dialogMode === 'view'}
                                 />
                             </Grid>
-                            <Grid>
+                            <Grid size={{ xs: 12, md: 4 }}>
                                 <TextField
                                     fullWidth
                                     label="Employee Number"
@@ -746,7 +785,7 @@ const EmployeeManagement: React.FC = () => {
                                     disabled={dialogMode === 'view'}
                                 />
                             </Grid>
-                            <Grid>
+                            <Grid size={{ xs: 12, md: 4 }}>
                                 <TextField
                                     fullWidth
                                     label="Email Address *"
@@ -758,7 +797,7 @@ const EmployeeManagement: React.FC = () => {
                                     disabled={dialogMode === 'view'}
                                 />
                             </Grid>
-                            <Grid>
+                            <Grid size={{ xs: 12, md: 4 }}>
                                 <TextField
                                     fullWidth
                                     label="Phone Number *"
@@ -769,7 +808,7 @@ const EmployeeManagement: React.FC = () => {
                                     disabled={dialogMode === 'view'}
                                 />
                             </Grid>
-                            <Grid>
+                            <Grid size={{ xs: 12, md: 4 }}>
                                 <FormControl fullWidth>
                                     <InputLabel>Department</InputLabel>
                                     <Select
@@ -785,7 +824,7 @@ const EmployeeManagement: React.FC = () => {
                                     </Select>
                                 </FormControl>
                             </Grid>
-                            <Grid>
+                            <Grid size={{ xs: 12, md: 4 }}>
                                 <TextField
                                     fullWidth
                                     label="Designation"
@@ -794,7 +833,7 @@ const EmployeeManagement: React.FC = () => {
                                     disabled={dialogMode === 'view'}
                                 />
                             </Grid>
-                            <Grid>
+                            <Grid size={{ xs: 12, md: 4 }}>
                                 <TextField
                                     fullWidth
                                     label="Joining Date"
@@ -804,6 +843,20 @@ const EmployeeManagement: React.FC = () => {
                                     InputLabelProps={{ shrink: true }}
                                     disabled={dialogMode === 'view'}
                                 />
+                            </Grid>
+                            <Grid size={{ xs: 12, md: 4 }}>
+                                <FormControl fullWidth>
+                                    <InputLabel>Status</InputLabel>
+                                    <Select
+                                        value={formData.status}
+                                        label="Status"
+                                        onChange={(e) => handleFormChange('status', e.target.value)}
+                                        disabled={dialogMode === 'view'}
+                                    >
+                                        <MenuItem value="active">Active</MenuItem>
+                                        <MenuItem value="inactive">Inactive</MenuItem>
+                                    </Select>
+                                </FormControl>
                             </Grid>
                         </Grid>
                     )}
