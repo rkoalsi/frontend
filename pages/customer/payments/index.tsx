@@ -46,6 +46,7 @@ import {
   Clear,
   Close,
   Receipt,
+  Download,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../../src/util/axios';
@@ -64,6 +65,10 @@ interface PaymentRecord {
   customer_name?: string;
   customer_id?: string;
   invoices?: any[];
+  bank_charges?: number;
+  account_name?: string;
+  tax_amount_withheld?: number;
+  created_time?: string;
 }
 
 interface PaymentSummary {
@@ -87,8 +92,8 @@ const CustomerPaymentsPage = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [paymentModeFilter, setPaymentModeFilter] = useState('');
-  const [invoiceDrawerOpen, setInvoiceDrawerOpen] = useState(false);
-  const [selectedPaymentInvoices, setSelectedPaymentInvoices] = useState<{ payment_number: string; invoices: any[] }>({ payment_number: '', invoices: [] });
+  const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
 
   const fetchPayments = useCallback(async () => {
     if (!user?.data?.customer_id) {
@@ -153,12 +158,27 @@ const CustomerPaymentsPage = () => {
     );
   });
 
-  const handleOpenInvoices = (payment: PaymentRecord) => {
-    setSelectedPaymentInvoices({
-      payment_number: payment.payment_number,
-      invoices: payment.invoices || [],
-    });
-    setInvoiceDrawerOpen(true);
+  const handleOpenPaymentDetails = (payment: PaymentRecord) => {
+    setSelectedPayment(payment);
+    setPaymentDrawerOpen(true);
+  };
+
+  const handleDownloadInvoicePdf = async (invoiceId: string) => {
+    try {
+      const response = await axiosInstance.get(`/invoices/download_pdf/${invoiceId}`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `invoice_${invoiceId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error downloading invoice:', err);
+    }
   };
 
   // Summary Card Component
@@ -477,7 +497,7 @@ const CustomerPaymentsPage = () => {
                                       size='small'
                                       color='primary'
                                       variant='outlined'
-                                      onClick={() => handleOpenInvoices(p)}
+                                      onClick={() => handleOpenPaymentDetails(p)}
                                       sx={{ cursor: 'pointer', '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.1) } }}
                                     />
                                   ) : (
@@ -564,7 +584,7 @@ const CustomerPaymentsPage = () => {
                                     size='small'
                                     color='primary'
                                     variant='outlined'
-                                    onClick={() => handleOpenInvoices(p)}
+                                    onClick={() => handleOpenPaymentDetails(p)}
                                     sx={{ cursor: 'pointer', '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.1) } }}
                                   />
                                 </Box>
@@ -608,81 +628,202 @@ const CustomerPaymentsPage = () => {
         </Box>
       </Paper>
 
-      {/* Invoices Applied Drawer */}
+      {/* Payment Details Drawer */}
       <Drawer
         anchor={isMobile ? 'bottom' : 'right'}
-        open={invoiceDrawerOpen}
-        onClose={() => setInvoiceDrawerOpen(false)}
+        open={paymentDrawerOpen}
+        onClose={() => setPaymentDrawerOpen(false)}
         PaperProps={{
           sx: {
-            width: isMobile ? '100%' : 420,
-            maxHeight: isMobile ? '80vh' : '100vh',
+            width: isMobile ? '100%' : 450,
+            maxHeight: isMobile ? '85vh' : 'calc(100vh - 64px)',
+            height: isMobile ? 'auto' : 'calc(100vh - 64px)',
+            top: isMobile ? 'auto' : '64px',
             borderRadius: isMobile ? '16px 16px 0 0' : 0,
           },
         }}
       >
-        <Box sx={{ p: { xs: 2, sm: 3 } }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Box>
-              <Typography variant='h6' fontWeight={700}>
-                Invoices Applied
-              </Typography>
-              <Typography variant='body2' color='text.secondary'>
-                {selectedPaymentInvoices.payment_number}
-              </Typography>
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+        }}>
+          {/* Fixed Header */}
+          <Box sx={{
+            p: { xs: 2, sm: 3 },
+            pb: 2,
+            flexShrink: 0,
+            borderBottom: `1px solid ${theme.palette.divider}`,
+          }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box>
+                <Typography variant='h6' fontWeight={700}>
+                  Payment Details
+                </Typography>
+                <Typography variant='body2' color='text.secondary'>
+                  {selectedPayment?.payment_number}
+                </Typography>
+              </Box>
+              <IconButton onClick={() => setPaymentDrawerOpen(false)} size='small'>
+                <Close />
+              </IconButton>
             </Box>
-            <IconButton onClick={() => setInvoiceDrawerOpen(false)} size='small'>
-              <Close />
-            </IconButton>
           </Box>
-          <Divider sx={{ mb: 2 }} />
 
-          {selectedPaymentInvoices.invoices.length > 0 ? (
-            <List disablePadding>
-              {selectedPaymentInvoices.invoices.map((inv: any, idx: number) => (
-                <ListItem
-                  key={idx}
+          {/* Scrollable Content */}
+          <Box sx={{
+            p: { xs: 2, sm: 3 },
+            flexGrow: 1,
+            overflowY: 'auto',
+          }}>
+            {selectedPayment && (
+              <>
+                {/* Payment Summary */}
+                <Paper
+                  elevation={0}
                   sx={{
-                    px: 2,
-                    py: 1.5,
-                    mb: 1,
-                    border: `1px solid ${theme.palette.divider}`,
+                    p: 2,
+                    mb: 3,
                     borderRadius: 2,
+                    backgroundColor: alpha(theme.palette.success.main, 0.05),
+                    border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-                    <Receipt color='action' sx={{ fontSize: 20 }} />
-                  </Box>
-                  <ListItemText
-                    primary={
-                      <Typography variant='body2' fontWeight={600}>
-                        {inv.invoice_number || inv.invoice_id || `Invoice ${idx + 1}`}
-                      </Typography>
-                    }
-                    secondary={
-                      <Box>
-                        {inv.date && (
-                          <Typography variant='caption' color='text.secondary'>
-                            {format(new Date(inv.date), 'PP')}
-                          </Typography>
-                        )}
-                      </Box>
-                    }
-                  />
-                  <Box sx={{ textAlign: 'right' }}>
-                    <Typography variant='body2' fontWeight={600} color='success.main'>
-                      {formatCurrency(inv.amount_applied || inv.amount || 0)}
+                  <Typography variant='body2' color='text.secondary' gutterBottom>
+                    Payment Amount
+                  </Typography>
+                  <Typography variant='h4' fontWeight={700} color='success.main'>
+                    {formatCurrency(selectedPayment.amount)}
+                  </Typography>
+                  {selectedPayment.unused_amount > 0 && (
+                    <Typography variant='body2' color='text.secondary' sx={{ mt: 1 }}>
+                      Unused: {formatCurrency(selectedPayment.unused_amount)}
                     </Typography>
+                  )}
+                </Paper>
+
+                {/* Payment Information */}
+                <Typography variant='subtitle2' fontWeight={600} sx={{ mb: 2 }}>
+                  Payment Information
+                </Typography>
+                <Box sx={{ mb: 3 }}>
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 6 }}>
+                      <Typography variant='caption' color='text.secondary'>Date</Typography>
+                      <Typography variant='body2' fontWeight={500}>
+                        {selectedPayment.date ? format(new Date(selectedPayment.date), 'PPP') : 'N/A'}
+                      </Typography>
+                    </Grid>
+                    <Grid size={{ xs: 6 }}>
+                      <Typography variant='caption' color='text.secondary'>Payment Mode</Typography>
+                      <Typography variant='body2' fontWeight={500}>
+                        {selectedPayment.payment_mode || 'N/A'}
+                      </Typography>
+                    </Grid>
+                    {selectedPayment.reference_number && (
+                      <Grid size={{ xs: 6 }}>
+                        <Typography variant='caption' color='text.secondary'>Reference Number</Typography>
+                        <Typography variant='body2' fontWeight={500}>
+                          {selectedPayment.reference_number}
+                        </Typography>
+                      </Grid>
+                    )}
+                    {selectedPayment.bank_charges !== undefined && selectedPayment.bank_charges > 0 && (
+                      <Grid size={{ xs: 6 }}>
+                        <Typography variant='caption' color='text.secondary'>Bank Charges</Typography>
+                        <Typography variant='body2' fontWeight={500}>
+                          {formatCurrency(selectedPayment.bank_charges)}
+                        </Typography>
+                      </Grid>
+                    )}
+                    {selectedPayment.account_name && (
+                      <Grid size={{ xs: 12 }}>
+                        <Typography variant='caption' color='text.secondary'>Account</Typography>
+                        <Typography variant='body2' fontWeight={500}>
+                          {selectedPayment.account_name}
+                        </Typography>
+                      </Grid>
+                    )}
+                    {selectedPayment.description && (
+                      <Grid size={{ xs: 12 }}>
+                        <Typography variant='caption' color='text.secondary'>Description</Typography>
+                        <Typography variant='body2' fontWeight={500}>
+                          {selectedPayment.description}
+                        </Typography>
+                      </Grid>
+                    )}
+                  </Grid>
+                </Box>
+
+                <Divider sx={{ my: 2 }} />
+
+                {/* Invoices Applied */}
+                <Typography variant='subtitle2' fontWeight={600} sx={{ mb: 2 }}>
+                  Invoices Applied ({selectedPayment.invoices?.length || 0})
+                </Typography>
+                {selectedPayment.invoices && selectedPayment.invoices.length > 0 ? (
+                  <List disablePadding>
+                    {selectedPayment.invoices.map((inv: any, idx: number) => (
+                      <ListItem
+                        key={idx}
+                        sx={{
+                          px: 2,
+                          py: 1.5,
+                          mb: 1,
+                          border: `1px solid ${theme.palette.divider}`,
+                          borderRadius: 2,
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                          <Receipt color='action' sx={{ fontSize: 20 }} />
+                        </Box>
+                        <ListItemText
+                          primary={
+                            <Typography variant='body2' fontWeight={600}>
+                              {inv.invoice_number || inv.invoice_id || `Invoice ${idx + 1}`}
+                            </Typography>
+                          }
+                          secondary={
+                            inv.date && (
+                              <Typography variant='caption' color='text.secondary'>
+                                {format(new Date(inv.date), 'PP')}
+                              </Typography>
+                            )
+                          }
+                          sx={{ flex: 1, minWidth: 0 }}
+                        />
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ textAlign: 'right' }}>
+                            <Typography variant='body2' fontWeight={600} color='success.main'>
+                              {formatCurrency(inv.amount_applied || inv.amount || 0)}
+                            </Typography>
+                          </Box>
+                          <IconButton
+                            size='small'
+                            onClick={() => handleDownloadInvoicePdf(inv.invoice_id)}
+                            sx={{
+                              color: theme.palette.primary.main,
+                              '&:hover': {
+                                backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                              }
+                            }}
+                            title='Download Invoice'
+                          >
+                            <Download fontSize='small' />
+                          </IconButton>
+                        </Box>
+                      </ListItem>
+                    ))}
+                  </List>
+                ) : (
+                  <Box sx={{ textAlign: 'center', py: 3, border: `1px dashed ${theme.palette.divider}`, borderRadius: 2 }}>
+                    <Receipt sx={{ fontSize: 40, color: 'grey.300', mb: 1 }} />
+                    <Typography variant='body2' color='text.secondary'>No invoices applied to this payment</Typography>
                   </Box>
-                </ListItem>
-              ))}
-            </List>
-          ) : (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Receipt sx={{ fontSize: 48, color: 'grey.300', mb: 2 }} />
-              <Typography color='text.secondary'>No invoice details available</Typography>
-            </Box>
-          )}
+                )}
+              </>
+            )}
+          </Box>
         </Box>
       </Drawer>
     </Container>
