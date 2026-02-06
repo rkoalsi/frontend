@@ -406,6 +406,7 @@ const SalesPeople = () => {
         status: selectedPerson.status,
         code: selectedPerson.code,
         salesperson_id: selectedPerson.salesperson_id,
+        phone: selectedPerson.phone ? parseInt(selectedPerson.phone, 10) : undefined,
       });
       toast.success('Salesperson updated successfully.');
       await refetchSelectedPerson(selectedPerson._id);
@@ -724,6 +725,18 @@ const SalesPeople = () => {
                     )}
                   </Select>
                 </FormControl>
+                <TextField
+                  label='Mobile Number'
+                  variant='outlined'
+                  value={selectedPerson.phone || ''}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    handleFieldChange('phone', val);
+                  }}
+                  fullWidth
+                  inputProps={{ maxLength: 10 }}
+                  helperText='10-digit Indian mobile number'
+                />
                 <TextField
                   select
                   label='Status'
