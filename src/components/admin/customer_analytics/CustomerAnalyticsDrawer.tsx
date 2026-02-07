@@ -25,6 +25,8 @@ import {
   Tooltip,
   useTheme,
   useMediaQuery,
+  CircularProgress,
+  Skeleton,
 } from '@mui/material';
 import {
   Close,
@@ -43,7 +45,9 @@ import {
   AccountBalance,
   CalendarToday,
   Assessment,
+  Category,
 } from '@mui/icons-material';
+import axiosInstance from '../../../util/axios';
 
 interface CustomerDetailsDrawerProps {
   open: boolean;
@@ -64,6 +68,34 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [brandBreakdown, setBrandBreakdown] = useState<any[]>([]);
+  const [brandFyLabels, setBrandFyLabels] = useState<any>({});
+  const [brandLoading, setBrandLoading] = useState(false);
+
+  useEffect(() => {
+    if (open && customer) {
+      const customerId = customer.allInvoices?.[0]?.customer_id || customer.customerId;
+      if (customerId) {
+        setBrandLoading(true);
+        axiosInstance
+          .get(`/admin/customer_analytics/brand-breakdown`, {
+            params: { customer_id: customerId },
+          })
+          .then((res) => {
+            setBrandBreakdown(res.data.brands || []);
+            setBrandFyLabels(res.data.fyLabels || {});
+          })
+          .catch(() => {
+            setBrandBreakdown([]);
+          })
+          .finally(() => {
+            setBrandLoading(false);
+          });
+      }
+    } else {
+      setBrandBreakdown([]);
+    }
+  }, [open, customer]);
 
   if (!customer) return null;
 
@@ -715,6 +747,60 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
             </CardContent>
           </Card>
         </Fade>
+        {/* Brand-wise Breakdown */}
+        <Fade in timeout={800}>
+          <Card sx={{ mb: 3, boxShadow: 2 }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <Category sx={{ color: '#1976d2', fontSize: 24 }} />
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                  Brand-wise Breakdown
+                </Typography>
+              </Box>
+              {brandLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress size={32} />
+                </Box>
+              ) : brandBreakdown.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 3 }}>
+                  No brand data available
+                </Typography>
+              ) : (
+                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: '#e3f2fd' }}>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Brand</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }} align="right">
+                          {brandFyLabels.previousFY || 'Previous FY'}
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }} align="right">
+                          {brandFyLabels.lastFY || 'Last FY'}
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }} align="right">
+                          {brandFyLabels.currentFY || 'Current FY'}
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {brandBreakdown.map((row: any, index: number) => (
+                        <TableRow key={index} hover>
+                          <TableCell sx={{ fontWeight: 500 }}>{row.brand}</TableCell>
+                          <TableCell align="right">{formatCurrency(row.previousFY || 0)}</TableCell>
+                          <TableCell align="right">{formatCurrency(row.lastFY || 0)}</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                            {formatCurrency(row.currentFY || 0)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </CardContent>
+          </Card>
+        </Fade>
+
         {/* Bottom Padding */}
         <Box sx={{ height: 24 }} />
       </Box>
