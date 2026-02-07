@@ -58,37 +58,66 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
       let parentProduct: Product | null = null;
 
       products.forEach((product) => {
-        // Try to extract size from product name
         let sizeLabel = '';
 
-        // Check for (SIZE/measurement) format
-        const sizeMeasurementMatch = product.name.match(/[（(]\s*(XXXXL|XXXL|XXL|XL|XXS|XS|S|M|L)\s*\/\s*\d+\s*[Cc]?[Mm]\s*[)）]/i);
+        // First, check for (SIZE/measurement) format like (XXL/62CM), (M/32CM), （XL/48CM）
+        const sizeMeasurementMatch = product.name.match(/[（(]\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|S|M|L)\s*\/\s*\d+\s*[Cc]?[Mm]\s*[)）]/i);
         if (sizeMeasurementMatch) {
           sizeLabel = sizeMeasurementMatch[1].toUpperCase();
-        }
-        // Check for number-based sizes (#1, #2, etc.)
-        else if (product.name.match(/#(\d+)/)) {
+        } else if (product.name.match(/#(\d+)/)) {
           const numberSizeMatch = product.name.match(/#(\d+)/);
           sizeLabel = `#${numberSizeMatch![1]}`;
-        }
-        // Check for measurement sizes (4.5mm, etc.)
-        else if (product.name.match(/(\d+\.?\d*mm)/i)) {
+        } else {
           const measurementMatch = product.name.match(/(\d+\.?\d*mm)/i);
-          sizeLabel = measurementMatch![1];
-        }
-        // Check for abbreviated sizes at the end
-        else {
-          const sizeMatch = product.name.match(/-\s*(XXXXL|XXXL|XXL|XL|XXS|XS|L|M|S)$/i) ||
-                           product.name.match(/\s+(XXXXL|XXXL|XXL|XL|XXS|XS|L|M|S)$/i) ||
-                           product.name.match(/-\s*(Small|Medium|Large)$/i) ||
-                           product.name.match(/\s+(Small|Medium|Large)$/i);
-          if (sizeMatch) {
-            const size = sizeMatch[1];
-            // Normalize full word sizes to abbreviations
-            if (size.toLowerCase() === 'small') sizeLabel = 'S';
-            else if (size.toLowerCase() === 'medium') sizeLabel = 'M';
-            else if (size.toLowerCase() === 'large') sizeLabel = 'L';
-            else sizeLabel = size.toUpperCase();
+          if (measurementMatch) {
+            sizeLabel = measurementMatch[1];
+          } else {
+            // First try to extract full word sizes (Large, Medium, Small, etc.)
+            const fullWordPatterns = [
+              /-\s*(XXX-Large|XX-Large|X-Large|X-Small|Extra Large|Extra Small|Large|Medium|Small)$/i,
+              /\s+(XXX-Large|XX-Large|X-Large|X-Small|Extra Large|Extra Small|Large|Medium|Small)$/i,
+              /-(XXX-Large|XX-Large|X-Large|X-Small|Extra Large|Extra Small|Large|Medium|Small)$/i,
+            ];
+
+            for (const pattern of fullWordPatterns) {
+              const match = product.name.match(pattern);
+              if (match) {
+                const size = match[1];
+                if (size.toLowerCase() === 'x-large') sizeLabel = 'XL';
+                else if (size.toLowerCase() === 'xx-large') sizeLabel = 'XXL';
+                else if (size.toLowerCase() === 'xxx-large') sizeLabel = 'XXXL';
+                else if (size.toLowerCase() === 'x-small') sizeLabel = 'XS';
+                else if (size.toLowerCase() === 'extra large') sizeLabel = 'XL';
+                else if (size.toLowerCase() === 'extra small') sizeLabel = 'XS';
+                else if (size.toLowerCase() === 'large') sizeLabel = 'L';
+                else if (size.toLowerCase() === 'medium') sizeLabel = 'M';
+                else if (size.toLowerCase() === 'small') sizeLabel = 'S';
+                break;
+              }
+            }
+
+            // If no full word size found, try abbreviated sizes
+            if (!sizeLabel) {
+              const patterns = [
+                /-\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)$/i,
+                /\s+(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)$/i,
+                /\s+(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)-[A-Za-z]/i,
+                /\s+(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s+-/i,
+                /-\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s+-/i,
+                /-\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s+/i,
+                /-(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)-/i,
+                /-(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s/i,
+                /\(([SMLX]{1,4})\)$/i,
+              ];
+
+              for (const pattern of patterns) {
+                const match = product.name.match(pattern);
+                if (match) {
+                  sizeLabel = match[1].toUpperCase();
+                  break;
+                }
+              }
+            }
           }
         }
 
@@ -97,7 +126,6 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
             variantMap.set(sizeLabel, product);
           }
         } else {
-          // No size found - this is the parent/standard product
           parentProduct = product;
         }
       });
@@ -112,17 +140,28 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
         if (a[0] === 'Standard') return -1;
         if (b[0] === 'Standard') return 1;
 
-        // Then sort by size order
-        const sizeOrder = ['XXXXS', 'XXXS', 'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
-        const indexA = sizeOrder.indexOf(a[0]);
-        const indexB = sizeOrder.indexOf(b[0]);
+        // Check if both are number sizes (#1, #2, etc.)
+        const isNumberA = a[0].startsWith('#');
+        const isNumberB = b[0].startsWith('#');
 
-        if (indexA !== -1 && indexB !== -1) {
+        // Check if both are measurement sizes (4.5mm, 6mm, etc.)
+        const isMeasurementA = a[0].endsWith('mm');
+        const isMeasurementB = b[0].endsWith('mm');
+
+        if (isNumberA && isNumberB) {
+          return parseInt(a[0].substring(1)) - parseInt(b[0].substring(1));
+        } else if (isMeasurementA && isMeasurementB) {
+          return parseFloat(a[0].replace('mm', '')) - parseFloat(b[0].replace('mm', ''));
+        } else if (isNumberA || isMeasurementA) {
+          return 1;
+        } else if (isNumberB || isMeasurementB) {
+          return -1;
+        } else {
+          const sizeOrder = ['XXXXS', 'XXXS', 'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
+          const indexA = sizeOrder.indexOf(a[0]);
+          const indexB = sizeOrder.indexOf(b[0]);
           return indexA - indexB;
         }
-
-        // If not in size order, sort alphabetically
-        return a[0].localeCompare(b[0]);
       });
     })();
 
@@ -253,7 +292,7 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
                   fontSize: '0.65rem',
                 }}
               >
-                Available Sizes
+                Variants
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
                 {variants.slice(0, 6).map(([sizeLabel, product]) => (
@@ -335,20 +374,6 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
                   fontWeight: 600,
                   bgcolor: 'info.50',
                   color: 'info.dark',
-                  '& .MuiChip-label': { px: 1.5 },
-                }}
-              />
-            )}
-            {!isCompact && currentVariant.series && (
-              <Chip
-                label={currentVariant.series}
-                size="small"
-                sx={{
-                  height: 24,
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  bgcolor: 'secondary.50',
-                  color: 'secondary.dark',
                   '& .MuiChip-label': { px: 1.5 },
                 }}
               />

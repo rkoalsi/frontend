@@ -2122,15 +2122,6 @@ export default function AllProductsCatalouge() {
 
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <Typography variant="body2" color="text.secondary">
-                                  Series:
-                                </Typography>
-                                <Typography variant="body2" fontWeight={500}>
-                                  {product.series || '-'}
-                                </Typography>
-                              </Box>
-
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="body2" color="text.secondary">
                                   SKU:
                                 </Typography>
                                 <Typography variant="body2" fontWeight={500}>
