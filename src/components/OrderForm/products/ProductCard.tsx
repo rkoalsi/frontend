@@ -187,22 +187,6 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                     }}
                   />
                 )}
-                {product.series && (
-                  <Chip
-                    label={product.series}
-                    variant="filled"
-                    size="small"
-                    sx={{
-                      borderRadius: 1.5,
-                      fontSize: '0.7rem',
-                      height: '24px',
-                      fontWeight: 600,
-                      bgcolor: 'secondary.50',
-                      color: 'secondary.dark',
-                      '& .MuiChip-label': { px: 1.5 },
-                    }}
-                  />
-                )}
               </Box>
 
               {/* SKU & UPC in enhanced grid */}

@@ -258,18 +258,6 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                     }}
                   />
                 )}
-                {currentProduct.series && (
-                  <Chip
-                    label={currentProduct.series}
-                    sx={{
-                      height: { xs: 22, sm: 24, md: 28 },
-                      fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
-                      fontWeight: 600,
-                      bgcolor: 'secondary.50',
-                      color: 'secondary.dark',
-                    }}
-                  />
-                )}
               </Box>
 
               {/* Variants Selection */}

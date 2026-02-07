@@ -176,20 +176,6 @@ const CatalogueProductCard: React.FC<CatalogueProductCardProps> = memo(
                 }}
               />
             )}
-            {!isCompact && product.series && (
-              <Chip
-                label={product.series}
-                size="small"
-                sx={{
-                  height: 24,
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  bgcolor: 'secondary.50',
-                  color: 'secondary.dark',
-                  '& .MuiChip-label': { px: 1.5 },
-                }}
-              />
-            )}
           </Box>
 
           {/* Price Section */}
