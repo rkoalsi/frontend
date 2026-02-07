@@ -127,6 +127,12 @@ const menuSections = [
         action: 'newOrder',
       },
       {
+        icon: <NewReleases />,
+        text: 'New Arrivals',
+        color: '#e11d48',
+        action: 'new_arrivals',
+      },
+      {
         icon: <History />,
         text: 'Past Orders',
         color: '#8b5cf6',
@@ -179,6 +185,24 @@ const menuSections = [
         action: 'create_customer',
       },
       {
+        icon: <LineAxis />,
+        text: 'Customer Analytics',
+        color: '#64748b',
+        action: 'customer_analytics',
+      },
+      {
+        icon: <WorkHistory />,
+        text: 'Customer Margins',
+        color: '#6366f1',
+        action: 'customer_margins',
+      },
+      {
+        icon: <Repeat />,
+        text: 'Expected Reorders',
+        color: '#14b8a6',
+        action: 'expected_reorder',
+      },
+      {
         icon: <Assignment />,
         text: 'My Customer Requests',
         color: '#3b82f6',
@@ -191,10 +215,10 @@ const menuSections = [
         action: 'potential_customers',
       },
       {
-        icon: <Repeat />,
-        text: 'Expected Reorders',
-        color: '#14b8a6',
-        action: 'expected_reorder',
+        icon: <Phishing />,
+        text: 'Set Customer Hooks',
+        color: '#a855f7',
+        action: 'hooks',
       },
       {
         icon: <Radar />,
@@ -202,41 +226,11 @@ const menuSections = [
         color: '#f97316',
         action: 'targeted_customer',
       },
-      {
-        icon: <Phishing />,
-        text: 'Set Customer Hooks',
-        color: '#a855f7',
-        action: 'hooks',
-      },
-      {
-        icon: <WorkHistory />,
-        text: 'Customer Margins',
-        color: '#6366f1',
-        action: 'customer_margins',
-      },
-      {
-        icon: <LineAxis />,
-        text: 'Customer Analytics',
-        color: '#64748b',
-        action: 'customer_analytics',
-      }
     ],
   },
   {
     title: 'Resources',
     items: [
-      {
-        icon: <MenuBook />,
-        text: 'Catalogues',
-        color: '#0d9488',
-        action: 'catalogues',
-      },
-      {
-        icon: <PlayCircle />,
-        text: 'Training Videos',
-        color: '#d946ef',
-        action: 'training',
-      },
       {
         icon: <Campaign />,
         text: 'Announcements',
@@ -244,10 +238,22 @@ const menuSections = [
         action: 'announcements',
       },
       {
+        icon: <MenuBook />,
+        text: 'Catalogues',
+        color: '#0d9488',
+        action: 'catalogues',
+      },
+      {
         icon: <Link />,
         text: 'External Links',
         color: '#6b7280',
         action: 'external_links',
+      },
+      {
+        icon: <PlayCircle />,
+        text: 'Training Videos',
+        color: '#d946ef',
+        action: 'training',
       },
       {
         icon: <LineAxis />,
@@ -367,7 +373,7 @@ const Home = () => {
         router.push('/shipments');
         break;
       case 'new_arrivals':
-        router.push('/catalogues');
+        router.push('/catalogues/all_products');
         break;
       default:
         router.push(action);

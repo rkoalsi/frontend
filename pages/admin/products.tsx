@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import { Box, Paper, TextField, Typography } from '@mui/material';
-import { Download, FilterAlt } from '@mui/icons-material';
+import { Download, FilterAlt, Sync } from '@mui/icons-material';
+import { Button, CircularProgress } from '@mui/material';
 import ProductTable from '../../src/components/admin/products/ProductsTable';
 import FilterDrawerComponent from '../../src/components/admin/products/FilterDrawer';
 import ProductDialog from '../../src/components/admin/products/ProductDialog';
@@ -77,6 +78,7 @@ const Products = () => {
   const [updating, setUpdating] = useState(false); // Indicates an ongoing API call for any action
   const [popupImageSrc, setPopupImageSrc]: any = useState([]);
   const [popupImageIndex, setPopupImageIndex] = useState(0);
+  const [updatingStock, setUpdatingStock] = useState(false);
 
   /* ----------------------- Fetch Filter Options ----------------------- */
   useEffect(() => {
@@ -601,6 +603,23 @@ const handleImageUpload = async (files: File[] | File) => {
     }
   };
 
+  const handleUpdateStock = async () => {
+    setUpdatingStock(true);
+    try {
+      const response = await axiosInstance.post('/admin/products/update-stock', {}, { timeout: 180000 });
+      toast.success(`Stock updated: ${response.data.updated_count} products updated.`);
+      getData();
+    } catch (error: any) {
+      if (error?.response?.status === 409) {
+        toast.warning('Stock update is already running. Please wait.');
+      } else {
+        toast.error('Failed to update stock.');
+      }
+    } finally {
+      setUpdatingStock(false);
+    }
+  };
+
   const handleImageClick = useCallback((srcList: any, index: number) => {
     // Check if items already have src property (media items with type)
     // Make sure src is a string, not an object
@@ -636,6 +655,15 @@ const handleImageUpload = async (files: File[] | File) => {
             alignItems='end'
             gap='16px'
           >
+            <Button
+              variant='outlined'
+              size='small'
+              onClick={handleUpdateStock}
+              disabled={updatingStock}
+              startIcon={updatingStock ? <CircularProgress size={16} /> : <Sync />}
+            >
+              {updatingStock ? 'Updating Stock...' : 'Update Stock'}
+            </Button>
             <Download
               onClick={handleDownloadProducts}
               sx={{ cursor: 'pointer' }}
