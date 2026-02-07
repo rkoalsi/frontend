@@ -298,6 +298,7 @@ const CustomerAnalytics = () => {
                 due_status: filterOptions.due_status,
                 gst_type: filterOptions.gst_type,
                 sort: 'asc',
+                include_brand_breakdown: true,
             };
 
             const response = await axiosInstance.get('/admin/customer_analytics/report', {
