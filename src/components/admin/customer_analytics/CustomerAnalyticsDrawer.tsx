@@ -74,7 +74,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
 
   useEffect(() => {
     if (open && customer) {
-      const customerId = customer.allInvoices?.[0]?.customer_id || customer.customerId;
+      const customerId = customer.customerId;
       if (customerId) {
         setBrandLoading(true);
         axiosInstance

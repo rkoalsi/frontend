@@ -174,6 +174,25 @@ const Careers = () => {
     }
   };
 
+  const handlePermanentDelete = async (career: any) => {
+    if (!window.confirm(`Are you sure you want to permanently delete "${career.title}"? This action cannot be undone.`)) {
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const resp = await axiosInstance.delete(`/admin/careers/${career._id}/permanent`);
+      if (resp.status === 200) {
+        toast.success('Career deleted permanently');
+        fetchCareers();
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.response?.data?.detail || 'Error deleting career');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleAdd = () => {
     setSelectedCareer(null);
     resetForm();
@@ -344,6 +363,13 @@ const Careers = () => {
                               disabled={actionLoading}
                             >
                               <Edit />
+                            </IconButton>
+                            <IconButton
+                              onClick={() => handlePermanentDelete(career)}
+                              disabled={actionLoading}
+                              color="error"
+                            >
+                              <Delete />
                             </IconButton>
                           </TableCell>
                         </TableRow>
