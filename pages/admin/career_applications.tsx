@@ -25,7 +25,7 @@ import {
   Divider,
 } from '@mui/material';
 import { toast } from 'react-toastify';
-import { Visibility, Delete } from '@mui/icons-material';
+import { Visibility, Delete, Download } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
 
 const STATUS_OPTIONS = ['pending', 'reviewed', 'rejected', 'accepted'];
@@ -62,6 +62,9 @@ const CareerApplications = () => {
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [statusValue, setStatusValue] = useState('');
+
+  // Download report
+  const [downloadLoading, setDownloadLoading] = useState(false);
 
   // Careers list for reference
   const [careers, setCareers] = useState<any[]>([]);
@@ -184,6 +187,37 @@ const CareerApplications = () => {
     setSelectedApplication(null);
   };
 
+  const handleDownloadReport = async () => {
+    setDownloadLoading(true);
+    try {
+      const params: any = {};
+      if (filterCareerId) params.career_id = filterCareerId;
+      if (filterStatus) params.status = filterStatus;
+
+      const response = await axiosInstance.get(
+        `/admin/career_applications/report`,
+        { params, responseType: 'blob' }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute(
+        'download',
+        `career_applications_${new Date().toISOString().slice(0, 10)}.xlsx`
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      toast.error('Error downloading report');
+    } finally {
+      setDownloadLoading(false);
+    }
+  };
+
   const DetailRow = ({ label, value }: { label: string; value: any }) => {
     if (!value) return null;
     return (
@@ -207,7 +241,7 @@ const CareerApplications = () => {
         </Typography>
 
         {/* Filters */}
-        <Box display='flex' gap={2} mb={3}>
+        <Box display='flex' gap={2} mb={3} alignItems='center'>
           <FormControl size='small' sx={{ minWidth: 200 }}>
             <InputLabel>Filter by Career</InputLabel>
             <Select
@@ -244,6 +278,21 @@ const CareerApplications = () => {
               ))}
             </Select>
           </FormControl>
+          <Button
+            variant='contained'
+            startIcon={
+              downloadLoading ? (
+                <CircularProgress size={18} color='inherit' />
+              ) : (
+                <Download />
+              )
+            }
+            onClick={handleDownloadReport}
+            disabled={downloadLoading}
+            sx={{ height: 40 }}
+          >
+            {downloadLoading ? 'Downloading...' : 'Download XLSX'}
+          </Button>
         </Box>
 
         {loading ? (

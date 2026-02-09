@@ -77,6 +77,7 @@ const CustomerAnalytics = () => {
     const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
     const [detailsDrawerOpen, setDetailsDrawerOpen] = useState(false);
     const [addDialogOpen, setAddDialogOpen] = useState(false);
+    const [downloadLoading, setDownloadLoading] = useState(false);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-IN', {
@@ -290,6 +291,7 @@ const CustomerAnalytics = () => {
     };
 
     const handleDownloadReport = async () => {
+        setDownloadLoading(true);
         try {
             const params = {
                 name: debouncedSearchQuery,
@@ -318,6 +320,8 @@ const CustomerAnalytics = () => {
         } catch (error) {
             console.error(error);
             toast.error('Error downloading report.');
+        } finally {
+            setDownloadLoading(false);
         }
     };
 
@@ -434,12 +438,12 @@ const CustomerAnalytics = () => {
 
                             <Button
                                 variant="contained"
-                                startIcon={<Download />}
+                                startIcon={downloadLoading ? <CircularProgress size={20} color="inherit" /> : <Download />}
                                 onClick={handleDownloadReport}
                                 sx={{ borderRadius: 2 }}
-                                disabled={initialLoading}
+                                disabled={initialLoading || downloadLoading}
                             >
-                                Export XLSX
+                                {downloadLoading ? 'Downloading...' : 'Export XLSX'}
                             </Button>
 
                             <Button
@@ -457,8 +461,7 @@ const CustomerAnalytics = () => {
 
                 {/* Customer Table or Loading */}
                 <Box sx={{ position: 'relative', minHeight: 400 }}>
-                    {/* Always show loading on initial load or when no data */}
-                    {(loading && customers.length === 0) ? (
+                    {initialLoading ? (
                         // Initial Loading State
                         <Box
                             sx={{
@@ -473,9 +476,9 @@ const CustomerAnalytics = () => {
                             }}
                         >
                             <Box sx={{ textAlign: 'center' }}>
-                                <CircularProgress 
-                                    size={80} 
-                                    thickness={4} 
+                                <CircularProgress
+                                    size={80}
+                                    thickness={4}
                                     sx={{ mb: 3, color: '#1976d2' }}
                                 />
                                 <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#1976d2', mb: 2 }}>
@@ -507,7 +510,7 @@ const CustomerAnalytics = () => {
                             />
 
                             {/* Loading Overlay for subsequent loads when table has data */}
-                            {loading && customers.length > 0 && (
+                            {loading && (
                                 <Box
                                     sx={{
                                         position: 'absolute',
