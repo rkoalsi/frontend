@@ -25,6 +25,7 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  Autocomplete,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import { Edit, Delete, Add } from '@mui/icons-material';
@@ -455,13 +456,34 @@ const Careers = () => {
               required
             />
             <Box display='flex' gap={2}>
-              <TextField
-                label='Location'
-                variant='outlined'
+              <Autocomplete
+                freeSolo
                 fullWidth
+                options={[
+                  'Goregaon, Mumbai',
+                  'Pan India',
+                  'Remote',
+                  'Bengaluru',
+                  'Delhi NCR',
+                  'Hyderabad',
+                  'Pune',
+                  'Chennai',
+                ]}
                 value={formData.location}
-                onChange={(e) => handleInputChange('location', e.target.value)}
-                placeholder='e.g. Goregaon, Mumbai / Pan India'
+                onChange={(_, newValue) =>
+                  handleInputChange('location', newValue || '')
+                }
+                onInputChange={(_, newInputValue) =>
+                  handleInputChange('location', newInputValue)
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label='Location'
+                    variant='outlined'
+                    placeholder='e.g. Goregaon, Mumbai / Pan India'
+                  />
+                )}
               />
               <TextField
                 label='Department'
