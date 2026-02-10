@@ -11,6 +11,7 @@ import AdminLayout from '../src/components/AdminLayout';
 import CustomerLayout from '../src/components/CustomerLayout';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css'; // Import react-toastify styles
+import 'react-quill/dist/quill.snow.css'; // Import react-quill styles
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Create a client for React Query with optimized settings
