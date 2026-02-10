@@ -55,6 +55,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
           <TableHead>
             <TableRow>
               <TableCell>Name</TableCell>
+              <TableCell>Company Name</TableCell>
               <TableCell>Sales Person</TableCell>
               <TableCell>Type</TableCell>
               <TableCell>Tier</TableCell>
@@ -76,6 +77,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
               return (
                 <TableRow key={cust._id}>
                   <TableCell>{cust.contact_name}</TableCell>
+                  <TableCell>{cust.company_name}</TableCell>
                   <TableCell>{arrayOfCodes.join(', ') || 'N/A'}</TableCell>
                   <TableCell>
                     {cust.customer_sub_type
