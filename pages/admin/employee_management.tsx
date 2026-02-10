@@ -52,6 +52,7 @@ import {
     Visibility,
     PersonAdd,
     FilterList,
+    Download,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -97,7 +98,8 @@ const EmployeeManagement: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [debouncedSearch, setDebouncedSearch] = useState<string>('');
     const [departmentFilter, setDepartmentFilter] = useState<string>('');
-    const [pagination, setPagination] = useState<PaginationData>({ 
+    const [statusFilter, setStatusFilter] = useState<string>('');
+    const [pagination, setPagination] = useState<PaginationData>({
         total: 0,
         skip: 0,
         limit: 100,
@@ -160,17 +162,20 @@ const EmployeeManagement: React.FC = () => {
                 skip: resetPagination ? '0' : pagination.skip.toString(),
                 limit: pagination.limit.toString(),
             });
-            
+
             if (debouncedSearch.trim()) {
                 params.append('search', debouncedSearch.trim());
             }
             if (departmentFilter) {
                 params.append('department', departmentFilter);
             }
+            if (statusFilter) {
+                params.append('status', statusFilter);
+            }
 
             const response = await axiosInstance.get<EmployeesResponse>(`/admin/attendance/employees?${params}`);
             const { employees: employeeList, pagination: paginationData } = response.data;
-            
+
             setEmployees(employeeList);
             setPagination(paginationData);
             setTotalEmployees(paginationData.total);
@@ -181,12 +186,12 @@ const EmployeeManagement: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [debouncedSearch, departmentFilter, pagination.skip, pagination.limit]);
+    }, [debouncedSearch, departmentFilter, statusFilter, pagination.skip, pagination.limit]);
 
     // Effects
     useEffect(() => {
         fetchEmployees(true);
-    }, [debouncedSearch, departmentFilter]);
+    }, [debouncedSearch, departmentFilter, statusFilter]);
 
     useEffect(() => {
         fetchEmployees();
@@ -335,6 +340,54 @@ const EmployeeManagement: React.FC = () => {
         setSearchTerm('');
         setDebouncedSearch('');
         setDepartmentFilter('');
+        setStatusFilter('');
+    };
+
+    // Handle download employees report
+    const handleDownloadReport = async () => {
+        try {
+            const params = new URLSearchParams();
+
+            if (debouncedSearch.trim()) {
+                params.append('search', debouncedSearch.trim());
+            }
+            if (departmentFilter) {
+                params.append('department', departmentFilter);
+            }
+            if (statusFilter) {
+                params.append('status', statusFilter);
+            }
+
+            const response = await axiosInstance.get(`/admin/attendance/employees/download?${params}`, {
+                responseType: 'blob',
+            });
+
+            // Create a download link
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+
+            // Extract filename from Content-Disposition header or use default
+            const contentDisposition = response.headers['content-disposition'];
+            let filename = 'employees_report.xlsx';
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+                if (filenameMatch && filenameMatch[1]) {
+                    filename = filenameMatch[1];
+                }
+            }
+
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+
+            toast.success('Employee report downloaded successfully!');
+        } catch (error) {
+            console.error('Error downloading report:', error);
+            toast.error('Error downloading report.');
+        }
     };
 
     // Format date
@@ -373,21 +426,37 @@ const EmployeeManagement: React.FC = () => {
                         Manage employee information and maintain attendance records
                     </Typography>
                 </Box>
-                
-                <Button
-                    variant='contained'
-                    startIcon={<PersonAdd />}
-                    onClick={handleCreate}
-                    sx={{
-                        borderRadius: 2,
-                        px: 3,
-                        py: 1.5,
-                        textTransform: 'none',
-                        fontWeight: 600
-                    }}
-                >
-                    Add New Employee
-                </Button>
+
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                    <Button
+                        variant='outlined'
+                        startIcon={<Download />}
+                        onClick={handleDownloadReport}
+                        sx={{
+                            borderRadius: 2,
+                            px: 3,
+                            py: 1.5,
+                            textTransform: 'none',
+                            fontWeight: 600
+                        }}
+                    >
+                        Download Report
+                    </Button>
+                    <Button
+                        variant='contained'
+                        startIcon={<PersonAdd />}
+                        onClick={handleCreate}
+                        sx={{
+                            borderRadius: 2,
+                            px: 3,
+                            py: 1.5,
+                            textTransform: 'none',
+                            fontWeight: 600
+                        }}
+                    >
+                        Add New Employee
+                    </Button>
+                </Box>
             </Box>
 
             {/* Statistics Cards */}
@@ -484,7 +553,21 @@ const EmployeeManagement: React.FC = () => {
                         </Select>
                     </FormControl>
 
-                    {(searchTerm || departmentFilter) && (
+                    <FormControl sx={{ minWidth: 180 }}>
+                        <InputLabel>Status</InputLabel>
+                        <Select
+                            value={statusFilter}
+                            label="Status"
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            sx={{ borderRadius: 2 }}
+                        >
+                            <MenuItem value="">All Status</MenuItem>
+                            <MenuItem value="active">Active</MenuItem>
+                            <MenuItem value="inactive">Inactive</MenuItem>
+                        </Select>
+                    </FormControl>
+
+                    {(searchTerm || departmentFilter || statusFilter) && (
                         <Button
                             variant="outlined"
                             onClick={clearFilters}
@@ -496,7 +579,7 @@ const EmployeeManagement: React.FC = () => {
                     )}
                 </Stack>
 
-                {(debouncedSearch || departmentFilter) && (
+                {(debouncedSearch || departmentFilter || statusFilter) && (
                     <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                         {debouncedSearch && (
                             <Chip
@@ -510,6 +593,14 @@ const EmployeeManagement: React.FC = () => {
                             <Chip
                                 label={`Department: ${departmentFilter}`}
                                 onDelete={() => setDepartmentFilter('')}
+                                color='primary'
+                                variant='outlined'
+                            />
+                        )}
+                        {statusFilter && (
+                            <Chip
+                                label={`Status: ${statusFilter}`}
+                                onDelete={() => setStatusFilter('')}
                                 color='primary'
                                 variant='outlined'
                             />
