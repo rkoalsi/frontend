@@ -61,6 +61,8 @@ interface ProductGroupCardProps {
   isShared: boolean;
   isOutOfStock?: boolean;
   handleNotifyMe?: (productId: string, productName: string) => void;
+  outOfStockQuantities?: Record<string, number>;
+  onOutOfStockQuantityChange?: (productId: string, qty: number) => void;
 }
 
 const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
@@ -81,6 +83,8 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
     isShared = false,
     isOutOfStock = false,
     handleNotifyMe,
+    outOfStockQuantities = {},
+    onOutOfStockQuantityChange,
   }) => {
     const [selectedVariantId, setSelectedVariantId] = useState<string>(
       primaryProduct._id
@@ -727,31 +731,47 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
           <Box sx={{ flexGrow: 1 }} />
 
           {isOutOfStock ? (
-            /* Notify Me Button for Out of Stock */
+            /* Pre-order Section for Out of Stock */
             !isShared && handleNotifyMe && (
-              <Button
-                variant="outlined"
-                color="secondary"
-                fullWidth
-                size="medium"
-                onClick={() => handleNotifyMe(currentVariant._id, currentVariant.name)}
-                sx={{
-                  textTransform: "none",
-                  borderRadius: 2,
-                  fontWeight: 600,
-                  py: 1,
-                  fontSize: '0.85rem',
-                  boxShadow: 2,
-                  transition: 'box-shadow 0.15s ease, transform 0.15s ease',
-                  willChange: 'transform',
-                  '&:hover': {
-                    boxShadow: 4,
-                    transform: 'translate3d(0, -1px, 0)',
-                  },
-                }}
-              >
-                Notify Me When Available
-              </Button>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                >
+                  Pre-order Quantity
+                </Typography>
+                <QuantitySelector
+                  quantity={outOfStockQuantities[currentVariant._id] || 1}
+                  onChange={(newQty: number) =>
+                    onOutOfStockQuantityChange?.(currentVariant._id, newQty)
+                  }
+                  max={999}
+                />
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  fullWidth
+                  size="medium"
+                  onClick={() => handleNotifyMe(currentVariant._id, currentVariant.name)}
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: 2,
+                    fontWeight: 600,
+                    py: 1,
+                    fontSize: '0.85rem',
+                    boxShadow: 2,
+                    transition: 'box-shadow 0.15s ease, transform 0.15s ease',
+                    willChange: 'transform',
+                    '&:hover': {
+                      boxShadow: 4,
+                      transform: 'translate3d(0, -1px, 0)',
+                    },
+                  }}
+                >
+                  Notify when available
+                </Button>
+              </Box>
             )
           ) : (
             <>

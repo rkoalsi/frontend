@@ -352,16 +352,7 @@ export default function AllProductsCatalouge() {
     }
   }, [activeBrand, activeCategory, showError]);
 
-  const handleNotifyMe = useCallback(async (productId: string, productName: string) => {
-    try {
-      await axios.post(`${process.env.api_url}/products/notify-me`, {
-        product_id: productId,
-      });
-      debouncedSuccess(`You will be notified when ${productName} is back in stock.`);
-    } catch (error) {
-      showError("Failed to register for notification.");
-    }
-  }, [debouncedSuccess, showError]);
+  // No pre-order/notify on catalogue page - display only
 
   const fetchAllBrands = useCallback(async () => {
     try {
@@ -1461,7 +1452,6 @@ export default function AllProductsCatalouge() {
                                 onQuickView={(product, variants) => handleQuickView(product, variants)}
                                 viewDensity={viewDensity}
                                 isOutOfStock={true}
-                                onNotifyMe={handleNotifyMe}
                               />
                             );
                           } else {
@@ -1517,20 +1507,6 @@ export default function AllProductsCatalouge() {
                               </Box>
                             </Box>
                           </Box>
-                          <Button
-                            variant="outlined"
-                            color="secondary"
-                            fullWidth
-                            onClick={() => handleNotifyMe(product._id, product.name)}
-                            sx={{
-                              textTransform: 'none',
-                              fontWeight: 600,
-                              borderRadius: '24px',
-                              mt: 2,
-                            }}
-                          >
-                            Notify Me When Available
-                          </Button>
                         </Card>
                             );
                           }
@@ -1588,20 +1564,6 @@ export default function AllProductsCatalouge() {
                                 </Box>
                               </Box>
                             </Box>
-                            <Button
-                              variant="outlined"
-                              color="secondary"
-                              fullWidth
-                              onClick={() => handleNotifyMe(product._id, product.name)}
-                              sx={{
-                                textTransform: 'none',
-                                fontWeight: 600,
-                                borderRadius: '24px',
-                                mt: 2,
-                              }}
-                            >
-                              Notify Me When Available
-                            </Button>
                           </Card>
                         ))
                       )}

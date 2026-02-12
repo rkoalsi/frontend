@@ -452,6 +452,7 @@ const Products: React.FC<ProductsProps> = ({
   const [outOfStockItems, setOutOfStockItems] = useState<any[]>([]);
   const [loadingOutOfStock, setLoadingOutOfStock] = useState<boolean>(false);
   const [hideOutOfStock, setHideOutOfStock] = useState<boolean>(true);
+  const [outOfStockQuantities, setOutOfStockQuantities] = useState<Record<string, number>>({});
 
   const [link, setLink] = useState(
     order?.spreadsheet_created ? order?.spreadsheet_url : ""
@@ -710,17 +711,24 @@ const Products: React.FC<ProductsProps> = ({
     }
   }, [activeBrand, activeCategory, showError]);
 
+  const handleOutOfStockQuantityChange = useCallback((productId: string, qty: number) => {
+    setOutOfStockQuantities(prev => ({ ...prev, [productId]: qty }));
+  }, []);
+
   const handleNotifyMe = useCallback(async (productId: string, productName: string) => {
     try {
+      const quantity = outOfStockQuantities[productId] || 1;
       await axios.post(`${process.env.api_url}/products/notify-me`, {
         product_id: productId,
         customer_id: customer?._id || customer?.id,
+        order_id: order?._id || order?.id,
+        quantity,
       });
-      debouncedSuccess(`You will be notified when ${productName} is back in stock.`);
+      debouncedSuccess(`Pre-order for ${quantity} unit(s) of ${productName} placed successfully.`);
     } catch (error) {
-      showError("Failed to register for notification.");
+      showError("Failed to place pre-order.");
     }
-  }, [customer, debouncedSuccess, showError]);
+  }, [customer, order, outOfStockQuantities, debouncedSuccess, showError]);
 
   const fetchAllBrands = useCallback(async () => {
     try {
@@ -2273,6 +2281,8 @@ const Products: React.FC<ProductsProps> = ({
                             isShared={isShared}
                             isOutOfStock={true}
                             handleNotifyMe={handleNotifyMe}
+                            outOfStockQuantities={outOfStockQuantities}
+                            onOutOfStockQuantityChange={handleOutOfStockQuantityChange}
                           />
                         );
                       } else {
@@ -2325,20 +2335,29 @@ const Products: React.FC<ProductsProps> = ({
                               </Box>
                             </Box>
                             {!isShared && (
-                              <Button
-                                variant="outlined"
-                                color="secondary"
-                                fullWidth
-                                onClick={() => handleNotifyMe(product._id, product.name)}
-                                sx={{
-                                  textTransform: 'none',
-                                  fontWeight: 600,
-                                  borderRadius: '24px',
-                                  mt: 2,
-                                }}
-                              >
-                                Notify Me When Available
-                              </Button>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, mt: 2 }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
+                                  Pre-order Quantity
+                                </Typography>
+                                <QuantitySelector
+                                  quantity={outOfStockQuantities[product._id] || 1}
+                                  onChange={(newQty: number) => handleOutOfStockQuantityChange(product._id, newQty)}
+                                  max={999}
+                                />
+                                <Button
+                                  variant="outlined"
+                                  color="secondary"
+                                  fullWidth
+                                  onClick={() => handleNotifyMe(product._id, product.name)}
+                                  sx={{
+                                    textTransform: 'none',
+                                    fontWeight: 600,
+                                    borderRadius: '24px',
+                                  }}
+                                >
+                                  Notify when available
+                                </Button>
+                              </Box>
                             )}
                           </Card>
                         );
@@ -2394,20 +2413,29 @@ const Products: React.FC<ProductsProps> = ({
                           </Box>
                         </Box>
                         {!isShared && (
-                          <Button
-                            variant="outlined"
-                            color="secondary"
-                            fullWidth
-                            onClick={() => handleNotifyMe(product._id, product.name)}
-                            sx={{
-                              textTransform: 'none',
-                              fontWeight: 600,
-                              borderRadius: '24px',
-                              mt: 2,
-                            }}
-                          >
-                            Notify Me When Available
-                          </Button>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, mt: 2 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
+                              Pre-order Quantity
+                            </Typography>
+                            <QuantitySelector
+                              quantity={outOfStockQuantities[product._id] || 1}
+                              onChange={(newQty: number) => handleOutOfStockQuantityChange(product._id, newQty)}
+                              max={999}
+                            />
+                            <Button
+                              variant="outlined"
+                              color="secondary"
+                              fullWidth
+                              onClick={() => handleNotifyMe(product._id, product.name)}
+                              sx={{
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                borderRadius: '24px',
+                              }}
+                            >
+                              Notify when available
+                            </Button>
+                          </Box>
                         )}
                       </Card>
                     ))
@@ -2750,6 +2778,8 @@ const Products: React.FC<ProductsProps> = ({
                             isShared={isShared}
                             isOutOfStock={true}
                             handleNotifyMe={handleNotifyMe}
+                            outOfStockQuantities={outOfStockQuantities}
+                            onOutOfStockQuantityChange={handleOutOfStockQuantityChange}
                           />
                         );
                       } else {
@@ -2806,20 +2836,29 @@ const Products: React.FC<ProductsProps> = ({
                               </Box>
                             </Box>
                             {!isShared && (
-                              <Button
-                                variant="outlined"
-                                color="secondary"
-                                fullWidth
-                                onClick={() => handleNotifyMe(product._id, product.name)}
-                                sx={{
-                                  textTransform: 'none',
-                                  fontWeight: 600,
-                                  borderRadius: '24px',
-                                  mt: 2,
-                                }}
-                              >
-                                Notify Me When Available
-                              </Button>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, mt: 2 }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
+                                  Pre-order Quantity
+                                </Typography>
+                                <QuantitySelector
+                                  quantity={outOfStockQuantities[product._id] || 1}
+                                  onChange={(newQty: number) => handleOutOfStockQuantityChange(product._id, newQty)}
+                                  max={999}
+                                />
+                                <Button
+                                  variant="outlined"
+                                  color="secondary"
+                                  fullWidth
+                                  onClick={() => handleNotifyMe(product._id, product.name)}
+                                  sx={{
+                                    textTransform: 'none',
+                                    fontWeight: 600,
+                                    borderRadius: '24px',
+                                  }}
+                                >
+                                  Notify when available
+                                </Button>
+                              </Box>
                             )}
                           </Card>
                         );
@@ -2879,20 +2918,29 @@ const Products: React.FC<ProductsProps> = ({
                           </Box>
                         </Box>
                         {!isShared && (
-                          <Button
-                            variant="outlined"
-                            color="secondary"
-                            fullWidth
-                            onClick={() => handleNotifyMe(product._id, product.name)}
-                            sx={{
-                              textTransform: 'none',
-                              fontWeight: 600,
-                              borderRadius: '24px',
-                              mt: 2,
-                            }}
-                          >
-                            Notify Me When Available
-                          </Button>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, mt: 2 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
+                              Pre-order Quantity
+                            </Typography>
+                            <QuantitySelector
+                              quantity={outOfStockQuantities[product._id] || 1}
+                              onChange={(newQty: number) => handleOutOfStockQuantityChange(product._id, newQty)}
+                              max={999}
+                            />
+                            <Button
+                              variant="outlined"
+                              color="secondary"
+                              fullWidth
+                              onClick={() => handleNotifyMe(product._id, product.name)}
+                              sx={{
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                borderRadius: '24px',
+                              }}
+                            >
+                              Notify when available
+                            </Button>
+                          </Box>
                         )}
                       </Card>
                     ))
