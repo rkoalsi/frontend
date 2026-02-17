@@ -8,19 +8,30 @@ import {
   Container,
   useMediaQuery,
   Grid,
+  alpha,
+  Chip,
+  Tooltip,
+  IconButton,
+  Skeleton,
+  Stack,
 } from '@mui/material';
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect, useCallback } from 'react';
 import AuthContext from '../src/components/Auth';
 import { useRouter } from 'next/router';
 import {
   CalendarMonth,
   Campaign,
   Check,
+  CheckCircle,
+  ContentCopy,
   History,
   Insights,
   KeyboardReturn,
   MenuBook,
+  NewReleases,
+  OpenInNew,
   Payment,
+  PictureAsPdf,
   Phishing,
   PlayCircle,
   Radar,
@@ -32,11 +43,11 @@ import {
   Rocket,
   PersonAdd,
   Assignment,
-  NewReleases,
 } from '@mui/icons-material';
 import axios from 'axios';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import CustomerCreationRequestForm from '../src/components/CustomerCreationRequestForm';
+import { toast } from 'react-toastify';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -106,11 +117,69 @@ const itemVariants = {
   },
 };
 
+const CatalogueCard = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(2),
+  background: `linear-gradient(135deg, ${alpha(
+    theme.palette.primary.main,
+    0.95
+  )}, ${alpha(theme.palette.primary.dark, 0.98)})`,
+  borderRadius: 16,
+  border: `2px solid ${alpha(theme.palette.primary.light, 0.2)}`,
+  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  display: 'flex',
+  alignItems: 'center',
+  gap: theme.spacing(2),
+  cursor: 'pointer',
+  '&:hover': {
+    transform: 'translateX(4px)',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+    border: `2px solid ${alpha(theme.palette.info.main, 0.5)}`,
+  },
+  [theme.breakpoints.down('sm')]: {
+    padding: theme.spacing(1.5),
+    gap: theme.spacing(1.5),
+    borderRadius: 12,
+  },
+}));
+
+const CatalogueIconWrapper = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '48px',
+  height: '48px',
+  minWidth: '48px',
+  borderRadius: 10,
+  background: alpha(theme.palette.info.main, 0.2),
+  border: `2px solid ${alpha(theme.palette.info.light, 0.3)}`,
+  [theme.breakpoints.down('sm')]: {
+    width: '40px',
+    height: '40px',
+    minWidth: '40px',
+    borderRadius: 8,
+  },
+}));
+
+const CatalogueActionButton = styled(IconButton)(({ theme }) => ({
+  color: alpha('#fff', 0.85),
+  backgroundColor: alpha('#fff', 0.1),
+  borderRadius: 8,
+  padding: theme.spacing(0.75),
+  transition: 'all 0.3s ease-in-out',
+  [theme.breakpoints.down('sm')]: {
+    padding: theme.spacing(0.5),
+  },
+  '&:hover': {
+    backgroundColor: alpha('#fff', 0.2),
+    color: '#fff',
+  },
+}));
+
 // Actions allowed for customer role (scalable - add more as needed)
 const customerAllowedActions = [
   'newOrder',
   'pastOrder',
-  'catalogues',
   'shipments',
   'customer'
 ];
@@ -271,14 +340,58 @@ const Home = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [showCustomerRequestForm, setShowCustomerRequestForm] = useState(false);
+  const [catalogues, setCatalogues] = useState<any[]>([]);
+  const [cataloguesLoading, setCataloguesLoading] = useState(false);
+
+  const isCustomer = user?.data?.role === 'customer';
+
+  // Fetch catalogues for customer role
+  const fetchCatalogues = useCallback(async () => {
+    setCataloguesLoading(true);
+    try {
+      const resp = await axios.get(`${process.env.api_url}/catalogues`);
+      setCatalogues(resp?.data || []);
+    } catch (error) {
+      console.error('Error fetching catalogues:', error);
+    } finally {
+      setCataloguesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isCustomer) {
+      fetchCatalogues();
+    }
+  }, [isCustomer, fetchCatalogues]);
+
+  const handleOpenCatalogue = useCallback((url: string, name: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    toast.success(`Opening ${name} catalogue`);
+  }, []);
+
+  const handleCopyLink = useCallback(
+    (event: React.MouseEvent, url: string, name: string) => {
+      event.stopPropagation();
+      navigator.clipboard
+        .writeText(url)
+        .then(() => {
+          toast.success(`${name} catalogue link copied!`);
+        })
+        .catch(() => {
+          toast.error('Failed to copy link');
+        });
+    },
+    []
+  );
 
   // Filter menu sections based on user role
   const getFilteredMenuSections = () => {
     const userRole = user?.data?.role;
 
-    // For customer role, filter to only allowed actions
+    // For customer role, filter to only allowed actions and remove Resources section
     if (userRole === 'customer') {
       return menuSections
+        .filter((section) => section.title !== 'Resources')
         .map((section) => ({
           ...section,
           items: section.items.filter((item) =>
@@ -457,6 +570,178 @@ const Home = () => {
               </Grid>
             </Box>
           ))}
+
+          {/* Catalogues List for Customer Role */}
+          {isCustomer && (
+            <Box sx={{ mb: 3 }}>
+              <SectionTitle>Brand Catalogues</SectionTitle>
+                {cataloguesLoading ? (
+                  <Stack spacing={1.5}>
+                    {[1, 2, 3].map((i) => (
+                      <Paper
+                        key={i}
+                        sx={{
+                          p: 2,
+                          borderRadius: 4,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 2,
+                          background: alpha(theme.palette.primary.main, 0.2),
+                        }}
+                      >
+                        <Skeleton
+                          variant='rounded'
+                          width={48}
+                          height={48}
+                          sx={{ bgcolor: alpha('#fff', 0.1), borderRadius: 2.5 }}
+                        />
+                        <Box flex={1}>
+                          <Skeleton
+                            variant='text'
+                            width='60%'
+                            height={24}
+                            sx={{ bgcolor: alpha('#fff', 0.1) }}
+                          />
+                        </Box>
+                      </Paper>
+                    ))}
+                  </Stack>
+                ) : (
+                  <AnimatePresence mode='wait'>
+                    <motion.div
+                      variants={containerVariants}
+                      initial='hidden'
+                      animate='visible'
+                    >
+                      <Stack spacing={1.5}>
+                        {/* All Products Catalogue */}
+                        <motion.div variants={itemVariants}>
+                          <CatalogueCard
+                            elevation={4}
+                            onClick={() => router.push('/catalogues/all_products')}
+                            sx={{
+                              background: `linear-gradient(135deg, ${alpha(
+                                theme.palette.secondary.main,
+                                0.95
+                              )}, ${alpha(theme.palette.secondary.dark, 0.98)})`,
+                            }}
+                          >
+                            <CatalogueIconWrapper
+                              sx={{
+                                background: alpha(theme.palette.secondary.light, 0.3),
+                                border: `2px solid ${alpha(theme.palette.secondary.light, 0.4)}`,
+                              }}
+                            >
+                              <NewReleases
+                                sx={{
+                                  fontSize: { xs: '22px', sm: '28px' },
+                                  color: theme.palette.secondary.light,
+                                }}
+                              />
+                            </CatalogueIconWrapper>
+                            <Box flex={1}>
+                              <Box display='flex' alignItems='center' gap={1}>
+                                <Typography
+                                  variant='body1'
+                                  fontWeight='700'
+                                  sx={{ color: 'white' }}
+                                >
+                                  All Products
+                                </Typography>
+                                <Chip
+                                  icon={<CheckCircle sx={{ fontSize: '12px !important' }} />}
+                                  label='Latest'
+                                  size='small'
+                                  sx={{
+                                    background: alpha(theme.palette.warning.main, 0.25),
+                                    color: theme.palette.warning.light,
+                                    border: `1px solid ${alpha(theme.palette.warning.main, 0.5)}`,
+                                    fontWeight: 600,
+                                    height: '22px',
+                                    fontSize: '0.7rem',
+                                  }}
+                                />
+                              </Box>
+                            </Box>
+                            <Box display='flex' gap={0.5} onClick={(e) => e.stopPropagation()}>
+                              <Tooltip title='Copy link' arrow>
+                                <CatalogueActionButton
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const url = `${window.location.origin}/catalogues/all_products`;
+                                    navigator.clipboard
+                                      .writeText(url)
+                                      .then(() => toast.success('All Products link copied!'))
+                                      .catch(() => toast.error('Failed to copy link'));
+                                  }}
+                                  size='small'
+                                >
+                                  <ContentCopy sx={{ fontSize: '18px' }} />
+                                </CatalogueActionButton>
+                              </Tooltip>
+                              <Tooltip title='Open' arrow>
+                                <CatalogueActionButton
+                                  onClick={() => router.push('/catalogues/all_products')}
+                                  size='small'
+                                >
+                                  <OpenInNew sx={{ fontSize: '18px' }} />
+                                </CatalogueActionButton>
+                              </Tooltip>
+                            </Box>
+                          </CatalogueCard>
+                        </motion.div>
+
+                        {/* Brand Catalogues */}
+                        {catalogues.map((b: any, index: number) => (
+                          <motion.div key={b._id || index} variants={itemVariants}>
+                            <CatalogueCard
+                              elevation={4}
+                              onClick={() => handleOpenCatalogue(b.image_url, b.name)}
+                            >
+                              <CatalogueIconWrapper>
+                                <PictureAsPdf
+                                  sx={{
+                                    fontSize: { xs: '22px', sm: '28px' },
+                                    color: theme.palette.info.light,
+                                  }}
+                                />
+                              </CatalogueIconWrapper>
+                              <Box flex={1}>
+                                <Typography
+                                  variant='body1'
+                                  fontWeight='700'
+                                  sx={{ color: 'white' }}
+                                >
+                                  {b.name}
+                                </Typography>
+                              </Box>
+                              <Box display='flex' gap={0.5} onClick={(e) => e.stopPropagation()}>
+                                <Tooltip title='Copy link' arrow>
+                                  <CatalogueActionButton
+                                    onClick={(e) => handleCopyLink(e, b.image_url, b.name)}
+                                    size='small'
+                                  >
+                                    <ContentCopy sx={{ fontSize: '18px' }} />
+                                  </CatalogueActionButton>
+                                </Tooltip>
+                                <Tooltip title='Open' arrow>
+                                  <CatalogueActionButton
+                                    onClick={() => handleOpenCatalogue(b.image_url, b.name)}
+                                    size='small'
+                                  >
+                                    <OpenInNew sx={{ fontSize: '18px' }} />
+                                  </CatalogueActionButton>
+                                </Tooltip>
+                              </Box>
+                            </CatalogueCard>
+                          </motion.div>
+                        ))}
+                      </Stack>
+                    </motion.div>
+                  </AnimatePresence>
+                )}
+            </Box>
+          )}
         </motion.div>
       </Container>
 
