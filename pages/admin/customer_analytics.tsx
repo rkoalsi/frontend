@@ -337,7 +337,7 @@ const CustomerAnalytics = () => {
     const theme = useTheme();
     
     return (
-        <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 4 } }}>
             {/* Header Section */}
             <Box sx={{ mb: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
@@ -345,7 +345,7 @@ const CustomerAnalytics = () => {
                         <Analytics />
                     </Avatar>
                     <Box>
-                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'white' }}>
+                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'white', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
                             Customer Analytics Dashboard
                         </Typography>
                         <Typography variant="body1" color="white">

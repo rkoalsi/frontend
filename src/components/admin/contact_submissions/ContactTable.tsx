@@ -37,12 +37,14 @@ const ContactTable = ({
         </Box>
       ) : (
         <>
+          <Box sx={{ overflowX: 'auto', width: '100%' }}>
           <TableContainer
             component={Paper}
             sx={{
               borderRadius: '8px',
               boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
               overflowX: 'auto',
+              minWidth: { xs: '800px', md: '100%' },
             }}
           >
             <Table stickyHeader>
@@ -78,7 +80,7 @@ const ContactTable = ({
                       <TableCell>{contact.company_name}</TableCell>
                       <TableCell>{contact.message}</TableCell>
                       <TableCell>
-                        {new Date(contact.created_at).toLocaleString("en-IN", {
+                        {new Date(contact.created_at + "Z").toLocaleString("en-IN", {
                           timeZone: "Asia/Kolkata",
                           year: "numeric",
                           month: "short",
@@ -95,6 +97,7 @@ const ContactTable = ({
               </TableBody>
             </Table>
           </TableContainer>
+          </Box>
         </>
       )}
     </>

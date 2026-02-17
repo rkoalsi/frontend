@@ -366,23 +366,24 @@ const ReturnOrders = () => {
   };
 
   return (
-    <Box sx={{ padding: 3 }}>
+    <Box sx={{ padding: { xs: 2, sm: 3 } }}>
       <Paper
         elevation={3}
         sx={{
-          padding: 4,
+          padding: { xs: 2, sm: 3, md: 4 },
           borderRadius: 4,
           backgroundColor: 'white',
         }}
       >
         <Box
           display='flex'
-          flexDirection='row'
+          flexDirection={{ xs: 'column', sm: 'row' }}
           justifyContent='space-between'
-          alignItems='center'
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          gap={{ xs: 2, sm: 0 }}
           mb={2}
         >
-          <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
+          <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
             Return Orders Management
           </Typography>
 

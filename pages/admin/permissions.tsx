@@ -398,12 +398,12 @@ const UserManagement = () => {
     }
 
     return (
-        <Container maxWidth="xl" sx={{ py: 3 }}>
+        <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3 } }}>
             {/* Header */}
-            <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Paper elevation={1} sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
+                <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={{ xs: 2, sm: 0 }}>
                     <Box>
-                        <Typography variant="h4" component="h1" display="flex" alignItems="center" gutterBottom>
+                        <Typography variant="h4" component="h1" display="flex" alignItems="center" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
                             <GroupIcon sx={{ mr: 2, color: 'primary.main', fontSize: 32 }} />
                             User & Permission Management
                         </Typography>

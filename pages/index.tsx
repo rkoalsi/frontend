@@ -156,6 +156,12 @@ const menuSections = [
         color: '#10b981',
         action: 'shipments',
       },
+      {
+        icon: <LineAxis />,
+        text: 'Customer Dashboard',
+        color: '#64748b',
+        action: 'customer',
+      },
     ],
   },
   {
@@ -254,12 +260,6 @@ const menuSections = [
         text: 'Training Videos',
         color: '#d946ef',
         action: 'training',
-      },
-      {
-        icon: <LineAxis />,
-        text: 'Customer Dashboard',
-        color: '#64748b',
-        action: 'customer',
       },
     ],
   },
