@@ -18,26 +18,6 @@ const Contacts = () => {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [skipPage, setSkipPage] = useState('');
 
-  const [openEditModal, setOpenEditModal] = useState(false);
-  const [openImagePopup, setOpenImagePopup] = useState(false);
-
-  // States for the currently selected product and its editable fields
-  const [selectedBrand, setSelectedBrand]: any = useState(null);
-  const [editableFields, setEditableFields] = useState({
-    category: '',
-    sub_category: '',
-    series: '',
-    upc_code: '',
-    brand: '',
-    catalogue_order: '',
-    catalogue_page: '',
-  });
-  const [updating, setUpdating] = useState(false);
-  const [popupImageSrc, setPopupImageSrc] = useState('');
-
-  /* ----------------------- Fetch Filter Options ----------------------- */
-
-  /* ----------------------- Data Fetching & Search ----------------------- */
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
@@ -95,47 +75,20 @@ const Contacts = () => {
     setSkipPage('');
   };
 
-
-  const handleOpenEditModal = (brand: any) => {
-    setSelectedBrand(brand);
-    setOpenEditModal(true);
-  };
-
-  const handleCloseEditModal = () => {
-    setSelectedBrand(null);
-    setOpenEditModal(false);
-  };
-
-
-  const handleEditableFieldChange = (e: any) => {
-    const { name, value } = e.target;
-    setEditableFields((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSaveEdit = async () => {
-    handleCloseEditModal();
-  };
-
-  const handleImageClick = useCallback((src: any) => {
-    setPopupImageSrc(src);
-    setOpenImagePopup(true);
-  }, []);
-
-  const handleClosePopup = useCallback(() => setOpenImagePopup(false), []);
-
   return (
-    <Box sx={{ padding: 3 }}>
+    <Box sx={{ padding: { xs: 2, sm: 3 } }}>
       <Paper
         elevation={3}
-        sx={{ padding: 4, borderRadius: 4, backgroundColor: 'white' }}
+        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4, backgroundColor: 'white' }}
       >
         <Box
           display='flex'
-          flexDirection='row'
+          flexDirection={{ xs: 'column', sm: 'row' }}
           justifyContent='space-between'
-          alignItems='center'
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          gap={{ xs: 2, sm: 0 }}
         >
-          <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
+          <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
             All Contact Submissions
           </Typography>
         </Box>
@@ -165,8 +118,6 @@ const Contacts = () => {
           handleChangePage={handleChangePage}
           handleChangeRowsPerPage={handleChangeRowsPerPage}
           handleSkipPage={handleSkipPage}
-          handleImageClick={handleImageClick}
-          handleOpenEditModal={handleOpenEditModal}
         />
       </Paper>
 

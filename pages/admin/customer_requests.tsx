@@ -446,8 +446,8 @@ const CustomerRequests = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" sx={{ mb: 3, fontWeight: 600, color: 'white' }}>
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+      <Typography variant="h4" sx={{ mb: 3, fontWeight: 600, color: 'white', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
         Customer Creation Requests
       </Typography>
 
