@@ -94,38 +94,6 @@ const CustomerAccount = () => {
 
         {/* Main content */}
         <Box sx={{ p: { xs: 3, md: 4 } }}>
-          {/* Profile Section */}
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              mb: 4,
-              flexWrap: 'wrap',
-              gap: 3,
-            }}
-          >
-            <Avatar
-              sx={{
-                width: 100,
-                height: 100,
-                fontSize: '2.5rem',
-                backgroundColor: '#38a169',
-              }}
-            >
-              {userData.first_name?.charAt(0)?.toUpperCase() || 'C'}
-            </Avatar>
-            <Box>
-              <Typography variant='h5' fontWeight={600}>
-                {userData.first_name} {userData.last_name}
-              </Typography>
-              <Typography variant='body1' color='text.secondary'>
-                Customer Account
-              </Typography>
-            </Box>
-          </Box>
-
-          <Divider sx={{ mb: 4 }} />
-
           {/* Account Information */}
           <Typography variant='h6' fontWeight={600} sx={{ mb: 3 }}>
             Account Information
@@ -166,11 +134,6 @@ const CustomerAccount = () => {
                 icon={<Phone fontSize='small' />}
                 label='Phone Number'
                 value={userData.phone}
-              />
-              <InfoField
-                icon={<Business fontSize='small' />}
-                label='Customer Code'
-                value={userData.code}
               />
               <InfoField
                 icon={<Person fontSize='small' />}

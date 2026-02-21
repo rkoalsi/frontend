@@ -111,8 +111,12 @@ export default function AllProductsCatalouge() {
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [openImagePopup, setOpenImagePopup] = useState<boolean>(false);
   const [selectedBrand, setSelectedBrand] = useState<string>('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [inputValue, setInputValue] = useState(''); // Local state for input to prevent re-renders
+  const getUrlParam = (key: string) =>
+    typeof window !== "undefined"
+      ? (new URLSearchParams(window.location.search).get(key) || "").replace(/-/g, " ")
+      : "";
+  const [searchTerm, setSearchTerm] = useState(() => getUrlParam("search"));
+  const [inputValue, setInputValue] = useState(() => getUrlParam("search")); // Local state for input to prevent re-renders
   const [brandList, setBrandList] = useState<{ brand: string; url: string }[]>(
     []
   );
@@ -123,8 +127,8 @@ export default function AllProductsCatalouge() {
   const [popupImageSrc, setPopupImageSrc]: any = useState([]);
   const [popupImageIndex, setPopupImageIndex]: any = useState(0);
   const [groupByProductName, setGroupByProductName] = useState<boolean>(true);
-  const [activeBrand, setActiveBrand] = useState<string>("");
-  const [activeCategory, setActiveCategory] = useState<string>("");
+  const [activeBrand, setActiveBrand] = useState<string>(() => getUrlParam("brand"));
+  const [activeCategory, setActiveCategory] = useState<string>(() => getUrlParam("category"));
   const [categoriesByBrand, setCategoriesByBrand] = useState<{
     [key: string]: string[];
   }>({});
@@ -400,14 +404,14 @@ export default function AllProductsCatalouge() {
 
   const fetchCategoriesForBrand = useCallback(async (brand: string) => {
     if (brand === "New Arrivals") {
-      // For New Arrivals, show "All Products" category
       const categories = ["All Products"];
       setCategoriesByBrand((prev) => ({ ...prev, [brand]: categories }));
-      setActiveCategory(categories[0]);
+      if (!activeCategory || !categories.includes(activeCategory)) {
+        setActiveCategory(categories[0]);
+      }
       return;
     }
 
-    // For other brands, fetch brand-specific categories
     try {
       const response = await axios.get(
         `${process.env.api_url}/products/categories`,
@@ -415,13 +419,13 @@ export default function AllProductsCatalouge() {
       );
       const cats = response.data.categories || [];
       setCategoriesByBrand((prev) => ({ ...prev, [brand]: cats }));
-      if (cats.length > 0) {
+      if (cats.length > 0 && (!activeCategory || !cats.includes(activeCategory))) {
         setActiveCategory(cats[0]);
       }
     } catch (error) {
       showError("Failed to fetch categories.");
     }
-  }, [showError]);
+  }, [activeCategory, showError]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -660,6 +664,28 @@ export default function AllProductsCatalouge() {
     fetchAllBrands();
     fetchProductCounts();
   }, []); // Only run once on mount
+
+  // Keep URL in sync with active brand and search
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    activeBrand ? params.set("brand", activeBrand.replace(/\s+/g, "-")) : params.delete("brand");
+    window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+  }, [activeBrand]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    searchTerm ? params.set("search", searchTerm) : params.delete("search");
+    window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    activeCategory ? params.set("category", activeCategory.replace(/\s+/g, "-")) : params.delete("category");
+    window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+  }, [activeCategory]);
 
   useEffect(() => {
     // Fetch categories when brand changes

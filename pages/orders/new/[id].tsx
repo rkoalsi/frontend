@@ -75,6 +75,7 @@ const NewOrder: React.FC = () => {
   const [customer, setCustomer] = useState<any>(null);
   const [referenceNumber, setReferenceNumber] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [xlsxLoading, setXlsxLoading] = useState<boolean>(false);
   const [order, setOrder] = useState<any>(null);
   const [billingAddress, setBillingAddress] = useState<any>(null);
   const [shippingAddress, setShippingAddress] = useState<any>(null);
@@ -435,7 +436,14 @@ const NewOrder: React.FC = () => {
 
   const generateSharedLink = useCallback(() => {
     const baseURL = window.location.origin;
-    const link = `${baseURL}/orders/new/${id}?shared=true`;
+    const params = new URLSearchParams();
+    params.set("shared", "true");
+    const currentParams = new URLSearchParams(window.location.search);
+    const currentBrand = currentParams.get("brand");
+    const currentCategory = currentParams.get("category");
+    if (currentBrand) params.set("brand", currentBrand);
+    if (currentCategory) params.set("category", currentCategory);
+    const link = `${baseURL}/orders/new/${id}?${params.toString()}`;
     setSharedLink(link);
     navigator.clipboard.writeText(link);
     setLinkCopied(true);
@@ -678,6 +686,34 @@ const NewOrder: React.FC = () => {
       toast.error('Error setting report. Try again Later');
     } finally {
       setLoading(false);
+    }
+  };
+  const handleDownloadXlsx = async () => {
+    setXlsxLoading(true);
+    try {
+      const response = await axios.get(
+        `${process.env.api_url}/orders/download_order_xlsx`,
+        {
+          params: { customer_id: customer._id, order_id: order._id, sort },
+          responseType: 'arraybuffer',
+        }
+      );
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Order_Form_${order._id?.slice(0, 8)}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => window.URL.revokeObjectURL(url), 2000);
+    } catch (error) {
+      console.error(error);
+      toast.error('Error downloading XLSX. Try again later.');
+    } finally {
+      setXlsxLoading(false);
     }
   };
   const handleRecreateSheet = async () => {
@@ -932,7 +968,9 @@ const NewOrder: React.FC = () => {
             googleSheetsLink={link}
             updateCart={updateCart}
             recreateSheet={handleRecreateSheet}
+            downloadXlsx={handleDownloadXlsx}
             loading={loading}
+            xlsxLoading={xlsxLoading}
             sort={handleSortText()}
           />
         ) : (
