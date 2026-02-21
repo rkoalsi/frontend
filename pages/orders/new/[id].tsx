@@ -109,16 +109,13 @@ const NewOrder: React.FC = () => {
             signal: controller.signal,
           }
         );
-        console.log('Special margins API response:', res.data);
         const marginMap = (res.data.products || []).reduce(
           (acc: any, item: any) => {
-            console.log('Mapping product_id:', item.product_id, 'to margin:', item.margin);
             acc[item.product_id] = item.margin;
             return acc;
           },
           {}
         );
-        console.log('Final special margins map:', marginMap);
         setSpecialMargins(marginMap);
       } catch (error: any) {
         if (error.name !== 'CanceledError') {
@@ -144,7 +141,6 @@ const NewOrder: React.FC = () => {
       case 'catalogue':
         return 'Catalogue Order';
       default:
-        console.log(sort);
         break;
     }
   };
@@ -161,7 +157,6 @@ const NewOrder: React.FC = () => {
         const rate = parseFloat(product.rate.toString()) || 0;
         const quantity = parseInt(product.quantity?.toString() || '1', 10) || 1;
         // Use special margin if available; fallback to customer's margin (default 40%)
-        console.log('Product ID:', product._id, 'Special margin:', specialMargins[product._id], 'Available margins:', Object.keys(specialMargins));
         const margin = specialMargins[product._id]
           ? parseInt(specialMargins[product._id].replace('%', ''), 10) / 100
           : parseInt(customer?.cf_margin?.replace('%', '') || '40', 10) / 100;
@@ -198,24 +193,26 @@ const NewOrder: React.FC = () => {
   const debouncedData = useDebounce({ selectedProducts, totals }, 500);
 
   useEffect(() => {
-    const newData = {
-      selectedProducts: debouncedData.selectedProducts,
-      totals: debouncedData.totals,
-    };
+    const { selectedProducts: debProducts, totals: debTotals } = debouncedData;
+    if (!debProducts.length && !debTotals.totalAmount) return;
 
-    // Compare the new data with the last update.
+    const prev = lastUpdateDataRef.current;
+    // Lightweight change detection: compare length + total amount + quantities signature
+    const quantitySig = debProducts.map((p: any) => `${p._id}:${p.quantity}`).join(',');
+    const prevSig = prev?.quantitySig;
     if (
-      JSON.stringify(newData) !== JSON.stringify(lastUpdateDataRef.current) &&
-      (debouncedData.selectedProducts.length > 0 ||
-        debouncedData.totals.totalAmount > 0)
-    ) {
-      updateOrderData(id as string, {
-        products: debouncedData.selectedProducts,
-        total_gst: parseFloat(debouncedData.totals.totalGST.toFixed(2)),
-        total_amount: parseFloat(debouncedData.totals.totalAmount.toFixed(2)),
-      });
-      lastUpdateDataRef.current = newData;
-    }
+      prev &&
+      prev.length === debProducts.length &&
+      prev.totalAmount === debTotals.totalAmount &&
+      prevSig === quantitySig
+    ) return;
+
+    updateOrderData(id as string, {
+      products: debProducts,
+      total_gst: parseFloat(debTotals.totalGST.toFixed(2)),
+      total_amount: parseFloat(debTotals.totalAmount.toFixed(2)),
+    });
+    lastUpdateDataRef.current = { length: debProducts.length, totalAmount: debTotals.totalAmount, quantitySig };
   }, [debouncedData, id]);
 
   // ------------------ Update Addresses ---------------------
@@ -439,10 +436,16 @@ const NewOrder: React.FC = () => {
     const params = new URLSearchParams();
     params.set("shared", "true");
     const currentParams = new URLSearchParams(window.location.search);
-    const currentBrand = currentParams.get("brand");
-    const currentCategory = currentParams.get("category");
-    if (currentBrand) params.set("brand", currentBrand);
-    if (currentCategory) params.set("category", currentCategory);
+    const currentSearch = currentParams.get("search");
+    if (currentSearch) {
+      // If there's an active search, only include search (not brand/category)
+      params.set("search", currentSearch);
+    } else {
+      const currentBrand = currentParams.get("brand");
+      const currentCategory = currentParams.get("category");
+      if (currentBrand) params.set("brand", currentBrand);
+      if (currentCategory) params.set("category", currentCategory);
+    }
     const link = `${baseURL}/orders/new/${id}?${params.toString()}`;
     setSharedLink(link);
     navigator.clipboard.writeText(link);
