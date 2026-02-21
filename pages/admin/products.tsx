@@ -606,8 +606,8 @@ const handleImageUpload = async (files: File[] | File) => {
   const handleUpdateStock = async () => {
     setUpdatingStock(true);
     try {
-      const response = await axiosInstance.post('/admin/products/update-stock', {}, { timeout: 180000 });
-      toast.success(`Stock updated: ${response.data.updated_count} products updated.`);
+      await axiosInstance.post('/admin/products/update-stock');
+      toast.success('Stock update started in the background.');
       getData();
     } catch (error: any) {
       if (error?.response?.status === 409) {

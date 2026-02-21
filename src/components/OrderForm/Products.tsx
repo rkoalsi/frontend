@@ -405,7 +405,11 @@ const Products: React.FC<ProductsProps> = ({
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
   const { user }: any = useContext(AuthContext);
   // ------------------ States ------------------
-  const [query, setQuery] = useState<string>("");
+  const [query, setQuery] = useState<string>(() =>
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("search") || ""
+      : ""
+  );
   const [temporaryQuantities, setTemporaryQuantities] = useState<{
     [key: string]: number;
   }>({});
@@ -422,9 +426,13 @@ const Products: React.FC<ProductsProps> = ({
     [key: string]: SearchResult[];
   }>({});
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [activeBrand, setActiveBrand] = useState<string>("");
-  const [activeCategory, setActiveCategory] = useState<string>("");
+  const getUrlParam = (key: string) =>
+    typeof window !== "undefined"
+      ? (new URLSearchParams(window.location.search).get(key) || "").replace(/-/g, " ")
+      : "";
+  const [searchTerm, setSearchTerm] = useState<string>(() => getUrlParam("search"));
+  const [activeBrand, setActiveBrand] = useState<string>(() => getUrlParam("brand"));
+  const [activeCategory, setActiveCategory] = useState<string>(() => getUrlParam("category"));
   const [categoriesByBrand, setCategoriesByBrand] = useState<{
     [key: string]: string[];
   }>({});
@@ -1340,6 +1348,41 @@ const Products: React.FC<ProductsProps> = ({
     fetchAllBrands();
     fetchProductCounts();
   }, [fetchAllBrands, fetchProductCounts]);
+
+  // Keep URL in sync with active brand and search
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    activeBrand ? params.set("brand", activeBrand.replace(/\s+/g, "-")) : params.delete("brand");
+    window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+  }, [activeBrand]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    searchTerm ? params.set("search", searchTerm) : params.delete("search");
+    window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    activeCategory ? params.set("category", activeCategory.replace(/\s+/g, "-")) : params.delete("category");
+    window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+  }, [activeCategory]);
+
+  // Trigger search on first mount if URL contains a search param
+  const didInitialSearch = useRef(false);
+  useEffect(() => {
+    const initialSearch =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("search") || ""
+        : "";
+    if (!initialSearch || didInitialSearch.current) return;
+    didInitialSearch.current = true;
+    handleSearch(initialSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!groupByCategory && activeBrand && !categoriesByBrand[activeBrand]) {

@@ -333,42 +333,6 @@ const CustomerInvoicesPage = () => {
             </Alert>
           ) : (
             <>
-              {/* Summary Cards */}
-              <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
-                <Grid size={{ xs: 6, sm: 6, md: 3 }}>
-                  <SummaryCard
-                    icon={<Receipt sx={{ fontSize: 20 }} />}
-                    label='Total Invoices'
-                    value={summary?.total_invoices || 0}
-                    color={theme.palette.primary.main}
-                  />
-                </Grid>
-                <Grid size={{ xs: 6, sm: 6, md: 3 }}>
-                  <SummaryCard
-                    icon={<CheckCircle sx={{ fontSize: 20 }} />}
-                    label='Paid'
-                    value={summary?.paid_count || 0}
-                    color={theme.palette.success.main}
-                  />
-                </Grid>
-                <Grid size={{ xs: 6, sm: 6, md: 3 }}>
-                  <SummaryCard
-                    icon={<Warning sx={{ fontSize: 20 }} />}
-                    label='Overdue'
-                    value={summary?.overdue_count || 0}
-                    color={theme.palette.error.main}
-                  />
-                </Grid>
-                <Grid size={{ xs: 6, sm: 6, md: 3 }}>
-                  <SummaryCard
-                    icon={<Schedule sx={{ fontSize: 20 }} />}
-                    label='Outstanding'
-                    value={formatCurrency(summary?.total_balance || 0)}
-                    color={theme.palette.warning.main}
-                  />
-                </Grid>
-              </Grid>
-
               {/* Filters */}
               <Paper
                 elevation={0}
