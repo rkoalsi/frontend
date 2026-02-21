@@ -69,8 +69,8 @@ const ProductRow: React.FC<ProductRowProps> = memo(
     const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
     const isQuantityExceedingStock = quantity > product.stock;
     const isDisabled =
-      orderStatus?.toLowerCase().includes('accepted') ||
-      orderStatus?.toLowerCase().includes('declined');
+      orderStatus?.toLowerCase().includes("accepted") ||
+      orderStatus?.toLowerCase().includes("declined");
     return (
       <TableRow
         key={productId}

@@ -405,9 +405,25 @@ const Products: React.FC<ProductsProps> = ({
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
   const { user }: any = useContext(AuthContext);
   // ------------------ States ------------------
+  const getUrlParam = (key: string) => {
+    if (typeof window === "undefined") return "";
+    const urlParams = new URLSearchParams(window.location.search);
+    // When a shared link has a search param, ignore brand/category from URL
+    if ((key === "brand" || key === "category") &&
+      urlParams.get("shared") === "true" &&
+      urlParams.get("search")) {
+      return "";
+    }
+    const val = urlParams.get(key) || "";
+    if (key === "search") {
+      // Normalize whitespace for search terms (avoids double-space issues from URL encoding)
+      return val.replace(/\s+/g, " ").trim();
+    }
+    return val.replace(/-/g, " ");
+  };
   const [query, setQuery] = useState<string>(() =>
     typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("search") || ""
+      ? (new URLSearchParams(window.location.search).get("search") || "").replace(/\s+/g, " ").trim()
       : ""
   );
   const [temporaryQuantities, setTemporaryQuantities] = useState<{
@@ -426,10 +442,6 @@ const Products: React.FC<ProductsProps> = ({
     [key: string]: SearchResult[];
   }>({});
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
-  const getUrlParam = (key: string) =>
-    typeof window !== "undefined"
-      ? (new URLSearchParams(window.location.search).get(key) || "").replace(/-/g, " ")
-      : "";
   const [searchTerm, setSearchTerm] = useState<string>(() => getUrlParam("search"));
   const [activeBrand, setActiveBrand] = useState<string>(() => getUrlParam("brand"));
   const [activeCategory, setActiveCategory] = useState<string>(() => getUrlParam("category"));
@@ -952,13 +964,7 @@ const Products: React.FC<ProductsProps> = ({
           setProductsByBrandCategory((prev) => ({ ...prev, [newKey]: [] }));
           setNoMoreProducts((prev) => ({ ...prev, [newKey]: false }));
           await fetchProducts(newKey, undefined, defaultCategory, undefined, 1);
-          const data = productsByBrandCategory[newKey];
-          // Handle both grouped format {items: [...]} and plain array format
-          if (data && (data as any).items !== undefined) {
-            setOptions([]);
-          } else {
-            setOptions(Array.isArray(data) ? data : []);
-          }
+          setOptions([]);
         } else {
           const defaultBrand = brandList.length > 0 ? brandList[0].brand : "";
           const defaultCategory =
@@ -981,16 +987,10 @@ const Products: React.FC<ProductsProps> = ({
             undefined,
             1
           );
-          const data = productsByBrandCategory[newKey];
-          // Handle both grouped format {items: [...]} and plain array format
-          if (data && (data as any).items !== undefined) {
-            setOptions([]);
-          } else {
-            setOptions(Array.isArray(data) ? data : []);
-          }
+          setOptions([]);
         }
       }
-    }, 300), // Reduced from 500ms to 300ms for more responsive search
+    }, 300),
     [
       activeBrand,
       activeCategory,
@@ -999,7 +999,6 @@ const Products: React.FC<ProductsProps> = ({
       brandList,
       categoriesByBrand,
       allCategories,
-      productsByBrandCategory,
     ]
   );
 
@@ -1349,34 +1348,22 @@ const Products: React.FC<ProductsProps> = ({
     fetchProductCounts();
   }, [fetchAllBrands, fetchProductCounts]);
 
-  // Keep URL in sync with active brand and search
+  // Keep URL in sync with active brand, category, and search (combined into one effect)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     activeBrand ? params.set("brand", activeBrand.replace(/\s+/g, "-")) : params.delete("brand");
-    window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
-  }, [activeBrand]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
     searchTerm ? params.set("search", searchTerm) : params.delete("search");
-    window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
-  }, [searchTerm]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
     activeCategory ? params.set("category", activeCategory.replace(/\s+/g, "-")) : params.delete("category");
     window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
-  }, [activeCategory]);
+  }, [activeBrand, searchTerm, activeCategory]);
 
   // Trigger search on first mount if URL contains a search param
   const didInitialSearch = useRef(false);
   useEffect(() => {
     const initialSearch =
       typeof window !== "undefined"
-        ? new URLSearchParams(window.location.search).get("search") || ""
+        ? (new URLSearchParams(window.location.search).get("search") || "").replace(/\s+/g, " ").trim()
         : "";
     if (!initialSearch || didInitialSearch.current) return;
     didInitialSearch.current = true;
@@ -1438,15 +1425,14 @@ const Products: React.FC<ProductsProps> = ({
     return data || [];
   }, [productsByBrandCategory, productsKey, itemsData]);
 
-  // Get grouped data - not used when we have itemsData
+  // Get grouped data - only when backend doesn't already send grouped itemsData
   const groupedData = useMemo((): GroupedProducts | null => {
-    if (!groupByProductName) {
+    if (!groupByProductName || itemsData) {
       return null;
     }
-
-    // Fallback to frontend grouping (shouldn't be needed)
+    // Fallback to frontend grouping (shouldn't be needed when backend sends itemsData)
     return groupProductsByName(displayedProducts);
-  }, [groupByProductName, displayedProducts]);
+  }, [groupByProductName, itemsData, displayedProducts]);
 
 
   const allCategoryCounts = useMemo(() => {
