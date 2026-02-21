@@ -37,6 +37,7 @@ jobs:
           host: ${{ secrets.PRODUCTION_SERVER_HOST }}
           username: ${{ secrets.PRODUCTION_SERVER_USER }}
           key: ${{ secrets.PRODUCTION_SERVER_SSH_KEY }}
+          command_timeout: 20m
           script: |
             cd /home/ubuntu
             # The deploy.sh script uses the -f flag to deploy backend only.
