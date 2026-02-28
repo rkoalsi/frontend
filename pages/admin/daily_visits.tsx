@@ -421,13 +421,13 @@ const DailyVisits = () => {
   };
 
   return (
-    <Box sx={{ padding: 3 }}>
+    <Box sx={{ padding: { xs: 2, sm: 3 } }}>
       <Paper
         elevation={3}
-        sx={{ padding: 4, borderRadius: 4, backgroundColor: 'white' }}
+        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4, backgroundColor: 'white' }}
       >
-        <Box display='flex' justifyContent='space-between' alignItems='center'>
-          <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
+        <Box display='flex' flexDirection={{ xs: 'column', sm: 'row' }} justifyContent='space-between' alignItems={{ xs: 'flex-start', sm: 'center' }} gap={{ xs: 2, sm: 0 }}>
+          <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
             All Daily Visits
           </Typography>
           <Button onClick={handleDownload}>Download Daily Visits XLSX</Button>

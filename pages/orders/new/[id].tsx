@@ -75,6 +75,7 @@ const NewOrder: React.FC = () => {
   const [customer, setCustomer] = useState<any>(null);
   const [referenceNumber, setReferenceNumber] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [xlsxLoading, setXlsxLoading] = useState<boolean>(false);
   const [order, setOrder] = useState<any>(null);
   const [billingAddress, setBillingAddress] = useState<any>(null);
   const [shippingAddress, setShippingAddress] = useState<any>(null);
@@ -108,16 +109,13 @@ const NewOrder: React.FC = () => {
             signal: controller.signal,
           }
         );
-        console.log('Special margins API response:', res.data);
         const marginMap = (res.data.products || []).reduce(
           (acc: any, item: any) => {
-            console.log('Mapping product_id:', item.product_id, 'to margin:', item.margin);
             acc[item.product_id] = item.margin;
             return acc;
           },
           {}
         );
-        console.log('Final special margins map:', marginMap);
         setSpecialMargins(marginMap);
       } catch (error: any) {
         if (error.name !== 'CanceledError') {
@@ -143,7 +141,6 @@ const NewOrder: React.FC = () => {
       case 'catalogue':
         return 'Catalogue Order';
       default:
-        console.log(sort);
         break;
     }
   };
@@ -160,7 +157,6 @@ const NewOrder: React.FC = () => {
         const rate = parseFloat(product.rate.toString()) || 0;
         const quantity = parseInt(product.quantity?.toString() || '1', 10) || 1;
         // Use special margin if available; fallback to customer's margin (default 40%)
-        console.log('Product ID:', product._id, 'Special margin:', specialMargins[product._id], 'Available margins:', Object.keys(specialMargins));
         const margin = specialMargins[product._id]
           ? parseInt(specialMargins[product._id].replace('%', ''), 10) / 100
           : parseInt(customer?.cf_margin?.replace('%', '') || '40', 10) / 100;
@@ -197,24 +193,26 @@ const NewOrder: React.FC = () => {
   const debouncedData = useDebounce({ selectedProducts, totals }, 500);
 
   useEffect(() => {
-    const newData = {
-      selectedProducts: debouncedData.selectedProducts,
-      totals: debouncedData.totals,
-    };
+    const { selectedProducts: debProducts, totals: debTotals } = debouncedData;
+    if (!debProducts.length && !debTotals.totalAmount) return;
 
-    // Compare the new data with the last update.
+    const prev = lastUpdateDataRef.current;
+    // Lightweight change detection: compare length + total amount + quantities signature
+    const quantitySig = debProducts.map((p: any) => `${p._id}:${p.quantity}`).join(',');
+    const prevSig = prev?.quantitySig;
     if (
-      JSON.stringify(newData) !== JSON.stringify(lastUpdateDataRef.current) &&
-      (debouncedData.selectedProducts.length > 0 ||
-        debouncedData.totals.totalAmount > 0)
-    ) {
-      updateOrderData(id as string, {
-        products: debouncedData.selectedProducts,
-        total_gst: parseFloat(debouncedData.totals.totalGST.toFixed(2)),
-        total_amount: parseFloat(debouncedData.totals.totalAmount.toFixed(2)),
-      });
-      lastUpdateDataRef.current = newData;
-    }
+      prev &&
+      prev.length === debProducts.length &&
+      prev.totalAmount === debTotals.totalAmount &&
+      prevSig === quantitySig
+    ) return;
+
+    updateOrderData(id as string, {
+      products: debProducts,
+      total_gst: parseFloat(debTotals.totalGST.toFixed(2)),
+      total_amount: parseFloat(debTotals.totalAmount.toFixed(2)),
+    });
+    lastUpdateDataRef.current = { length: debProducts.length, totalAmount: debTotals.totalAmount, quantitySig };
   }, [debouncedData, id]);
 
   // ------------------ Update Addresses ---------------------
@@ -435,7 +433,20 @@ const NewOrder: React.FC = () => {
 
   const generateSharedLink = useCallback(() => {
     const baseURL = window.location.origin;
-    const link = `${baseURL}/orders/new/${id}?shared=true`;
+    const params = new URLSearchParams();
+    params.set("shared", "true");
+    const currentParams = new URLSearchParams(window.location.search);
+    const currentSearch = currentParams.get("search");
+    if (currentSearch) {
+      // If there's an active search, only include search (not brand/category)
+      params.set("search", currentSearch);
+    } else {
+      const currentBrand = currentParams.get("brand");
+      const currentCategory = currentParams.get("category");
+      if (currentBrand) params.set("brand", currentBrand);
+      if (currentCategory) params.set("category", currentCategory);
+    }
+    const link = `${baseURL}/orders/new/${id}?${params.toString()}`;
     setSharedLink(link);
     navigator.clipboard.writeText(link);
     setLinkCopied(true);
@@ -678,6 +689,34 @@ const NewOrder: React.FC = () => {
       toast.error('Error setting report. Try again Later');
     } finally {
       setLoading(false);
+    }
+  };
+  const handleDownloadXlsx = async () => {
+    setXlsxLoading(true);
+    try {
+      const response = await axios.get(
+        `${process.env.api_url}/orders/download_order_xlsx`,
+        {
+          params: { customer_id: customer._id, order_id: order._id, sort },
+          responseType: 'arraybuffer',
+        }
+      );
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Order_Form_${order._id?.slice(0, 8)}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => window.URL.revokeObjectURL(url), 2000);
+    } catch (error) {
+      console.error(error);
+      toast.error('Error downloading XLSX. Try again later.');
+    } finally {
+      setXlsxLoading(false);
     }
   };
   const handleRecreateSheet = async () => {
@@ -932,7 +971,9 @@ const NewOrder: React.FC = () => {
             googleSheetsLink={link}
             updateCart={updateCart}
             recreateSheet={handleRecreateSheet}
+            downloadXlsx={handleDownloadXlsx}
             loading={loading}
+            xlsxLoading={xlsxLoading}
             sort={handleSortText()}
           />
         ) : (

@@ -50,11 +50,13 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
         onChange={(e) => setSearchQuery(e.target.value)}
         sx={{ marginBottom: 3 }}
       />
-      <TableContainer component={Paper} sx={{ borderRadius: '8px' }}>
-        <Table stickyHeader>
+      <Box sx={{ overflowX: 'auto', width: '100%' }}>
+        <TableContainer component={Paper} sx={{ borderRadius: '8px', minWidth: { xs: '800px', md: '100%' } }}>
+          <Table stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell>Name</TableCell>
+              <TableCell>Company Name</TableCell>
               <TableCell>Sales Person</TableCell>
               <TableCell>Type</TableCell>
               <TableCell>Tier</TableCell>
@@ -76,6 +78,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
               return (
                 <TableRow key={cust._id}>
                   <TableCell>{cust.contact_name}</TableCell>
+                  <TableCell>{cust.company_name}</TableCell>
                   <TableCell>{arrayOfCodes.join(', ') || 'N/A'}</TableCell>
                   <TableCell>
                     {cust.customer_sub_type
@@ -108,6 +111,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
           </TableBody>
         </Table>
       </TableContainer>
+      </Box>
       <Box display='flex' justifyContent='flex-end' mt={2}>
         <TablePagination
           component='div'

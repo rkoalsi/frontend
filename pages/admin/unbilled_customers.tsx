@@ -482,13 +482,15 @@ const UnbilledCustomersComponent = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ p: { xs: 2, sm: 3 } }}>
         {/* Header */}
         <Box
           sx={{
             display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
             justifyContent: 'space-between',
-            alignItems: 'center',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            gap: { xs: 2, sm: 0 },
             mb: 3,
           }}
         >
@@ -496,7 +498,7 @@ const UnbilledCustomersComponent = () => {
             <Typography
               variant='h4'
               fontWeight='bold'
-              sx={{ display: 'flex', alignItems: 'center', color: 'white' }}
+              sx={{ display: 'flex', alignItems: 'center', color: 'white', fontSize: { xs: '1.5rem', sm: '2rem' } }}
             >
               <PendingActionsOutlined
                 sx={{ mr: 2, color: 'warning.main', fontSize: 40 }}

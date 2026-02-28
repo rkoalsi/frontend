@@ -16,6 +16,7 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import DownloadIcon from '@mui/icons-material/Download';
 import { useTheme } from '@emotion/react';
 import { ShoppingCart, Refresh } from '@mui/icons-material';
 
@@ -36,7 +37,9 @@ const SheetsDisplay = ({
   googleSheetsLink = '',
   updateCart = () => {},
   recreateSheet = () => {},
+  downloadXlsx = () => {},
   loading = false,
+  xlsxLoading = false,
   sort = '',
 }: any) => {
   const theme: any = useTheme();
@@ -162,21 +165,6 @@ const SheetsDisplay = ({
                 },
               }}
             />
-            <Alert
-              severity='warning'
-              sx={{
-                borderRadius: 2,
-                border: '1px solid #FF9800',
-                backgroundColor: '#FFF3E0',
-                '& .MuiAlert-icon': {
-                  color: '#F57C00',
-                },
-              }}
-            >
-              On Creation of google Sheet, images will not show. Click on "Allow
-              Access" on the sheet to display images on sheet.
-            </Alert>
-
             <Box
               display='flex'
               flexDirection={isMobile ? 'column' : 'row'}
@@ -244,6 +232,22 @@ const SheetsDisplay = ({
                 }}
               >
                 Recreate Sheet
+              </StyledButton>
+
+              <StyledButton
+                variant='contained'
+                startIcon={<DownloadIcon />}
+                onClick={downloadXlsx}
+                disabled={xlsxLoading}
+                sx={{
+                  flexGrow: 1,
+                  flexBasis: isMobile ? '100%' : 'calc(50% - 8px)',
+                  bgcolor: '#2e7d32',
+                  color: 'white',
+                  '&:hover': { bgcolor: '#1b5e20' },
+                }}
+              >
+                {xlsxLoading ? 'Downloading...' : 'Download XLSX'}
               </StyledButton>
             </Box>
           </Box>

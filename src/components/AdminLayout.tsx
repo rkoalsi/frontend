@@ -155,13 +155,13 @@ const AdminLayout = ({ children }: any) => {
           boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
         }}
       >
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
+        <Toolbar sx={{ justifyContent: 'space-between', minHeight: { xs: 'auto', sm: '64px' }, py: { xs: 1.5, sm: 0 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <IconButton
               color='inherit'
               edge='start'
               onClick={() => setSidebarOpen(!isSidebarOpen)}
-              sx={{ marginRight: 2, color: 'white' }}
+              sx={{ marginRight: { xs: 1, sm: 2 }, color: 'white' }}
             >
               <MenuIcon />
             </IconButton>
@@ -172,6 +172,7 @@ const AdminLayout = ({ children }: any) => {
                 cursor: 'pointer',
                 color: 'white',
                 fontFamily: 'Roboto, sans-serif',
+                fontSize: { xs: '0.9rem', sm: '1.25rem' },
               }}
               onClick={() => router.push('/admin')}
             >
@@ -179,7 +180,7 @@ const AdminLayout = ({ children }: any) => {
             </Typography>
           </Box>
           
-          <Box display='flex' gap='16px' flexDirection='row'>
+          <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, flexDirection: { xs: 'row' } }}>
             {user && router.pathname.includes('/admin') && (
               <Button
                 variant='contained'
@@ -188,7 +189,8 @@ const AdminLayout = ({ children }: any) => {
                 sx={{
                   textTransform: 'none',
                   fontWeight: 'bold',
-                  paddingX: 3,
+                  paddingX: { xs: 1.5, sm: 3 },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
                 }}
               >
                 Home
@@ -201,7 +203,8 @@ const AdminLayout = ({ children }: any) => {
               sx={{
                 textTransform: 'none',
                 fontWeight: 'bold',
-                paddingX: 3,
+                paddingX: { xs: 1.5, sm: 3 },
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
               }}
             >
               Logout
@@ -294,7 +297,7 @@ const AdminLayout = ({ children }: any) => {
           flexGrow: 1,
           background: 'linear-gradient(135deg, #5A7CA4, #2B4864, #172335)',
           minHeight: '100vh',
-          padding: 3,
+          padding: { xs: 1, sm: 2, md: 3 },
           transition: 'margin-left 0.3s',
         }}
       >

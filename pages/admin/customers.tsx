@@ -209,10 +209,10 @@ const Customers = () => {
     }
   };
   return (
-    <Box sx={{ padding: 3 }}>
+    <Box sx={{ padding: { xs: 2, sm: 3 } }}>
       <Paper
         sx={{
-          padding: 4,
+          padding: { xs: 2, sm: 3, md: 4 },
           borderRadius: 4,
           backgroundColor: 'white',
           position: 'relative', // added so we can position the overlay
@@ -221,21 +221,24 @@ const Customers = () => {
         <Box
           display='flex'
           justifyContent='space-between'
-          alignItems='center'
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          flexDirection={{ xs: 'column', sm: 'row' }}
+          gap={{ xs: 2, sm: 0 }}
           mb={2}
         >
-          <Typography variant='h4' sx={{ fontWeight: 'bold' }}>
+          <Typography variant='h4' sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
             All Customers
           </Typography>
-          <Box display='flex' alignItems='center' gap={2}>
+          <Box display='flex' alignItems='center' gap={{ xs: 1, sm: 2 }} flexDirection={{ xs: 'column', sm: 'row' }} width={{ xs: '100%', sm: 'auto' }}>
             <Button
               variant='contained'
               color='primary'
               onClick={handleDownloadReport}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Download XLSX
             </Button>
-            <FilterAlt onClick={() => setOpenFilterDrawer(true)} />
+            <FilterAlt onClick={() => setOpenFilterDrawer(true)} sx={{ cursor: 'pointer' }} />
           </Box>
         </Box>
 

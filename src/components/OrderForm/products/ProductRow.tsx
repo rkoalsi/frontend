@@ -71,7 +71,6 @@ const ProductRow: React.FC<ProductRowProps> = memo(
     const isDisabled =
       orderStatus?.toLowerCase().includes("accepted") ||
       orderStatus?.toLowerCase().includes("declined");
-    console.log(product);
     return (
       <TableRow
         key={productId}

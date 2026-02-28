@@ -132,7 +132,7 @@ const Layout = ({ children }: any) => {
                 <CustomButton
                   color='secondary'
                   onClick={() => router.push('/customer')}
-                  text={'My Account'}
+                  text={'Dashboard'}
                 />
               )}
             {user && (

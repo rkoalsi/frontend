@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Typography,
   Box,
@@ -25,10 +25,12 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  Autocomplete,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import { Edit, Delete, Add } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
+import dynamic from 'next/dynamic';
 
 interface CustomQuestion {
   question: string;
@@ -36,6 +38,9 @@ interface CustomQuestion {
   options: string[];
   required: boolean;
 }
+
+// Dynamically import ReactQuill to avoid SSR issues
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 
 const Careers = () => {
   const [careers, setCareers] = useState([]);
@@ -60,6 +65,20 @@ const Careers = () => {
     type: '',
   });
   const [customQuestions, setCustomQuestions] = useState<CustomQuestion[]>([]);
+
+  // Quill editor modules configuration
+  const quillModules = useMemo(() => ({
+    toolbar: [
+      ['bold', 'italic', 'underline'],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      ['clean']
+    ]
+  }), []);
+
+  const quillFormats = [
+    'bold', 'italic', 'underline',
+    'list', 'bullet'
+  ];
 
   const fetchCareers = async () => {
     setLoading(true);
@@ -168,6 +187,25 @@ const Careers = () => {
     } catch (error: any) {
       console.error(error);
       toast.error(error.response?.data?.detail || 'Error updating career status');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handlePermanentDelete = async (career: any) => {
+    if (!window.confirm(`Are you sure you want to permanently delete "${career.title}"? This action cannot be undone.`)) {
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const resp = await axiosInstance.delete(`/admin/careers/${career._id}/permanent`);
+      if (resp.status === 200) {
+        toast.success('Career deleted permanently');
+        fetchCareers();
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.response?.data?.detail || 'Error deleting career');
     } finally {
       setActionLoading(false);
     }
@@ -317,9 +355,13 @@ const Careers = () => {
                         <TableRow key={career._id}>
                           <TableCell>{career.title}</TableCell>
                           <TableCell>
-                            {career.description?.length > 100
-                              ? career.description.substring(0, 100) + '...'
-                              : career.description}
+                            {(() => {
+                              // Strip HTML tags for preview
+                              const plainText = career.description?.replace(/<[^>]*>/g, '') || '';
+                              return plainText.length > 100
+                                ? plainText.substring(0, 100) + '...'
+                                : plainText;
+                            })()}
                           </TableCell>
                           <TableCell>{career.location || '-'}</TableCell>
                           <TableCell>
@@ -343,6 +385,13 @@ const Careers = () => {
                               disabled={actionLoading}
                             >
                               <Edit />
+                            </IconButton>
+                            <IconButton
+                              onClick={() => handlePermanentDelete(career)}
+                              disabled={actionLoading}
+                              color="error"
+                            >
+                              <Delete />
                             </IconButton>
                           </TableCell>
                         </TableRow>
@@ -444,24 +493,63 @@ const Careers = () => {
               onChange={(e) => handleInputChange('title', e.target.value)}
               required
             />
-            <TextField
-              label='Description'
-              variant='outlined'
-              fullWidth
-              multiline
-              rows={4}
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              required
-            />
+            <Box>
+              <Typography variant='body2' sx={{ mb: 1, fontWeight: 500 }}>
+                Description *
+              </Typography>
+              <Box sx={{
+                '& .quill': {
+                  backgroundColor: 'white',
+                  borderRadius: 1
+                },
+                '& .ql-container': {
+                  minHeight: '150px',
+                  fontSize: '14px',
+                  fontFamily: 'inherit'
+                },
+                '& .ql-editor': {
+                  minHeight: '150px'
+                }
+              }}>
+                <ReactQuill
+                  theme="snow"
+                  value={formData.description}
+                  onChange={(value) => handleInputChange('description', value)}
+                  modules={quillModules}
+                  formats={quillFormats}
+                  placeholder="Enter job description with formatting..."
+                />
+              </Box>
+            </Box>
             <Box display='flex' gap={2}>
-              <TextField
-                label='Location'
-                variant='outlined'
+              <Autocomplete
+                freeSolo
                 fullWidth
+                options={[
+                  'Goregaon, Mumbai',
+                  'Pan India',
+                  'Remote',
+                  'Bengaluru',
+                  'Delhi NCR',
+                  'Hyderabad',
+                  'Pune',
+                  'Chennai',
+                ]}
                 value={formData.location}
-                onChange={(e) => handleInputChange('location', e.target.value)}
-                placeholder='e.g. Goregaon, Mumbai / Pan India'
+                onChange={(_, newValue) =>
+                  handleInputChange('location', newValue || '')
+                }
+                onInputChange={(_, newInputValue) =>
+                  handleInputChange('location', newInputValue)
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label='Location'
+                    variant='outlined'
+                    placeholder='e.g. Goregaon, Mumbai / Pan India'
+                  />
+                )}
               />
               <TextField
                 label='Department'
