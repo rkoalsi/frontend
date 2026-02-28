@@ -23,6 +23,9 @@ import {
   Select,
   MenuItem,
   Pagination,
+  Card,
+  CardContent,
+  alpha,
 } from '@mui/material';
 import AuthContext from '../../../src/components/Auth';
 import {
@@ -59,7 +62,6 @@ const CustomerOrders = () => {
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
 
-  // Fetch orders
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
@@ -88,7 +90,6 @@ const CustomerOrders = () => {
     }
   }, [user, fetchOrders]);
 
-  // Create new order
   const handleNewOrder = async () => {
     try {
       const resp = await axios.post(`${process.env.api_url}/orders/`, {
@@ -120,7 +121,6 @@ const CustomerOrders = () => {
     }
   };
 
-  // Filter orders by search term
   const filteredOrders = orders.filter((order) => {
     const searchLower = searchTerm.toLowerCase();
     const orderNumber = order.order_number || order._id.slice(-6);
@@ -148,12 +148,12 @@ const CustomerOrders = () => {
   }
 
   return (
-    <Container maxWidth='lg' sx={{ py: { xs: 2, md: 4 } }}>
+    <Container maxWidth='lg' sx={{ py: { xs: 2, md: 4 }, px: { xs: 1, sm: 2, md: 3 } }}>
       <Paper
         elevation={0}
         sx={{
           backgroundColor: 'background.paper',
-          borderRadius: 4,
+          borderRadius: { xs: 2, md: 4 },
           overflow: 'hidden',
           minHeight: '80vh',
           border: `1px solid ${theme.palette.divider}`,
@@ -164,26 +164,29 @@ const CustomerOrders = () => {
           sx={{
             background: 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 100%)',
             color: 'white',
-            padding: { xs: 3, md: 4 },
+            padding: { xs: 2, sm: 3, md: 4 },
           }}
         >
           <Box
             sx={{
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              flexDirection: { xs: 'column', sm: 'row' },
               gap: 2,
             }}
           >
             <Box>
               <Typography
                 variant={isMobile ? 'h5' : 'h4'}
-                sx={{ fontWeight: 700, mb: 1 }}
+                sx={{ fontWeight: 700, mb: 0.5 }}
               >
                 My Orders (Estimates)
               </Typography>
-              <Typography variant='body1' sx={{ opacity: 0.9 }}>
+              <Typography
+                variant='body2'
+                sx={{ opacity: 0.9, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+              >
                 View and track all your orders
               </Typography>
             </Box>
@@ -192,13 +195,14 @@ const CustomerOrders = () => {
               variant='contained'
               startIcon={<Add />}
               onClick={handleNewOrder}
+              size={isMobile ? 'medium' : 'large'}
               sx={{
                 backgroundColor: '#38a169',
                 '&:hover': { backgroundColor: '#2f855a' },
                 textTransform: 'none',
                 fontWeight: 600,
                 px: 3,
-                py: 1.5,
+                width: { xs: '100%', sm: 'auto' },
               }}
             >
               Create New Order
@@ -207,12 +211,18 @@ const CustomerOrders = () => {
         </Box>
 
         {/* Filters */}
-        <Box sx={{ p: 3, borderBottom: `1px solid ${theme.palette.divider}` }}>
+        <Box
+          sx={{
+            p: { xs: 2, sm: 3 },
+            borderBottom: `1px solid ${theme.palette.divider}`,
+          }}
+        >
           <Box
             sx={{
               display: 'flex',
               gap: 2,
               flexWrap: 'wrap',
+              alignItems: 'center',
             }}
           >
             <TextField
@@ -220,7 +230,7 @@ const CustomerOrders = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               size='small'
-              sx={{ minWidth: 250 }}
+              sx={{ flex: { xs: '1 1 100%', sm: '1 1 auto' }, minWidth: { sm: 220 } }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position='start'>
@@ -229,7 +239,10 @@ const CustomerOrders = () => {
                 ),
               }}
             />
-            <FormControl size='small' sx={{ minWidth: 150 }}>
+            <FormControl
+              size='small'
+              sx={{ flex: { xs: '1 1 100%', sm: '0 0 auto' }, minWidth: { sm: 150 } }}
+            >
               <InputLabel>Status</InputLabel>
               <Select
                 value={statusFilter}
@@ -250,17 +263,16 @@ const CustomerOrders = () => {
           </Box>
         </Box>
 
-        {/* Orders Table */}
-        <Box sx={{ p: 3 }}>
+        {/* Orders List */}
+        <Box sx={{ p: { xs: 2, sm: 3 } }}>
           {filteredOrders.length > 0 ? (
             <>
-              <TableContainer>
+              {/* Desktop Table */}
+              <TableContainer sx={{ display: { xs: 'none', sm: 'block' } }}>
                 <Table>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: 'grey.50' }}>
-                      <TableCell sx={{ fontWeight: 'bold' }}>
-                        Order Number
-                      </TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Order Number</TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>Items</TableCell>
@@ -273,9 +285,7 @@ const CustomerOrders = () => {
                         key={order._id}
                         hover
                         sx={{ cursor: 'pointer' }}
-                        onClick={() =>
-                          router.push(`/customer/orders/${order._id}`)
-                        }
+                        onClick={() => router.push(`/customer/orders/${order._id}`)}
                       >
                         <TableCell>
                           <Typography fontWeight={500}>
@@ -284,7 +294,7 @@ const CustomerOrders = () => {
                         </TableCell>
                         <TableCell>
                           {order.created_at
-                            ? format(new Date(order.created_at), 'PPp')
+                            ? format(new Date(order.created_at), 'PP')
                             : 'N/A'}
                         </TableCell>
                         <TableCell>
@@ -295,9 +305,7 @@ const CustomerOrders = () => {
                             sx={{ textTransform: 'capitalize' }}
                           />
                         </TableCell>
-                        <TableCell>
-                          {order.products?.length || 0} items
-                        </TableCell>
+                        <TableCell>{order.products?.length || 0} items</TableCell>
                         <TableCell>
                           <Button
                             size='small'
@@ -317,29 +325,112 @@ const CustomerOrders = () => {
                 </Table>
               </TableContainer>
 
+              {/* Mobile Cards */}
+              <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                {filteredOrders.map((order) => (
+                  <Card
+                    key={order._id}
+                    elevation={0}
+                    onClick={() => router.push(`/customer/orders/${order._id}`)}
+                    sx={{
+                      mb: 2,
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderRadius: 2,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      '&:hover': {
+                        borderColor: theme.palette.primary.main,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                      },
+                    }}
+                  >
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          mb: 1.5,
+                        }}
+                      >
+                        <Box>
+                          <Typography fontWeight={600} sx={{ fontSize: '0.9rem' }}>
+                            #{order.order_number || order._id.slice(-6)}
+                          </Typography>
+                          <Typography variant='body2' color='text.secondary'>
+                            {order.created_at
+                              ? format(new Date(order.created_at), 'PP')
+                              : 'N/A'}
+                          </Typography>
+                        </Box>
+                        <Chip
+                          label={order.status}
+                          color={getStatusColor(order.status) as any}
+                          size='small'
+                          sx={{ textTransform: 'capitalize' }}
+                        />
+                      </Box>
+
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Typography variant='body2' color='text.secondary'>
+                          {order.products?.length || 0} item
+                          {(order.products?.length || 0) !== 1 ? 's' : ''}
+                        </Typography>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            color: 'primary.main',
+                          }}
+                        >
+                          <Visibility sx={{ fontSize: 14 }} />
+                          <Typography variant='caption' fontWeight={500}>
+                            View
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Box>
+
               {/* Pagination */}
               {totalPages > 1 && (
-                <Box
-                  sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}
-                >
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
                   <Pagination
                     count={totalPages}
                     page={page}
                     onChange={(_, value) => setPage(value)}
                     color='primary'
+                    size={isMobile ? 'small' : 'medium'}
                   />
                 </Box>
               )}
             </>
           ) : (
-            <Box sx={{ py: 8, textAlign: 'center' }}>
+            <Box sx={{ py: { xs: 6, sm: 8 }, textAlign: 'center' }}>
               <ShoppingCartOutlined
-                sx={{ fontSize: 64, color: 'grey.300', mb: 2 }}
+                sx={{ fontSize: { xs: 48, sm: 64 }, color: 'grey.300', mb: 2 }}
               />
-              <Typography variant='h6' color='text.secondary' gutterBottom>
+              <Typography
+                variant='h6'
+                color='text.secondary'
+                gutterBottom
+                sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}
+              >
                 No orders found
               </Typography>
-              <Typography color='text.secondary' sx={{ mb: 3 }}>
+              <Typography
+                color='text.secondary'
+                sx={{ mb: 3, fontSize: { xs: '0.875rem', sm: '1rem' } }}
+              >
                 {searchTerm || statusFilter !== 'all'
                   ? 'Try adjusting your search or filters'
                   : 'Create your first order to get started'}

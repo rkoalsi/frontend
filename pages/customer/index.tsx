@@ -31,12 +31,10 @@ import {
   ArrowForward,
   Receipt,
   CreditCard,
-  AccountBalanceWallet,
-  Warning,
-  CheckCircle,
   ReceiptLong,
   Download,
   Payment,
+  ManageAccounts,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
@@ -47,7 +45,6 @@ interface CustomerStats {
   total_orders: number;
   pending_orders: number;
   completed_orders: number;
-  total_spent: number;
   recent_orders: Array<{
     _id: string;
     order_number: string;
@@ -59,25 +56,21 @@ interface CustomerStats {
 
 interface Invoice {
   _id: string;
-  invoice_id?: string;
   invoice_number: string;
   status: string;
   date: string;
   due_date: string;
   total: number;
   balance: number;
-  customer_name?: string;
 }
 
 interface CreditNote {
   _id: string;
-  creditnote_id?: string;
   creditnote_number: string;
   status: string;
   date: string;
   total: number;
   balance: number;
-  customer_name?: string;
 }
 
 interface DashboardSummary {
@@ -111,31 +104,22 @@ const CustomerDashboard = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [downloadingStatement, setDownloadingStatement] = useState(false);
 
-  // Fetch customer stats
   const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
       const { data } = await axiosInstance.get(`/orders`, {
-        params: {
-          created_by: user?.data?._id,
-          limit: 5,
-        },
+        params: { created_by: user?.data?._id, limit: 5 },
       });
 
       const orders = data.orders || data || [];
-      const totalOrders = orders.length;
-      const pendingOrders = orders.filter(
-        (o: any) => o.status === 'draft' || o.status === 'accepted'
-      ).length;
-      const completedOrders = orders.filter(
-        (o: any) => o.status === 'invoiced' || o.status === 'delivered'
-      ).length;
-
       setStats({
-        total_orders: totalOrders,
-        pending_orders: pendingOrders,
-        completed_orders: completedOrders,
-        total_spent: 0,
+        total_orders: orders.length,
+        pending_orders: orders.filter(
+          (o: any) => o.status === 'draft' || o.status === 'accepted'
+        ).length,
+        completed_orders: orders.filter(
+          (o: any) => o.status === 'invoiced' || o.status === 'delivered'
+        ).length,
         recent_orders: orders.slice(0, 5),
       });
       setError(null);
@@ -147,19 +131,15 @@ const CustomerDashboard = () => {
     }
   }, [user]);
 
-  // Fetch invoices and credit notes summary
   const fetchDashboardSummary = useCallback(async () => {
     if (!user?.data?.customer_id) {
       setSummaryLoading(false);
       return;
     }
-
     try {
       setSummaryLoading(true);
       const { data } = await axiosInstance.get(`/customer_portal/dashboard-summary`, {
-        params: {
-          customer_id: user?.data?.customer_id,
-        },
+        params: { customer_id: user?.data?.customer_id },
       });
       setDashboardSummary(data);
     } catch (err: any) {
@@ -176,7 +156,6 @@ const CustomerDashboard = () => {
     }
   }, [user, fetchStats, fetchDashboardSummary]);
 
-  // Create new order
   const handleNewOrder = async () => {
     try {
       const resp = await axios.post(`${process.env.api_url}/orders/`, {
@@ -184,39 +163,27 @@ const CustomerDashboard = () => {
         status: 'draft',
       });
       const { data = {} } = resp;
-      const { _id = '' } = data;
-      router.push(`/orders/new/${_id}`);
+      router.push(`/orders/new/${data._id}`);
     } catch (error) {
       console.error('Error creating new order:', error);
     }
   };
 
-  // Get current financial year label (e.g., "FY 2025-26")
   const getFinancialYearLabel = () => {
     const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth() + 1; // 0-indexed
-
-    // If we're in Jan-Mar, FY started in April of previous year
-    const fyStartYear = currentMonth < 4 ? currentYear - 1 : currentYear;
-    const fyEndYear = fyStartYear + 1;
-
-    return `FY ${fyStartYear}-${fyEndYear.toString().slice(-2)}`;
+    const m = today.getMonth() + 1;
+    const fy = m < 4 ? today.getFullYear() - 1 : today.getFullYear();
+    return `FY ${fy}-${(fy + 1).toString().slice(-2)}`;
   };
 
-  // Download customer statement for current financial year
   const handleDownloadStatement = async () => {
     if (!user?.data?.customer_id) return;
-
     try {
       setDownloadingStatement(true);
       const response = await axiosInstance.get('/customer_portal/statement/download', {
-        params: {
-          customer_id: user.data.customer_id,
-        },
+        params: { customer_id: user.data.customer_id },
         responseType: 'blob',
       });
-
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -234,102 +201,27 @@ const CustomerDashboard = () => {
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'draft':
-        return 'default';
-      case 'accepted':
-        return 'primary';
-      case 'invoiced':
-      case 'paid':
-        return 'success';
-      case 'declined':
-      case 'overdue':
-        return 'error';
-      case 'pending':
-      case 'sent':
-        return 'warning';
-      default:
-        return 'default';
+      case 'draft': return 'default';
+      case 'accepted': return 'primary';
+      case 'invoiced': case 'paid': return 'success';
+      case 'declined': case 'overdue': return 'error';
+      case 'pending': case 'sent': return 'warning';
+      default: return 'default';
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       maximumFractionDigits: 0,
     }).format(amount || 0);
-  };
 
-  // Stat Card Component
-  const StatCard = ({
-    icon,
-    label,
-    value,
-    color,
-    subValue,
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    value: number | string;
-    color: string;
-    subValue?: string;
-  }) => (
-    <Paper
-      elevation={0}
-      sx={{
-        p: { xs: 2, sm: 3 },
-        borderRadius: 3,
-        border: `1px solid ${theme.palette.divider}`,
-        height: '100%',
-        transition: 'all 0.2s ease',
-        '&:hover': {
-          boxShadow: theme.shadows[4],
-          transform: 'translateY(-2px)',
-        },
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-        <Box
-          sx={{
-            p: { xs: 1, sm: 1.5 },
-            borderRadius: 2,
-            backgroundColor: `${color}15`,
-            color: color,
-            mr: 2,
-          }}
-        >
-          {icon}
-        </Box>
-        <Typography variant='body2' color='text.secondary' sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-          {label}
-        </Typography>
-      </Box>
-      <Typography variant='h4' fontWeight={700} sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-        {value}
-      </Typography>
-      {subValue && (
-        <Typography variant='caption' color='text.secondary'>
-          {subValue}
-        </Typography>
-      )}
-    </Paper>
-  );
-
-  // Invoice/Credit Note List Item
+  // FinanceListItem for tabs
   const FinanceListItem = ({
-    number,
-    date,
-    amount,
-    balance,
-    status,
-    onClick,
+    number, date, amount, balance, status,
   }: {
-    number: string;
-    date: string;
-    amount: number;
-    balance: number;
-    status: string;
-    onClick?: () => void;
+    number: string; date: string; amount: number; balance: number; status: string;
   }) => (
     <Box
       sx={{
@@ -340,15 +232,8 @@ const CustomerDashboard = () => {
         alignItems: { xs: 'flex-start', sm: 'center' },
         gap: { xs: 1, sm: 0 },
         borderBottom: `1px solid ${theme.palette.divider}`,
-        cursor: onClick ? 'pointer' : 'default',
-        '&:hover': onClick ? {
-          backgroundColor: theme.palette.action.hover,
-        } : {},
-        '&:last-child': {
-          borderBottom: 'none',
-        },
+        '&:last-child': { borderBottom: 'none' },
       }}
-      onClick={onClick}
     >
       <Box sx={{ flex: 1 }}>
         <Typography fontWeight={500} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
@@ -358,7 +243,15 @@ const CustomerDashboard = () => {
           {date ? format(new Date(date), 'PP') : 'N/A'}
         </Typography>
       </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'space-between', sm: 'flex-end' } }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: { xs: 1, sm: 2 },
+          width: { xs: '100%', sm: 'auto' },
+          justifyContent: { xs: 'space-between', sm: 'flex-end' },
+        }}
+      >
         <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
           <Typography fontWeight={600} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
             {formatCurrency(amount)}
@@ -382,22 +275,84 @@ const CustomerDashboard = () => {
   if (loading) {
     return (
       <Container maxWidth='lg' sx={{ py: 4 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '50vh',
-          }}
-        >
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
           <CircularProgress sx={{ color: '#38a169' }} />
         </Box>
       </Container>
     );
   }
 
+  // Action cards config
+  const actionCards = [
+    {
+      title: 'New Order',
+      description: 'Start a new estimate',
+      icon: <Add />,
+      color: '#38a169',
+      onClick: handleNewOrder,
+      show: true,
+    },
+    {
+      title: 'My Orders',
+      description: 'View all estimates',
+      icon: <History />,
+      color: '#3b82f6',
+      onClick: () => router.push('/customer/orders'),
+      show: true,
+    },
+    {
+      title: 'Invoices',
+      description: 'View & download invoices',
+      icon: <ReceiptLong />,
+      color: '#8b5cf6',
+      onClick: () => router.push('/customer/invoices'),
+      show: !!user?.data?.customer_id,
+    },
+    {
+      title: 'Payments',
+      description: 'View payment history',
+      icon: <Payment />,
+      color: '#10b981',
+      onClick: () => router.push('/customer/payments'),
+      show: !!user?.data?.customer_id,
+    },
+    {
+      title: 'Shipments',
+      description: 'Track your deliveries',
+      icon: <LocalShipping />,
+      color: '#f59e0b',
+      onClick: () => router.push('/customer/shipments'),
+      show: !!user?.data?.customer_id,
+    },
+    // {
+    //   title: 'Analytics',
+    //   description: 'View order insights',
+    //   icon: <TrendingUp />,
+    //   color: '#6366f1',
+    //   onClick: () => router.push('/customer/analytics'),
+    //   show: true,
+    // },
+    {
+      title: downloadingStatement ? 'Downloading…' : 'Statement',
+      description: getFinancialYearLabel(),
+      icon: downloadingStatement ? <CircularProgress size={18} color='inherit' /> : <Download />,
+      color: '#0891b2',
+      onClick: handleDownloadStatement,
+      show: !!user?.data?.customer_id,
+      disabled: downloadingStatement,
+    },
+    {
+      title: 'My Account',
+      description: 'Manage your profile',
+      icon: <ManageAccounts />,
+      color: '#64748b',
+      onClick: () => router.push('/customer/account'),
+      show: true,
+    },
+  ].filter((c) => c.show);
+
   return (
-    <Container maxWidth='lg' sx={{ py: { xs: 2, md: 4 }, px: { xs: 1, sm: 2, md: 3 } }}>
+    <Container maxWidth='lg' sx={{ py: { xs: 1.5, md: 4 }, px: { xs: 0, sm: 2, md: 3 } }}>
       <Paper
         elevation={0}
         sx={{
@@ -408,12 +363,12 @@ const CustomerDashboard = () => {
           border: `1px solid ${theme.palette.divider}`,
         }}
       >
-        {/* Header section */}
+        {/* Header */}
         <Box
           sx={{
             background: 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 100%)',
             color: 'white',
-            padding: { xs: 2, sm: 3, md: 4 },
+            padding: { xs: 2.5, sm: 3, md: 4 },
             position: 'relative',
             overflow: 'hidden',
           }}
@@ -429,46 +384,25 @@ const CustomerDashboard = () => {
               backgroundColor: 'rgba(56, 161, 105, 0.1)',
             }}
           />
-
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
-              justifyContent: 'space-between',
-              alignItems: { xs: 'flex-start', sm: 'center' },
-              position: 'relative',
-              zIndex: 1,
-              gap: 2,
-            }}
-          >
-            <Box>
-              <Typography
-                variant={isMobile ? 'h6' : 'h4'}
-                gutterBottom
-                sx={{ fontWeight: 700, mb: 1 }}
-              >
-                Welcome back, {user?.data?.first_name || 'Customer'}
-              </Typography>
-              <Typography
-                variant='body2'
-                sx={{
-                  opacity: 0.9,
-                  fontWeight: 400,
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                }}
-              >
-                {format(new Date(), 'PPPP')}
-              </Typography>
-            </Box>
+          <Box sx={{ position: 'relative', zIndex: 1 }}>
+            <Typography
+              variant={isMobile ? 'h6' : 'h4'}
+              sx={{ fontWeight: 700, mb: 0.5 }}
+            >
+              Welcome back, {user?.data?.first_name || 'Customer'}
+            </Typography>
+            <Typography
+              variant='body2'
+              sx={{ opacity: 0.8, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+            >
+              {format(new Date(), 'PPPP')}
+            </Typography>
           </Box>
         </Box>
 
         {/* Main content */}
         <Box
-          sx={{
-            p: { xs: 2, sm: 3, md: 4 },
-            backgroundColor: theme.palette.background.default,
-          }}
+          sx={{ p: { xs: 2, sm: 3, md: 4 }, backgroundColor: theme.palette.background.default }}
         >
           {error ? (
             <Alert
@@ -484,324 +418,83 @@ const CustomerDashboard = () => {
             </Alert>
           ) : (
             <>
-              {/* Create Order CTA Card */}
-              <Paper
-                elevation={0}
-                sx={{
-                  p: { xs: 2, sm: 3 },
-                  mb: 4,
-                  borderRadius: 3,
-                  background: 'linear-gradient(135deg, #9b81d2 0%, #0015ff 100%)',
-                  color: 'white',
-                  display: 'flex',
-                  flexDirection: { xs: 'column', sm: 'row' },
-                  alignItems: { xs: 'flex-start', sm: 'center' },
-                  justifyContent: 'space-between',
-                  gap: 2,
-                }}
-              >
-                <Box>
-                  <Typography variant='h6' fontWeight={700} sx={{ mb: 0.5, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                    Ready to place a new order?
-                  </Typography>
-                  <Typography variant='body2' sx={{ opacity: 0.9, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                    Create a new estimate and get started with your purchase
-                  </Typography>
-                </Box>
-                <Button
-                  variant='contained'
-                  startIcon={<Add />}
-                  onClick={handleNewOrder}
-                  size={isMobile ? 'medium' : 'large'}
-                  sx={{
-                    backgroundColor: 'white',
-                    color: 'white',
-                    '&:hover': { backgroundColor: '#f0fff4', color: 'primary' },
-                    textTransform: 'none',
-                    fontWeight: 700,
-                    px: { xs: 3, sm: 4 },
-                    py: { xs: 1.5, sm: 1.5 },
-                    width: { xs: '100%', sm: 'auto' },
-                    boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
-                  }}
-                >
-                  Create New Order
-                </Button>
-              </Paper>
-
-              {/* Stats Section */}
+              {/* Action Cards */}
               <Typography
-                variant='h6'
+                variant='subtitle1'
                 fontWeight={600}
-                sx={{ mb: 3, color: theme.palette.text.primary, fontSize: { xs: '1rem', sm: '1.25rem' } }}
+                sx={{ mb: 2, color: theme.palette.text.primary, fontSize: { xs: '0.9rem', sm: '1rem' } }}
               >
-                Overview
+                Quick Access
               </Typography>
 
-              <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
-                <Grid size={{ xs: 6, sm: 6, md: 3 }}>
-                  <StatCard
-                    icon={<ShoppingCartOutlined />}
-                    label='Total Orders (Estimates)'
-                    value={stats?.total_orders || 0}
-                    color='#3b82f6'
-                  />
-                </Grid>
-                <Grid size={{ xs: 6, sm: 6, md: 3 }}>
-                  <StatCard
-                    icon={<LocalShipping />}
-                    label='Pending Orders (Estimates)'
-                    value={stats?.pending_orders || 0}
-                    color='#f59e0b'
-                  />
-                </Grid>
-                <Grid size={{ xs: 6, sm: 6, md: 3 }}>
-                  <StatCard
-                    icon={<CheckCircle />}
-                    label='Completed Orders (Estimates)'
-                    value={stats?.completed_orders || 0}
-                    color='#10b981'
-                  />
-                </Grid>
-                <Grid size={{ xs: 6, sm: 6, md: 3 }}>
-                  <StatCard
-                    icon={<AccountBalanceWallet />}
-                    label='Outstanding Amount'
-                    value={formatCurrency(dashboardSummary?.invoice_stats?.total_balance || 0)}
-                    color='#ef4444'
-                  />
-                </Grid>
+              <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 4 }}>
+                {actionCards.map((card, index) => (
+                  <Grid key={index} size={{ xs: 6, sm: 4, md: 3 }}>
+                    <Card
+                      elevation={0}
+                      onClick={card.disabled ? undefined : card.onClick}
+                      sx={{
+                        height: '100%',
+                        cursor: card.disabled ? 'default' : 'pointer',
+                        border: `1px solid ${theme.palette.divider}`,
+                        borderRadius: 2.5,
+                        transition: 'all 0.18s ease',
+                        opacity: card.disabled ? 0.7 : 1,
+                        '&:hover': card.disabled
+                          ? {}
+                          : {
+                              boxShadow: `0 4px 16px ${alpha(card.color, 0.18)}`,
+                              transform: 'translateY(-2px)',
+                              borderColor: card.color,
+                            },
+                      }}
+                    >
+                      <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+                        <Box
+                          sx={{
+                            width: { xs: 36, sm: 42 },
+                            height: { xs: 36, sm: 42 },
+                            borderRadius: 2,
+                            backgroundColor: alpha(card.color, 0.12),
+                            color: card.color,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            mb: 1.5,
+                            '& svg': { fontSize: { xs: 20, sm: 22 } },
+                          }}
+                        >
+                          {card.icon}
+                        </Box>
+                        <Typography
+                          variant='body2'
+                          fontWeight={600}
+                          sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' }, lineHeight: 1.3, mb: 0.25 }}
+                        >
+                          {card.title}
+                        </Typography>
+                        <Typography
+                          variant='caption'
+                          color='text.secondary'
+                          sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, lineHeight: 1.3 }}
+                        >
+                          {card.description}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
               </Grid>
 
-              {/* Financial Summary Cards */}
-              {user?.data?.customer_id && (
-                <>
-                  <Typography
-                    variant='h6'
-                    fontWeight={600}
-                    sx={{ mb: 3, color: theme.palette.text.primary, fontSize: { xs: '1rem', sm: '1.25rem' } }}
-                  >
-                    Financial Summary
-                  </Typography>
-
-                  <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
-                    <Grid size={{ xs: 12, md: 6 }}>
-                      <Card
-                        elevation={0}
-                        sx={{
-                          border: `1px solid ${theme.palette.divider}`,
-                          borderRadius: 3,
-                          height: '100%',
-                        }}
-                      >
-                        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <Box
-                              sx={{
-                                p: 1,
-                                borderRadius: 2,
-                                backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                color: theme.palette.primary.main,
-                                mr: 2,
-                              }}
-                            >
-                              <Receipt />
-                            </Box>
-                            <Typography variant='h6' fontWeight={600} sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                              Invoices
-                            </Typography>
-                          </Box>
-
-                          {summaryLoading ? (
-                            <Box>
-                              <Skeleton variant='text' width='60%' />
-                              <Skeleton variant='text' width='40%' />
-                            </Box>
-                          ) : (
-                            <Grid container spacing={2}>
-                              <Grid size={{ xs: 6 }}>
-                                <Typography variant='body2' color='text.secondary'>Total Invoices</Typography>
-                                <Typography variant='h5' fontWeight={600} sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-                                  {dashboardSummary?.invoice_stats?.total || 0}
-                                </Typography>
-                              </Grid>
-                              <Grid size={{ xs: 6 }}>
-                                <Typography variant='body2' color='text.secondary'>Total Amount</Typography>
-                                <Typography variant='h5' fontWeight={600} sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-                                  {formatCurrency(dashboardSummary?.invoice_stats?.total_amount || 0)}
-                                </Typography>
-                              </Grid>
-                              <Grid size={{ xs: 6 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                  <CheckCircle sx={{ fontSize: 16, color: 'success.main' }} />
-                                  <Typography variant='body2' color='text.secondary'>Paid</Typography>
-                                </Box>
-                                <Typography variant='body1' fontWeight={500} color='success.main'>
-                                  {dashboardSummary?.invoice_stats?.paid || 0}
-                                </Typography>
-                              </Grid>
-                              <Grid size={{ xs: 6 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                  <Warning sx={{ fontSize: 16, color: 'error.main' }} />
-                                  <Typography variant='body2' color='text.secondary'>Overdue</Typography>
-                                </Box>
-                                <Typography variant='body1' fontWeight={500} color='error.main'>
-                                  {dashboardSummary?.invoice_stats?.overdue || 0}
-                                </Typography>
-                              </Grid>
-                            </Grid>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, md: 6 }}>
-                      <Card
-                        elevation={0}
-                        sx={{
-                          border: `1px solid ${theme.palette.divider}`,
-                          borderRadius: 3,
-                          height: '100%',
-                        }}
-                      >
-                        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <Box
-                              sx={{
-                                p: 1,
-                                borderRadius: 2,
-                                backgroundColor: alpha(theme.palette.success.main, 0.1),
-                                color: theme.palette.success.main,
-                                mr: 2,
-                              }}
-                            >
-                              <CreditCard />
-                            </Box>
-                            <Typography variant='h6' fontWeight={600} sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                              Credit Notes
-                            </Typography>
-                          </Box>
-
-                          {summaryLoading ? (
-                            <Box>
-                              <Skeleton variant='text' width='60%' />
-                              <Skeleton variant='text' width='40%' />
-                            </Box>
-                          ) : (
-                            <Grid container spacing={2}>
-                              <Grid size={{ xs: 6 }}>
-                                <Typography variant='body2' color='text.secondary'>Total Credit Notes</Typography>
-                                <Typography variant='h5' fontWeight={600} sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-                                  {dashboardSummary?.credit_note_stats?.total || 0}
-                                </Typography>
-                              </Grid>
-                              <Grid size={{ xs: 6 }}>
-                                <Typography variant='body2' color='text.secondary'>Total Credits</Typography>
-                                <Typography variant='h5' fontWeight={600} color='success.main' sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-                                  {formatCurrency(dashboardSummary?.credit_note_stats?.total_amount || 0)}
-                                </Typography>
-                              </Grid>
-                              <Grid size={{ xs: 12 }}>
-                                <Typography variant='body2' color='text.secondary'>Available Balance</Typography>
-                                <Typography variant='h5' fontWeight={600} color='success.main' sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-                                  {formatCurrency(dashboardSummary?.credit_note_stats?.total_balance || 0)}
-                                </Typography>
-                              </Grid>
-                            </Grid>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  </Grid>
-                </>
-              )}
-
-              {/* Quick Actions */}
+              {/* Recent Activity Tabs */}
               <Typography
-                variant='h6'
+                variant='subtitle1'
                 fontWeight={600}
-                sx={{ mb: 3, color: theme.palette.text.primary, fontSize: { xs: '1rem', sm: '1.25rem' } }}
+                sx={{ mb: 2, color: theme.palette.text.primary, fontSize: { xs: '0.9rem', sm: '1rem' } }}
               >
-                Quick Actions
+                Recent Activity
               </Typography>
 
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: { xs: 1, sm: 2 },
-                  mb: 4,
-                }}
-              >
-                <Button
-                  variant='outlined'
-                  startIcon={<Add />}
-                  onClick={handleNewOrder}
-                  size={isMobile ? 'small' : 'medium'}
-                  sx={{ textTransform: 'none', flex: { xs: '1 1 45%', sm: '0 0 auto' } }}
-                >
-                  Create Order
-                </Button>
-                <Button
-                  variant='outlined'
-                  startIcon={<History />}
-                  onClick={() => router.push('/customer/orders')}
-                  size={isMobile ? 'small' : 'medium'}
-                  sx={{ textTransform: 'none', flex: { xs: '1 1 45%', sm: '0 0 auto' } }}
-                >
-                  View Orders
-                </Button>
-                <Button
-                  variant='outlined'
-                  startIcon={<TrendingUp />}
-                  onClick={() => router.push('/customer/analytics')}
-                  size={isMobile ? 'small' : 'medium'}
-                  sx={{ textTransform: 'none', flex: { xs: '1 1 45%', sm: '0 0 auto' } }}
-                >
-                  Analytics
-                </Button>
-                {user?.data?.customer_id && (
-                  <Button
-                    variant='outlined'
-                    startIcon={<ReceiptLong />}
-                    onClick={() => router.push('/customer/invoices')}
-                    size={isMobile ? 'small' : 'medium'}
-                    sx={{ textTransform: 'none', flex: { xs: '1 1 45%', sm: '0 0 auto' } }}
-                  >
-                    View Invoices
-                  </Button>
-                )}
-                {user?.data?.customer_id && (
-                  <Button
-                    variant='outlined'
-                    startIcon={<Payment />}
-                    onClick={() => router.push('/customer/payments')}
-                    size={isMobile ? 'small' : 'medium'}
-                    sx={{ textTransform: 'none', flex: { xs: '1 1 45%', sm: '0 0 auto' } }}
-                  >
-                    View Payments
-                  </Button>
-                )}
-                {user?.data?.customer_id && (
-                  <Button
-                    variant='contained'
-                    startIcon={downloadingStatement ? <CircularProgress size={16} color='inherit' /> : <Download />}
-                    onClick={handleDownloadStatement}
-                    disabled={downloadingStatement}
-                    size={isMobile ? 'small' : 'medium'}
-                    sx={{
-                      textTransform: 'none',
-                      flex: { xs: '1 1 45%', sm: '0 0 auto' },
-                      backgroundColor: '#38a169',
-                      '&:hover': { backgroundColor: '#2f855a' },
-                    }}
-                  >
-                    {downloadingStatement ? 'Downloading...' : `Download Statement (${getFinancialYearLabel()})`}
-                  </Button>
-                )}
-              </Box>
-
-              {/* Tabbed Content - Recent Orders (Estimates), Invoices, Credit Notes */}
               <Paper
                 elevation={0}
                 sx={{
@@ -824,16 +517,28 @@ const CustomerDashboard = () => {
                     },
                   }}
                 >
-                  <Tab label='Recent Orders (Estimates)' icon={<ShoppingCartOutlined sx={{ fontSize: { xs: 16, sm: 20 } }} />} iconPosition='start' />
+                  <Tab
+                    label={isMobile ? 'Orders' : 'Recent Orders'}
+                    icon={<ShoppingCartOutlined sx={{ fontSize: { xs: 16, sm: 20 } }} />}
+                    iconPosition='start'
+                  />
                   {user?.data?.customer_id && (
-                    <Tab label='Invoices' icon={<Receipt sx={{ fontSize: { xs: 16, sm: 20 } }} />} iconPosition='start' />
+                    <Tab
+                      label='Invoices'
+                      icon={<Receipt sx={{ fontSize: { xs: 16, sm: 20 } }} />}
+                      iconPosition='start'
+                    />
                   )}
                   {user?.data?.customer_id && (
-                    <Tab label='Credit Notes' icon={<CreditCard sx={{ fontSize: { xs: 16, sm: 20 } }} />} iconPosition='start' />
+                    <Tab
+                      label={isMobile ? 'Credits' : 'Credit Notes'}
+                      icon={<CreditCard sx={{ fontSize: { xs: 16, sm: 20 } }} />}
+                      iconPosition='start'
+                    />
                   )}
                 </Tabs>
 
-                {/* Recent Orders (Estimates) Tab */}
+                {/* Recent Orders Tab */}
                 {activeTab === 0 && (
                   <>
                     <Box
@@ -844,7 +549,11 @@ const CustomerDashboard = () => {
                         alignItems: 'center',
                       }}
                     >
-                      <Typography variant='subtitle1' fontWeight={600} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                      <Typography
+                        variant='subtitle2'
+                        fontWeight={600}
+                        sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                      >
                         Recent Orders (Estimates)
                       </Typography>
                       <Button
@@ -869,27 +578,30 @@ const CustomerDashboard = () => {
                               flexDirection: { xs: 'column', sm: 'row' },
                               justifyContent: 'space-between',
                               alignItems: { xs: 'flex-start', sm: 'center' },
-                              gap: { xs: 1, sm: 0 },
+                              gap: { xs: 0.75, sm: 0 },
                               borderBottom:
                                 index < stats.recent_orders.length - 1
                                   ? `1px solid ${theme.palette.divider}`
                                   : 'none',
                               cursor: 'pointer',
-                              '&:hover': {
-                                backgroundColor: theme.palette.action.hover,
-                              },
+                              '&:hover': { backgroundColor: theme.palette.action.hover },
                             }}
-                            onClick={() =>
-                              router.push(`/customer/orders/${order._id}`)
-                            }
+                            onClick={() => router.push(`/customer/orders/${order._id}`)}
                           >
                             <Box>
-                              <Typography fontWeight={500} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                              <Typography
+                                fontWeight={500}
+                                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                              >
                                 Order #{order.order_number || order._id.slice(-6)}
                               </Typography>
-                              <Typography variant='body2' color='text.secondary' sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                              <Typography
+                                variant='body2'
+                                color='text.secondary'
+                                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                              >
                                 {order.created_at
-                                  ? format(new Date(order.created_at), 'PPp')
+                                  ? format(new Date(order.created_at), 'PP')
                                   : 'N/A'}
                               </Typography>
                             </Box>
@@ -907,8 +619,11 @@ const CustomerDashboard = () => {
                         <ShoppingCartOutlined
                           sx={{ fontSize: { xs: 40, sm: 48 }, color: 'grey.300', mb: 2 }}
                         />
-                        <Typography color='text.secondary' sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                          No orders yet. Create your first order!
+                        <Typography
+                          color='text.secondary'
+                          sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, mb: 2 }}
+                        >
+                          No orders yet — create your first!
                         </Typography>
                         <Button
                           variant='contained'
@@ -916,7 +631,6 @@ const CustomerDashboard = () => {
                           onClick={handleNewOrder}
                           size={isMobile ? 'small' : 'medium'}
                           sx={{
-                            mt: 2,
                             backgroundColor: '#38a169',
                             '&:hover': { backgroundColor: '#2f855a' },
                             textTransform: 'none',
@@ -940,7 +654,11 @@ const CustomerDashboard = () => {
                         alignItems: 'center',
                       }}
                     >
-                      <Typography variant='subtitle1' fontWeight={600} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                      <Typography
+                        variant='subtitle2'
+                        fontWeight={600}
+                        sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                      >
                         Recent Invoices
                       </Typography>
                       <Button
@@ -955,12 +673,17 @@ const CustomerDashboard = () => {
                     <Divider />
 
                     {summaryLoading ? (
-                      <Box sx={{ p: 3 }}>
+                      <Box sx={{ p: 2 }}>
                         {[1, 2, 3].map((i) => (
-                          <Skeleton key={i} variant='rectangular' height={60} sx={{ mb: 1, borderRadius: 1 }} />
+                          <Skeleton
+                            key={i}
+                            variant='rectangular'
+                            height={56}
+                            sx={{ mb: 1, borderRadius: 1 }}
+                          />
                         ))}
                       </Box>
-                    ) : dashboardSummary?.recent_invoices && dashboardSummary.recent_invoices.length > 0 ? (
+                    ) : dashboardSummary?.recent_invoices?.length ? (
                       <Stack>
                         {dashboardSummary.recent_invoices.map((invoice) => (
                           <FinanceListItem
@@ -975,10 +698,11 @@ const CustomerDashboard = () => {
                       </Stack>
                     ) : (
                       <Box sx={{ p: { xs: 3, sm: 4 }, textAlign: 'center' }}>
-                        <Receipt
-                          sx={{ fontSize: { xs: 40, sm: 48 }, color: 'grey.300', mb: 2 }}
-                        />
-                        <Typography color='text.secondary' sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                        <Receipt sx={{ fontSize: { xs: 40, sm: 48 }, color: 'grey.300', mb: 2 }} />
+                        <Typography
+                          color='text.secondary'
+                          sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                        >
                           No invoices found
                         </Typography>
                       </Box>
@@ -997,28 +721,45 @@ const CustomerDashboard = () => {
                         alignItems: 'center',
                       }}
                     >
-                      <Typography variant='subtitle1' fontWeight={600} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                      <Typography
+                        variant='subtitle2'
+                        fontWeight={600}
+                        sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                      >
                         Recent Credit Notes
                       </Typography>
+                      <Button
+                        size='small'
+                        endIcon={<ArrowForward />}
+                        onClick={() => router.push('/customer/credit-notes')}
+                        sx={{ textTransform: 'none', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                      >
+                        View All
+                      </Button>
                     </Box>
                     <Divider />
 
                     {summaryLoading ? (
-                      <Box sx={{ p: 3 }}>
+                      <Box sx={{ p: 2 }}>
                         {[1, 2, 3].map((i) => (
-                          <Skeleton key={i} variant='rectangular' height={60} sx={{ mb: 1, borderRadius: 1 }} />
+                          <Skeleton
+                            key={i}
+                            variant='rectangular'
+                            height={56}
+                            sx={{ mb: 1, borderRadius: 1 }}
+                          />
                         ))}
                       </Box>
-                    ) : dashboardSummary?.recent_credit_notes && dashboardSummary.recent_credit_notes.length > 0 ? (
+                    ) : dashboardSummary?.recent_credit_notes?.length ? (
                       <Stack>
-                        {dashboardSummary.recent_credit_notes.map((creditNote) => (
+                        {dashboardSummary.recent_credit_notes.map((note) => (
                           <FinanceListItem
-                            key={creditNote._id}
-                            number={creditNote.creditnote_number}
-                            date={creditNote.date}
-                            amount={creditNote.total}
-                            balance={creditNote.balance}
-                            status={creditNote.status}
+                            key={note._id}
+                            number={note.creditnote_number}
+                            date={note.date}
+                            amount={note.total}
+                            balance={note.balance}
+                            status={note.status}
                           />
                         ))}
                       </Stack>
@@ -1027,7 +768,10 @@ const CustomerDashboard = () => {
                         <CreditCard
                           sx={{ fontSize: { xs: 40, sm: 48 }, color: 'grey.300', mb: 2 }}
                         />
-                        <Typography color='text.secondary' sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                        <Typography
+                          color='text.secondary'
+                          sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                        >
                           No credit notes found
                         </Typography>
                       </Box>

@@ -26,7 +26,8 @@ import {
   History,
   Receipt,
   CreditCard,
-  Payment,
+  LocalShipping,
+  Payments,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -40,7 +41,8 @@ const iconMap: { [key: string]: React.ReactElement } = {
   History: <History />,
   Receipt: <Receipt />,
   CreditCard: <CreditCard />,
-  Payment: <Payment />,
+  LocalShipping: <LocalShipping />,
+  Payments: <Payments />,
 };
 
 // Default customer menu items (fallback if backend doesn't provide)
@@ -179,10 +181,11 @@ const CustomerLayout = ({ children }: any) => {
                 cursor: 'pointer',
                 color: 'white',
                 fontFamily: 'Roboto, sans-serif',
+                fontSize: { xs: '1rem', sm: '1.25rem' },
               }}
               onClick={() => router.push('/customer')}
             >
-              Customer Portal
+              {isMobile ? 'Portal' : 'Customer Portal'}
             </Typography>
           </Box>
 
@@ -193,7 +196,8 @@ const CustomerLayout = ({ children }: any) => {
                 sx={{
                   textTransform: 'none',
                   fontWeight: 'bold',
-                  paddingX: 3,
+                  paddingX: { xs: 1.5, sm: 3 },
+                  minWidth: 'unset',
                   backgroundColor: '#38a169',
                   '&:hover': {
                     backgroundColor: '#2f855a',
@@ -304,7 +308,7 @@ const CustomerLayout = ({ children }: any) => {
           flexGrow: 1,
           background: 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 50%, #1a365d 100%)',
           minHeight: '100vh',
-          padding: 3,
+          padding: { xs: 1.5, sm: 2, md: 3 },
           transition: 'margin-left 0.3s',
         }}
       >

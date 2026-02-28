@@ -19,19 +19,30 @@ import {
 } from '@mui/material';
 import AuthContext from '../../../src/components/Auth';
 import {
-  TrendingUp,
-  TrendingDown,
   ShoppingCart,
   AttachMoney,
-  CalendarMonth,
   Inventory,
   ArrowBack,
   Receipt,
-  CreditCard,
 } from '@mui/icons-material';
 import axiosInstance from '../../../src/util/axios';
 import { format, subMonths } from 'date-fns';
 import { useRouter } from 'next/router';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  AreaChart,
+  Area,
+} from 'recharts';
 
 interface AnalyticsData {
   total_orders: number;
@@ -62,6 +73,9 @@ interface AnalyticsData {
   }>;
 }
 
+const INVOICE_COLORS = ['#10b981', '#ef4444', '#f59e0b', '#6b7280'];
+const PRODUCT_COLOR = '#38a169';
+
 const CustomerAnalytics = () => {
   const { user }: any = useContext(AuthContext);
   const theme = useTheme();
@@ -71,24 +85,19 @@ const CustomerAnalytics = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       maximumFractionDigits: 0,
     }).format(amount || 0);
-  };
 
-  // Fetch analytics data
   const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true);
 
-      // Fetch orders to calculate order-based analytics
       const { data: ordersData } = await axiosInstance.get(`/orders`, {
-        params: {
-          created_by: user?.data?._id,
-        },
+        params: { created_by: user?.data?._id },
       });
 
       const orders = ordersData.orders || ordersData || [];
@@ -96,50 +105,39 @@ const CustomerAnalytics = () => {
       const thisMonth = now.getMonth();
       const thisYear = now.getFullYear();
 
-      // Calculate order analytics
       const totalOrders = orders.length;
 
-      // Orders this month
       const ordersThisMonth = orders.filter((o: any) => {
-        const orderDate = new Date(o.created_at);
-        return (
-          orderDate.getMonth() === thisMonth &&
-          orderDate.getFullYear() === thisYear
-        );
+        const d = new Date(o.created_at);
+        return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
       }).length;
 
-      // Orders last month
       const lastMonth = subMonths(now, 1);
       const ordersLastMonth = orders.filter((o: any) => {
-        const orderDate = new Date(o.created_at);
+        const d = new Date(o.created_at);
         return (
-          orderDate.getMonth() === lastMonth.getMonth() &&
-          orderDate.getFullYear() === lastMonth.getFullYear()
+          d.getMonth() === lastMonth.getMonth() &&
+          d.getFullYear() === lastMonth.getFullYear()
         );
       }).length;
 
-      // Calculate monthly orders for last 6 months
       const monthlyOrders = [];
       for (let i = 5; i >= 0; i--) {
         const monthDate = subMonths(now, i);
         const monthOrders = orders.filter((o: any) => {
-          const orderDate = new Date(o.created_at);
+          const d = new Date(o.created_at);
           return (
-            orderDate.getMonth() === monthDate.getMonth() &&
-            orderDate.getFullYear() === monthDate.getFullYear()
+            d.getMonth() === monthDate.getMonth() &&
+            d.getFullYear() === monthDate.getFullYear()
           );
         });
         monthlyOrders.push({
-          month: format(monthDate, 'MMM yyyy'),
+          month: format(monthDate, 'MMM yy'),
           count: monthOrders.length,
-          total: monthOrders.reduce(
-            (sum: number, o: any) => sum + (o.total || 0),
-            0
-          ),
+          total: monthOrders.reduce((sum: number, o: any) => sum + (o.total || 0), 0),
         });
       }
 
-      // Most ordered products (aggregate from all orders)
       const productMap = new Map();
       orders.forEach((order: any) => {
         (order.products || []).forEach((product: any) => {
@@ -151,7 +149,7 @@ const CustomerAnalytics = () => {
               existing.total += (product.rate || 0) * (product.quantity || 1);
             } else {
               productMap.set(key, {
-                name: product.name || product.product_name || 'Unknown Product',
+                name: product.name || product.product_name || 'Unknown',
                 quantity: product.quantity || 1,
                 total: (product.rate || 0) * (product.quantity || 1),
               });
@@ -164,17 +162,15 @@ const CustomerAnalytics = () => {
         .sort((a, b) => b.quantity - a.quantity)
         .slice(0, 5);
 
-      // Fetch invoice and credit note stats if customer_id exists
       let invoiceStats = { total: 0, total_amount: 0, total_balance: 0, paid: 0, overdue: 0 };
       let creditNoteStats = { total: 0, total_amount: 0 };
 
       if (user?.data?.customer_id) {
         try {
-          const { data: summaryData } = await axiosInstance.get('/customer_portal/dashboard-summary', {
-            params: {
-              customer_id: user.data.customer_id,
-            },
-          });
+          const { data: summaryData } = await axiosInstance.get(
+            '/customer_portal/dashboard-summary',
+            { params: { customer_id: user.data.customer_id } }
+          );
           invoiceStats = summaryData.invoice_stats || invoiceStats;
           creditNoteStats = summaryData.credit_note_stats || creditNoteStats;
         } catch (err) {
@@ -206,12 +202,9 @@ const CustomerAnalytics = () => {
   }, [user]);
 
   useEffect(() => {
-    if (user) {
-      fetchAnalytics();
-    }
+    if (user) fetchAnalytics();
   }, [user, fetchAnalytics]);
 
-  // Stat Card Component
   const StatCard = ({
     icon,
     label,
@@ -233,10 +226,7 @@ const CustomerAnalytics = () => {
         border: `1px solid ${theme.palette.divider}`,
         height: '100%',
         transition: 'all 0.2s ease',
-        '&:hover': {
-          boxShadow: theme.shadows[4],
-          transform: 'translateY(-2px)',
-        },
+        '&:hover': { boxShadow: theme.shadows[4], transform: 'translateY(-2px)' },
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -251,7 +241,11 @@ const CustomerAnalytics = () => {
         >
           {icon}
         </Box>
-        <Typography variant='body2' color='text.secondary' sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+        <Typography
+          variant='body2'
+          color='text.secondary'
+          sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+        >
           {label}
         </Typography>
       </Box>
@@ -259,40 +253,78 @@ const CustomerAnalytics = () => {
         {value}
       </Typography>
       {subValue && (
-        <Typography variant='body2' color='text.secondary' sx={{ mt: 0.5, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
+        <Typography
+          variant='body2'
+          color='text.secondary'
+          sx={{ mt: 0.5, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+        >
           {subValue}
         </Typography>
       )}
     </Paper>
   );
 
+  // Custom tooltip for area/bar charts
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <Paper
+          elevation={3}
+          sx={{
+            p: 1.5,
+            borderRadius: 2,
+            border: `1px solid ${theme.palette.divider}`,
+            minWidth: 120,
+          }}
+        >
+          <Typography variant='caption' fontWeight={600} display='block' sx={{ mb: 0.5 }}>
+            {label}
+          </Typography>
+          {payload.map((entry: any, i: number) => (
+            <Typography key={i} variant='caption' display='block' sx={{ color: entry.color }}>
+              {entry.name}:{' '}
+              <strong>
+                {entry.name === 'Amount' ? formatCurrency(entry.value) : entry.value}
+              </strong>
+            </Typography>
+          ))}
+        </Paper>
+      );
+    }
+    return null;
+  };
+
   if (loading) {
     return (
       <Container maxWidth='lg' sx={{ py: 4 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '50vh',
-          }}
-        >
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
           <CircularProgress sx={{ color: '#38a169' }} />
         </Box>
       </Container>
     );
   }
 
-  const growthPercentage =
-    analytics?.orders_last_month && analytics.orders_last_month > 0
-      ? Math.round(
-          ((analytics.orders_this_month - analytics.orders_last_month) /
-            analytics.orders_last_month) *
-            100
-        )
-      : analytics?.orders_this_month && analytics.orders_this_month > 0
-      ? 100
-      : 0;
+  // Invoice pie data
+  const invoicePieData = [
+    { name: 'Paid', value: analytics?.invoice_stats?.paid || 0, color: '#10b981' },
+    { name: 'Overdue', value: analytics?.invoice_stats?.overdue || 0, color: '#ef4444' },
+    {
+      name: 'Pending',
+      value: Math.max(
+        0,
+        (analytics?.invoice_stats?.total || 0) -
+          (analytics?.invoice_stats?.paid || 0) -
+          (analytics?.invoice_stats?.overdue || 0)
+      ),
+      color: '#f59e0b',
+    },
+  ].filter((d) => d.value > 0);
+
+  // Top products data for horizontal bar
+  const productsData = (analytics?.most_ordered_products || []).map((p) => ({
+    name: p.name.length > 18 ? p.name.slice(0, 18) + '…' : p.name,
+    quantity: p.quantity,
+  }));
 
   return (
     <Container maxWidth='lg' sx={{ py: { xs: 2, md: 4 }, px: { xs: 1, sm: 2, md: 3 } }}>
@@ -306,7 +338,7 @@ const CustomerAnalytics = () => {
           border: `1px solid ${theme.palette.divider}`,
         }}
       >
-        {/* Header section */}
+        {/* Header */}
         <Box
           sx={{
             background: 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 100%)',
@@ -323,13 +355,13 @@ const CustomerAnalytics = () => {
               <ArrowBack />
             </IconButton>
             <Box>
-              <Typography
-                variant={isMobile ? 'h6' : 'h4'}
-                sx={{ fontWeight: 700, mb: 0.5 }}
-              >
+              <Typography variant={isMobile ? 'h6' : 'h4'} sx={{ fontWeight: 700, mb: 0.5 }}>
                 Analytics
               </Typography>
-              <Typography variant='body2' sx={{ opacity: 0.9, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+              <Typography
+                variant='body2'
+                sx={{ opacity: 0.9, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+              >
                 Track your ordering patterns and spending
               </Typography>
             </Box>
@@ -338,10 +370,7 @@ const CustomerAnalytics = () => {
 
         {/* Main content */}
         <Box
-          sx={{
-            p: { xs: 2, sm: 3, md: 4 },
-            backgroundColor: theme.palette.background.default,
-          }}
+          sx={{ p: { xs: 2, sm: 3, md: 4 }, backgroundColor: theme.palette.background.default }}
         >
           {error ? (
             <Alert
@@ -358,7 +387,11 @@ const CustomerAnalytics = () => {
           ) : (
             <>
               {/* Overview Stats */}
-              <Typography variant='h6' fontWeight={600} sx={{ mb: 3, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+              <Typography
+                variant='h6'
+                fontWeight={600}
+                sx={{ mb: 3, fontSize: { xs: '1rem', sm: '1.25rem' } }}
+              >
                 Overview
               </Typography>
 
@@ -382,278 +415,253 @@ const CustomerAnalytics = () => {
                 </Grid>
               </Grid>
 
-              {/* Financial Stats */}
-              {user?.data?.customer_id && (
-                <>
-                  <Typography variant='h6' fontWeight={600} sx={{ mb: 3, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                    Financial Overview
-                  </Typography>
-
-                  <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
-                    <Grid size={{ xs: 6, sm: 6, md: 6 }}>
-                      <StatCard
-                        icon={<Receipt />}
-                        label='Paid Invoices'
-                        value={analytics?.invoice_stats?.paid || 0}
-                        color='#10b981'
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 6, sm: 6, md: 6 }}>
-                      <StatCard
-                        icon={<Receipt />}
-                        label='Overdue Amount'
-                        value={analytics?.invoice_stats?.overdue || 0}
-                        subValue={formatCurrency(analytics?.invoice_stats?.total_balance || 0)}
-                        color='#ef4444'
-                      />
-                    </Grid>
-                  </Grid>
-                </>
-              )}
-
-              {/* Monthly Comparison */}
-              <Typography variant='h6' fontWeight={600} sx={{ mb: 3, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                Monthly Comparison
-              </Typography>
-
-              <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: { xs: 2, sm: 3 },
-                      borderRadius: 3,
-                      border: `1px solid ${theme.palette.divider}`,
-                      height: '100%',
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Box
-                        sx={{
-                          p: { xs: 1, sm: 1.5 },
-                          borderRadius: 2,
-                          backgroundColor: '#3b82f615',
-                          color: '#3b82f6',
-                          mr: 2,
-                        }}
-                      >
-                        <CalendarMonth />
-                      </Box>
-                      <Typography variant='body2' color='text.secondary' sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                        This Month
-                      </Typography>
-                    </Box>
-                    <Typography variant='h4' fontWeight={700} sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-                      {analytics?.orders_this_month || 0}
-                    </Typography>
-                    <Typography variant='body2' color='text.secondary'>
-                      orders placed
-                    </Typography>
-                  </Paper>
-                </Grid>
-
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: { xs: 2, sm: 3 },
-                      borderRadius: 3,
-                      border: `1px solid ${theme.palette.divider}`,
-                      height: '100%',
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Box
-                        sx={{
-                          p: { xs: 1, sm: 1.5 },
-                          borderRadius: 2,
-                          backgroundColor: '#6b728015',
-                          color: '#6b7280',
-                          mr: 2,
-                        }}
-                      >
-                        <CalendarMonth />
-                      </Box>
-                      <Typography variant='body2' color='text.secondary' sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                        Last Month
-                      </Typography>
-                    </Box>
-                    <Typography variant='h4' fontWeight={700} sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-                      {analytics?.orders_last_month || 0}
-                    </Typography>
-                    <Typography variant='body2' color='text.secondary'>
-                      orders placed
-                    </Typography>
-                  </Paper>
-                </Grid>
-
-                {/* <Grid size={{ xs: 12, sm: 4 }}>
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: { xs: 2, sm: 3 },
-                      borderRadius: 3,
-                      border: `1px solid ${theme.palette.divider}`,
-                      height: '100%',
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Box
-                        sx={{
-                          p: { xs: 1, sm: 1.5 },
-                          borderRadius: 2,
-                          backgroundColor:
-                            growthPercentage >= 0 ? '#10b98115' : '#ef444415',
-                          color: growthPercentage >= 0 ? '#10b981' : '#ef4444',
-                          mr: 2,
-                        }}
-                      >
-                        {growthPercentage >= 0 ? <TrendingUp /> : <TrendingDown />}
-                      </Box>
-                      <Typography variant='body2' color='text.secondary' sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                        Growth
-                      </Typography>
-                    </Box>
-                    <Typography
-                      variant='h4'
-                      fontWeight={700}
-                      color={growthPercentage >= 0 ? '#10b981' : '#ef4444'}
-                      sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}
-                    >
-                      {growthPercentage >= 0 ? '+' : ''}
-                      {growthPercentage}%
-                    </Typography>
-                    <Typography variant='body2' color='text.secondary'>
-                      vs last month
-                    </Typography>
-                  </Paper>
-                </Grid> */}
-              </Grid>
-
-              {/* Monthly Orders Chart (Simple Bar) */}
-              <Typography variant='h6' fontWeight={600} sx={{ mb: 3, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                Order History (Last 6 Months)
+              {/* Monthly Orders Area Chart */}
+              <Typography
+                variant='h6'
+                fontWeight={600}
+                sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}
+              >
+                Order History — Last 6 Months
               </Typography>
 
               <Paper
                 elevation={0}
                 sx={{
-                  p: { xs: 2, sm: 3 },
+                  p: { xs: 1.5, sm: 3 },
                   borderRadius: 3,
                   border: `1px solid ${theme.palette.divider}`,
                   mb: 4,
                 }}
               >
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'flex-end',
-                    gap: { xs: 1, sm: 2 },
-                    height: { xs: 150, sm: 200 },
-                    justifyContent: 'space-around',
-                  }}
-                >
-                  {analytics?.monthly_orders.map((month, index) => {
-                    const maxCount = Math.max(
-                      ...analytics.monthly_orders.map((m) => m.count),
-                      1
-                    );
-                    const height = (month.count / maxCount) * (isMobile ? 100 : 150);
-                    return (
-                      <Box
-                        key={index}
-                        sx={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          flex: 1,
-                        }}
-                      >
-                        <Typography variant='caption' fontWeight={600} sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
-                          {month.count}
-                        </Typography>
-                        <Box
-                          sx={{
-                            width: '100%',
-                            maxWidth: { xs: 30, sm: 50 },
-                            height: height || 4,
-                            backgroundColor: '#38a169',
-                            borderRadius: 1,
-                            transition: 'height 0.3s ease',
-                          }}
-                        />
-                        <Typography
-                          variant='caption'
-                          color='text.secondary'
-                          sx={{ mt: 1, textAlign: 'center', fontSize: { xs: '0.6rem', sm: '0.75rem' } }}
-                        >
-                          {month.month.split(' ')[0]}
-                        </Typography>
-                      </Box>
-                    );
-                  })}
-                </Box>
+                <ResponsiveContainer width='100%' height={isMobile ? 200 : 260}>
+                  <AreaChart
+                    data={analytics?.monthly_orders || []}
+                    margin={{ top: 10, right: 10, left: isMobile ? -20 : 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id='ordersGradient' x1='0' y1='0' x2='0' y2='1'>
+                        <stop offset='5%' stopColor='#38a169' stopOpacity={0.35} />
+                        <stop offset='95%' stopColor='#38a169' stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray='3 3' stroke={theme.palette.divider} />
+                    <XAxis
+                      dataKey='month'
+                      tick={{ fontSize: isMobile ? 10 : 12, fill: theme.palette.text.secondary }}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fontSize: isMobile ? 10 : 12, fill: theme.palette.text.secondary }}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area
+                      type='monotone'
+                      dataKey='count'
+                      name='Orders'
+                      stroke='#38a169'
+                      strokeWidth={2.5}
+                      fill='url(#ordersGradient)'
+                      dot={{ fill: '#38a169', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6 }}
+                      isAnimationActive
+                      animationDuration={1000}
+                      animationEasing='ease-out'
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </Paper>
 
-              {/* Most Ordered Products */}
-              <Typography variant='h6' fontWeight={600} sx={{ mb: 3, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                Most Ordered Products
-              </Typography>
+              {/* Invoice Status & Financial */}
+              {user?.data?.customer_id && invoicePieData.length > 0 && (
+                <>
+                  <Typography
+                    variant='h6'
+                    fontWeight={600}
+                    sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}
+                  >
+                    Invoice Status Breakdown
+                  </Typography>
 
-              {analytics?.most_ordered_products &&
-              analytics.most_ordered_products.length > 0 ? (
-                <Paper
-                  elevation={0}
-                  sx={{
-                    borderRadius: 3,
-                    border: `1px solid ${theme.palette.divider}`,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <Stack divider={<Divider />}>
-                    {analytics.most_ordered_products.map((product, index) => (
-                      <Box
-                        key={index}
+                  <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
+                    {/* Pie Chart */}
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Paper
+                        elevation={0}
                         sx={{
-                          p: { xs: 1.5, sm: 2 },
-                          display: 'flex',
-                          flexDirection: { xs: 'column', sm: 'row' },
-                          justifyContent: 'space-between',
-                          alignItems: { xs: 'flex-start', sm: 'center' },
-                          gap: { xs: 1, sm: 0 },
+                          p: { xs: 2, sm: 3 },
+                          borderRadius: 3,
+                          border: `1px solid ${theme.palette.divider}`,
+                          height: '100%',
                         }}
                       >
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Box
-                            sx={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: 1,
-                              backgroundColor: '#38a16915',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              mr: 2,
-                            }}
-                          >
-                            <Inventory sx={{ fontSize: 18, color: '#38a169' }} />
-                          </Box>
-                          <Typography fontWeight={500} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                            {product.name}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Chip
-                            label={`${product.quantity} units ordered`}
-                            size='small'
-                            variant='outlined'
-                          />
-                        </Box>
-                      </Box>
-                    ))}
-                  </Stack>
-                </Paper>
-              ) : (
+                        <Typography
+                          variant='subtitle2'
+                          fontWeight={600}
+                          sx={{ mb: 2, textAlign: 'center' }}
+                        >
+                          By Count
+                        </Typography>
+                        <ResponsiveContainer width='100%' height={200}>
+                          <PieChart>
+                            <Pie
+                              data={invoicePieData}
+                              cx='50%'
+                              cy='50%'
+                              innerRadius={50}
+                              outerRadius={80}
+                              dataKey='value'
+                              isAnimationActive
+                              animationDuration={900}
+                              animationEasing='ease-out'
+                            >
+                              {invoicePieData.map((entry, index) => (
+                                <Cell key={index} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              formatter={(val: any, name: any) => [val, name]}
+                            />
+                            <Legend
+                              iconType='circle'
+                              iconSize={10}
+                              formatter={(value) => (
+                                <span style={{ fontSize: isMobile ? 11 : 13 }}>{value}</span>
+                              )}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </Paper>
+                    </Grid>
+
+                    {/* Invoice Stats */}
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: { xs: 2, sm: 3 },
+                          borderRadius: 3,
+                          border: `1px solid ${theme.palette.divider}`,
+                          height: '100%',
+                        }}
+                      >
+                        <Typography variant='subtitle2' fontWeight={600} sx={{ mb: 2 }}>
+                          Invoice Summary
+                        </Typography>
+                        <Stack spacing={1.5}>
+                          {[
+                            {
+                              label: 'Total Amount',
+                              value: formatCurrency(analytics?.invoice_stats?.total_amount || 0),
+                              color: '#3b82f6',
+                            },
+                            {
+                              label: 'Paid',
+                              value: `${analytics?.invoice_stats?.paid || 0} invoices`,
+                              color: '#10b981',
+                            },
+                            {
+                              label: 'Overdue Balance',
+                              value: formatCurrency(analytics?.invoice_stats?.total_balance || 0),
+                              color: '#ef4444',
+                            },
+                          ].map((item) => (
+                            <Box
+                              key={item.label}
+                              sx={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                p: 1.5,
+                                borderRadius: 1.5,
+                                backgroundColor: alpha(item.color, 0.07),
+                              }}
+                            >
+                              <Typography
+                                variant='body2'
+                                color='text.secondary'
+                                sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                              >
+                                {item.label}
+                              </Typography>
+                              <Typography
+                                variant='body2'
+                                fontWeight={700}
+                                sx={{ color: item.color, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                              >
+                                {item.value}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Stack>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+                </>
+              )}
+
+              {/* Top Products Bar Chart */}
+              {productsData.length > 0 && (
+                <>
+                  <Typography
+                    variant='h6'
+                    fontWeight={600}
+                    sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}
+                  >
+                    Most Ordered Products
+                  </Typography>
+
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: { xs: 1.5, sm: 3 },
+                      borderRadius: 3,
+                      border: `1px solid ${theme.palette.divider}`,
+                      mb: 4,
+                    }}
+                  >
+                    <ResponsiveContainer width='100%' height={isMobile ? 200 : 240}>
+                      <BarChart
+                        data={productsData}
+                        layout='vertical'
+                        margin={{ top: 5, right: 20, left: isMobile ? 0 : 10, bottom: 5 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray='3 3'
+                          horizontal={false}
+                          stroke={theme.palette.divider}
+                        />
+                        <XAxis
+                          type='number'
+                          allowDecimals={false}
+                          tick={{ fontSize: isMobile ? 10 : 12, fill: theme.palette.text.secondary }}
+                        />
+                        <YAxis
+                          type='category'
+                          dataKey='name'
+                          width={isMobile ? 90 : 120}
+                          tick={{ fontSize: isMobile ? 10 : 12, fill: theme.palette.text.secondary }}
+                        />
+                        <Tooltip
+                          formatter={(val: any) => [val, 'Units']}
+                          cursor={{ fill: alpha(PRODUCT_COLOR, 0.08) }}
+                        />
+                        <Bar
+                          dataKey='quantity'
+                          name='Units'
+                          fill={PRODUCT_COLOR}
+                          radius={[0, 4, 4, 0]}
+                          isAnimationActive
+                          animationDuration={900}
+                          animationEasing='ease-out'
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                </>
+              )}
+
+              {/* Empty products state */}
+              {productsData.length === 0 && (
                 <Paper
                   elevation={0}
                   sx={{
@@ -663,12 +671,8 @@ const CustomerAnalytics = () => {
                     textAlign: 'center',
                   }}
                 >
-                  <Inventory
-                    sx={{ fontSize: { xs: 40, sm: 48 }, color: 'grey.300', mb: 2 }}
-                  />
-                  <Typography color='text.secondary'>
-                    No product data available yet
-                  </Typography>
+                  <Inventory sx={{ fontSize: { xs: 40, sm: 48 }, color: 'grey.300', mb: 2 }} />
+                  <Typography color='text.secondary'>No product data available yet</Typography>
                 </Paper>
               )}
             </>
