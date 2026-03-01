@@ -46,6 +46,7 @@ import {
   LocalShipping,
   AccessTime,
   ManageAccounts,
+  Article,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -77,6 +78,7 @@ const iconMap: { [key: string]: React.ReactElement } = {
   CalendarMonth: <CalendarMonth />,
   AssignmentInd: <AssignmentInd />,
   LocalShipping: <LocalShipping />,
+  Article: <Article />,
   AccessTime: <AccessTime />,
   ManageAccounts: <ManageAccounts />,
 };
