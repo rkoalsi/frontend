@@ -35,7 +35,13 @@ const quillFormats = [
   'link', 'image', 'color', 'background',
 ];
 
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+const ReactQuill = dynamic(
+  async () => {
+    const { default: RQ } = await import('react-quill');
+    return React.forwardRef<any, any>((props, ref) => <RQ ref={ref} {...props} />);
+  },
+  { ssr: false }
+);
 
 interface BlogPost {
   _id: string;
@@ -631,7 +637,7 @@ const BlogPosts = () => {
                   key={dialogOpen ? (selectedPost?._id || 'new') : 'closed'}
                   theme="snow"
                   value={formData.content}
-                  onChange={(value) => handleInputChange('content', value)}
+                  onChange={(value: string) => handleInputChange('content', value)}
                   modules={quillModules}
                   formats={quillFormats}
                   placeholder="Write your post content here…"
