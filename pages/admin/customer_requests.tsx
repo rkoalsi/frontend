@@ -69,6 +69,7 @@ interface CustomerRequest {
   _id: string;
   shop_name: string;
   customer_name: string;
+  zoho_customer_name: string;
   address: string;
   gst_no?: string;
   pan_card_no?: string;
@@ -457,6 +458,7 @@ const CustomerRequests = () => {
             <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
               <TableCell><strong>Shop Name</strong></TableCell>
               <TableCell><strong>Customer Name</strong></TableCell>
+              <TableCell><strong>Zoho Customer Name</strong></TableCell>
               <TableCell><strong>Sales Person</strong></TableCell>
               <TableCell><strong>Created By</strong></TableCell>
               <TableCell><strong>Tier/Category</strong></TableCell>
@@ -479,6 +481,7 @@ const CustomerRequests = () => {
                 return (<TableRow key={request._id} hover>
                   <TableCell>{request.shop_name}</TableCell>
                   <TableCell>{request.customer_name}</TableCell>
+                  <TableCell>{request.zoho_customer_name}</TableCell>
                   <TableCell>{request.sales_person}</TableCell>
                   <TableCell>{request.created_by_name || 'N/A'}</TableCell>
                   <TableCell>{request.tier_category}</TableCell>
