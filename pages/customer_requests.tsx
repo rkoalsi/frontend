@@ -72,6 +72,7 @@ interface CustomerRequest {
   _id: string;
   shop_name: string;
   customer_name: string;
+  zoho_customer_name: string;
   address: string;
   gst_no?: string;
   pan_card_no?: string;
@@ -496,6 +497,12 @@ const CustomerRequests = () => {
                         </Typography>
                         <Typography variant="body2">{request.customer_name}</Typography>
                       </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                          Zoho Company Name
+                        </Typography>
+                        <Typography variant="body2">{request.zoho_customer_name || 'N/A'}</Typography>
+                      </Box>
 
                       <Box>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
@@ -503,6 +510,7 @@ const CustomerRequests = () => {
                         </Typography>
                         <Typography variant="body2">{request.created_by_name || 'N/A'}</Typography>
                       </Box>
+
 
                       <Box>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
@@ -591,6 +599,7 @@ const CustomerRequests = () => {
               <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                 <TableCell><strong>Shop Name</strong></TableCell>
                 <TableCell><strong>Customer Name</strong></TableCell>
+                <TableCell><strong>Zoho Customer Name</strong></TableCell>
                 <TableCell><strong>Created By</strong></TableCell>
                 <TableCell><strong>Tier/Category</strong></TableCell>
                 <TableCell><strong>Status</strong></TableCell>
@@ -612,6 +621,7 @@ const CustomerRequests = () => {
                   <TableRow key={request._id} hover>
                     <TableCell>{request.shop_name}</TableCell>
                     <TableCell>{request.customer_name}</TableCell>
+                    <TableCell>{request.zoho_customer_name || ''}</TableCell>
                     <TableCell>{request.created_by_name || 'N/A'}</TableCell>
                     <TableCell>{request.tier_category}</TableCell>
                     <TableCell>{getStatusChip(request.status)}</TableCell>
