@@ -27,6 +27,10 @@ import {
   useMediaQuery,
   CircularProgress,
   Skeleton,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tab,
+  Tabs,
 } from '@mui/material';
 import {
   Close,
@@ -71,6 +75,8 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   const [brandBreakdown, setBrandBreakdown] = useState<any[]>([]);
   const [brandFyLabels, setBrandFyLabels] = useState<any>({});
   const [brandLoading, setBrandLoading] = useState(false);
+  const [brandView, setBrandView] = useState<'annual' | 'quarterly'>('annual');
+  const [selectedQuarter, setSelectedQuarter] = useState<'Q1' | 'Q2' | 'Q3' | 'Q4'>('Q1');
 
   useEffect(() => {
     if (open && customer) {
@@ -129,6 +135,21 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   const calculateGrowth = (current: number, previous: number) => {
     if (previous === 0) return current > 0 ? 100 : 0;
     return ((current - previous) / previous) * 100;
+  };
+
+  const renderGrowthBadge = (growth: number | null) => {
+    if (growth === null) return <Typography variant="caption" color="text.disabled">—</Typography>;
+    const isPositive = growth >= 0;
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.3 }}>
+        {isPositive
+          ? <TrendingUp sx={{ color: '#4caf50', fontSize: 13 }} />
+          : <TrendingDown sx={{ color: '#f44336', fontSize: 13 }} />}
+        <Typography variant="caption" sx={{ color: isPositive ? '#4caf50' : '#f44336', fontWeight: 700, fontSize: '0.7rem' }}>
+          {Math.abs(growth).toFixed(1)}%
+        </Typography>
+      </Box>
+    );
   };
 
   const currentYearGrowth = calculateGrowth(
@@ -751,12 +772,26 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
         <Fade in timeout={800}>
           <Card sx={{ mb: 3, boxShadow: 2 }}>
             <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <Category sx={{ color: '#1976d2', fontSize: 24 }} />
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-                  Brand-wise Breakdown
-                </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Category sx={{ color: '#1976d2', fontSize: 24 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                    Brand-wise Breakdown
+                  </Typography>
+                </Box>
+                {!brandLoading && brandBreakdown.length > 0 && (
+                  <ToggleButtonGroup
+                    size="small"
+                    value={brandView}
+                    exclusive
+                    onChange={(_, v) => v && setBrandView(v)}
+                  >
+                    <ToggleButton value="annual" sx={{ fontSize: '0.7rem', px: 1.5 }}>Annual</ToggleButton>
+                    <ToggleButton value="quarterly" sx={{ fontSize: '0.7rem', px: 1.5 }}>Quarterly</ToggleButton>
+                  </ToggleButtonGroup>
+                )}
               </Box>
+
               {brandLoading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                   <CircularProgress size={32} />
@@ -765,21 +800,18 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                 <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 3 }}>
                   No brand data available
                 </Typography>
-              ) : (
+              ) : brandView === 'annual' ? (
+                /* Annual YoY view */
                 <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
                   <Table size="small">
                     <TableHead>
                       <TableRow sx={{ backgroundColor: '#e3f2fd' }}>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Brand</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }} align="right">
-                          {brandFyLabels.previousFY || 'Previous FY'}
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }} align="right">
-                          {brandFyLabels.lastFY || 'Last FY'}
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }} align="right">
-                          {brandFyLabels.currentFY || 'Current FY'}
-                        </TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', minWidth: 100 }}>Brand</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.previousFY || 'Previous FY'}</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.lastFY || 'Last FY'}</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', color: '#888', fontSize: '0.7rem' }} align="right">YoY</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.currentFY || 'Current FY'}</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', color: '#888', fontSize: '0.7rem' }} align="right">YoY</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -788,14 +820,76 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                           <TableCell sx={{ fontWeight: 500 }}>{row.brand}</TableCell>
                           <TableCell align="right">{formatCurrency(row.previousFY || 0)}</TableCell>
                           <TableCell align="right">{formatCurrency(row.lastFY || 0)}</TableCell>
+                          <TableCell align="right">{renderGrowthBadge(row.yoyGrowth?.prevToLast ?? null)}</TableCell>
                           <TableCell align="right" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
                             {formatCurrency(row.currentFY || 0)}
                           </TableCell>
+                          <TableCell align="right">{renderGrowthBadge(row.yoyGrowth?.lastToCurrent ?? null)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </TableContainer>
+              ) : (
+                /* Quarterly view */
+                <Box>
+                  <Tabs
+                    value={selectedQuarter}
+                    onChange={(_, v) => setSelectedQuarter(v)}
+                    sx={{ mb: 1.5, minHeight: 36, '& .MuiTabs-indicator': { height: 3 } }}
+                  >
+                    {[
+                      { value: 'Q1', label: 'Q1 Apr–Jun' },
+                      { value: 'Q2', label: 'Q2 Jul–Sep' },
+                      { value: 'Q3', label: 'Q3 Oct–Dec' },
+                      { value: 'Q4', label: 'Q4 Jan–Mar' },
+                    ].map(({ value, label }) => (
+                      <Tab
+                        key={value}
+                        value={value}
+                        label={label}
+                        sx={{ fontSize: '0.7rem', minHeight: 36, py: 0.5, px: 1 }}
+                      />
+                    ))}
+                  </Tabs>
+                  <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow sx={{ backgroundColor: '#e3f2fd' }}>
+                          <TableCell sx={{ fontWeight: 'bold', minWidth: 100 }}>Brand</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.previousFY || 'Previous FY'}</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.lastFY || 'Last FY'}</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: '#888', fontSize: '0.7rem' }} align="right">YoY</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.currentFY || 'Current FY'}</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: '#888', fontSize: '0.7rem' }} align="right">YoY</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {brandBreakdown.map((row: any, index: number) => {
+                          const q = selectedQuarter;
+                          const prevVal = row[`previousFY_${q}`] || 0;
+                          const lastVal = row[`lastFY_${q}`] || 0;
+                          const currVal = row[`currentFY_${q}`] || 0;
+                          const growthPrevToLast = row.quarterlyGrowth?.[q]?.prevToLast ?? null;
+                          const growthLastToCurr = row.quarterlyGrowth?.[q]?.lastToCurrent ?? null;
+                          if (prevVal === 0 && lastVal === 0 && currVal === 0) return null;
+                          return (
+                            <TableRow key={index} hover>
+                              <TableCell sx={{ fontWeight: 500 }}>{row.brand}</TableCell>
+                              <TableCell align="right">{formatCurrency(prevVal)}</TableCell>
+                              <TableCell align="right">{formatCurrency(lastVal)}</TableCell>
+                              <TableCell align="right">{renderGrowthBadge(growthPrevToLast)}</TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                                {formatCurrency(currVal)}
+                              </TableCell>
+                              <TableCell align="right">{renderGrowthBadge(growthLastToCurr)}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
               )}
             </CardContent>
           </Card>
