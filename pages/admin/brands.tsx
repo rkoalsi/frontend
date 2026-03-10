@@ -22,17 +22,9 @@ const Brands = () => {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openImagePopup, setOpenImagePopup] = useState(false);
 
-  // States for the currently selected product and its editable fields
+  // States for the currently selected brand and its editable fields
   const [selectedBrand, setSelectedBrand]: any = useState(null);
-  const [editableFields, setEditableFields] = useState({
-    category: '',
-    sub_category: '',
-    series: '',
-    upc_code: '',
-    brand: '',
-    catalogue_order: '',
-    catalogue_page: '',
-  });
+  const [description, setDescription] = useState('');
   const [updating, setUpdating] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
 
@@ -124,11 +116,13 @@ const Brands = () => {
 
   const handleOpenEditModal = (brand: any) => {
     setSelectedBrand(brand);
+    setDescription(brand.description || '');
     setOpenEditModal(true);
   };
 
   const handleCloseEditModal = () => {
     setSelectedBrand(null);
+    setDescription('');
     setOpenEditModal(false);
   };
 
@@ -148,18 +142,48 @@ const Brands = () => {
       console.error(error);
       toast.error('Failed to upload image.');
     } finally {
-      setSelectedBrand(brands.map((b: any) => b._id === selectedBrand._id));
       setUpdating(false);
     }
   };
 
-  const handleEditableFieldChange = (e: any) => {
-    const { name, value } = e.target;
-    setEditableFields((prev) => ({ ...prev, [name]: value }));
+  const handleSecondaryImageUpload = async (file: any) => {
+    if (!selectedBrand) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('brand_name', selectedBrand?.name);
+    try {
+      setUpdating(true);
+      await axiosInstance.put(`/admin/brands/secondary_image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      await getData();
+      toast.success('Secondary image updated successfully.');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to upload secondary image.');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const handleSaveEdit = async () => {
-    handleCloseEditModal();
+    if (!selectedBrand) return;
+    try {
+      setUpdating(true);
+      await axiosInstance.put(`/admin/brands/${selectedBrand._id}`, { description });
+      setBrands((prev: any) =>
+        prev.map((b: any) =>
+          b._id === selectedBrand._id ? { ...b, description } : b
+        )
+      );
+      toast.success('Brand updated successfully.');
+      handleCloseEditModal();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update brand.');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const handleImageClick = useCallback((src: any) => {
@@ -243,12 +267,12 @@ const Brands = () => {
         onClose={handleCloseEditModal}
         selectedBrand={selectedBrand}
         updating={updating}
-        editableFields={editableFields}
-        handleEditableFieldChange={handleEditableFieldChange}
         handleSaveEdit={handleSaveEdit}
-        handleToggleActive={handleToggleActive}
         handleImageClick={handleImageClick}
         handleImageUpload={handleImageUpload}
+        handleSecondaryImageUpload={handleSecondaryImageUpload}
+        description={description}
+        onDescriptionChange={setDescription}
       />
 
       <SingleImagePopupDialog

@@ -3,16 +3,13 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  FormControlLabel,
   Typography,
   Button,
   TextField,
   DialogActions,
-  Switch,
   Paper,
   Divider,
   CircularProgress,
-  Chip,
 } from '@mui/material';
 import ImageDropzone from '../../common/ImageDropzone';
 import EditIcon from '@mui/icons-material/Edit';
@@ -27,6 +24,9 @@ const ProductDialog = ({
   handleSaveEdit,
   handleImageClick,
   handleImageUpload,
+  handleSecondaryImageUpload,
+  description,
+  onDescriptionChange,
 }: any) => {
   return (
     <Dialog
@@ -61,71 +61,147 @@ const ProductDialog = ({
       </DialogTitle>
       <DialogContent sx={{ py: 3 }}>
         {selectedBrand && (
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 3,
-              mt: 2,
-            }}
-          >
-            <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 30%' } }}>
-              <Paper
-                elevation={0}
-                sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}
-              >
-                <Typography
-                  variant='subtitle2'
-                  color='primary'
-                  gutterBottom
-                  fontWeight={600}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}>
+            {/* Description */}
+            <TextField
+              label='Description'
+              multiline
+              minRows={3}
+              fullWidth
+              value={description}
+              onChange={(e) => onDescriptionChange(e.target.value)}
+              disabled={updating}
+            />
+
+            {/* Images row */}
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', md: 'row' },
+                gap: 3,
+              }}
+            >
+              {/* Primary Image */}
+              <Box sx={{ flex: 1 }}>
+                <Paper
+                  elevation={0}
+                  sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}
                 >
-                  Brand Image
-                </Typography>
-                <Divider sx={{ mb: 2 }} />
-                <Box
-                  sx={{
-                    mb: 3,
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Paper
-                    elevation={3}
+                  <Typography
+                    variant='subtitle2'
+                    color='primary'
+                    gutterBottom
+                    fontWeight={600}
+                  >
+                    Brand Image
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                  <Box
                     sx={{
-                      p: 1,
-                      borderRadius: 2,
-                      overflow: 'hidden',
-                      backgroundColor: '#f5f5f5',
+                      mb: 3,
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
                     }}
                   >
-                    <img
-                      onClick={() =>
-                        handleImageClick(
-                          selectedBrand.image_url || '/placeholder.png'
-                        )
-                      }
-                      src={selectedBrand.image_url || '/placeholder.png'}
-                      alt={selectedBrand.name}
-                      style={{
-                        width: '100%',
-                        maxWidth: '180px',
-                        height: 'auto',
-                        borderRadius: '4px',
-                        objectFit: 'cover',
-                        cursor: 'pointer',
-                        transition: 'transform 0.3s ease',
+                    <Paper
+                      elevation={3}
+                      sx={{
+                        p: 1,
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        backgroundColor: '#f5f5f5',
                       }}
-                    />
-                  </Paper>
-                </Box>
-                <ImageDropzone
-                  onImageUpload={handleImageUpload}
-                  updating={updating}
-                />
-              </Paper>
+                    >
+                      <img
+                        onClick={() =>
+                          handleImageClick(
+                            selectedBrand.image_url || '/placeholder.png'
+                          )
+                        }
+                        src={selectedBrand.image_url || '/placeholder.png'}
+                        alt={selectedBrand.name}
+                        style={{
+                          width: '100%',
+                          maxWidth: '180px',
+                          height: 'auto',
+                          borderRadius: '4px',
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          transition: 'transform 0.3s ease',
+                        }}
+                      />
+                    </Paper>
+                  </Box>
+                  <ImageDropzone
+                    onImageUpload={handleImageUpload}
+                    updating={updating}
+                  />
+                </Paper>
+              </Box>
+
+              {/* Secondary Image */}
+              <Box sx={{ flex: 1 }}>
+                <Paper
+                  elevation={0}
+                  sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}
+                >
+                  <Typography
+                    variant='subtitle2'
+                    color='primary'
+                    gutterBottom
+                    fontWeight={600}
+                  >
+                    Secondary Image
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                  <Box
+                    sx={{
+                      mb: 3,
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Paper
+                      elevation={3}
+                      sx={{
+                        p: 1,
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        backgroundColor: '#f5f5f5',
+                      }}
+                    >
+                      <img
+                        onClick={() =>
+                          handleImageClick(
+                            selectedBrand.secondary_image_url ||
+                              '/placeholder.png'
+                          )
+                        }
+                        src={
+                          selectedBrand.secondary_image_url ||
+                          '/placeholder.png'
+                        }
+                        alt={`${selectedBrand.name} secondary`}
+                        style={{
+                          width: '100%',
+                          maxWidth: '180px',
+                          height: 'auto',
+                          borderRadius: '4px',
+                          objectFit: 'cover',
+                          cursor: 'pointer',
+                          transition: 'transform 0.3s ease',
+                        }}
+                      />
+                    </Paper>
+                  </Box>
+                  <ImageDropzone
+                    onImageUpload={handleSecondaryImageUpload}
+                    updating={updating}
+                  />
+                </Paper>
+              </Box>
             </Box>
           </Box>
         )}
