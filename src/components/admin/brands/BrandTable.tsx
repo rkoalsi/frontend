@@ -13,8 +13,11 @@ import {
   TextField,
   Switch,
   Button,
+  Tooltip,
 } from '@mui/material';
 import { toast } from 'react-toastify';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
 
 const BrandTable = ({
   brands,
@@ -53,6 +56,8 @@ const BrandTable = ({
                   <TableCell>S. No.</TableCell>
                   <TableCell>Name</TableCell>
                   <TableCell>Image</TableCell>
+                  <TableCell>Description</TableCell>
+                  <TableCell>Secondary Image</TableCell>
                   <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -85,6 +90,35 @@ const BrandTable = ({
                             cursor: 'pointer',
                           }}
                         />
+                      </TableCell>
+                      <TableCell>
+                        {brand.description ? (
+                          <Tooltip title={brand.description} placement='top'>
+                            <CheckCircleIcon color='success' fontSize='small' />
+                          </Tooltip>
+                        ) : (
+                          <CancelIcon color='disabled' fontSize='small' />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {brand.secondary_image_url ? (
+                          <Tooltip title='View secondary image' placement='top'>
+                            <img
+                              onClick={() => handleImageClick(brand.secondary_image_url)}
+                              src={brand.secondary_image_url}
+                              alt={`${brand.name} secondary`}
+                              style={{
+                                width: '50px',
+                                height: '50px',
+                                borderRadius: '4px',
+                                objectFit: 'cover',
+                                cursor: 'pointer',
+                              }}
+                            />
+                          </Tooltip>
+                        ) : (
+                          <CancelIcon color='disabled' fontSize='small' />
+                        )}
                       </TableCell>
                       <TableCell>
                         <Button
