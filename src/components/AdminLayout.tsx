@@ -24,6 +24,7 @@ import {
   ShoppingCart as ProductsIcon,
   Receipt as OrdersIcon,
   PeopleAlt as SalesPeopleIcon,
+  GroupAddOutlined,
   Payment,
   LibraryBooks,
   VideoLibrary,
@@ -80,6 +81,7 @@ const iconMap: { [key: string]: React.ReactElement } = {
   LocalShipping: <LocalShipping />,
   Article: <Article />,
   AccessTime: <AccessTime />,
+  GroupAddOutlined: <GroupAddOutlined />,
   ManageAccounts: <ManageAccounts />,
 };
 
@@ -306,6 +308,7 @@ const AdminLayout = ({ children }: any) => {
         <Toolbar />
         {children}
       </Box>
+
     </Box>
   );
 };
