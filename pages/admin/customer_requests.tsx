@@ -26,13 +26,25 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Autocomplete,
 } from '@mui/material';
 import { Visibility, Check, Close, Edit as EditIcon } from '@mui/icons-material';
 import CommentIcon from '@mui/icons-material/Comment';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
+import axios from 'axios';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
+
+const INDIAN_STATES = [
+  'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam',
+  'Bihar', 'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir',
+  'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh',
+  'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha',
+  'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana',
+  'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+];
 
 
 interface Comment {
@@ -139,10 +151,27 @@ const CustomerRequests = () => {
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [duplicateCustomerInfo, setDuplicateCustomerInfo] = useState<{ contact_name: string; contact_id: string } | null>(null);
   const [pendingApprovalRequestId, setPendingApprovalRequestId] = useState<string | null>(null);
+  const [cities, setCities] = useState<string[]>([]);
+  const [citiesLoading, setCitiesLoading] = useState(false);
 
   useEffect(() => {
     fetchRequests();
   }, [page, rowsPerPage]);
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      setCitiesLoading(true);
+      try {
+        const response = await axios.get(`${process.env.api_url}/util/indian-cities`);
+        if (response.data?.cities?.length > 0) setCities(response.data.cities);
+      } catch (error) {
+        console.error('Error fetching cities:', error);
+      } finally {
+        setCitiesLoading(false);
+      }
+    };
+    fetchCities();
+  }, []);
 
   const fetchRequests = async () => {
     try {
@@ -591,24 +620,65 @@ const CustomerRequests = () => {
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <TextField
-                    fullWidth
-                    label="City"
-                    value={isEditMode ? getAddressField(editFormData.billing_address, 'city') : (getAddressField(selectedRequest.billing_address, 'city') || 'N/A')}
-                    onChange={(e) => handleAddressChange('billing_address', 'city', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <Autocomplete
+                      fullWidth
+                      freeSolo
+                      options={cities}
+                      value={getAddressField(editFormData.billing_address, 'city') || null}
+                      onChange={(_, newValue) => handleAddressChange('billing_address', 'city', newValue || '')}
+                      onInputChange={(_, newValue) => handleAddressChange('billing_address', 'city', newValue || '')}
+                      loading={citiesLoading}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="City"
+                          placeholder="Search, select, or type city"
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {citiesLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
+                      )}
+                    />
+                  ) : (
+                    <TextField
+                      fullWidth
+                      label="City"
+                      value={getAddressField(selectedRequest.billing_address, 'city') || 'N/A'}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <TextField
-                    fullWidth
-                    label="State"
-                    value={isEditMode ? getAddressField(editFormData.billing_address, 'state') : (getAddressField(selectedRequest.billing_address, 'state') || 'N/A')}
-                    onChange={(e) => handleAddressChange('billing_address', 'state', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <FormControl fullWidth>
+                      <InputLabel>State</InputLabel>
+                      <Select
+                        label="State"
+                        value={getAddressField(editFormData.billing_address, 'state') || ''}
+                        onChange={(e) => handleAddressChange('billing_address', 'state', e.target.value)}
+                      >
+                        {INDIAN_STATES.map((state) => (
+                          <MenuItem key={state} value={state}>{state}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      label="State"
+                      value={getAddressField(selectedRequest.billing_address, 'state') || 'N/A'}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
                   <TextField
@@ -669,24 +739,65 @@ const CustomerRequests = () => {
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <TextField
-                    fullWidth
-                    label="City"
-                    value={isEditMode ? getAddressField(editFormData.shipping_address, 'city') : (getAddressField(selectedRequest.shipping_address, 'city') || 'N/A')}
-                    onChange={(e) => handleAddressChange('shipping_address', 'city', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <Autocomplete
+                      fullWidth
+                      freeSolo
+                      options={cities}
+                      value={getAddressField(editFormData.shipping_address, 'city') || null}
+                      onChange={(_, newValue) => handleAddressChange('shipping_address', 'city', newValue || '')}
+                      onInputChange={(_, newValue) => handleAddressChange('shipping_address', 'city', newValue || '')}
+                      loading={citiesLoading}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="City"
+                          placeholder="Search, select, or type city"
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {citiesLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
+                      )}
+                    />
+                  ) : (
+                    <TextField
+                      fullWidth
+                      label="City"
+                      value={getAddressField(selectedRequest.shipping_address, 'city') || 'N/A'}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <TextField
-                    fullWidth
-                    label="State"
-                    value={isEditMode ? getAddressField(editFormData.shipping_address, 'state') : (getAddressField(selectedRequest.shipping_address, 'state') || 'N/A')}
-                    onChange={(e) => handleAddressChange('shipping_address', 'state', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <FormControl fullWidth>
+                      <InputLabel>State</InputLabel>
+                      <Select
+                        label="State"
+                        value={getAddressField(editFormData.shipping_address, 'state') || ''}
+                        onChange={(e) => handleAddressChange('shipping_address', 'state', e.target.value)}
+                      >
+                        {INDIAN_STATES.map((state) => (
+                          <MenuItem key={state} value={state}>{state}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      label="State"
+                      value={getAddressField(selectedRequest.shipping_address, 'state') || 'N/A'}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
                   <TextField
@@ -753,15 +864,29 @@ const CustomerRequests = () => {
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="GST Treatment"
-                    value={isEditMode ? editFormData.gst_treatment || '' : (selectedRequest.gst_treatment || '')}
-                    onChange={(e) => handleEditFormChange('gst_treatment', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <FormControl fullWidth required>
+                      <InputLabel>GST Treatment</InputLabel>
+                      <Select
+                        label="GST Treatment"
+                        value={editFormData.gst_treatment || ''}
+                        onChange={(e) => handleEditFormChange('gst_treatment', e.target.value)}
+                      >
+                        <MenuItem value="Business GST">Business GST</MenuItem>
+                        <MenuItem value="Unregistered Business">Unregistered Business</MenuItem>
+                        <MenuItem value="Consumer">Consumer</MenuItem>
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      required
+                      label="GST Treatment"
+                      value={selectedRequest.gst_treatment || 'N/A'}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
@@ -797,25 +922,56 @@ const CustomerRequests = () => {
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Payment Terms"
-                    value={isEditMode ? editFormData.payment_terms || '' : selectedRequest.payment_terms}
-                    onChange={(e) => handleEditFormChange('payment_terms', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <FormControl fullWidth required>
+                      <InputLabel>Payment Terms</InputLabel>
+                      <Select
+                        label="Payment Terms"
+                        value={editFormData.payment_terms || ''}
+                        onChange={(e) => handleEditFormChange('payment_terms', e.target.value)}
+                      >
+                        <MenuItem value="Due On Receipt">Due On Receipt</MenuItem>
+                        <MenuItem value="Upfront">Upfront</MenuItem>
+                        <MenuItem value="Immediate">Immediate</MenuItem>
+                        <MenuItem value="Net 15">Net 15</MenuItem>
+                        <MenuItem value="Net 30">Net 30</MenuItem>
+                        <MenuItem value="Net 45">Net 45</MenuItem>
+                        <MenuItem value="Net 60">Net 60</MenuItem>
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      required
+                      label="Payment Terms"
+                      value={selectedRequest.payment_terms}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Multiple Branches"
-                    value={isEditMode ? editFormData.multiple_branches || '' : (selectedRequest.multiple_branches || 'N/A')}
-                    onChange={(e) => handleEditFormChange('multiple_branches', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <FormControl fullWidth>
+                      <InputLabel>Multiple Branches</InputLabel>
+                      <Select
+                        label="Multiple Branches"
+                        value={editFormData.multiple_branches || ''}
+                        onChange={(e) => handleEditFormChange('multiple_branches', e.target.value)}
+                      >
+                        <MenuItem value="Yes">Yes</MenuItem>
+                        <MenuItem value="No">No</MenuItem>
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      label="Multiple Branches"
+                      value={selectedRequest.multiple_branches || 'N/A'}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   {isEditMode ? (

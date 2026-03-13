@@ -400,9 +400,11 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                 <Grid size={{ xs: 12, md: 4 }}>
                   <Autocomplete
                     fullWidth
+                    freeSolo
                     options={cities}
                     value={formData.billing_address.city || null}
                     onChange={(_, newValue) => handleAddressChange('billing_address', 'city', newValue || '')}
+                    onInputChange={(_, newValue) => handleAddressChange('billing_address', 'city', newValue || '')}
                     disabled={citiesLoading}
                     loading={citiesLoading}
                     renderInput={(params) => (
@@ -410,7 +412,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                         {...params}
                         required
                         label="City"
-                        placeholder="Search or select city"
+                        placeholder="Search, select, or type city"
                         InputProps={{
                           ...params.InputProps,
                           endAdornment: (
@@ -511,9 +513,11 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                 <Grid size={{ xs: 12, md: 4 }}>
                   <Autocomplete
                     fullWidth
+                    freeSolo
                     options={cities}
                     value={formData.shipping_address.city || null}
                     onChange={(_, newValue) => handleAddressChange('shipping_address', 'city', newValue || '')}
+                    onInputChange={(_, newValue) => handleAddressChange('shipping_address', 'city', newValue || '')}
                     disabled={citiesLoading}
                     loading={citiesLoading}
                     renderInput={(params) => (
@@ -521,7 +525,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                         {...params}
                         required
                         label="City"
-                        placeholder="Search or select city"
+                        placeholder="Search, select, or type city"
                         InputProps={{
                           ...params.InputProps,
                           endAdornment: (

@@ -940,15 +940,34 @@ const CustomerRequests = () => {
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Payment Terms"
-                    value={isEditMode ? editFormData.payment_terms || '' : selectedRequest.payment_terms}
-                    onChange={(e) => handleEditFormChange('payment_terms', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <TextField
+                      fullWidth
+                      required
+                      label="Payment Terms"
+                      value={editFormData.payment_terms || ''}
+                      onChange={(e) => handleEditFormChange('payment_terms', e.target.value)}
+                      variant="outlined"
+                      select
+                    >
+                      <MenuItem value="Due On Receipt">Due On Receipt</MenuItem>
+                      <MenuItem value="Upfront">Upfront</MenuItem>
+                      <MenuItem value="Immediate">Immediate</MenuItem>
+                      <MenuItem value="Net 15">Net 15</MenuItem>
+                      <MenuItem value="Net 30">Net 30</MenuItem>
+                      <MenuItem value="Net 45">Net 45</MenuItem>
+                      <MenuItem value="Net 60">Net 60</MenuItem>
+                    </TextField>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      required
+                      label="Payment Terms"
+                      value={selectedRequest.payment_terms}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
@@ -961,15 +980,32 @@ const CustomerRequests = () => {
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Tier/Category"
-                    value={isEditMode ? editFormData.tier_category || '' : selectedRequest.tier_category}
-                    onChange={(e) => handleEditFormChange('tier_category', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <TextField
+                      fullWidth
+                      required
+                      label="Tier/Category"
+                      value={editFormData.tier_category || ''}
+                      onChange={(e) => handleEditFormChange('tier_category', e.target.value)}
+                      variant="outlined"
+                      select
+                    >
+                      <MenuItem value="A+">A+</MenuItem>
+                      <MenuItem value="A">A</MenuItem>
+                      <MenuItem value="B">B</MenuItem>
+                      <MenuItem value="C">C</MenuItem>
+                      <MenuItem value="D">D</MenuItem>
+                    </TextField>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      required
+                      label="Tier/Category"
+                      value={selectedRequest.tier_category}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
