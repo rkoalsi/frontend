@@ -5,7 +5,6 @@ import {
   CardContent,
   Typography,
   Box,
-  Grid,
   Button,
   Badge,
   Chip,
@@ -90,34 +89,33 @@ const ProductCard: React.FC<ProductCardProps> = memo(
     const isTablet = useMediaQuery(theme.breakpoints.down("md"));
 
     return (
-      <Grid sx={{ height: '100%' }}>
-        <Card
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            height: '100%',
-            minHeight: '100%',
-            borderRadius: 3,
-            boxShadow: selectedProduct ? 4 : 2,
-            overflow: "visible",
-            backgroundColor: "background.paper",
-            border: selectedProduct ? '2px solid' : '1px solid',
-            borderColor: selectedProduct ? 'primary.main' : 'divider',
-            transition: isMobile || isTablet ? 'none' : 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
-            contain: 'layout style paint',
-            '&:hover': {
-              boxShadow: 6,
-              transform: isMobile || isTablet ? 'none' : 'translate3d(0, -4px, 0)',
-              borderColor: 'primary.light',
-            },
-          }}
-        >
+      <Card
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          height: '100%',
+          minHeight: '100%',
+          borderRadius: 3,
+          boxShadow: selectedProduct ? 4 : 2,
+          overflow: "visible",
+          backgroundColor: "background.paper",
+          border: selectedProduct ? '2px solid' : '1px solid',
+          borderColor: selectedProduct ? 'primary.main' : 'divider',
+          transition: isMobile || isTablet ? 'none' : 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
+          contain: 'layout style paint',
+          '&:hover': {
+            boxShadow: 6,
+            transform: isMobile || isTablet ? 'none' : 'translate3d(0, -4px, 0)',
+            borderColor: 'primary.light',
+          },
+        }}
+      >
           {/* Image Section */}
           <Box
             sx={{
               position: "relative",
               backgroundColor: 'grey.50',
-              height: 280,
+              height: { xs: 220, sm: 260, md: 280, xl: 240 },
               width: '100%',
             }}
           >
@@ -582,7 +580,6 @@ const ProductCard: React.FC<ProductCardProps> = memo(
             </Tooltip>
           </CardContent>
         </Card>
-      </Grid>
     );
   }
 );
