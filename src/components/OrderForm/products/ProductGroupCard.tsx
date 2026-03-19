@@ -1,5 +1,5 @@
 // ProductGroupCard.tsx - Component to display a group of product variants
-import React, { memo, useState } from "react";
+import React, { memo, useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -14,6 +14,8 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
   AddShoppingCart,
@@ -90,13 +92,19 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
       primaryProduct._id
     );
 
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+    const isTablet = useMediaQuery(theme.breakpoints.down("md"));
+
     const isDisabled =
       orderStatus?.toLowerCase().includes("accepted") ||
       orderStatus?.toLowerCase().includes("declined");
 
     // Get the currently displayed variant
-    const currentVariant =
-      products.find((p) => p._id === selectedVariantId) || primaryProduct;
+    const currentVariant = useMemo(
+      () => products.find((p) => p._id === selectedVariantId) || primaryProduct,
+      [products, selectedVariantId, primaryProduct]
+    );
 
     const productId = currentVariant._id;
     const selectedProduct: any = selectedProducts.find(
@@ -107,6 +115,97 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
     const sellingPrice = getSellingPrice(currentVariant);
     const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
     const isQuantityExceedingStock = quantity > currentVariant.stock;
+
+    // Memoize expensive variant size extraction so it only reruns when products change
+    const sortedVariants = useMemo(() => {
+      const variantMap = new Map<string, typeof products[0]>();
+      let parentProd: typeof products[0] | null = null;
+      let parentSizeLabel = '';
+
+      products.forEach((product) => {
+        let sizeLabel = '';
+
+        const sizeMeasurementMatch = product.name.match(/[（(]\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|S|M|L)\s*\/\s*\d+\s*[Cc]?[Mm]\s*[)）]/i);
+        if (sizeMeasurementMatch) {
+          sizeLabel = sizeMeasurementMatch[1].toUpperCase();
+        } else if (product.name.match(/#(\d+)/)) {
+          const numberSizeMatch = product.name.match(/#(\d+)/);
+          sizeLabel = `#${numberSizeMatch![1]}`;
+        } else {
+          const measurementMatch = product.name.match(/(\d+\.?\d*mm)/i);
+          if (measurementMatch) {
+            sizeLabel = measurementMatch[1];
+          } else {
+            const fullWordPatterns = [
+              /-\s*(XXX-Large|XX-Large|X-Large|X-Small|Extra Large|Extra Small|Large|Medium|Small)$/i,
+              /\s+(XXX-Large|XX-Large|X-Large|X-Small|Extra Large|Extra Small|Large|Medium|Small)$/i,
+              /-(XXX-Large|XX-Large|X-Large|X-Small|Extra Large|Extra Small|Large|Medium|Small)$/i,
+            ];
+            for (const pattern of fullWordPatterns) {
+              const match = product.name.match(pattern);
+              if (match) {
+                const size = match[1];
+                if (size.toLowerCase() === 'x-large') sizeLabel = 'XL';
+                else if (size.toLowerCase() === 'xx-large') sizeLabel = 'XXL';
+                else if (size.toLowerCase() === 'xxx-large') sizeLabel = 'XXXL';
+                else if (size.toLowerCase() === 'x-small') sizeLabel = 'XS';
+                else if (size.toLowerCase() === 'extra large') sizeLabel = 'XL';
+                else if (size.toLowerCase() === 'extra small') sizeLabel = 'XS';
+                else if (size.toLowerCase() === 'large') sizeLabel = 'L';
+                else if (size.toLowerCase() === 'medium') sizeLabel = 'M';
+                else if (size.toLowerCase() === 'small') sizeLabel = 'S';
+                break;
+              }
+            }
+            if (!sizeLabel) {
+              const patterns = [
+                /-\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)$/i,
+                /\s+(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)$/i,
+                /\s+(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)-[A-Za-z]/i,
+                /\s+(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s+-/i,
+                /-\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s+-/i,
+                /-\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s+/i,
+                /-(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)-/i,
+                /-(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s/i,
+                /\(([SMLX]{1,4})\)$/i,
+              ];
+              for (const pattern of patterns) {
+                const match = product.name.match(pattern);
+                if (match) { sizeLabel = match[1].toUpperCase(); break; }
+              }
+            }
+          }
+        }
+
+        if (!sizeLabel) {
+          parentProd = product;
+          parentSizeLabel = 'Standard';
+        } else if (!variantMap.has(sizeLabel)) {
+          variantMap.set(sizeLabel, product);
+        }
+      });
+
+      if (parentProd && parentSizeLabel && !variantMap.has(parentSizeLabel)) {
+        variantMap.set(parentSizeLabel, parentProd);
+      }
+
+      const sizeOrder = ['XXXXS', 'XXXS', 'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
+      return Array.from(variantMap.entries())
+        .map(([sizeLabel, product]) => ({ product, sizeLabel, parentProduct: parentProd }))
+        .sort((a, b) => {
+          if (a.sizeLabel === 'Standard') return -1;
+          if (b.sizeLabel === 'Standard') return 1;
+          const isNumberA = a.sizeLabel.startsWith('#');
+          const isNumberB = b.sizeLabel.startsWith('#');
+          const isMeasurementA = a.sizeLabel.endsWith('mm');
+          const isMeasurementB = b.sizeLabel.endsWith('mm');
+          if (isNumberA && isNumberB) return parseInt(a.sizeLabel.substring(1)) - parseInt(b.sizeLabel.substring(1));
+          if (isMeasurementA && isMeasurementB) return parseFloat(a.sizeLabel.replace('mm', '')) - parseFloat(b.sizeLabel.replace('mm', ''));
+          if (isNumberA || isMeasurementA) return 1;
+          if (isNumberB || isMeasurementB) return -1;
+          return sizeOrder.indexOf(a.sizeLabel) - sizeOrder.indexOf(b.sizeLabel);
+        });
+    }, [products]);
 
     return (
       <Card
@@ -121,11 +220,11 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
           backgroundColor: "background.paper",
           border: selectedProduct ? '2px solid' : '1px solid',
           borderColor: selectedProduct ? 'primary.main' : 'divider',
-          transition: 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
-          willChange: 'transform',
+          contain: 'layout style paint',
+          transition: isMobile || isTablet ? 'none' : 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
           '&:hover': {
             boxShadow: 6,
-            transform: 'translate3d(0, -4px, 0)',
+            transform: isMobile || isTablet ? 'none' : 'translate3d(0, -4px, 0)',
             borderColor: 'primary.light',
           },
         }}
@@ -135,7 +234,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
           sx={{
             position: "relative",
             backgroundColor: 'grey.50',
-            height: 280,
+            height: { xs: 220, sm: 260, md: 280, xl: 240 },
             width: '100%',
           }}
         >
@@ -222,177 +321,39 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
               flexWrap: 'wrap',
               gap: 1.5,
             }}>
-              {(() => {
-                // Extract only SIZE from each product
-                const variantMap = new Map<string, typeof products[0]>();
-                let parentProduct: typeof products[0] | null = null;
-                let parentSizeLabel = '';
-
-                products.forEach((product) => {
-                  // Extract only the SIZE, not the color
-                  let sizeLabel = '';
-
-                  // First, check for (SIZE/measurement) format like (XXL/62CM), (M/32CM), （XL/48CM）
-                  const sizeMeasurementMatch = product.name.match(/[（(]\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|S|M|L)\s*\/\s*\d+\s*[Cc]?[Mm]\s*[)）]/i);
-                  if (sizeMeasurementMatch) {
-                    sizeLabel = sizeMeasurementMatch[1].toUpperCase();
-                  } else if (product.name.match(/#(\d+)/)) {
-                    // Check for number-based sizes like #1, #2, #3, etc.
-                    const numberSizeMatch = product.name.match(/#(\d+)/);
-                    sizeLabel = `#${numberSizeMatch![1]}`;
-                  } else {
-                    // Check for measurement-based sizes like 4.5mm, 6mm, etc.
-                    const measurementMatch = product.name.match(/(\d+\.?\d*mm)/i);
-                    if (measurementMatch) {
-                      sizeLabel = measurementMatch[1];
-                    } else {
-                      // First try to extract full word sizes (Large, Medium, Small, etc.)
-                      const fullWordPatterns = [
-                        /-\s*(XXX-Large|XX-Large|X-Large|X-Small|Extra Large|Extra Small|Large|Medium|Small)$/i,  // " - Large", " - Medium" at end
-                        /\s+(XXX-Large|XX-Large|X-Large|X-Small|Extra Large|Extra Small|Large|Medium|Small)$/i,  // " Large", " Medium" at end
-                        /-(XXX-Large|XX-Large|X-Large|X-Small|Extra Large|Extra Small|Large|Medium|Small)$/i,     // "-Large", "-Medium" at end
-                      ];
-
-                      for (const pattern of fullWordPatterns) {
-                        const match = product.name.match(pattern);
-                        if (match) {
-                          // Normalize the display
-                          const size = match[1];
-                          if (size.toLowerCase() === 'x-large') sizeLabel = 'XL';
-                          else if (size.toLowerCase() === 'xx-large') sizeLabel = 'XXL';
-                          else if (size.toLowerCase() === 'xxx-large') sizeLabel = 'XXXL';
-                          else if (size.toLowerCase() === 'x-small') sizeLabel = 'XS';
-                          else if (size.toLowerCase() === 'extra large') sizeLabel = 'XL';
-                          else if (size.toLowerCase() === 'extra small') sizeLabel = 'XS';
-                          else if (size.toLowerCase() === 'large') sizeLabel = 'L';
-                          else if (size.toLowerCase() === 'medium') sizeLabel = 'M';
-                          else if (size.toLowerCase() === 'small') sizeLabel = 'S';
-                          break;
-                        }
+              {sortedVariants.map(({ product, sizeLabel, parentProduct: parentProd }) => {
+                const isSelected = selectedVariantId === product._id;
+                const isInCart = selectedProducts.some((p) => p._id === product._id);
+                return (
+                  <Chip
+                    key={product._id}
+                    label={sizeLabel}
+                    onClick={() => {
+                      if (isSelected && parentProd) {
+                        setSelectedVariantId(parentProd._id);
+                      } else {
+                        setSelectedVariantId(product._id);
                       }
-
-                      // If no full word size found, try abbreviated sizes
-                      if (!sizeLabel) {
-                        const patterns = [
-                          /-\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)$/i,    // "Product - XL" or "Product-XL" at end (check longer sizes first)
-                          /\s+(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)$/i,      // "Product XL" at end (check longer sizes first)
-                          /\s+(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)-[A-Za-z]/i,  // "Product L-orange" (size before color with dash)
-                          /\s+(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s+-/i,  // "Product XS - color"
-                          /-\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s+-/i,  // "Product - XS - color"
-                          /-\s*(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s+/i,   // "Product - XS color"
-                          /-(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)-/i,        // "Product-XS-color"
-                          /-(XXXXL|XXXL|XXL|XL|XXXXS|XXXS|XXS|XS|L|M|S)\s/i,       // "Product-XS color"
-                          /\(([SMLX]{1,4})\)$/i,                  // "Product (M)" or "Product (L)" or "Product (XXXXL)"
-                        ];
-
-                        for (const pattern of patterns) {
-                          const match = product.name.match(pattern);
-                          if (match) {
-                            sizeLabel = match[1].toUpperCase();
-                            break;
-                          }
-                        }
-                      }
-                    }
-                  }
-
-                  // If no size was found, this is a parent product
-                  if (!sizeLabel) {
-                    parentProduct = product;
-                    parentSizeLabel = 'Standard'; // Label for products without detected size
-                  } else {
-                    // Only add if we found a size and it's not a duplicate
-                    if (!variantMap.has(sizeLabel)) {
-                      variantMap.set(sizeLabel, product);
-                    }
-                  }
-                });
-
-                // Add parent product to variant map if it exists
-                if (parentProduct && parentSizeLabel && !variantMap.has(parentSizeLabel)) {
-                  variantMap.set(parentSizeLabel, parentProduct);
-                }
-
-                // Convert map to array for sorting
-                return Array.from(variantMap.entries()).map(([sizeLabel, product]) => ({
-                  product,
-                  sizeLabel,
-                  parentProduct
-                }));
-              })()
-                .sort((a, b) => {
-                  // "Standard" always comes first
-                  if (a.sizeLabel === 'Standard') return -1;
-                  if (b.sizeLabel === 'Standard') return 1;
-
-                  // Check if both are number sizes (#1, #2, etc.)
-                  const isNumberA = a.sizeLabel.startsWith('#');
-                  const isNumberB = b.sizeLabel.startsWith('#');
-
-                  // Check if both are measurement sizes (4.5mm, 6mm, etc.)
-                  const isMeasurementA = a.sizeLabel.endsWith('mm');
-                  const isMeasurementB = b.sizeLabel.endsWith('mm');
-
-                  if (isNumberA && isNumberB) {
-                    // Sort number sizes numerically
-                    const numA = parseInt(a.sizeLabel.substring(1));
-                    const numB = parseInt(b.sizeLabel.substring(1));
-                    return numA - numB;
-                  } else if (isMeasurementA && isMeasurementB) {
-                    // Sort measurement sizes numerically
-                    const numA = parseFloat(a.sizeLabel.replace('mm', ''));
-                    const numB = parseFloat(b.sizeLabel.replace('mm', ''));
-                    return numA - numB;
-                  } else if (isNumberA || isMeasurementA) {
-                    return 1; // Number/measurement sizes come after letter sizes
-                  } else if (isNumberB || isMeasurementB) {
-                    return -1; // Letter sizes come before number/measurement sizes
-                  } else {
-                    // Define letter size order
-                    const sizeOrder = ['XXXXS', 'XXXS', 'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
-                    const indexA = sizeOrder.indexOf(a.sizeLabel);
-                    const indexB = sizeOrder.indexOf(b.sizeLabel);
-                    return indexA - indexB;
-                  }
-                })
-                .map(({ product, sizeLabel, parentProduct }) => {
-                  const isSelected = selectedVariantId === product._id;
-                  const isInCart = selectedProducts.some((p) => p._id === product._id);
-
-                  return (
-                    <Chip
-                      key={product._id}
-                      label={sizeLabel}
-                      onClick={() => {
-                        // If clicking on already selected chip and parent product exists, deselect
-                        if (isSelected && parentProduct) {
-                          setSelectedVariantId(parentProduct._id);
-                        } else {
-                          setSelectedVariantId(product._id);
-                        }
-                      }}
-                      color={isInCart ? "success" : isSelected ? "primary" : "default"}
-                      variant={isSelected ? "filled" : "outlined"}
-                      size="small"
-                      sx={{
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                        willChange: 'transform',
-                        fontSize: '0.8rem',
-                        height: '28px',
-                        minWidth: '44px',
-                        '& .MuiChip-label': {
-                          px: 1.5,
-                        },
-                        '&:hover': {
-                          transform: 'translate3d(0, -2px, 0)',
-                          boxShadow: 2,
-                        },
-                      }}
-                    />
-                  );
-                })}
+                    }}
+                    color={isInCart ? "success" : isSelected ? "primary" : "default"}
+                    variant={isSelected ? "filled" : "outlined"}
+                    size="small"
+                    sx={{
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: isMobile || isTablet ? 'none' : 'transform 0.15s ease, box-shadow 0.15s ease',
+                      fontSize: '0.8rem',
+                      height: '28px',
+                      minWidth: '44px',
+                      '& .MuiChip-label': { px: 1.5 },
+                      '&:hover': {
+                        transform: isMobile || isTablet ? 'none' : 'translate3d(0, -2px, 0)',
+                        boxShadow: isMobile || isTablet ? 'none' : 2,
+                      },
+                    }}
+                  />
+                );
+              })}
             </Box>
           </Box>
 

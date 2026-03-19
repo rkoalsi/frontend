@@ -49,6 +49,7 @@ const api = axios.create({
   baseURL: process.env.api_url,
 });
 
+
 // Helper to update order data
 const updateOrderData = async (id: string, data: any) => {
   try {
@@ -83,7 +84,7 @@ const NewOrder: React.FC = () => {
   const [activeStep, setActiveStep] = useState<number>(isShared ? 3 : (isCustomerUser ? 1 : 0));
   const [open, setOpen] = useState<boolean>(false);
   const [error, setError] = useState<any>(null);
-  const [sharedLink, setSharedLink] = useState<string>('');
+
   const [sort, setSort] = useState<string>('default');
   const [link, setLink] = useState(
     order?.spreadsheet_created ? order?.spreadsheet_url : ''
@@ -447,7 +448,6 @@ const NewOrder: React.FC = () => {
       if (currentCategory) params.set("category", currentCategory);
     }
     const link = `${baseURL}/orders/new/${id}?${params.toString()}`;
-    setSharedLink(link);
     navigator.clipboard.writeText(link);
     setLinkCopied(true);
   }, [id]);
