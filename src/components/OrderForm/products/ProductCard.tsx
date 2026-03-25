@@ -20,6 +20,7 @@ import {
 import { AddShoppingCart, RemoveShoppingCart, ExpandMore } from "@mui/icons-material";
 import QuantitySelector from "../QuantitySelector";
 import ImageCarousel from "./ImageCarousel";
+import { getPackStep } from "../../../util/groupProducts";
 
 interface SearchResult {
   _id: string;
@@ -72,6 +73,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
     isShared = false,
   }) => {
     const productId = product._id;
+    const packStep = getPackStep(product.name);
     const selectedProduct: any = selectedProducts.find(
       (p) => p._id === productId
     );
@@ -522,6 +524,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               <QuantitySelector
                 quantity={quantity}
                 max={product.stock}
+                step={packStep}
                 onChange={(newQuantity) =>
                   handleQuantityChange(productId, newQuantity)
                 }

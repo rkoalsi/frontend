@@ -2,6 +2,19 @@
 // Groups products like "FIDA AUTOBRAKE Leash 5M - S White (Max 12kgs)" and "FIDA AUTOBRAKE Leash 5M - M White (Max 25kgs)"
 // into one group based on common parts
 
+/**
+ * Returns the quantity step for a product based on its name.
+ * Products with "(Pack of NxM)" in their name are added in pairs of N.
+ * e.g. "(Pack of 2x2)" → step of 2
+ */
+export function getPackStep(name: string): number {
+  const match = name.match(/\(Pack of (\d+)x(\d+)\)/i);
+  if (match) {
+    return parseInt(match[1], 10);
+  }
+  return 1;
+}
+
 export interface Product {
   _id: string;
   name: string;

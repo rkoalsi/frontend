@@ -72,7 +72,7 @@ import Image from "next/image";
 import DoubleScrollTable, { DoubleScrollTableRef } from "./DoubleScrollTable";
 import ImageCarousel from "./products/ImageCarousel";
 import QuantitySelector from "./QuantitySelector";
-import { groupProductsByName, ProductGroup, GroupedProducts } from "../../util/groupProducts";
+import { groupProductsByName, ProductGroup, GroupedProducts, getPackStep } from "../../util/groupProducts";
 import AuthContext from "../Auth";
 
 interface SearchResult {
@@ -119,6 +119,7 @@ const MemoizedDesktopProductCard = memo(({
   isShared
 }: any) => {
   const productId = product._id;
+  const packStep = getPackStep(product.name);
   const selectedProduct: any = selectedProducts.find((p: any) => p._id === productId);
   const quantity: any = selectedProduct?.quantity || temporaryQuantities[productId] || "";
   const sellingPrice = getSellingPrice(product);
@@ -316,6 +317,7 @@ const MemoizedDesktopProductCard = memo(({
             <QuantitySelector
               quantity={quantity}
               max={product.stock}
+              step={packStep}
               onChange={(newQuantity: number) => handleQuantityChange(productId, newQuantity)}
               disabled={isDisabled}
             />
@@ -1017,7 +1019,8 @@ const Products: React.FC<ProductsProps> = ({
         (p) => p._id === product._id
       );
       const productId = product._id;
-      const quantity = temporaryQuantities[productId] || product.quantity || 1;
+      const packStep = getPackStep(product.name);
+      const quantity = temporaryQuantities[productId] || product.quantity || packStep;
       if (!isAlreadySelected) {
         const isShared = new URLSearchParams(window.location.search).has(
           "shared"
@@ -1086,8 +1089,9 @@ const Products: React.FC<ProductsProps> = ({
     (id: string, newQuantity: number) => {
       const productInCart = selectedProducts.find((p) => p._id === id);
       if (productInCart) {
+        const minQty = getPackStep(productInCart.name);
         const sanitized = Math.max(
-          1,
+          minQty,
           Math.min(newQuantity, productInCart.stock)
         );
         const updated = selectedProducts.map((p) =>
@@ -1134,7 +1138,7 @@ const Products: React.FC<ProductsProps> = ({
         }
 
         if (product) {
-          const sanitized = Math.max(1, Math.min(newQuantity, product.stock));
+          const sanitized = Math.max(getPackStep(product.name), Math.min(newQuantity, product.stock));
           const isShared = new URLSearchParams(window.location.search).has(
             "shared"
           );
