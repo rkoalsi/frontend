@@ -26,6 +26,7 @@ import {
   DeleteOutline,
 } from '@mui/icons-material';
 import QuantitySelector from '../QuantitySelector';
+import { getPackStep } from '../../../util/groupProducts';
 
 interface CartDrawerProps {
   open: boolean;
@@ -450,6 +451,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                             <QuantitySelector
                               quantity={product.quantity}
                               max={product.stock}
+                              step={getPackStep(product.name)}
                               onChange={(newQuantity) =>
                                 handleQuantityChange(productId, newQuantity)
                               }

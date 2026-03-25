@@ -24,7 +24,7 @@ import {
 } from "@mui/icons-material";
 import QuantitySelector from "../QuantitySelector";
 import ImageCarousel from "./ImageCarousel";
-import { extractSize, extractWeight } from "../../../util/groupProducts";
+import { extractSize, extractWeight, getPackStep } from "../../../util/groupProducts";
 
 interface SearchResult {
   _id: string;
@@ -107,6 +107,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
     );
 
     const productId = currentVariant._id;
+    const packStep = getPackStep(currentVariant.name);
     const selectedProduct: any = selectedProducts.find(
       (p) => p._id === productId
     );
@@ -759,6 +760,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                 <QuantitySelector
                   quantity={quantity}
                   max={currentVariant.stock}
+                  step={packStep}
                   onChange={(newQuantity) =>
                     handleQuantityChange(productId, newQuantity)
                   }
