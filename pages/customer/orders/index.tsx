@@ -38,6 +38,7 @@ import { useRouter } from 'next/router';
 import axiosInstance from '../../../src/util/axios';
 import { format } from 'date-fns';
 import axios from 'axios';
+import { trackActivity } from '../../../src/util/trackActivity';
 
 interface Order {
   _id: string;
@@ -89,6 +90,13 @@ const CustomerOrders = () => {
       fetchOrders();
     }
   }, [user, fetchOrders]);
+
+  useEffect(() => {
+    if (user) {
+      trackActivity({ action: 'view_orders_list', category: 'orders' });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const handleNewOrder = async () => {
     try {

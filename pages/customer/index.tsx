@@ -40,6 +40,7 @@ import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
 import { format } from 'date-fns';
 import axios from 'axios';
+import { trackActivity } from '../../src/util/trackActivity';
 
 interface CustomerStats {
   total_orders: number;
@@ -156,7 +157,15 @@ const CustomerDashboard = () => {
     }
   }, [user, fetchStats, fetchDashboardSummary]);
 
+  useEffect(() => {
+    if (user) {
+      trackActivity({ action: 'view_dashboard', category: 'portal' });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   const handleNewOrder = async () => {
+    trackActivity({ action: 'click_new_order', category: 'orders' });
     try {
       const resp = await axios.post(`${process.env.api_url}/orders/`, {
         created_by: user?.data?._id,

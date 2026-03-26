@@ -1,5 +1,5 @@
 'use client';
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import {
   Typography,
   Box,
@@ -22,12 +22,19 @@ import {
   Business,
   Save,
 } from '@mui/icons-material';
+import { trackActivity } from '../../../src/util/trackActivity';
 
 const CustomerAccount = () => {
   const { user }: any = useContext(AuthContext);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      trackActivity({ action: 'view_account', category: 'portal' });
+    }
+  }, [user]);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
   // User data from context
