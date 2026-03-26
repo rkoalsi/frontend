@@ -44,7 +44,8 @@ import {
   TouchApp,
 } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
+import { toZonedTime, format } from 'date-fns-tz';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -96,10 +97,21 @@ function getActionMeta(action: string) {
   return ACTION_META[action] ?? { label: action, icon: <AccessTime />, color: '#94a3b8' };
 }
 
+const IST = 'Asia/Kolkata';
+
+// Ensure UTC string is parsed as UTC (append Z if no timezone info present)
+function parseUTC(iso: string): Date {
+  if (!iso.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(iso)) {
+    return new Date(iso + 'Z');
+  }
+  return new Date(iso);
+}
+
 function fmtDate(iso: string | null) {
   if (!iso) return '—';
   try {
-    return format(new Date(iso), 'dd MMM yyyy, hh:mm a');
+    const istDate = toZonedTime(parseUTC(iso), IST);
+    return format(istDate, 'dd MMM yyyy, hh:mm a', { timeZone: IST });
   } catch {
     return iso;
   }
@@ -108,7 +120,7 @@ function fmtDate(iso: string | null) {
 function timeAgo(iso: string | null) {
   if (!iso) return '—';
   try {
-    return formatDistanceToNow(new Date(iso), { addSuffix: true });
+    return formatDistanceToNow(parseUTC(iso), { addSuffix: true });
   } catch {
     return '—';
   }
@@ -463,7 +475,7 @@ const CustomerActivityPage = () => {
   const totalActions = summary.reduce((acc, s) => acc + s.total_actions, 0);
   const activeToday = summary.filter((s) => {
     if (!s.last_seen) return false;
-    const diff = Date.now() - new Date(s.last_seen).getTime();
+    const diff = Date.now() - parseUTC(s.last_seen).getTime();
     return diff < 24 * 60 * 60 * 1000;
   }).length;
 
