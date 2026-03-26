@@ -320,7 +320,7 @@ const CustomerOrders = () => {
                             startIcon={<Visibility />}
                             onClick={(e) => {
                               e.stopPropagation();
-                              router.push(`/customer/orders/${order._id}`);
+                              router.push(`/orders/new/${order._id}`);
                             }}
                             sx={{ textTransform: 'none' }}
                           >
