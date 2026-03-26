@@ -16,10 +16,15 @@ import {
   useTheme,
   useMediaQuery,
   CircularProgress,
+  Tooltip,
+  Divider,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   Dashboard,
+  Pets,
+  Logout,
+  Home as HomeIcon,
   Group as CustomersIcon,
   ShoppingCart as ProductsIcon,
   Receipt as OrdersIcon,
@@ -153,66 +158,121 @@ const AdminLayout = ({ children }: any) => {
       {/* App Bar */}
       <AppBar
         position='fixed'
+        elevation={0}
         sx={{
           zIndex: 1300,
-          backgroundColor: '#2C3E50',
-          boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
+          backgroundColor: '#1a2b3c',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          backdropFilter: 'blur(8px)',
         }}
       >
-        <Toolbar sx={{ justifyContent: 'space-between', minHeight: { xs: 'auto', sm: '64px' }, py: { xs: 1.5, sm: 0 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <Toolbar sx={{ justifyContent: 'space-between', minHeight: { xs: 56, sm: 64 } }}>
+          {/* Left: Hamburger + Brand */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <IconButton
-              color='inherit'
               edge='start'
               onClick={() => setSidebarOpen(!isSidebarOpen)}
-              sx={{ marginRight: { xs: 1, sm: 2 }, color: 'white' }}
+              sx={{
+                color: 'rgba(255,255,255,0.7)',
+                backgroundColor: 'rgba(255,255,255,0.06)',
+                borderRadius: '8px',
+                '&:hover': { backgroundColor: 'rgba(255,255,255,0.12)', color: '#fff' },
+              }}
             >
               <MenuIcon />
             </IconButton>
-            <Typography
-              variant='h6'
-              fontWeight='bold'
-              sx={{
-                cursor: 'pointer',
-                color: 'white',
-                fontFamily: 'Roboto, sans-serif',
-                fontSize: { xs: '0.9rem', sm: '1.25rem' },
-              }}
+            <Box
               onClick={() => router.push('/admin')}
+              sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer', userSelect: 'none' }}
             >
-              Admin Dashboard
-            </Typography>
-          </Box>
-          
-          <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, flexDirection: { xs: 'row' } }}>
-            {user && router.pathname.includes('/admin') && (
-              <Button
-                variant='contained'
-                color='primary'
-                onClick={() => router.push('/')}
+              <Box
                 sx={{
-                  textTransform: 'none',
-                  fontWeight: 'bold',
-                  paddingX: { xs: 1.5, sm: 3 },
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  width: 34,
+                  height: 34,
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #4E8098, #2B4864)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                 }}
               >
-                Home
-              </Button>
+                <Pets sx={{ fontSize: 18, color: '#fff' }} />
+              </Box>
+              <Box>
+                <Typography
+                  variant='subtitle1'
+                  fontWeight={700}
+                  sx={{ color: '#fff', lineHeight: 1.1, letterSpacing: '-0.01em' }}
+                >
+                  Pupscribe
+                </Typography>
+                <Typography
+                  variant='caption'
+                  sx={{ color: 'rgba(255,255,255,0.45)', lineHeight: 1, fontSize: '0.65rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}
+                >
+                  Admin
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Right: Actions */}
+          <Box display='flex' alignItems='center' gap={1}>
+            {user && router.pathname.includes('/admin') && (
+              isMobile ? (
+                <Tooltip title='Back to Home' arrow>
+                  <IconButton
+                    onClick={() => router.push('/')}
+                    size='small'
+                    sx={{
+                      color: 'rgba(255,255,255,0.8)',
+                      backgroundColor: 'rgba(255,255,255,0.08)',
+                      borderRadius: '8px',
+                      '&:hover': { backgroundColor: 'rgba(255,255,255,0.15)' },
+                    }}
+                  >
+                    <HomeIcon fontSize='small' />
+                  </IconButton>
+                </Tooltip>
+              ) : (
+                <Button
+                  variant='text'
+                  onClick={() => router.push('/')}
+                  startIcon={<HomeIcon fontSize='small' />}
+                  sx={{
+                    textTransform: 'none',
+                    color: 'rgba(255,255,255,0.75)',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    borderRadius: '8px',
+                    px: 1.5,
+                    '&:hover': { backgroundColor: 'rgba(255,255,255,0.08)', color: '#fff' },
+                  }}
+                >
+                  Home
+                </Button>
+              )
             )}
-            <Button
-              variant='contained'
-              color='error'
-              onClick={logout}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 'bold',
-                paddingX: { xs: 1.5, sm: 3 },
-                fontSize: { xs: '0.75rem', sm: '0.875rem' },
-              }}
-            >
-              Logout
-            </Button>
+            {user && (
+              <>
+                <Divider orientation='vertical' flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)', mx: 0.5 }} />
+                <Tooltip title='Logout' arrow>
+                  <IconButton
+                    onClick={logout}
+                    size='small'
+                    sx={{
+                      color: 'rgba(255,255,255,0.7)',
+                      backgroundColor: 'rgba(217,83,79,0.12)',
+                      borderRadius: '8px',
+                      '&:hover': { backgroundColor: 'rgba(217,83,79,0.25)', color: '#ff6b6b' },
+                    }}
+                  >
+                    <Logout fontSize='small' />
+                  </IconButton>
+                </Tooltip>
+              </>
+            )}
           </Box>
         </Toolbar>
       </AppBar>
