@@ -352,7 +352,7 @@ const CustomerDashboard = () => {
     },
     {
       title: 'My Account',
-      description: 'Manage your profile',
+      description: 'View your profile details',
       icon: <ManageAccounts />,
       color: '#64748b',
       onClick: () => router.push('/customer/account'),

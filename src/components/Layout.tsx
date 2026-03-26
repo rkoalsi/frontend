@@ -11,7 +11,11 @@ import {
   Typography,
   useMediaQuery,
   useTheme,
+  Tooltip,
+  IconButton,
+  Divider,
 } from '@mui/material';
+import { Pets, Logout, AdminPanelSettings, LineAxisOutlined } from '@mui/icons-material';
 import CustomButton from '../components/common/Button';
 const Layout = ({ children }: any) => {
   const { user = {}, loading, logout }: any = useContext(Auth);
@@ -99,44 +103,122 @@ const Layout = ({ children }: any) => {
       }}
     >
       {/* Top Navigation Bar */}
-      <AppBar position='sticky' sx={{ backgroundColor: '#2C3E50' }}>
-        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Typography
-            lineHeight={1.2}
-            variant='body1'
-            fontWeight='bold'
-            sx={{ cursor: 'pointer', color: 'white' }}
-            onClick={() => {
-              if (!shared) router.push('/');
+      <AppBar
+        position='sticky'
+        elevation={0}
+        sx={{
+          backgroundColor: '#1a2b3c',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          backdropFilter: 'blur(8px)',
+        }}
+      >
+        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', minHeight: { xs: 56, sm: 64 } }}>
+          {/* Brand Logo */}
+          <Box
+            onClick={() => { if (!shared) router.push('/'); }}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              cursor: shared ? 'default' : 'pointer',
+              userSelect: 'none',
             }}
           >
-            Pupscribe Order Form
-          </Typography>
-          <Box display={'flex'} flexDirection={'row'} gap={'16px'}>
-            {user &&
-              user.data &&
-              (user.data.role.includes('admin') ||
-                user.data.role.includes('catalogue_manager')||
-                user.data.role.includes('hr')) &&
-              !router.pathname.includes('admin') && (
-                <CustomButton
-                  color='primary'
-                  onClick={() => router.push('/admin')}
-                  text={'Admin'}
-                />
-              )}
-            {user &&
-              user.data &&
-              user.data.role === 'customer' &&
-              !router.pathname.includes('customer') && (
-                <CustomButton
-                  color='secondary'
-                  onClick={() => router.push('/customer')}
-                  text={'Dashboard'}
-                />
-              )}
-            {user && (
-              <CustomButton color='error' onClick={logout} text={'Logout'} />
+            <Box
+              sx={{
+                width: 34,
+                height: 34,
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, #4E8098, #2B4864)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+              }}
+            >
+              <Pets sx={{ fontSize: 18, color: '#fff' }} />
+            </Box>
+            <Box>
+              <Typography
+                variant='subtitle1'
+                fontWeight={700}
+                sx={{ color: '#fff', lineHeight: 1.1, letterSpacing: '-0.01em' }}
+              >
+                Pupscribe
+              </Typography>
+              <Typography
+                variant='caption'
+                sx={{ color: 'rgba(255,255,255,0.45)', lineHeight: 1, fontSize: '0.65rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}
+              >
+                Order Portal
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Right Side Actions */}
+          <Box display='flex' alignItems='center' gap={1}>
+            {user && user.data && (
+              user.data.role.includes('admin') ||
+              user.data.role.includes('catalogue_manager') ||
+              user.data.role.includes('hr')
+            ) && !router.pathname.includes('admin') && (
+              isMobileOrTablet ? (
+                <Tooltip title='Admin Panel' arrow>
+                  <IconButton
+                    onClick={() => router.push('/admin')}
+                    size='small'
+                    sx={{
+                      color: 'rgba(255,255,255,0.8)',
+                      backgroundColor: 'rgba(255,255,255,0.08)',
+                      borderRadius: '8px',
+                      '&:hover': { backgroundColor: 'rgba(255,255,255,0.15)' },
+                    }}
+                  >
+                    <AdminPanelSettings fontSize='small' />
+                  </IconButton>
+                </Tooltip>
+              ) : (
+                <CustomButton color='primary' onClick={() => router.push('/admin')} text='Admin' />
+              )
+            )}
+            {user && user.data && user.data.role === 'customer' && !router.pathname.includes('customer') && (
+              isMobileOrTablet ? (
+                <Tooltip title='Dashboard' arrow>
+                  <IconButton
+                    onClick={() => router.push('/customer')}
+                    size='small'
+                    sx={{
+                      color: 'rgba(255,255,255,0.8)',
+                      backgroundColor: 'rgba(255,255,255,0.08)',
+                      borderRadius: '8px',
+                      '&:hover': { backgroundColor: 'rgba(255,255,255,0.15)' },
+                    }}
+                  >
+                    <LineAxisOutlined fontSize='small' />
+                  </IconButton>
+                </Tooltip>
+              ) : (
+                <CustomButton color='secondary' onClick={() => router.push('/customer')} text='Dashboard' />
+              )
+            )}
+            {user && user.data && (
+              <>
+                <Divider orientation='vertical' flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)', mx: 0.5 }} />
+                <Tooltip title='Logout' arrow>
+                  <IconButton
+                    onClick={logout}
+                    size='small'
+                    sx={{
+                      color: 'rgba(255,255,255,0.7)',
+                      backgroundColor: 'rgba(217,83,79,0.12)',
+                      borderRadius: '8px',
+                      '&:hover': { backgroundColor: 'rgba(217,83,79,0.25)', color: '#ff6b6b' },
+                    }}
+                  >
+                    <Logout fontSize='small' />
+                  </IconButton>
+                </Tooltip>
+              </>
             )}
           </Box>
         </Toolbar>

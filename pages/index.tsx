@@ -62,38 +62,40 @@ const ActionCard = styled(Button)(({ theme }) => ({
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  padding: theme.spacing(2),
-  borderRadius: 16,
+  padding: theme.spacing(2, 1.5),
+  borderRadius: 14,
   textTransform: 'none',
-  minHeight: 110,
+  minHeight: 96,
   width: '100%',
-  transition: 'all 0.2s ease-in-out',
-  backgroundColor: '#ffffff',
+  transition: 'all 0.18s ease-in-out',
+  backgroundColor: 'rgba(255,255,255,0.06)',
   color: theme.palette.text.primary,
-  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-  border: '1px solid #e2e8f0',
+  boxShadow: 'none',
+  border: '1px solid rgba(255,255,255,0.1)',
+  backdropFilter: 'blur(4px)',
   '&:hover': {
-    backgroundColor: '#fafafa',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     transform: 'translateY(-2px)',
-    boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
-    borderColor: '#cbd5e1',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+    border: '1px solid rgba(255,255,255,0.2)',
   },
   '&:active': {
-    transform: 'scale(0.98)',
+    transform: 'scale(0.97)',
   },
   '& .MuiSvgIcon-root': {
-    fontSize: '2rem',
-    marginBottom: theme.spacing(1),
+    fontSize: '1.75rem',
+    marginBottom: theme.spacing(0.75),
   },
 }));
 
 const SectionTitle = styled(Typography)(({ theme }) => ({
-  color: 'rgba(255, 255, 255, 0.9)',
+  color: 'rgba(255, 255, 255, 0.55)',
   fontWeight: 600,
-  fontSize: '0.875rem',
+  fontSize: '0.7rem',
   textTransform: 'uppercase',
-  letterSpacing: '0.05em',
+  letterSpacing: '0.1em',
   marginBottom: theme.spacing(1.5),
+  paddingLeft: theme.spacing(0.5),
 }));
 
 const containerVariants = {
@@ -498,11 +500,11 @@ const Home = () => {
     <Box
       sx={{
         flex: 1,
-        background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-        pt: { xs: 2, sm: 3 },
-        pb: { xs: 4, sm: 4 },
-        px: { xs: 2, sm: 3 },
+        pt: { xs: 2.5, sm: 3.5 },
+        pb: { xs: 5, sm: 5 },
+        px: { xs: 2, sm: 2.5 },
         mx: { xs: -2, sm: -3 },
+        width: '100%',
       }}
     >
       <Container maxWidth='sm' disableGutters>
@@ -512,33 +514,56 @@ const Home = () => {
           animate='visible'
         >
           {/* Header */}
-          <Box mb={3}>
+          <Box
+            mb={3.5}
+            sx={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 3,
+              px: 2.5,
+              py: 2,
+            }}
+          >
+            <Typography
+              variant='caption'
+              sx={{
+                color: 'rgba(255,255,255,0.45)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                fontSize: '0.65rem',
+                fontWeight: 600,
+              }}
+            >
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </Typography>
             <Typography
               variant='h5'
               component='h1'
               sx={{
                 fontWeight: 700,
                 color: '#ffffff',
-                fontSize: { xs: '1.5rem', sm: '1.75rem' },
+                fontSize: { xs: '1.35rem', sm: '1.6rem' },
+                mt: 0.25,
+                lineHeight: 1.3,
               }}
             >
-              {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}, {user?.data?.first_name}
+              {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}, {user?.data?.first_name} 👋
             </Typography>
             <Typography
-              variant='subtitle1'
-              sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+              variant='body2'
+              sx={{ color: 'rgba(255, 255, 255, 0.5)', mt: 0.5, fontSize: '0.82rem' }}
             >
-              Your portal to effortless and streamlined order management.
+              {isCustomer ? 'Browse catalogues and manage your orders.' : 'Manage orders, customers, and more — all in one place.'}
             </Typography>
           </Box>
 
           {/* Menu Sections */}
           {filteredMenuSections.map((section) => (
-            <Box key={section.title} sx={{ mb: 3 }}>
+            <Box key={section.title} sx={{ mb: 2.5 }}>
               <SectionTitle>{section.title}</SectionTitle>
               <Grid container spacing={1.5}>
                 {section.items.map((item, index) => (
-                  <Grid size={{ xs: 6, sm: 3 }} key={index}>
+                  <Grid size={{ xs: 6, sm: 4 }} key={index}>
                     <motion.div
                       variants={itemVariants}
                       whileTap={{ scale: 0.95 }}
@@ -554,11 +579,11 @@ const Home = () => {
                         {item.icon}
                         <Typography
                           sx={{
-                            fontWeight: 600,
+                            fontWeight: 500,
                             textAlign: 'center',
                             lineHeight: 1.3,
-                            fontSize: '0.85rem',
-                            color: '#374151',
+                            fontSize: '0.78rem',
+                            color: 'rgba(255,255,255,0.85)',
                           }}
                         >
                           {item.text}
