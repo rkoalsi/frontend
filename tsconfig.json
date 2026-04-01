@@ -22,9 +22,11 @@
   },
   "include": [
     "next-env.d.ts",
+    "custom.d.ts",
     "**/*.ts",
-    "**/*.tsx"
-, "src/components/admin/customer_analytics"  ],
+    "**/*.tsx",
+    "src/components/admin/customer_analytics"
+  ],
   "exclude": [
     "node_modules"
   ]
