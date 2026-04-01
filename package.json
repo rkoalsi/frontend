@@ -48,6 +48,6 @@
     "@types/react-window": "^1.8.8",
     "eslint": "latest",
     "eslint-config-next": "^15.0.0",
-    "typescript": "latest"
+    "typescript": "^5.9.3"
   }
 }
