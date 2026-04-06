@@ -21,12 +21,20 @@ interface CheckListProps {
   values: any[];
   selectedValue: any; // Preselected item from state
   setSelectedValue: (value: any) => void;
+  addressDetails?: Record<string, any>; // keyed by address_id
 }
+
+const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }> = {
+  open: { bg: '#dcfce7', color: '#15803d', label: 'Open' },
+  closed: { bg: '#fee2e2', color: '#dc2626', label: 'Closed' },
+  warehouse: { bg: '#dbeafe', color: '#1d4ed8', label: 'Warehouse' },
+};
 
 export default function CheckList({
   values = [],
   selectedValue = null,
   setSelectedValue = () => {},
+  addressDetails = {},
 }: CheckListProps) {
   const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -176,6 +184,25 @@ export default function CheckList({
                         }}
                       />
                     )}
+                    {(() => {
+                      const detail = addressDetails[value.address_id];
+                      const s = detail?.status ? STATUS_COLORS[detail.status] : null;
+                      return s ? (
+                        <Chip
+                          label={s.label}
+                          size='small'
+                          sx={{
+                            mt: 1,
+                            ml: value.phone ? 1 : 0,
+                            height: 24,
+                            fontSize: '0.75rem',
+                            backgroundColor: s.bg,
+                            color: s.color,
+                            fontWeight: 600,
+                          }}
+                        />
+                      ) : null;
+                    })()}
                   </Box>
                 </Box>
               </CardContent>
@@ -242,6 +269,25 @@ export default function CheckList({
                           }}
                         />
                       )}
+                      {(() => {
+                        const detail = addressDetails[value.address_id];
+                        const s = detail?.status ? STATUS_COLORS[detail.status] : null;
+                        return s ? (
+                          <Chip
+                            label={s.label}
+                            size='small'
+                            sx={{
+                              mt: 0.5,
+                              ml: value.phone ? 1 : 0,
+                              height: 24,
+                              fontSize: '0.75rem',
+                              backgroundColor: s.bg,
+                              color: s.color,
+                              fontWeight: 600,
+                            }}
+                          />
+                        ) : null;
+                      })()}
                     </Box>
                   }
                   primaryTypographyProps={{
