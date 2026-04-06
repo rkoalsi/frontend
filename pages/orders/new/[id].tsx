@@ -93,6 +93,7 @@ const NewOrder: React.FC = () => {
   const [specialMargins, setSpecialMargins] = useState<{
     [key: string]: string;
   }>({});
+  const [addressDetails, setAddressDetails] = useState<Record<string, any>>({});
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -131,6 +132,36 @@ const NewOrder: React.FC = () => {
       controller.abort();
     };
   }, [customer?._id]);
+  // ------------------ Fetch Address Details -------------------------
+  useEffect(() => {
+    if (!customer?._id) return;
+    const controller = new AbortController();
+
+    const fetchAddressDetails = async () => {
+      try {
+        const res = await api.get(
+          `/customer_address_details/${customer._id}`,
+          { signal: controller.signal }
+        );
+        const detailMap = (res.data.address_details || []).reduce(
+          (acc: Record<string, any>, item: any) => {
+            acc[item.address_id] = item;
+            return acc;
+          },
+          {}
+        );
+        setAddressDetails(detailMap);
+      } catch (error: any) {
+        if (error.name !== 'CanceledError') {
+          console.error('Error fetching address details:', error);
+        }
+      }
+    };
+
+    fetchAddressDetails();
+    return () => controller.abort();
+  }, [customer?._id]);
+
   const handleSortText = () => {
     switch (sort) {
       case 'default':
@@ -573,6 +604,7 @@ const NewOrder: React.FC = () => {
             selectedAddress={billingAddress}
             customer={customer}
             setLoading={setLoading}
+            addressDetails={addressDetails}
           />
         ),
       },
@@ -587,6 +619,7 @@ const NewOrder: React.FC = () => {
             selectedAddress={shippingAddress}
             customer={customer}
             setLoading={setLoading}
+            addressDetails={addressDetails}
           />
         ),
       },

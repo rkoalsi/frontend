@@ -22,6 +22,7 @@ interface Props {
   id: any;
   addNewAddress?: boolean;
   setLoading: any;
+  addressDetails?: Record<string, any>;
 }
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -42,6 +43,7 @@ function Address(props: Props) {
     id,
     addNewAddress = true,
     setLoading,
+    addressDetails = {},
   } = props;
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newAddress, setNewAddress] = useState({
@@ -186,9 +188,12 @@ function Address(props: Props) {
                       addr,
                     ])
                   ).values()
+                ).filter(
+                  (addr: any) => addressDetails[addr.address_id]?.status !== 'closed'
                 )}
                 selectedValue={selectedAddress}
                 setSelectedValue={setAddress}
+                addressDetails={addressDetails}
               />
             ) : (
               <Box

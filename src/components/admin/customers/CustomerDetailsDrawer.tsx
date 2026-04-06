@@ -58,7 +58,8 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   const [status, setStatus] = useState('');
   const [assignedSalesPeople, setAssignedSalesPeople] = useState<string[]>([]);
   const [salesPeople, setSalesPeople] = useState<string[]>([]);
-  const [showAddresses, setShowAddresses] = useState(false); // New state for toggling addresses
+  const [showAddresses, setShowAddresses] = useState(false);
+  const [addressDetails, setAddressDetails] = useState<Record<string, any>>({});
 
   // Local state for special margins (copied from prop)
   const [localSpecialMargins, setLocalSpecialMargins] = useState<any[]>(
@@ -100,6 +101,39 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   useEffect(() => {
     setLocalSpecialMargins(specialMarginProducts);
   }, [specialMarginProducts]);
+
+  useEffect(() => {
+    if (!customer?._id || !open) return;
+    axiosInstance
+      .get(`/customer_address_details/${customer._id}`)
+      .then((res) => {
+        const map = (res.data.address_details || []).reduce(
+          (acc: Record<string, any>, item: any) => {
+            acc[item.address_id] = item;
+            return acc;
+          },
+          {}
+        );
+        setAddressDetails(map);
+      })
+      .catch(() => {});
+  }, [customer?._id, open]);
+
+  const handleAddressStatusChange = async (addressId: string, newStatus: string) => {
+    try {
+      const res = await axiosInstance.put(
+        `/customer_address_details/${customer._id}/${addressId}`,
+        { status: newStatus }
+      );
+      setAddressDetails((prev) => ({
+        ...prev,
+        [addressId]: res.data.address_detail,
+      }));
+      toast.success('Address status updated');
+    } catch {
+      toast.error('Failed to update address status');
+    }
+  };
 
   const handleSave = async () => {
     if (!customer) return;
@@ -335,9 +369,13 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                 {showAddresses ? 'Hide Addresses' : 'Show Addresses'}
               </Button>
               {showAddresses && (
-                <List>
+                <List disablePadding>
                   {customer.addresses.map((a: any, i: number) => (
-                    <ListItem key={a.address_id}>
+                    <ListItem
+                      key={a.address_id}
+                      alignItems='flex-start'
+                      sx={{ flexDirection: 'column', py: 1.5, borderBottom: '1px solid #f0f0f0' }}
+                    >
                       <ListItemText
                         primary={`Address ${i + 1}: ${a.attention}`}
                         secondary={
@@ -348,6 +386,21 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                           </>
                         }
                       />
+                      <FormControl size='small' sx={{ mt: 1, minWidth: 160 }}>
+                        <InputLabel>Status</InputLabel>
+                        <Select
+                          label='Status'
+                          value={addressDetails[a.address_id]?.status || ''}
+                          onChange={(e) =>
+                            handleAddressStatusChange(a.address_id, e.target.value)
+                          }
+                        >
+                          <MenuItem value=''>— None —</MenuItem>
+                          <MenuItem value='open'>Open</MenuItem>
+                          <MenuItem value='closed'>Closed</MenuItem>
+                          <MenuItem value='warehouse'>Warehouse</MenuItem>
+                        </Select>
+                      </FormControl>
                     </ListItem>
                   ))}
                 </List>
