@@ -23,7 +23,7 @@ import {
   ShoppingCartOutlined,
   ArrowForward,
   LocalOffer,
-  DeleteOutline,
+  DeleteOutlined,
 } from '@mui/icons-material';
 import QuantitySelector from '../QuantitySelector';
 import { getPackStep } from '../../../util/groupProducts';
@@ -170,7 +170,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                   },
                 }}
               >
-                <DeleteOutline />
+                <DeleteOutlined />
               </IconButton>
             )}
             <IconButton
