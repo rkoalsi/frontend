@@ -46,14 +46,21 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
   const [selectedOption, setSelectedOption] = useState<SearchResult | null>(
     initialValue || null
   );
+  const getDisplayName = (customer: any) => {
+    if (!customer) return '';
+    const name = customer.contact_name || '';
+    const company = customer.company_name ? ` (${customer.company_name})` : '';
+    return name + company;
+  };
+
   const [inputValue, setInputValue] = useState<string>(
-    initialValue ? (initialValue.company_name || initialValue.contact_name || '') : ''
+    initialValue ? getDisplayName(initialValue) : ''
   );
 
   // When an initial value is provided, ensure internal state is in sync.
   useEffect(() => {
     if (initialValue) {
-      const displayName = initialValue.company_name || initialValue.contact_name || '';
+      const displayName = getDisplayName(initialValue);
       if (!selectedOption || selectedOption._id !== initialValue._id) {
         setSelectedOption(initialValue);
         setOptions([initialValue]);
@@ -106,7 +113,7 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
           disabled={disabled}
           freeSolo
           options={options}
-          getOptionLabel={(option: any) => option?.company_name || option?.contact_name || 'Unknown Name'}
+          getOptionLabel={(option: any) => getDisplayName(option) || 'Unknown Name'}
           isOptionEqualToValue={(option: SearchResult, value: SearchResult) =>
             option._id === value._id
           }
