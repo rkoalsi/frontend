@@ -32,7 +32,7 @@ import {
   Pause,
   Image,
   PhotoCamera,
-  DeleteOutline,
+  DeleteOutlined,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
@@ -710,7 +710,7 @@ const Announcements = () => {
                     variant='outlined'
                     color='error'
                     onClick={clearImage}
-                    startIcon={<DeleteOutline />}
+                    startIcon={<DeleteOutlined />}
                   >
                     Clear Image
                   </Button>
@@ -780,7 +780,7 @@ const Announcements = () => {
                     variant='outlined'
                     color='error'
                     onClick={clearAudio}
-                    startIcon={<DeleteOutline />}
+                    startIcon={<DeleteOutlined />}
                   >
                     Clear Audio
                   </Button>
