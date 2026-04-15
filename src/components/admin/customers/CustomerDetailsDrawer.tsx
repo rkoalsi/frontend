@@ -380,8 +380,8 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                         primary={`Address ${i + 1}: ${a.attention}`}
                         secondary={
                           <>
-                            {a.address}, {a.street2 && `${a.street2}, `}
-                            {a.city}, {a.state} - {a.zip} <br />
+                            {a.address}, {a.street2 && `${a.street2} `}
+                            {a.city} {a.state} - {a.zip} <br />
                             {a.country} ({a.country_code})
                           </>
                         }
