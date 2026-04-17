@@ -306,7 +306,20 @@ const ReturnOrders = () => {
         { responseType: 'blob' }
       );
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      // If the response is JSON (error from backend), show error instead of downloading
+      const contentType = response.headers['content-type'] || '';
+      if (!contentType.includes('pdf')) {
+        const text = await (response.data as Blob).text();
+        let message = 'Error downloading Credit Note PDF';
+        try {
+          const json = JSON.parse(text);
+          message = json.detail || json.error || message;
+        } catch {}
+        toast.error(message);
+        return;
+      }
+
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `credit_note_${orderId}.pdf`);
@@ -318,7 +331,16 @@ const ReturnOrders = () => {
       toast.success('Credit Note PDF downloaded');
     } catch (error: any) {
       console.error(error);
-      toast.error('Error downloading Credit Note PDF');
+      // Try to extract error message from blob response
+      if (error.response?.data instanceof Blob) {
+        const text = await error.response.data.text();
+        try {
+          const json = JSON.parse(text);
+          toast.error(json.detail || json.error || 'Error downloading Credit Note PDF');
+          return;
+        } catch {}
+      }
+      toast.error(error.response?.data?.detail || 'Error downloading Credit Note PDF');
     } finally {
       setZohoLoading(false);
     }
