@@ -24,6 +24,11 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import { Delete, ExpandMore } from '@mui/icons-material';
 import { toast } from 'react-toastify';
@@ -40,6 +45,7 @@ export interface CustomerDetailsDrawerProps {
   handleDeleteAllSpecialMargins: () => void;
   onCustomerUpdate: (updatedCustomer: any) => void;
   onMarginsUpdated?: () => void;
+  onCustomerDelete?: (customerId: string) => void;
 }
 
 const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
@@ -51,6 +57,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   onCustomerUpdate,
   handleDeleteAllSpecialMargins,
   onMarginsUpdated,
+  onCustomerDelete,
 }) => {
   const [editMargin, setEditMargin] = useState('');
   const [editTier, setEditTier] = useState('');
@@ -60,6 +67,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   const [salesPeople, setSalesPeople] = useState<string[]>([]);
   const [showAddresses, setShowAddresses] = useState(false);
   const [addressDetails, setAddressDetails] = useState<Record<string, any>>({});
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   // Local state for special margins (copied from prop)
   const [localSpecialMargins, setLocalSpecialMargins] = useState<any[]>(
@@ -176,6 +184,19 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
       onClose();
     } catch (error) {
       toast.error('Failed to update customer details.');
+    }
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!customer) return;
+    try {
+      await axiosInstance.delete(`/admin/customers/${customer._id}`);
+      toast.success('Customer deleted successfully.');
+      setDeleteConfirmOpen(false);
+      onClose();
+      if (onCustomerDelete) onCustomerDelete(customer._id);
+    } catch (error) {
+      toast.error('Failed to delete customer.');
     }
   };
 
@@ -721,16 +742,38 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
             )}
           </Box>
 
-          <Box sx={{ mt: 3, mb: 3, display: ' flex', gap: 2 }}>
+          <Box sx={{ mt: 3, mb: 3, display: 'flex', gap: 2 }}>
             <Button variant='contained' onClick={handleSave}>
               Save Changes
             </Button>
             <Button variant='contained' color='secondary' onClick={onClose}>
               Cancel
             </Button>
+            <Button
+              variant='contained'
+              color='error'
+              onClick={() => setDeleteConfirmOpen(true)}
+            >
+              Delete Customer
+            </Button>
           </Box>
         </Box>
       )}
+
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
+        <DialogTitle>Delete Customer</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete <strong>{customer?.contact_name}</strong>? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+          <Button color='error' variant='contained' onClick={handleDeleteCustomer}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Drawer>
   );
 };
