@@ -29,8 +29,10 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  CircularProgress,
+  Tooltip,
 } from '@mui/material';
-import { Delete, ExpandMore } from '@mui/icons-material';
+import { Delete, ExpandMore, Refresh } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../../util/axios';
 import capitalize from '../../../util/capitalize';
@@ -68,6 +70,12 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   const [showAddresses, setShowAddresses] = useState(false);
   const [addressDetails, setAddressDetails] = useState<Record<string, any>>({});
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [localAddresses, setLocalAddresses] = useState<any[]>([]);
+  const [deleteAddressConfirm, setDeleteAddressConfirm] = useState<string | null>(null);
+  const [billedAddresses, setBilledAddresses] = useState<Record<string, boolean>>({});
+  const [inAnalyticsAddresses, setInAnalyticsAddresses] = useState<Record<string, boolean>>({});
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Local state for special margins (copied from prop)
   const [localSpecialMargins, setLocalSpecialMargins] = useState<any[]>(
@@ -102,6 +110,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
           ? customer.cf_sales_person
           : [];
       setAssignedSalesPeople(arrayOfCodes);
+      setLocalAddresses(customer.addresses || []);
     }
   }, [customer]);
 
@@ -125,7 +134,47 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
         setAddressDetails(map);
       })
       .catch(() => {});
-  }, [customer?._id, open]);
+    axiosInstance
+      .get(`/customer_address_details/${customer._id}/billed`)
+      .then((res) => setBilledAddresses(res.data.billed || {}))
+      .catch(() => {});
+    axiosInstance
+      .get(`/customer_address_details/${customer._id}/in_analytics`)
+      .then((res) => setInAnalyticsAddresses(res.data.in_analytics || {}))
+      .catch(() => {});
+  }, [customer?._id, open, refreshTick]);
+
+  const handleRefresh = async () => {
+    if (!customer?._id) return;
+    setRefreshing(true);
+    try {
+      const res = await axiosInstance.get(`/customers/${customer._id}`);
+      const fresh = res.data.customer;
+      onCustomerUpdate(fresh);
+      // Sync local form state
+      let margin = fresh.cf_margin || '40';
+      margin = margin.endsWith('%') ? margin.slice(0, -1) : margin;
+      setEditMargin(margin);
+      setEditInEx(fresh.cf_in_ex || 'Exclusive');
+      setEditTier(String(fresh.cf_tier).toUpperCase() || '');
+      setStatus(String(fresh.status) || '');
+      const codes =
+        typeof fresh.cf_sales_person === 'string'
+          ? fresh.cf_sales_person.split(',').map((s: string) => s.trim())
+          : Array.isArray(fresh.cf_sales_person)
+          ? fresh.cf_sales_person
+          : [];
+      setAssignedSalesPeople(codes);
+      setLocalAddresses(fresh.addresses || []);
+      setInAnalyticsAddresses({});
+      setRefreshTick((t) => t + 1);
+      toast.success('Customer details refreshed.');
+    } catch {
+      toast.error('Failed to refresh customer details.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleAddressStatusChange = async (addressId: string, newStatus: string) => {
     try {
@@ -140,6 +189,23 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
       toast.success('Address status updated');
     } catch {
       toast.error('Failed to update address status');
+    }
+  };
+
+  const handleDeleteAddress = async (addressId: string) => {
+    try {
+      await axiosInstance.delete(`/admin/customers/${customer._id}/address/${addressId}`);
+      setLocalAddresses((prev) => prev.filter((a) => a.address_id !== addressId));
+      setAddressDetails((prev) => {
+        const next = { ...prev };
+        delete next[addressId];
+        return next;
+      });
+      toast.success('Address deleted successfully.');
+    } catch {
+      toast.error('Failed to delete address.');
+    } finally {
+      setDeleteAddressConfirm(null);
     }
   };
 
@@ -282,13 +348,22 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
       anchor='right'
       open={open}
       onClose={onClose}
-      sx={{ '& .MuiDrawer-paper': { width: 600, padding: 3 } }}
+      sx={{ '& .MuiDrawer-paper': { width: 600, display: 'flex', flexDirection: 'column' } }}
     >
       {customer && (
-        <Box>
-          <Typography variant='h5' sx={{ fontWeight: 'bold', mb: 2 }}>
-            Customer Details
-          </Typography>
+        <Box sx={{ flex: 1, overflowY: 'auto', p: 3, pt: '80px' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
+            <Typography variant='h5' sx={{ fontWeight: 'bold', flex: 1 }}>
+              Customer Details
+            </Typography>
+            <Tooltip title='Refresh customer details'>
+              <span>
+                <IconButton onClick={handleRefresh} disabled={refreshing} size='small'>
+                  {refreshing ? <CircularProgress size={18} /> : <Refresh />}
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Box>
           <Typography>
             <strong>Name:</strong> {customer.contact_name}
           </Typography>
@@ -309,7 +384,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                 value={editTier}
                 onChange={(e) => setEditTier(e.target.value)}
               >
-                {TIERS.map((letter: string, index: number) => (
+                {TIERS.map((letter: string) => (
                   <MenuItem value={letter} defaultValue={editTier}>
                     {letter}
                   </MenuItem>
@@ -381,7 +456,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
               </Select>
             </FormControl>
           </Box>
-          {customer.addresses.length > 0 && (
+          {localAddresses.length > 0 && (
             <Box sx={{ mt: 2, mb: 2 }}>
               <Button
                 variant='outlined'
@@ -391,22 +466,46 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
               </Button>
               {showAddresses && (
                 <List disablePadding>
-                  {customer.addresses.map((a: any, i: number) => (
+                  {localAddresses.map((a: any, i: number) => (
                     <ListItem
                       key={a.address_id}
                       alignItems='flex-start'
                       sx={{ flexDirection: 'column', py: 1.5, borderBottom: '1px solid #f0f0f0' }}
                     >
-                      <ListItemText
-                        primary={`Address ${i + 1}: ${a.attention}`}
-                        secondary={
-                          <>
-                            {a.address} {a.street2 && `${a.street2} `}
-                            {a.city} {a.state} - {a.zip} <br />
-                            {a.country} ({a.country_code})
-                          </>
-                        }
-                      />
+                      <Box sx={{ display: 'flex', width: '100%', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                        <ListItemText
+                          primary={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                              <span>{`Address ${i + 1}: ${a.attention}`}</span>
+                              <Chip
+                                label={billedAddresses[a.address_id] ? 'Billed' : 'Never Billed'}
+                                color={billedAddresses[a.address_id] ? 'success' : 'default'}
+                                size='small'
+                              />
+                              <Chip
+                                label={inAnalyticsAddresses[a.address_id] ? 'In Analytics' : 'Not in Analytics'}
+                                color={inAnalyticsAddresses[a.address_id] ? 'info' : 'default'}
+                                size='small'
+                                variant='outlined'
+                              />
+                            </Box>
+                          }
+                          secondary={
+                            <>
+                              {a.address} {a.street2 && `${a.street2} `}
+                              {a.city} {a.state} - {a.zip} <br />
+                              {a.country} ({a.country_code})
+                            </>
+                          }
+                        />
+                        <IconButton
+                          color='error'
+                          size='small'
+                          onClick={() => setDeleteAddressConfirm(a.address_id)}
+                        >
+                          <Delete />
+                        </IconButton>
+                      </Box>
                       <FormControl size='small' sx={{ mt: 1, minWidth: 160 }}>
                         <InputLabel>Status</InputLabel>
                         <Select
@@ -770,6 +869,25 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
         <DialogActions>
           <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
           <Button color='error' variant='contained' onClick={handleDeleteCustomer}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!deleteAddressConfirm} onClose={() => setDeleteAddressConfirm(null)}>
+        <DialogTitle>Delete Address</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this address? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteAddressConfirm(null)}>Cancel</Button>
+          <Button
+            color='error'
+            variant='contained'
+            onClick={() => deleteAddressConfirm && handleDeleteAddress(deleteAddressConfirm)}
+          >
             Delete
           </Button>
         </DialogActions>
