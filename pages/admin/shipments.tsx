@@ -68,6 +68,9 @@ const AdminShipments = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<number | null>(null);
   const [replacingImageIndex, setReplacingImageIndex] = useState<number | null>(null);
+  const [deleteShipmentOpen, setDeleteShipmentOpen] = useState(false);
+  const [shipmentToDelete, setShipmentToDelete] = useState<Shipment | null>(null);
+  const [deletingShipment, setDeletingShipment] = useState(false);
 
   const fetchShipments = async (search = '', pageNum = 0, perPage = 25) => {
     setLoading(true);
@@ -297,6 +300,24 @@ const AdminShipments = () => {
     }
   };
 
+  const handleDeleteShipment = async () => {
+    if (!shipmentToDelete) return;
+    setDeletingShipment(true);
+    try {
+      await axiosInstance.delete(`/shipments/${shipmentToDelete._id}`);
+      toast.success('Shipment deleted successfully');
+      setShipments((prev) => prev.filter((s) => s._id !== shipmentToDelete._id));
+      setTotalCount((prev) => prev - 1);
+      setDeleteShipmentOpen(false);
+      setShipmentToDelete(null);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.response?.data?.detail || 'Error deleting shipment');
+    } finally {
+      setDeletingShipment(false);
+    }
+  };
+
   const triggerReplaceImage = (index: number) => {
     setReplacingImageIndex(index);
     // Create a hidden file input and trigger it
@@ -474,13 +495,25 @@ const AdminShipments = () => {
                       )}
                     </TableCell>
                     <TableCell align='center'>
-                      <Button
-                        variant='outlined'
-                        size='small'
-                        onClick={() => handleShipmentClick(shipment)}
-                      >
-                        Manage Images
-                      </Button>
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <Button
+                          variant='outlined'
+                          size='small'
+                          onClick={() => handleShipmentClick(shipment)}
+                        >
+                          Manage Images
+                        </Button>
+                        <IconButton
+                          size='small'
+                          color='error'
+                          onClick={() => {
+                            setShipmentToDelete(shipment);
+                            setDeleteShipmentOpen(true);
+                          }}
+                        >
+                          <Delete fontSize='small' />
+                        </IconButton>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -836,6 +869,47 @@ const AdminShipments = () => {
             </Box>
           )}
         </DialogContent>
+      </Dialog>
+
+      {/* Delete Shipment Confirmation Dialog */}
+      <Dialog
+        open={deleteShipmentOpen}
+        onClose={() => {
+          if (!deletingShipment) {
+            setDeleteShipmentOpen(false);
+            setShipmentToDelete(null);
+          }
+        }}
+        maxWidth='xs'
+        fullWidth
+      >
+        <DialogTitle>Delete Shipment?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete shipment <strong>{shipmentToDelete?.shipment_number}</strong> for{' '}
+            <strong>{shipmentToDelete?.customer_name}</strong>? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setDeleteShipmentOpen(false);
+              setShipmentToDelete(null);
+            }}
+            disabled={deletingShipment}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant='contained'
+            color='error'
+            onClick={handleDeleteShipment}
+            disabled={deletingShipment}
+            startIcon={deletingShipment ? <CircularProgress size={16} /> : <Delete />}
+          >
+            {deletingShipment ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
