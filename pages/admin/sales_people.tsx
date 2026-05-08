@@ -53,9 +53,11 @@ const SalesPeople = () => {
     designation: '',
     email: '',
     phone: '',
+    password: '',
     status: 'active',
     role: 'sales_person',
   });
+  const [editPassword, setEditPassword] = useState('');
   const [zohoSalespersons, setZohoSalespersons]: any = useState([]);
   const [zohoLoading, setZohoLoading] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
@@ -147,6 +149,7 @@ const SalesPeople = () => {
     setDrawerOpen(false);
     setSelectedPerson(null);
     setRowErrors({});
+    setEditPassword('');
   }, []);
 
   // Handle creating a new salesperson
@@ -166,6 +169,7 @@ const SalesPeople = () => {
         designation: '',
         email: '',
         phone: '',
+        password: '',
         status: 'active',
         role: 'sales_person',
       });
@@ -397,26 +401,32 @@ const SalesPeople = () => {
     }
   }, [baseApiUrl, refetchSelectedPerson, selectedCustomers, selectedPerson]);
 
-  // Save salesperson details (name, status, code, salesperson_id)
+  // Save salesperson details
   const handleSaveSalesperson = useCallback(async () => {
     if (!selectedPerson) return;
     try {
-      await axiosInstance.put(`/admin/salespeople/${selectedPerson._id}`, {
+      const payload: any = {
         name: selectedPerson.name,
+        email: selectedPerson.email,
+        designation: selectedPerson.designation,
         status: selectedPerson.status,
         code: selectedPerson.code,
         salesperson_id: selectedPerson.salesperson_id,
         phone: selectedPerson.phone ? parseInt(selectedPerson.phone, 10) : undefined,
-      });
+      };
+      if (editPassword.trim()) {
+        payload.password = editPassword.trim();
+      }
+      await axiosInstance.put(`/admin/salespeople/${selectedPerson._id}`, payload);
       toast.success('Salesperson updated successfully.');
+      setEditPassword('');
       await refetchSelectedPerson(selectedPerson._id);
-      // Also refresh the list
       fetchSalesPeople();
     } catch (err) {
       console.error(err);
       toast.error('Failed to update salesperson');
     }
-  }, [selectedPerson, refetchSelectedPerson, fetchSalesPeople]);
+  }, [selectedPerson, editPassword, refetchSelectedPerson, fetchSalesPeople]);
 
   // Bulk save customer changes
   const handleBulkSaveCustomers = useCallback(async () => {
@@ -551,6 +561,16 @@ const SalesPeople = () => {
               onChange={(e) => handleAddFieldChange('phone', e.target.value)}
               fullWidth
               margin='normal'
+            />
+            <TextField
+              label='Password'
+              variant='outlined'
+              type='password'
+              value={newSalesPerson.password}
+              onChange={(e) => handleAddFieldChange('password', e.target.value)}
+              fullWidth
+              margin='normal'
+              helperText='Leave blank to use the default password'
             />
             <TextField
               select
@@ -690,6 +710,30 @@ const SalesPeople = () => {
                   value={selectedPerson.name || ''}
                   onChange={(e) => handleFieldChange('name', e.target.value)}
                   fullWidth
+                />
+                <TextField
+                  label='Email'
+                  variant='outlined'
+                  type='email'
+                  value={selectedPerson.email || ''}
+                  onChange={(e) => handleFieldChange('email', e.target.value)}
+                  fullWidth
+                />
+                <TextField
+                  label='Designation'
+                  variant='outlined'
+                  value={selectedPerson.designation || ''}
+                  onChange={(e) => handleFieldChange('designation', e.target.value)}
+                  fullWidth
+                />
+                <TextField
+                  label='New Password'
+                  variant='outlined'
+                  type='password'
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  fullWidth
+                  helperText='Leave blank to keep existing password'
                 />
                 <TextField
                   label='Code'
