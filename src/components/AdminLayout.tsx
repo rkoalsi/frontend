@@ -53,6 +53,7 @@ import {
   AccessTime,
   ManageAccounts,
   Article,
+  Chat,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -88,6 +89,7 @@ const iconMap: { [key: string]: React.ReactElement } = {
   AccessTime: <AccessTime />,
   GroupAddOutlined: <GroupAddOutlined />,
   ManageAccounts: <ManageAccounts />,
+  Chat: <Chat />,
 };
 
 const AdminLayout = ({ children }: any) => {
