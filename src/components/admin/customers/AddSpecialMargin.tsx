@@ -746,7 +746,7 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
                         <TableCell>
                           <Box
                             component='img'
-                            src={product.image_url || '/placeholder.png'}
+                            src={product.image_url || product.images[0] || '/placeholder.png'}
                             alt={product.name}
                             sx={{
                               width: 70,
@@ -816,11 +816,11 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
                             fullWidth
                             error={
                               !!(displayData.margin &&
-                              !validateMargin(displayData.margin))
+                                !validateMargin(displayData.margin))
                             }
                             helperText={
                               displayData.margin &&
-                              !validateMargin(displayData.margin)
+                                !validateMargin(displayData.margin)
                                 ? '0-100'
                                 : ''
                             }
@@ -868,9 +868,8 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
           {modifiedCount > 0 && (
             <Chip
               icon={<InfoIcon />}
-              label={`${modifiedCount} product${
-                modifiedCount !== 1 ? 's' : ''
-              } to update`}
+              label={`${modifiedCount} product${modifiedCount !== 1 ? 's' : ''
+                } to update`}
               color='primary'
               variant='outlined'
             />
