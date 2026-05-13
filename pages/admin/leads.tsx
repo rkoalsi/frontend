@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   Typography,
   Box,
@@ -22,7 +22,7 @@ import {
   FormControl,
   IconButton,
 } from '@mui/material';
-import { FileDownloadOutlined } from '@mui/icons-material';
+import { FileDownloadOutlined, CheckOutlined, CloseOutlined, EditOutlined } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 import axiosInstance from '../../src/util/axios';
@@ -66,6 +66,7 @@ const REPORT_CONFIGS = [
       { key: 'verified', header: 'Verified' },
       { key: 'verified_at', header: 'Verified At (IST)' },
       { key: 'created_at', header: 'Created At (IST)' },
+      { key: 'notes', header: 'Notes' },
     ],
   },
   {
@@ -79,6 +80,7 @@ const REPORT_CONFIGS = [
       { key: 'verified', header: 'Verified' },
       { key: 'verified_at', header: 'Verified At (IST)' },
       { key: 'created_at', header: 'Created At (IST)' },
+      { key: 'notes', header: 'Notes' },
     ],
   },
   {
@@ -96,6 +98,7 @@ const REPORT_CONFIGS = [
       { key: 'city', header: 'City' },
       { key: 'message', header: 'Message' },
       { key: 'status', header: 'Status' },
+      { key: 'notes', header: 'Notes' },
       { key: 'created_at', header: 'Created At (IST)' },
     ],
   },
@@ -105,6 +108,94 @@ const formatIST = (dateStr: string | null | undefined) => {
   if (!dateStr) return '-';
   const withZ = dateStr + (dateStr.endsWith('Z') ? '' : 'Z');
   return new Date(withZ).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+};
+
+// ─── Inline Notes Cell ────────────────────────────────────────────────────────
+
+interface NotesCellProps {
+  value: string | null | undefined;
+  onSave: (notes: string) => Promise<void>;
+}
+
+const NotesCell = ({ value, onSave }: NotesCellProps) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value || '');
+  const [saving, setSaving] = useState(false);
+  const textRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) textRef.current?.focus();
+  }, [editing]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(draft);
+      setEditing(false);
+    } catch {
+      // error already toasted by caller
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setDraft(value || '');
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, minWidth: 220 }}>
+        <TextField
+          inputRef={textRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          multiline
+          minRows={2}
+          maxRows={6}
+          size='small'
+          fullWidth
+          disabled={saving}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') handleCancel();
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSave();
+          }}
+          sx={{ fontSize: 13 }}
+        />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <IconButton size='small' onClick={handleSave} disabled={saving} color='primary'>
+            {saving ? <CircularProgress size={14} /> : <CheckOutlined fontSize='small' />}
+          </IconButton>
+          <IconButton size='small' onClick={handleCancel} disabled={saving}>
+            <CloseOutlined fontSize='small' />
+          </IconButton>
+        </Box>
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, cursor: 'pointer', minWidth: 140 }}
+      onClick={() => setEditing(true)}
+    >
+      <Typography
+        variant='body2'
+        sx={{
+          color: value ? 'text.primary' : 'text.disabled',
+          fontStyle: value ? 'normal' : 'italic',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          maxWidth: 220,
+          flex: 1,
+        }}
+      >
+        {value || 'Add note…'}
+      </Typography>
+      <EditOutlined sx={{ fontSize: 14, color: 'text.disabled', mt: 0.2, flexShrink: 0 }} />
+    </Box>
+  );
 };
 
 // ─── Shared Pagination Footer ─────────────────────────────────────────────────
@@ -196,6 +287,16 @@ const BrandLeadsTab = () => {
     setPage(p - 1); setSkipPage('');
   };
 
+  const handleSaveNotes = async (id: string, notes: string) => {
+    try {
+      await axiosInstance.patch(`/admin/brand_leads/${id}`, { notes });
+      setLeads((prev) => prev.map((l) => l._id === id ? { ...l, notes } : l));
+    } catch {
+      toast.error('Failed to save notes.');
+      throw new Error('save failed');
+    }
+  };
+
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>;
 
   return (
@@ -215,6 +316,7 @@ const BrandLeadsTab = () => {
                   <TableCell sx={{ fontWeight: 600 }}>Created At (IST)</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Verified</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Verified At (IST)</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Notes</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -231,6 +333,12 @@ const BrandLeadsTab = () => {
                       />
                     </TableCell>
                     <TableCell>{formatIST(lead.verified_at)}</TableCell>
+                    <TableCell>
+                      <NotesCell
+                        value={lead.notes}
+                        onSave={(notes) => handleSaveNotes(lead._id, notes)}
+                      />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -289,6 +397,16 @@ const CatalogueLeadsTab = () => {
     setPage(p - 1); setSkipPage('');
   };
 
+  const handleSaveNotes = async (id: string, notes: string) => {
+    try {
+      await axiosInstance.patch(`/admin/catalogue_leads/${id}`, { notes });
+      setLeads((prev) => prev.map((l) => l._id === id ? { ...l, notes } : l));
+    } catch {
+      toast.error('Failed to save notes.');
+      throw new Error('save failed');
+    }
+  };
+
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>;
 
   return (
@@ -307,6 +425,7 @@ const CatalogueLeadsTab = () => {
                   <TableCell sx={{ fontWeight: 600 }}>Created At (IST)</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Verified</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Verified At (IST)</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Notes</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -322,6 +441,12 @@ const CatalogueLeadsTab = () => {
                       />
                     </TableCell>
                     <TableCell>{formatIST(lead.verified_at)}</TableCell>
+                    <TableCell>
+                      <NotesCell
+                        value={lead.notes}
+                        onSave={(notes) => handleSaveNotes(lead._id, notes)}
+                      />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -400,6 +525,16 @@ const ContactFormLeadsTab = () => {
     }
   };
 
+  const handleSaveNotes = async (id: string, notes: string) => {
+    try {
+      await axiosInstance.patch(`/admin/contact_submissions/${id}`, { notes });
+      setContacts((prev) => prev.map((c) => c._id === id ? { ...c, notes } : c));
+    } catch {
+      toast.error('Failed to save notes.');
+      throw new Error('save failed');
+    }
+  };
+
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>;
 
   return (
@@ -433,6 +568,7 @@ const ContactFormLeadsTab = () => {
                     <TableCell sx={{ fontWeight: 600 }}>City</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Message</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Notes</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Created At</TableCell>
                   </TableRow>
                 </TableHead>
@@ -444,6 +580,7 @@ const ContactFormLeadsTab = () => {
                       index={page * rowsPerPage + index + 1}
                       saving={savingId === contact._id}
                       onStatusChange={handleStatusChange}
+                      onSaveNotes={handleSaveNotes}
                     />
                   ))}
                 </TableBody>
@@ -486,9 +623,10 @@ interface ContactRowProps {
   index: number;
   saving: boolean;
   onStatusChange: (id: string, status: string) => void;
+  onSaveNotes: (id: string, notes: string) => Promise<void>;
 }
 
-const ContactRow = ({ contact, index, saving, onStatusChange }: ContactRowProps) => {
+const ContactRow = ({ contact, index, saving, onStatusChange, onSaveNotes }: ContactRowProps) => {
   const message: string = contact.message || '';
   const isLong = message.length > MESSAGE_PREVIEW_LENGTH;
   const preview = isLong ? `${message.slice(0, MESSAGE_PREVIEW_LENGTH)}…` : message;
@@ -533,6 +671,12 @@ const ContactRow = ({ contact, index, saving, onStatusChange }: ContactRowProps)
             <MenuItem value='contacted'>Contacted</MenuItem>
           </Select>
         </FormControl>
+      </TableCell>
+      <TableCell>
+        <NotesCell
+          value={contact.notes}
+          onSave={(notes) => onSaveNotes(contact._id, notes)}
+        />
       </TableCell>
       <TableCell sx={{ whiteSpace: 'nowrap' }}>
         {formatIST(contact.created_at)}
