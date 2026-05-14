@@ -746,7 +746,7 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
                         <TableCell>
                           <Box
                             component='img'
-                            src={product.image_url || product.images[0] || '/placeholder.png'}
+                            src={product.image_url || product.images?.[0] || '/placeholder.png'}
                             alt={product.name}
                             sx={{
                               width: 70,
