@@ -72,6 +72,9 @@ const CareerApplications = () => {
   // Download report
   const [downloadLoading, setDownloadLoading] = useState(false);
 
+  // Status email
+  const [sendEmailLoading, setSendEmailLoading] = useState(false);
+
   // Careers list for reference
   const [careers, setCareers] = useState<any[]>([]);
 
@@ -198,6 +201,23 @@ const CareerApplications = () => {
   const handleDialogClose = () => {
     setDialogOpen(false);
     setSelectedApplication(null);
+  };
+
+  const handleSendStatusEmail = async () => {
+    if (!selectedApplication) return;
+    setSendEmailLoading(true);
+    try {
+      await axiosInstance.post(
+        `/admin/career_applications/${selectedApplication._id}/send-status-email`
+      );
+      toast.success(`${selectedApplication.status.charAt(0).toUpperCase() + selectedApplication.status.slice(1)} email sent to applicant`);
+      setSelectedApplication((prev: any) => ({ ...prev, status_email_sent: true }));
+      fetchApplications();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Error sending status email');
+    } finally {
+      setSendEmailLoading(false);
+    }
   };
 
   const handleToggleSelect = (id: string) => {
@@ -634,15 +654,30 @@ const CareerApplications = () => {
             </Box>
           )}
           <Box
-            sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}
+            sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3, flexWrap: 'wrap' }}
           >
-            <Button onClick={handleDialogClose} disabled={actionLoading}>
+            <Button onClick={handleDialogClose} disabled={actionLoading || sendEmailLoading}>
               Cancel
             </Button>
+            {selectedApplication && ['accepted', 'rejected'].includes(selectedApplication.status) && (
+              <Button
+                variant='outlined'
+                color={selectedApplication.status === 'accepted' ? 'success' : 'error'}
+                onClick={handleSendStatusEmail}
+                disabled={sendEmailLoading || selectedApplication.status_email_sent}
+                title={selectedApplication.status_email_sent ? `Email already sent on ${selectedApplication.status_email_sent_at ? new Date(selectedApplication.status_email_sent_at).toLocaleString() : ''}` : ''}
+              >
+                {sendEmailLoading
+                  ? 'Sending...'
+                  : selectedApplication.status_email_sent
+                  ? `${selectedApplication.status.charAt(0).toUpperCase() + selectedApplication.status.slice(1)} Email Sent`
+                  : `Send ${selectedApplication.status.charAt(0).toUpperCase() + selectedApplication.status.slice(1)} Email`}
+              </Button>
+            )}
             <Button
               variant='contained'
               onClick={handleStatusUpdate}
-              disabled={actionLoading}
+              disabled={actionLoading || sendEmailLoading}
             >
               {actionLoading ? 'Updating...' : 'Update Status'}
             </Button>
