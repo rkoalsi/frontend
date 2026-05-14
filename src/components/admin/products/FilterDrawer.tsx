@@ -140,8 +140,13 @@ const FilterDrawerComponent = ({
             <em>All</em>
           </MenuItem>
           {brandOptions && brandOptions.length > 0 && brandOptions.map((brand: any) => (
-            <MenuItem key={brand} value={brand}>
-              {brand}
+            <MenuItem key={brand.name ?? brand} value={brand.name ?? brand}>
+              {brand.name ?? brand}
+              {brand.hidden && (
+                <span style={{ marginLeft: 6, fontSize: '0.75rem', color: '#f59e0b', fontWeight: 600 }}>
+                  (Hidden)
+                </span>
+              )}
             </MenuItem>
           ))}
         </Select>

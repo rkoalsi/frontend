@@ -114,6 +114,22 @@ const Brands = () => {
     }
   };
 
+  const handleToggleVisibility = async (brand: any) => {
+    try {
+      const newHidden = !brand.hidden;
+      await axiosInstance.put(`/admin/brands/${brand._id}`, { hidden: newHidden });
+      setBrands((prev: any) =>
+        prev.map((b: any) =>
+          b._id === brand._id ? { ...b, hidden: newHidden } : b
+        )
+      );
+      toast.success(`Brand "${brand.name}" is now ${newHidden ? 'hidden' : 'visible'}.`);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update brand visibility.');
+    }
+  };
+
   const handleOpenEditModal = (brand: any) => {
     setSelectedBrand(brand);
     setDescription(brand.description || '');
@@ -259,6 +275,7 @@ const Brands = () => {
           handleImageClick={handleImageClick}
           handleOpenEditModal={handleOpenEditModal}
           handleToggleActive={handleToggleActive}
+          handleToggleVisibility={handleToggleVisibility}
         />
       </Paper>
 
