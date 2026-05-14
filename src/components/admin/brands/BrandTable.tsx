@@ -24,6 +24,7 @@ const BrandTable = ({
   loading,
   handleImageClick,
   handleOpenEditModal,
+  handleToggleVisibility,
 }: any) => {
   return (
     <>
@@ -58,6 +59,7 @@ const BrandTable = ({
                   <TableCell>Image</TableCell>
                   <TableCell>Description</TableCell>
                   <TableCell>Secondary Image</TableCell>
+                  <TableCell>Visible</TableCell>
                   <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -119,6 +121,15 @@ const BrandTable = ({
                         ) : (
                           <CancelIcon color='disabled' fontSize='small' />
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip title={brand.hidden ? 'Hidden from orders & catalogue' : 'Visible in orders & catalogue'}>
+                          <Switch
+                            checked={!brand.hidden}
+                            onChange={() => handleToggleVisibility(brand)}
+                            color='success'
+                          />
+                        </Tooltip>
                       </TableCell>
                       <TableCell>
                         <Button
