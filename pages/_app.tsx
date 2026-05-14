@@ -1,6 +1,7 @@
 import * as React from 'react';
 import Head from 'next/head';
 import { AppProps } from 'next/app';
+import { useNetworkStatus } from '../src/util/useNetworkStatus';
 import { AppCacheProvider } from '@mui/material-nextjs/v15-pagesRouter';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -27,6 +28,7 @@ const queryClient = new QueryClient({
 });
 
 export default function MyApp(props: AppProps) {
+  useNetworkStatus();
   const { Component, pageProps } = props;
 
   const isAdminRoute = props.router?.pathname.startsWith('/admin');
