@@ -167,8 +167,12 @@ const CareerApplications = () => {
         { status: statusValue }
       );
       toast.success('Application status updated');
-      setDialogOpen(false);
-      setSelectedApplication(null);
+      const statusChanged = selectedApplication.status !== statusValue;
+      setSelectedApplication((prev: any) => ({
+        ...prev,
+        status: statusValue,
+        ...(statusChanged ? { status_email_sent: false, status_email_sent_at: null } : {}),
+      }));
       fetchApplications();
     } catch (error) {
       console.error(error);
