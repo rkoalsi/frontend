@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -29,7 +29,7 @@ import {
   useTheme,
   MenuItem,
 } from '@mui/material';
-import { Visibility, Reply as ReplyIcon, Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon } from '@mui/icons-material';
+import { Visibility, Reply as ReplyIcon, Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon, CloudUpload as UploadIcon, InsertDriveFile as FileIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import CommentIcon from '@mui/icons-material/Comment';
 import { InputAdornment } from '@mui/material';
 import { toast } from 'react-toastify';
@@ -89,6 +89,9 @@ interface CustomerRequest {
   gst_treatment?: string;
   pincode?: string;
   in_ex?: string;
+  gst_certificate_url?: string;
+  pan_card_url?: string;
+  aadhar_url?: string;
   created_by_name: string;
   created_at: string;
   status: 'pending' | 'approved' | 'rejected' | 'admin_commented' | 'salesperson_replied' | 'created_on_zoho';
@@ -148,6 +151,12 @@ const CustomerRequests = () => {
   // Edit mode states
   const [isEditMode, setIsEditMode] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<CustomerRequest>>({});
+
+  // Document upload state
+  const [docUploading, setDocUploading] = useState<Record<string, boolean>>({});
+  const gstCertRef = useRef<HTMLInputElement>(null);
+  const panCardRef = useRef<HTMLInputElement>(null);
+  const aadharRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Check if user is logged in
@@ -368,6 +377,66 @@ const CustomerRequests = () => {
       toast.error('Error deleting reply');
     } finally {
       setReplyLoading(false);
+    }
+  };
+
+  const handleDocUpload = async (
+    file: File,
+    docType: 'gst_certificate' | 'pan_card' | 'aadhar',
+    urlField: 'gst_certificate_url' | 'pan_card_url' | 'aadhar_url',
+  ) => {
+    if (!selectedRequest) return;
+    setDocUploading((prev) => ({ ...prev, [docType]: true }));
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('doc_type', docType);
+      const res = await axiosInstance.post('/customer_creation_requests/upload-document', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      // Persist URL on the request record
+      await axiosInstance.put(`/customer_creation_requests/${selectedRequest._id}`, {
+        ...selectedRequest,
+        [urlField]: res.data.url,
+      });
+      toast.success('Document uploaded');
+      fetchRequests();
+      // Refresh selectedRequest inline
+      setSelectedRequest((prev) => prev ? { ...prev, [urlField]: res.data.url } : prev);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Failed to upload document');
+    } finally {
+      setDocUploading((prev) => ({ ...prev, [docType]: false }));
+    }
+  };
+
+  const handleDocDelete = async (
+    docKey: string,
+    urlField: 'gst_certificate_url' | 'pan_card_url' | 'aadhar_url',
+    inputRef: React.RefObject<HTMLInputElement | null>,
+  ) => {
+    if (!selectedRequest) return;
+    try {
+      await axiosInstance.delete('/customer_creation_requests/document', { params: { key: docKey } });
+      await axiosInstance.put(`/customer_creation_requests/${selectedRequest._id}`, {
+        ...selectedRequest,
+        [urlField]: null,
+      });
+      if (inputRef.current) inputRef.current.value = '';
+      toast.success('Document removed');
+      fetchRequests();
+      setSelectedRequest((prev) => prev ? { ...prev, [urlField]: undefined } : prev);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Failed to remove document');
+    }
+  };
+
+  const extractS3Key = (url: string) => {
+    try {
+      const u = new URL(url);
+      return u.pathname.slice(1); // strip leading /
+    } catch {
+      return url;
     }
   };
 
@@ -1065,6 +1134,84 @@ const CustomerRequests = () => {
                   />
                 </Grid>
               </Grid>
+
+              {/* Documents Section */}
+              <Box sx={{ mt: 3 }}>
+                <Divider sx={{ mb: 2 }} />
+                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
+                  Documents
+                </Typography>
+                {(() => {
+                  const isGST = selectedRequest.gst_treatment === 'Business GST';
+                  const canEdit = !['created_on_zoho', 'approved', 'rejected'].includes(selectedRequest.status);
+                  const docs: { label: string; urlField: 'gst_certificate_url' | 'pan_card_url' | 'aadhar_url'; docType: 'gst_certificate' | 'pan_card' | 'aadhar'; ref: React.RefObject<HTMLInputElement | null>; show: boolean }[] = [
+                    { label: 'GST Certificate', urlField: 'gst_certificate_url', docType: 'gst_certificate', ref: gstCertRef, show: isGST },
+                    { label: 'PAN Card', urlField: 'pan_card_url', docType: 'pan_card', ref: panCardRef, show: !isGST },
+                    { label: 'Aadhaar Card', urlField: 'aadhar_url', docType: 'aadhar', ref: aadharRef, show: !isGST },
+                  ];
+                  return (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {docs.filter((d) => d.show).map((doc) => {
+                        const url = selectedRequest[doc.urlField];
+                        return (
+                          <Box key={doc.docType} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="body2" sx={{ minWidth: 130, fontWeight: 500 }}>{doc.label}:</Typography>
+                            {url ? (
+                              <>
+                                <Chip
+                                  icon={<FileIcon />}
+                                  label={url.split('/').pop()}
+                                  component="a"
+                                  href={url}
+                                  target="_blank"
+                                  clickable
+                                  color="success"
+                                  variant="outlined"
+                                  size="small"
+                                  deleteIcon={<OpenInNewIcon />}
+                                  onDelete={() => window.open(url, '_blank')}
+                                />
+                                {canEdit && (
+                                  <Tooltip title="Delete document">
+                                    <IconButton size="small" onClick={() => handleDocDelete(extractS3Key(url), doc.urlField, doc.ref)}>
+                                      <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+                              </>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">Not uploaded</Typography>
+                            )}
+                            {canEdit && (
+                              <>
+                                <input
+                                  ref={doc.ref}
+                                  type="file"
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  style={{ display: 'none' }}
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) handleDocUpload(f, doc.docType, doc.urlField);
+                                  }}
+                                />
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  startIcon={docUploading[doc.docType] ? <CircularProgress size={14} /> : <UploadIcon />}
+                                  disabled={docUploading[doc.docType]}
+                                  onClick={() => doc.ref.current?.click()}
+                                >
+                                  {url ? 'Replace' : 'Upload'}
+                                </Button>
+                              </>
+                            )}
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  );
+                })()}
+              </Box>
 
               {/* Admin Comments Section */}
               {selectedRequest.admin_comments && selectedRequest.admin_comments.length > 0 && (

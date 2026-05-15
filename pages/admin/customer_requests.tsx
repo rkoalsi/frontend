@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -28,7 +28,7 @@ import {
   InputLabel,
   Autocomplete,
 } from '@mui/material';
-import { Visibility, Check, Close, Edit as EditIcon } from '@mui/icons-material';
+import { Visibility, Check, Close, Edit as EditIcon, CloudUpload as UploadIcon, Delete as DeleteIcon, InsertDriveFile as FileIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import CommentIcon from '@mui/icons-material/Comment';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -98,6 +98,9 @@ interface CustomerRequest {
   gst_treatment?: string;
   pincode?: string;
   in_ex?: string;
+  gst_certificate_url?: string;
+  pan_card_url?: string;
+  aadhar_url?: string;
   created_by_name: string;
   created_at: string;
   status: 'pending' | 'approved' | 'rejected' | 'admin_commented' | 'salesperson_replied' | 'created_on_zoho';
@@ -147,6 +150,12 @@ const CustomerRequests = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<CustomerRequest>>({});
   const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
+
+  // Document upload state
+  const [docUploading, setDocUploading] = useState<Record<string, boolean>>({});
+  const gstCertRef = useRef<HTMLInputElement>(null);
+  const panCardRef = useRef<HTMLInputElement>(null);
+  const aadharRef = useRef<HTMLInputElement>(null);
   const [newStatus, setNewStatus] = useState<'pending' | 'rejected'>('pending');
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [duplicateCustomerInfo, setDuplicateCustomerInfo] = useState<{ contact_name: string; contact_id: string } | null>(null);
@@ -440,6 +449,59 @@ const CustomerRequests = () => {
     } catch (error: any) {
       console.error('Error adding comment:', error);
       toast.error('Failed to add comment');
+    }
+  };
+
+  const extractS3Key = (url: string) => {
+    try { return new URL(url).pathname.slice(1); } catch { return url; }
+  };
+
+  const handleDocUpload = async (
+    file: File,
+    docType: 'gst_certificate' | 'pan_card' | 'aadhar',
+    urlField: 'gst_certificate_url' | 'pan_card_url' | 'aadhar_url',
+  ) => {
+    if (!selectedRequest) return;
+    setDocUploading((prev) => ({ ...prev, [docType]: true }));
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('doc_type', docType);
+      const res = await axiosInstance.post('/customer_creation_requests/upload-document', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      await axiosInstance.put(`/customer_creation_requests/${selectedRequest._id}`, {
+        ...selectedRequest,
+        [urlField]: res.data.url,
+      });
+      toast.success('Document uploaded');
+      fetchRequests();
+      setSelectedRequest((prev: CustomerRequest | null) => prev ? { ...prev, [urlField]: res.data.url } : prev);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Failed to upload document');
+    } finally {
+      setDocUploading((prev) => ({ ...prev, [docType]: false }));
+    }
+  };
+
+  const handleDocDelete = async (
+    docKey: string,
+    urlField: 'gst_certificate_url' | 'pan_card_url' | 'aadhar_url',
+    inputRef: React.RefObject<HTMLInputElement | null>,
+  ) => {
+    if (!selectedRequest) return;
+    try {
+      await axiosInstance.delete('/customer_creation_requests/document', { params: { key: docKey } });
+      await axiosInstance.put(`/customer_creation_requests/${selectedRequest._id}`, {
+        ...selectedRequest,
+        [urlField]: null,
+      });
+      if (inputRef.current) inputRef.current.value = '';
+      toast.success('Document removed');
+      fetchRequests();
+      setSelectedRequest((prev: CustomerRequest | null) => prev ? { ...prev, [urlField]: undefined } : prev);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Failed to remove document');
     }
   };
 
@@ -1054,6 +1116,83 @@ const CustomerRequests = () => {
                   />
                 </Grid>
               </Grid>
+
+              {/* Documents Section */}
+              <Box sx={{ mt: 3 }}>
+                <Divider sx={{ mb: 2 }} />
+                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
+                  Documents
+                </Typography>
+                {(() => {
+                  const isGST = selectedRequest.gst_treatment === 'Business GST';
+                  const docs: {
+                    label: string;
+                    urlField: 'gst_certificate_url' | 'pan_card_url' | 'aadhar_url';
+                    docType: 'gst_certificate' | 'pan_card' | 'aadhar';
+                    ref: React.RefObject<HTMLInputElement | null>;
+                    show: boolean;
+                  }[] = [
+                    { label: 'GST Certificate', urlField: 'gst_certificate_url', docType: 'gst_certificate', ref: gstCertRef, show: isGST },
+                    { label: 'PAN Card', urlField: 'pan_card_url', docType: 'pan_card', ref: panCardRef, show: !isGST },
+                    { label: 'Aadhaar Card', urlField: 'aadhar_url', docType: 'aadhar', ref: aadharRef, show: !isGST },
+                  ];
+                  return (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {docs.filter((d) => d.show).map((doc) => {
+                        const url = selectedRequest[doc.urlField];
+                        return (
+                          <Box key={doc.docType} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="body2" sx={{ minWidth: 130, fontWeight: 500 }}>{doc.label}:</Typography>
+                            {url ? (
+                              <>
+                                <Chip
+                                  icon={<FileIcon />}
+                                  label={url.split('/').pop()}
+                                  component="a"
+                                  href={url}
+                                  target="_blank"
+                                  clickable
+                                  color="success"
+                                  variant="outlined"
+                                  size="small"
+                                  deleteIcon={<OpenInNewIcon />}
+                                  onDelete={() => window.open(url, '_blank')}
+                                />
+                                <Tooltip title="Delete document">
+                                  <IconButton size="small" onClick={() => handleDocDelete(extractS3Key(url), doc.urlField, doc.ref)}>
+                                    <DeleteIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">Not uploaded</Typography>
+                            )}
+                            <input
+                              ref={doc.ref}
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              style={{ display: 'none' }}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) handleDocUpload(f, doc.docType, doc.urlField);
+                              }}
+                            />
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={docUploading[doc.docType] ? <CircularProgress size={14} /> : <UploadIcon />}
+                              disabled={docUploading[doc.docType]}
+                              onClick={() => doc.ref.current?.click()}
+                            >
+                              {url ? 'Replace' : 'Upload'}
+                            </Button>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  );
+                })()}
+              </Box>
 
               {/* Admin Comments Section */}
               <Box sx={{ mt: 3 }}>
