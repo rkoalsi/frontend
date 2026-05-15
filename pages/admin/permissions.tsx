@@ -199,7 +199,19 @@ const UserManagement = () => {
         }
         try {
             setFormLoading(true);
-            await axiosInstance.post(`${API}/admin/users`, addForm);
+            let payload: any = { ...addForm };
+
+            if (addForm.role === 'sales_person') {
+                const zohoResponse = await axiosInstance.post(`${API}/admin/salespeople/zoho/salesperson`, {
+                    name: addForm.name,
+                    email: addForm.email,
+                });
+                const zohoSalesperson = zohoResponse.data.salesperson;
+                payload.code = zohoSalesperson.salesperson_name;
+                payload.salesperson_id = zohoSalesperson.salesperson_id;
+            }
+
+            await axiosInstance.post(`${API}/admin/users`, payload);
             toast.success('User created successfully');
             setAddOpen(false);
             setAddForm({ ...EMPTY_USER_FORM });
