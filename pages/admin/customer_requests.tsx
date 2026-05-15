@@ -775,9 +775,27 @@ const CustomerRequests = () => {
 
                 {/* Shipping Address Section */}
                 <Grid size={{ xs: 12 }}>
-                  <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, mt: 2, color: 'primary.main' }}>
-                    Shipping Address
-                  </Typography>
+                  <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 1, mt: 2 }}>
+                    <Typography variant="subtitle2" fontWeight={600} sx={{ color: 'primary.main' }}>
+                      Shipping Address
+                    </Typography>
+                    {isEditMode && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => {
+                          const billing = isEditMode ? editFormData.billing_address : selectedRequest.billing_address;
+                          if (typeof billing === 'object' && billing !== null) {
+                            setEditFormData(prev => ({ ...prev, shipping_address: { ...billing } }));
+                          } else if (typeof billing === 'string') {
+                            setEditFormData(prev => ({ ...prev, shipping_address: { address: billing } }));
+                          }
+                        }}
+                      >
+                        Copy from Billing
+                      </Button>
+                    )}
+                  </Box>
                   <Divider sx={{ mb: 2 }} />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
