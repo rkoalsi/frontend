@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useContext } from 'react';
 import {
   Typography,
   List,
@@ -35,8 +35,11 @@ import { toast } from 'react-toastify';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { green, red } from '@mui/material/colors';
 import axiosInstance from '../../src/util/axios';
+import AuthContext from '../../src/components/Auth';
 
 const SalesPeople = () => {
+  const { user }: any = useContext(AuthContext);
+  const isAdmin = user?.data?.role === 'admin';
   const [salesPeople, setSalesPeople]: any = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPerson, setSelectedPerson]: any = useState(null);
@@ -50,7 +53,7 @@ const SalesPeople = () => {
     name: '',
     code: '',
     salesperson_id: '',
-    designation: '',
+    designation: 'Sales Person',
     email: '',
     phone: '',
     password: '',
@@ -80,6 +83,32 @@ const SalesPeople = () => {
       setLoading(false);
     }
   }, [baseApiUrl]);
+
+  
+  const createSalesPersonZoho = useCallback(async () => {
+    try {
+      const response = await axiosInstance.post(`/admin/salespeople`);
+      setSalesPeople(response.data.users);
+    } catch (error) {
+      console.error(error);
+      toast.error('Error fetching Sales People.');
+    } finally {
+      setLoading(false);
+    }
+  }, [baseApiUrl]);
+
+ 
+  const handleDeleteSalesPerson = useCallback(async (personId: string) => {
+    if (!confirm('Are you sure you want to delete this salesperson?')) return;
+    try {
+      await axiosInstance.delete(`/admin/salespeople/${personId}`);
+      setSalesPeople((prev: any) => prev.filter((p: any) => p._id !== personId));
+      toast.success('Salesperson deleted successfully');
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.response?.data?.detail || 'Failed to delete salesperson');
+    }
+  }, []);
 
   useEffect(() => {
     fetchSalesPeople();
@@ -154,19 +183,33 @@ const SalesPeople = () => {
 
   // Handle creating a new salesperson
   const handleCreateSalesPerson = useCallback(async () => {
+    if (!newSalesPerson.name.trim() || !newSalesPerson.email.trim()) {
+      toast.error('Name and email are required');
+      return;
+    }
     try {
-      const response = await axiosInstance.post(
-        `/admin/salespeople`,
-        newSalesPerson
+      // Step 1: Create on Zoho and get back the salesperson_id + code
+      const zohoResponse = await axiosInstance.post(
+        `/admin/salespeople/zoho/salesperson`,
+        { name: newSalesPerson.name, email: newSalesPerson.email }
       );
-      setSalesPeople((prev: any) => [...prev, response.data]);
+      const zohoSalesperson = zohoResponse.data.salesperson;
+
+      // Step 2: Create local user with Zoho data attached
+      const payload = {
+        ...newSalesPerson,
+        code: zohoSalesperson.salesperson_name,
+        salesperson_id: zohoSalesperson.salesperson_id,
+      };
+      await axiosInstance.post(`/admin/salespeople`, payload);
+      await fetchSalesPeople();
       toast.success('Salesperson added successfully');
       setAddDialogOpen(false);
       setNewSalesPerson({
         name: '',
         code: '',
         salesperson_id: '',
-        designation: '',
+        designation: 'Sales Person',
         email: '',
         phone: '',
         password: '',
@@ -178,7 +221,7 @@ const SalesPeople = () => {
       const errorMessage = error?.response?.data?.detail || 'Failed to add salesperson';
       toast.error(errorMessage);
     }
-  }, [baseApiUrl, newSalesPerson]);
+  }, [newSalesPerson]);
 
   // Handle field changes for new salesperson form
   const handleAddFieldChange = useCallback((field: any, value: any) => {
@@ -188,22 +231,6 @@ const SalesPeople = () => {
     }));
   }, []);
 
-  // Handle Zoho salesperson selection
-  const handleZohoSalespersonSelect = useCallback((salesperson: any) => {
-    if (salesperson) {
-      setNewSalesPerson((prev) => ({
-        ...prev,
-        code: salesperson.salesperson_name,
-        salesperson_id: salesperson.salesperson_id,
-      }));
-    } else {
-      setNewSalesPerson((prev) => ({
-        ...prev,
-        code: '',
-        salesperson_id: '',
-      }));
-    }
-  }, []);
 
   // Handle field changes in selected person
   const handleFieldChange = useCallback((field: any, value: any) => {
@@ -421,7 +448,7 @@ const SalesPeople = () => {
       toast.success('Salesperson updated successfully.');
       setEditPassword('');
       await refetchSelectedPerson(selectedPerson._id);
-      fetchSalesPeople();
+      await fetchSalesPeople();
     } catch (err) {
       console.error(err);
       toast.error('Failed to update salesperson');
@@ -509,33 +536,17 @@ const SalesPeople = () => {
               onChange={(e) => handleAddFieldChange('name', e.target.value)}
               fullWidth
               margin='normal'
+              required
             />
-            <FormControl fullWidth margin='normal'>
-              <InputLabel>Code (Zoho Salesperson)</InputLabel>
-              <Select
-                label='Code (Zoho Salesperson)'
-                value={newSalesPerson.salesperson_id}
-                onChange={(e) => {
-                  const selected = zohoSalespersons.find(
-                    (sp: any) => sp.salesperson_id === e.target.value
-                  );
-                  handleZohoSalespersonSelect(selected);
-                }}
-                disabled={zohoLoading}
-              >
-                {zohoLoading ? (
-                  <MenuItem disabled>Loading...</MenuItem>
-                ) : zohoSalespersons.length === 0 ? (
-                  <MenuItem disabled>No salespersons found</MenuItem>
-                ) : (
-                  zohoSalespersons.map((sp: any) => (
-                    <MenuItem key={sp.salesperson_id} value={sp.salesperson_id}>
-                      {sp.salesperson_name} - {sp.email}
-                    </MenuItem>
-                  ))
-                )}
-              </Select>
-            </FormControl>
+            <TextField
+              label='Email'
+              variant='outlined'
+              value={newSalesPerson.email}
+              onChange={(e) => handleAddFieldChange('email', e.target.value)}
+              fullWidth
+              margin='normal'
+              required
+            />
             <TextField
               label='Designation'
               variant='outlined'
@@ -543,14 +554,6 @@ const SalesPeople = () => {
               onChange={(e) =>
                 handleAddFieldChange('designation', e.target.value)
               }
-              fullWidth
-              margin='normal'
-            />
-            <TextField
-              label='Email'
-              variant='outlined'
-              value={newSalesPerson.email}
-              onChange={(e) => handleAddFieldChange('email', e.target.value)}
               fullWidth
               margin='normal'
             />
@@ -639,12 +642,22 @@ const SalesPeople = () => {
                       />
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant='contained'
-                        onClick={() => handleViewDetails(person)}
-                      >
-                        Edit
-                      </Button>
+                      <Box display='flex' alignItems='center' gap={1}>
+                        <Button
+                          variant='contained'
+                          onClick={() => handleViewDetails(person)}
+                        >
+                          Edit
+                        </Button>
+                        {isAdmin && (
+                          <IconButton
+                            color='error'
+                            onClick={() => handleDeleteSalesPerson(person._id)}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        )}
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}
