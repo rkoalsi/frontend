@@ -37,7 +37,6 @@ import {
   Insights,
   Radar,
   Repeat,
-  DeliveryDining,
   KeyboardReturn,
   PaidOutlined,
   PendingActionsOutlined,
@@ -81,7 +80,6 @@ interface Stats {
   updated_daily_visits: number;
   submitted_potential_customers: number;
   submitted_targeted_customers: number;
-  delivery_partners: number;
   return_orders: number;
   submitted_shop_hooks: number;
   active_hook_categories: number;
@@ -448,19 +446,6 @@ const AdminDashboard = () => {
         },
       ],
       icon: <Phishing color='primary' />,
-    },
-    {
-      label: 'Delivery Partners',
-      route: 'delivery_partners',
-      value: stats.delivery_partners,
-      subStats: [
-        {
-          label: 'All Delivery Partners',
-          value: stats.delivery_partners,
-          color: 'info',
-        },
-      ],
-      icon: <DeliveryDining color='primary' />,
     },
     {
       label: 'Return Orders',
