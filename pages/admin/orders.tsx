@@ -865,7 +865,6 @@ const Orders = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {console.log(selectedOrder)}
                       {selectedOrder.products?.map((product: any) => (
                         <TableRow key={product.product_id}>
                           <TableCell>

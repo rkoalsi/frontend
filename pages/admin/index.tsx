@@ -158,7 +158,7 @@ const AdminDashboard = () => {
         console.error('Error fetching stats:', err);
         setError(
           err.response?.data?.message ||
-            'Failed to load statistics. Please try again later.'
+          'Failed to load statistics. Please try again later.'
         );
 
         if (showRefreshing) {
@@ -610,9 +610,9 @@ const AdminDashboard = () => {
     if (!permissions || !permissions.dashboard_sections) {
       return [];
     }
-    
+
     // Filter cards based on dashboard sections allowed by backend
-    return allCards.filter(card => 
+    return allCards.filter(card =>
       permissions.dashboard_sections.includes(card.route)
     );
   };
@@ -936,12 +936,12 @@ const AdminDashboard = () => {
   if (!permissions) {
     return (
       <Container maxWidth='xl' sx={{ py: { xs: 2, md: 4 } }}>
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center', 
-            height: '50vh' 
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '50vh'
           }}
         >
           <CircularProgress />
@@ -1126,7 +1126,7 @@ const AdminDashboard = () => {
                         <PieChart>
                           <Pie
                             data={stats.product_additions_by_type.breakdown.map(item => ({
-                              name: item.added_by === 'customer' ? 'Customer' : 'Sales Person',
+                              name: item.added_by === 'customer' ? 'Customer' : item.added_by === 'admin' ? "Admin" : 'Sales Person',
                               value: item.count,
                               percentage: item.percentage,
                               added_by: item.added_by
@@ -1140,7 +1140,7 @@ const AdminDashboard = () => {
                             dataKey="value"
                           >
                             {stats.product_additions_by_type.breakdown.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.added_by === 'customer' ? '#4caf50' : '#2196f3'} />
+                              <Cell key={`cell-${index}`} fill={entry.added_by === 'customer' ? '#4caf50' : entry.added_by === 'admin' ? '#df1515' : '#2196f3'} />
                             ))}
                           </Pie>
                           <RechartsTooltip
@@ -1164,17 +1164,17 @@ const AdminDashboard = () => {
                             sx={{
                               p: 2,
                               borderRadius: 2,
-                              backgroundColor: item.added_by === 'customer' ? '#4caf5008' : '#2196f308',
-                              border: `1px solid ${item.added_by === 'customer' ? '#4caf5020' : '#2196f320'}`,
+                              backgroundColor: item.added_by === 'customer' ? '#4caf5008' : item.added_by === 'admin' ? '#f3212108' : '#2196f308',
+                              border: `1px solid ${item.added_by === 'customer' ? '#4caf5020' : item.added_by === 'admin' ? '#f3212108' : '#2196f320'}`,
                             }}
                           >
                             <Typography variant='body1' fontWeight={600} sx={{ mb: 0.5 }}>
-                              {item.added_by === 'customer' ? 'Customer' : 'Sales Person'}
+                              {item.added_by === 'customer' ? 'Customer' : item.added_by === 'admin' ? 'Admin' : 'Sales Person'}
                             </Typography>
                             <Typography
                               variant='h5'
                               fontWeight={700}
-                              sx={{ color: item.added_by === 'customer' ? '#4caf50' : '#2196f3' }}
+                              sx={{ color: item.added_by === 'customer' ? '#4caf50' : item.added_by === 'admin' ? '#df1515' : '#2196f3' }}
                             >
                               {item.count.toLocaleString()}
                             </Typography>
