@@ -219,7 +219,7 @@ export const createAppTheme = (mode: 'dark' | 'light') =>
               color: '#9c92d8',
             }),
             ...(mode === 'light' && {
-              color: '#ffffff',
+              '&:not(.MuiChip-outlined)': { color: '#ffffff' },
             }),
           },
           colorSecondary: {
@@ -228,7 +228,7 @@ export const createAppTheme = (mode: 'dark' | 'light') =>
               color: '#b09ed8',
             }),
             ...(mode === 'light' && {
-              color: '#ffffff',
+              '&:not(.MuiChip-outlined)': { color: '#ffffff' },
             }),
           },
           colorSuccess: {
@@ -237,7 +237,7 @@ export const createAppTheme = (mode: 'dark' | 'light') =>
               color: '#81c784',
             }),
             ...(mode === 'light' && {
-              color: '#ffffff',
+              '&:not(.MuiChip-outlined)': { color: '#ffffff' },
             }),
           },
           colorWarning: {
@@ -252,7 +252,7 @@ export const createAppTheme = (mode: 'dark' | 'light') =>
               color: '#ef9a9a',
             }),
             ...(mode === 'light' && {
-              color: '#ffffff',
+              '&:not(.MuiChip-outlined)': { color: '#ffffff' },
             }),
           },
           colorInfo: {
@@ -261,7 +261,7 @@ export const createAppTheme = (mode: 'dark' | 'light') =>
               color: '#90caf9',
             }),
             ...(mode === 'light' && {
-              color: '#ffffff',
+              '&:not(.MuiChip-outlined)': { color: '#ffffff' },
             }),
           },
           outlined: {
