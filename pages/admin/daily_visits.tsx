@@ -424,7 +424,7 @@ const DailyVisits = () => {
     <Box sx={{ padding: { xs: 2, sm: 3 } }}>
       <Paper
         elevation={3}
-        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4, backgroundColor: 'white' }}
+        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4 }}
       >
         <Box display='flex' flexDirection={{ xs: 'column', sm: 'row' }} justifyContent='space-between' alignItems={{ xs: 'flex-start', sm: 'center' }} gap={{ xs: 2, sm: 0 }}>
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
@@ -432,7 +432,7 @@ const DailyVisits = () => {
           </Typography>
           <Button onClick={handleDownload}>Download Daily Visits XLSX</Button>
         </Box>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           View all daily visits from sales people below.
         </Typography>
 

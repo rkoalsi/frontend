@@ -401,7 +401,7 @@ const EmployeeManagement: React.FC = () => {
     };
 
     return (
-        <Box sx={{ p: { xs: 2, md: 3 }, backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+        <Box sx={{ p: { xs: 2, md: 3 }, minHeight: '100vh' }}>
             {/* Header Section */}
             <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
                 <Box>
@@ -510,7 +510,7 @@ const EmployeeManagement: React.FC = () => {
             </Box>
 
             {/* Search and Filters */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: '1px solid #e2e8f0' }}>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: '1px solid divider' }}>
                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }}>
                     <TextField
                         label='Search Employees'
@@ -610,7 +610,7 @@ const EmployeeManagement: React.FC = () => {
             </Paper>
 
             {/* Main Content */}
-            <Paper elevation={0} sx={{ borderRadius: 3, overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+            <Paper elevation={0} sx={{ borderRadius: 3, overflow: 'hidden', border: '1px solid divider' }}>
                 {loading ? (
                     <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '400px', gap: 2 }}>
                         <CircularProgress size={40} />
@@ -622,7 +622,7 @@ const EmployeeManagement: React.FC = () => {
                     <TableContainer>
                         <Table>
                             <TableHead>
-                                <TableRow sx={{ backgroundColor: '#f8fafc' }}>
+                                <TableRow sx={{}}>
                                     <TableCell sx={{ fontWeight: 600, width: 60 }}>Sr. No.</TableCell>
                                     <TableCell sx={{ fontWeight: 600 }}>Employee</TableCell>
                                     <TableCell sx={{ fontWeight: 600 }}>Contact Info</TableCell>
@@ -632,7 +632,7 @@ const EmployeeManagement: React.FC = () => {
                             </TableHead>
                             <TableBody>
                                 {employees.map((employee, index) => (
-                                    <TableRow key={employee.id} hover sx={{ '&:hover': { backgroundColor: '#f8fafc' } }}>
+                                    <TableRow key={employee.id} hover sx={{ '&:hover': { backgroundColor: 'action.hover' as any } }}>
                                         <TableCell>
                                             <Typography variant='body2' sx={{ fontWeight: 600 }}>
                                                 {pagination.skip + index + 1}
@@ -735,7 +735,7 @@ const EmployeeManagement: React.FC = () => {
 
                 {/* Pagination Controls */}
                 {pagination.total > 0 && (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, borderTop: '1px solid #e2e8f0' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, borderTop: '1px solid' }}>
                         <Typography variant='body2' color='text.secondary'>
                             Showing {pagination.skip + 1}–{Math.min(pagination.skip + employees.length, pagination.total)} of {pagination.total} employees
                         </Typography>

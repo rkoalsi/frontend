@@ -55,11 +55,13 @@ import {
   Article,
   Chat,
   Security,
+  DarkMode,
+  LightMode,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
+import { useColorMode } from '../context/ColorModeContext';
 
-// Icon mapping for dynamic icon rendering
 const iconMap: { [key: string]: React.ReactElement } = {
   Dashboard: <Dashboard />,
   CustomersIcon: <CustomersIcon />,
@@ -101,6 +103,8 @@ const AdminLayout = ({ children }: any) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user, loading, logout, permissions, checkRouteAccess }: any = useContext(AuthContext);
+  const { mode, toggleColorMode } = useColorMode();
+  const isDark = mode === 'dark';
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -111,7 +115,6 @@ const AdminLayout = ({ children }: any) => {
           return;
         }
 
-        // Check if user can access current route
         const canAccess = await checkRouteAccess(router.pathname);
         if (!canAccess) {
           toast.error('You are not authorized to access this page.');
@@ -124,15 +127,14 @@ const AdminLayout = ({ children }: any) => {
     checkAccess();
   }, [user, loading, router.pathname, checkRouteAccess]);
 
-  // Show loading while checking permissions
   if (loading || isCheckingAccess || !permissions) {
     return (
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh' 
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
         }}
       >
         <CircularProgress />
@@ -140,7 +142,6 @@ const AdminLayout = ({ children }: any) => {
     );
   }
 
-  // Don't render if user is not authenticated or doesn't have access
   if (!user) {
     return null;
   }
@@ -149,16 +150,20 @@ const AdminLayout = ({ children }: any) => {
     router.push(path);
   };
 
+  const mainBg = isDark
+    ? 'linear-gradient(135deg, #5A7CA4, #2B4864, #172335)'
+    : '#f0f4f8';
+
+  const sidebarBg = isDark ? '#344d69' : '#e8eef5';
+  const sidebarText = isDark ? 'white' : '#1a2b3c';
+  const activeItemBg = isDark ? '#78354f' : 'rgba(120, 53, 79, 0.15)';
+  const activeItemText = isDark ? 'white' : '#78354f';
+  const hoverItemBg = isDark ? '#78354f' : 'rgba(120, 53, 79, 0.1)';
+
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #5A7CA4, #2B4864, #172335)',
-      }}
-    >
+    <Box sx={{ display: 'flex', minHeight: '100vh', background: mainBg }}>
       <CssBaseline />
-      
+
       {/* App Bar */}
       <AppBar
         position='fixed'
@@ -258,6 +263,23 @@ const AdminLayout = ({ children }: any) => {
                 </Button>
               )
             )}
+
+            {/* Dark/Light Mode Toggle */}
+            <Tooltip title={isDark ? 'Switch to light mode' : 'Switch to dark mode'} arrow>
+              <IconButton
+                onClick={toggleColorMode}
+                size='small'
+                sx={{
+                  color: 'rgba(255,255,255,0.8)',
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                  borderRadius: '8px',
+                  '&:hover': { backgroundColor: 'rgba(255,255,255,0.15)', color: '#fff' },
+                }}
+              >
+                {isDark ? <LightMode fontSize='small' /> : <DarkMode fontSize='small' />}
+              </IconButton>
+            </Tooltip>
+
             {user && (
               <>
                 <Divider orientation='vertical' flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)', mx: 0.5 }} />
@@ -293,9 +315,10 @@ const AdminLayout = ({ children }: any) => {
           [`& .MuiDrawer-paper`]: {
             width: isSidebarOpen ? 240 : 0,
             boxSizing: 'border-box',
-            backgroundColor: '#344d69',
-            color: 'white',
+            backgroundColor: sidebarBg,
+            color: sidebarText,
             paddingTop: 2,
+            borderRight: isDark ? 'none' : '1px solid rgba(0,0,0,0.08)',
           },
         }}
       >
@@ -305,55 +328,47 @@ const AdminLayout = ({ children }: any) => {
             flexGrow: 1,
             overflowY: 'auto',
             height: 'calc(100vh - 64px)',
-            '&::-webkit-scrollbar': {
-              width: 0,
-              background: 'transparent',
-            },
+            '&::-webkit-scrollbar': { width: 0, background: 'transparent' },
             scrollbarWidth: 'none',
           }}
         >
           <List>
-            {permissions.menu_items.sort((a:any, b:any) => a.text.localeCompare(b.text)).map(({ text, icon, path }:any, index:number) => (
-              <ListItem
-                component='a'
-                key={index}
-                onClick={() => handleMenuItemClick(path)}
-                sx={{
-                  marginY: 0.5,
-                  paddingX: 2,
-                  paddingY: 1.5,
-                  borderRadius: 2,
-                  cursor: 'pointer',
-                  backgroundColor:
-                    router.pathname === path ? '#78354f' : '#344d69',
-                  color: 'white',
-                  transition: 'background-color 0.3s, color 0.3s',
-                  '&:hover': {
-                    backgroundColor: '#78354f',
-                    color: 'white',
-                  },
-                }}
-              >
-                <ListItemIcon
+            {permissions.menu_items
+              .sort((a: any, b: any) => a.text.localeCompare(b.text))
+              .map(({ text, icon, path }: any, index: number) => (
+                <ListItem
+                  component='a'
+                  key={index}
+                  onClick={() => handleMenuItemClick(path)}
                   sx={{
-                    color: 'inherit',
-                    minWidth: 40,
-                    marginRight: 1,
+                    marginY: 0.5,
+                    paddingX: 2,
+                    paddingY: 1.5,
+                    borderRadius: 2,
+                    cursor: 'pointer',
+                    backgroundColor: router.pathname === path ? activeItemBg : sidebarBg,
+                    color: router.pathname === path ? activeItemText : sidebarText,
+                    transition: 'background-color 0.3s, color 0.3s',
+                    '&:hover': {
+                      backgroundColor: hoverItemBg,
+                      color: activeItemText,
+                    },
                   }}
                 >
-                  {iconMap[icon] || <Dashboard />}
-                </ListItemIcon>
-                <ListItemText
-                  primary={text}
-                  primaryTypographyProps={{
-                    color: 'inherit',
-                    fontSize: 16,
-                    fontWeight: '500',
-                    fontFamily: 'Roboto, sans-serif',
-                  }}
-                />
-              </ListItem>
-            ))}
+                  <ListItemIcon sx={{ color: 'inherit', minWidth: 40, marginRight: 1 }}>
+                    {iconMap[icon] || <Dashboard />}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={text}
+                    primaryTypographyProps={{
+                      color: 'inherit',
+                      fontSize: 16,
+                      fontWeight: '500',
+                      fontFamily: 'Roboto, sans-serif',
+                    }}
+                  />
+                </ListItem>
+              ))}
           </List>
         </Box>
       </Drawer>
@@ -363,7 +378,7 @@ const AdminLayout = ({ children }: any) => {
         component='main'
         sx={{
           flexGrow: 1,
-          background: 'linear-gradient(135deg, #5A7CA4, #2B4864, #172335)',
+          background: mainBg,
           minHeight: '100vh',
           padding: { xs: 1, sm: 2, md: 3 },
           transition: 'margin-left 0.3s',
@@ -372,7 +387,6 @@ const AdminLayout = ({ children }: any) => {
         <Toolbar />
         {children}
       </Box>
-
     </Box>
   );
 };

@@ -28,9 +28,9 @@ interface Props {
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
   borderRadius: 16,
-  border: '1px solid #e2e8f0',
+  border: `1px solid ${theme.palette.divider}`,
   boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-  backgroundColor: '#ffffff',
+  backgroundColor: theme.palette.background.paper,
 }));
 
 function Address(props: Props) {
@@ -161,21 +161,17 @@ function Address(props: Props) {
               overflowY: { xs: 'visible', md: 'auto' },
               padding: { xs: 1, sm: 2 },
               borderRadius: 2,
-              border: '1px solid #e2e8f0',
-              backgroundColor: '#fafafa',
+              border: '1px solid',
+              borderColor: 'divider',
+              backgroundColor: 'action.hover',
               '&::-webkit-scrollbar': {
                 width: '8px',
               },
               '&::-webkit-scrollbar-track': {
-                backgroundColor: '#f1f1f1',
                 borderRadius: '10px',
               },
               '&::-webkit-scrollbar-thumb': {
-                backgroundColor: '#cbd5e1',
                 borderRadius: '10px',
-                '&:hover': {
-                  backgroundColor: '#94a3b8',
-                },
               },
             }}
           >

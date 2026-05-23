@@ -714,7 +714,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                         p: 2,
                         border: '1px solid #e0e0e0',
                         borderRadius: 2,
-                        backgroundColor: '#fafafa',
+                        backgroundColor: 'action.hover' as any,
                       }}
                     >
                       <Box

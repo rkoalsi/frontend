@@ -1,5 +1,3 @@
-// components/Layout.jsx
-
 import { useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Auth from './Auth';
@@ -15,21 +13,30 @@ import {
   IconButton,
   Divider,
 } from '@mui/material';
-import { Pets, Logout, AdminPanelSettings, LineAxisOutlined } from '@mui/icons-material';
+import {
+  Pets,
+  Logout,
+  AdminPanelSettings,
+  LineAxisOutlined,
+  DarkMode,
+  LightMode,
+} from '@mui/icons-material';
 import CustomButton from '../components/common/Button';
+import { useColorMode } from '../context/ColorModeContext';
+
 const Layout = ({ children }: any) => {
   const { user = {}, loading, logout }: any = useContext(Auth);
   const router = useRouter();
   const theme = useTheme();
   const isMobileOrTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const { mode, toggleColorMode } = useColorMode();
+  const isDark = mode === 'dark';
 
   const [isRouterReady, setIsRouterReady] = useState(false);
   const { shared } = router.query;
 
-  // Store the initial route for shared links
   const [originalPath, setOriginalPath] = useState(null);
 
-  // Define public paths
   const publicPaths = ['/login', '/forgot_password', '/reset_password', '/catalogues/all_products'];
 
   useEffect(() => {
@@ -37,22 +44,21 @@ const Layout = ({ children }: any) => {
       setIsRouterReady(true);
 
       if (shared === 'true' && !originalPath) {
-        setOriginalPath(router.asPath as any); // Save the original path on the first render
+        setOriginalPath(router.asPath as any);
       }
     }
   }, [router.isReady, shared, originalPath, router.asPath]);
 
   useEffect(() => {
-    // Prevent navigation for shared link users except public paths
     if (shared === 'true' && originalPath) {
       const handleRouteChange = (url: any) => {
-        const path = url.split('?')[0]; // Remove query parameters
+        const path = url.split('?')[0];
         if (
           path !== originalPath &&
-          !publicPaths.includes(path) && // Allow navigation to public paths
-          !url.startsWith('/login') // Extra safety
+          !publicPaths.includes(path) &&
+          !url.startsWith('/login')
         ) {
-          router.replace(originalPath); // Redirect back to the original path
+          router.replace(originalPath);
         }
       };
 
@@ -69,7 +75,7 @@ const Layout = ({ children }: any) => {
     const pathIsPublic = publicPaths.includes(router.pathname);
 
     if (!loading && !user && !shared && !pathIsPublic) {
-      router.replace('/login'); // Use replace to prevent adding to history stack
+      router.replace('/login');
     }
   }, [user, loading, shared, isRouterReady, router, publicPaths]);
 
@@ -81,17 +87,19 @@ const Layout = ({ children }: any) => {
           justifyContent: 'center',
           alignItems: 'center',
           minHeight: '100vh',
-          backgroundColor: '#f4f4f4',
+          backgroundColor: theme.palette.background.default,
         }}
       >
         <Typography>Loading...</Typography>
       </Box>
-    ); // Show a loading screen while waiting for the router or authentication
+    );
   }
 
   if (!user && !shared && !publicPaths.includes(router.pathname)) {
-    return null; // Redirect is handled in useEffect
+    return null;
   }
+
+  const mainBg = theme.palette.background.default;
 
   return (
     <Box
@@ -99,7 +107,7 @@ const Layout = ({ children }: any) => {
         display: 'flex',
         minHeight: '100vh',
         flexDirection: 'column',
-        background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+        background: mainBg,
       }}
     >
       {/* Top Navigation Bar */}
@@ -201,6 +209,23 @@ const Layout = ({ children }: any) => {
                 <CustomButton color='secondary' onClick={() => router.push('/customer')} text='Dashboard' />
               )
             )}
+
+            {/* Dark/Light Mode Toggle */}
+            <Tooltip title={isDark ? 'Switch to light mode' : 'Switch to dark mode'} arrow>
+              <IconButton
+                onClick={toggleColorMode}
+                size='small'
+                sx={{
+                  color: 'rgba(255,255,255,0.8)',
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                  borderRadius: '8px',
+                  '&:hover': { backgroundColor: 'rgba(255,255,255,0.15)', color: '#fff' },
+                }}
+              >
+                {isDark ? <LightMode fontSize='small' /> : <DarkMode fontSize='small' />}
+              </IconButton>
+            </Tooltip>
+
             {user && user.data && (
               <>
                 <Divider orientation='vertical' flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)', mx: 0.5 }} />
@@ -228,13 +253,11 @@ const Layout = ({ children }: any) => {
       <Container
         maxWidth='lg'
         sx={{
-          // minHeight: isMobileOrTablet ? '100vh' : null,
           flexGrow: 1,
           width: isMobileOrTablet ? '100%' : null,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          // padding: isMobileOrTablet ? '16px' : '0px',
         }}
       >
         {children}

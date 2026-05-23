@@ -1,4 +1,3 @@
-// CatalogueFilters.tsx - Filter sidebar for catalogue page
 import React from "react";
 import {
   Box,
@@ -15,6 +14,7 @@ import {
   useMediaQuery,
   useTheme,
   Button,
+  Switch,
 } from "@mui/material";
 import { ExpandMore, Close, FilterList } from "@mui/icons-material";
 
@@ -30,6 +30,8 @@ interface CatalogueFiltersProps {
   onBrandChange: (brand: string) => void;
   showNewOnly: boolean;
   onNewOnlyChange: (value: boolean) => void;
+  hideOutOfStock: boolean;
+  onHideOutOfStockChange: (value: boolean) => void;
   onClearFilters: () => void;
   activeBrand?: string;
   open?: boolean;
@@ -48,6 +50,8 @@ const CatalogueFilters: React.FC<CatalogueFiltersProps> = ({
   onBrandChange,
   showNewOnly,
   onNewOnlyChange,
+  hideOutOfStock,
+  onHideOutOfStockChange,
   onClearFilters,
   activeBrand = '',
   open = true,
@@ -56,138 +60,143 @@ const CatalogueFilters: React.FC<CatalogueFiltersProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  // Determine which filters to show based on active brand
   const isNewArrivals = activeBrand === 'New Arrivals';
   const hasActiveBrand = activeBrand && activeBrand !== '' && activeBrand !== 'all' && activeBrand !== 'New Arrivals';
+
+  const activeFilterCount =
+    selectedCategories.length +
+    selectedBrands.length +
+    (showNewOnly ? 1 : 0) +
+    (!hideOutOfStock ? 1 : 0) +
+    (priceRange[0] > 0 || priceRange[1] < maxPrice ? 1 : 0);
+
+  const sectionHeaderSx = {
+    '& .MuiAccordionSummary-content': { my: 1.25 },
+    bgcolor: theme.palette.mode === 'dark'
+      ? 'rgba(255,255,255,0.03)'
+      : 'rgba(42,74,107,0.04)',
+    '&.Mui-expanded': { minHeight: 'unset' },
+  };
+
+  const accordionSx = {
+    '&:before': { display: 'none' },
+    border: '1px solid',
+    borderColor: 'divider',
+    borderRadius: '8px !important',
+    mb: 1.5,
+    transition: 'box-shadow 0.2s ease',
+    '&:hover': { boxShadow: 1 },
+  };
 
   const filterContent = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <Box
         sx={{
-          p: 2,
+          px: 2,
+          py: 1.5,
           borderBottom: '1px solid',
           borderColor: 'divider',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          bgcolor: 'background.paper',
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FilterList color="primary" />
-          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+          <FilterList color="primary" fontSize="small" />
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             Filters
           </Typography>
+          {activeFilterCount > 0 && (
+            <Chip
+              label={activeFilterCount}
+              size="small"
+              color="primary"
+              sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
+            />
+          )}
         </Box>
-        {isMobile && onClose && (
-          <IconButton onClick={onClose} size="small">
-            <Close />
-          </IconButton>
-        )}
-      </Box>
-
-      {/* Active Filters Count & Clear */}
-      <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'grey.50' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
-            {selectedCategories.length + selectedBrands.length + (showNewOnly ? 1 : 0)} active filters
-          </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Button
             size="small"
             onClick={onClearFilters}
-            disabled={selectedCategories.length === 0 && selectedBrands.length === 0 && !showNewOnly && priceRange[0] === 0 && priceRange[1] === maxPrice}
-            sx={{ fontSize: '0.7rem', textTransform: 'none', fontWeight: 600 }}
+            disabled={activeFilterCount === 0}
+            sx={{ fontSize: '0.7rem', textTransform: 'none', fontWeight: 600, minWidth: 0, px: 1 }}
           >
-            Clear All
+            Clear all
           </Button>
+          {isMobile && onClose && (
+            <IconButton onClick={onClose} size="small">
+              <Close fontSize="small" />
+            </IconButton>
+          )}
         </Box>
       </Box>
 
-      {/* Filters */}
-      <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2, minHeight: 0 }}>
-        {/* New Arrivals Toggle - Hidden when on New Arrivals brand page */}
+      {/* Filters scroll area */}
+      <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 1.5, minHeight: 0 }}>
+
+        {/* Special — New Arrivals & Out of Stock */}
         {!isNewArrivals && (
-          <Accordion
-            defaultExpanded
-            elevation={0}
-            sx={{
-              '&:before': { display: 'none' },
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: '8px !important',
-              mb: 2,
-            }}
-          >
-            <AccordionSummary
-              expandIcon={<ExpandMore />}
-              sx={{
-                '& .MuiAccordionSummary-content': {
-                  my: 1.5,
-                },
-              }}
-            >
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.875rem' }}>
+          <Accordion defaultExpanded elevation={0} sx={accordionSx}>
+            <AccordionSummary expandIcon={<ExpandMore />} sx={sectionHeaderSx}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.82rem' }}>
                 Special
               </Typography>
             </AccordionSummary>
-            <AccordionDetails sx={{ pt: 0 }}>
+            <AccordionDetails sx={{ pt: 0.5, pb: 1.25 }}>
               <FormControlLabel
                 control={
                   <Checkbox
                     checked={showNewOnly}
                     onChange={(e) => onNewOnlyChange(e.target.checked)}
                     color="primary"
+                    size="small"
                   />
                 }
                 label={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
                       New Arrivals Only
                     </Typography>
                     <Chip
                       label="NEW"
                       size="small"
                       sx={{
-                        height: 20,
-                        fontSize: '0.65rem',
+                        height: 18,
+                        fontSize: '0.6rem',
                         fontWeight: 700,
-                        background: 'linear-gradient(135deg, #3F51B5 0%, #2196F3 100%)',
+                        background: 'linear-gradient(135deg, #5e52b5 0%, #7c6fcd 100%)',
                         color: 'white',
+                        '& .MuiChip-label': { px: 0.75 },
                       }}
                     />
                   </Box>
                 }
               />
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.75, pr: 0.5 }}>
+                <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                  Show Out of Stock
+                </Typography>
+                <Switch
+                  checked={!hideOutOfStock}
+                  onChange={(e) => onHideOutOfStockChange(!e.target.checked)}
+                  color="secondary"
+                  size="small"
+                />
+              </Box>
             </AccordionDetails>
           </Accordion>
         )}
 
         {/* Price Range */}
-        <Accordion
-          defaultExpanded
-          elevation={0}
-          sx={{
-            '&:before': { display: 'none' },
-            border: '1px solid',
-            borderColor: 'divider',
-            borderRadius: '8px !important',
-            mb: 2,
-          }}
-        >
-          <AccordionSummary
-            expandIcon={<ExpandMore />}
-            sx={{
-              '& .MuiAccordionSummary-content': {
-                my: 1.5,
-              },
-            }}
-          >
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.875rem' }}>
+        <Accordion defaultExpanded elevation={0} sx={accordionSx}>
+          <AccordionSummary expandIcon={<ExpandMore />} sx={sectionHeaderSx}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.82rem' }}>
               Price Range
             </Typography>
           </AccordionSummary>
-          <AccordionDetails sx={{ pt: 0 }}>
+          <AccordionDetails sx={{ pt: 0.5, pb: 1.5 }}>
             <Box sx={{ px: 1 }}>
               <Slider
                 value={priceRange}
@@ -197,17 +206,15 @@ const CatalogueFilters: React.FC<CatalogueFiltersProps> = ({
                 max={maxPrice}
                 valueLabelFormat={(value) => `₹${value.toLocaleString('en-IN')}`}
                 sx={{
-                  '& .MuiSlider-thumb': {
-                    width: 20,
-                    height: 20,
-                  },
+                  '& .MuiSlider-thumb': { width: 18, height: 18 },
+                  '& .MuiSlider-rail': { opacity: 0.3 },
                 }}
               />
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.72rem', fontWeight: 600 }}>
                   ₹{priceRange[0].toLocaleString('en-IN')}
                 </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.72rem', fontWeight: 600 }}>
                   ₹{priceRange[1].toLocaleString('en-IN')}
                 </Typography>
               </Box>
@@ -216,27 +223,11 @@ const CatalogueFilters: React.FC<CatalogueFiltersProps> = ({
         </Accordion>
 
         {/* Categories */}
-        {!hasActiveBrand && allBrands.length > 0 && (
-          <Accordion
-            elevation={0}
-            sx={{
-              '&:before': { display: 'none' },
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: '8px !important',
-              mb: 2,
-            }}
-          >
-            <AccordionSummary
-              expandIcon={<ExpandMore />}
-              sx={{
-                '& .MuiAccordionSummary-content': {
-                  my: 1.5,
-                },
-              }}
-            >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', pr: 2 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.875rem' }}>
+        {!hasActiveBrand && allCategories.length > 0 && (
+          <Accordion elevation={0} sx={accordionSx}>
+            <AccordionSummary expandIcon={<ExpandMore />} sx={sectionHeaderSx}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', pr: 1, alignItems: 'center' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.82rem' }}>
                   Categories
                 </Typography>
                 {selectedCategories.length > 0 && (
@@ -244,13 +235,13 @@ const CatalogueFilters: React.FC<CatalogueFiltersProps> = ({
                     label={selectedCategories.length}
                     size="small"
                     color="primary"
-                    sx={{ height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                    sx={{ height: 18, fontSize: '0.65rem', fontWeight: 600, '& .MuiChip-label': { px: 0.75 } }}
                   />
                 )}
               </Box>
             </AccordionSummary>
-            <AccordionDetails sx={{ pt: 0, maxHeight: 200, overflowY: 'auto' }}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            <AccordionDetails sx={{ pt: 0.5, pb: 1, maxHeight: 200, overflowY: 'auto' }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
                 {allCategories.map((category) => (
                   <FormControlLabel
                     key={category}
@@ -263,7 +254,7 @@ const CatalogueFilters: React.FC<CatalogueFiltersProps> = ({
                       />
                     }
                     label={
-                      <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                      <Typography variant="body2" sx={{ fontSize: '0.83rem' }}>
                         {category}
                       </Typography>
                     }
@@ -274,27 +265,12 @@ const CatalogueFilters: React.FC<CatalogueFiltersProps> = ({
           </Accordion>
         )}
 
-        {/* Brands - Hidden when a specific brand is already selected */}
+        {/* Brands */}
         {!hasActiveBrand && allBrands.length > 0 && (
-          <Accordion
-            elevation={0}
-            sx={{
-              '&:before': { display: 'none' },
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: '8px !important',
-            }}
-          >
-            <AccordionSummary
-              expandIcon={<ExpandMore />}
-              sx={{
-                '& .MuiAccordionSummary-content': {
-                  my: 1.5,
-                },
-              }}
-            >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', pr: 2 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.875rem' }}>
+          <Accordion elevation={0} sx={{ ...accordionSx, mb: 0 }}>
+            <AccordionSummary expandIcon={<ExpandMore />} sx={sectionHeaderSx}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', pr: 1, alignItems: 'center' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.82rem' }}>
                   Brands
                 </Typography>
                 {selectedBrands.length > 0 && (
@@ -302,13 +278,13 @@ const CatalogueFilters: React.FC<CatalogueFiltersProps> = ({
                     label={selectedBrands.length}
                     size="small"
                     color="primary"
-                    sx={{ height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                    sx={{ height: 18, fontSize: '0.65rem', fontWeight: 600, '& .MuiChip-label': { px: 0.75 } }}
                   />
                 )}
               </Box>
             </AccordionSummary>
-            <AccordionDetails sx={{ pt: 0, maxHeight: 200, overflowY: 'auto' }}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            <AccordionDetails sx={{ pt: 0.5, pb: 1, maxHeight: 200, overflowY: 'auto' }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
                 {allBrands.map((brand) => (
                   <FormControlLabel
                     key={brand}
@@ -321,7 +297,7 @@ const CatalogueFilters: React.FC<CatalogueFiltersProps> = ({
                       />
                     }
                     label={
-                      <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                      <Typography variant="body2" sx={{ fontSize: '0.83rem' }}>
                         {brand}
                       </Typography>
                     }
@@ -341,12 +317,7 @@ const CatalogueFilters: React.FC<CatalogueFiltersProps> = ({
         anchor="left"
         open={open}
         onClose={onClose}
-        PaperProps={{
-          sx: {
-            width: '85%',
-            maxWidth: 360,
-          },
-        }}
+        PaperProps={{ sx: { width: '85%', maxWidth: 360 } }}
       >
         {filterContent}
       </Drawer>
@@ -356,16 +327,18 @@ const CatalogueFilters: React.FC<CatalogueFiltersProps> = ({
   return (
     <Box
       sx={{
-        width: 280,
+        width: 268,
+        flexShrink: 0,
         bgcolor: 'background.paper',
-        borderRadius: 2,
+        borderRadius: 3,
         border: '1px solid',
         borderColor: 'divider',
         height: 'fit-content',
-        maxHeight: 'calc(100vh - 200px)',
+        maxHeight: 'calc(100vh - 180px)',
         position: 'sticky',
-        top: 100,
-        boxShadow: 2,
+        top: 88,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+        overflow: 'hidden',
       }}
     >
       {filterContent}

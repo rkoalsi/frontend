@@ -93,6 +93,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
     );
 
     const theme = useTheme();
+    const isDark = theme.palette.mode === 'dark';
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
     const isTablet = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -234,7 +235,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
         <Box
           sx={{
             position: "relative",
-            backgroundColor: 'grey.50',
+            backgroundColor: '#ffffff',
             height: { xs: 220, sm: 260, md: 280, xl: 240 },
             width: '100%',
           }}
@@ -365,15 +366,13 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
               {currentVariant.category && (
                 <Chip
                   label={currentVariant.category}
-                  variant="filled"
+                  color="primary"
                   size="small"
                   sx={{
                     borderRadius: 1.5,
                     fontSize: '0.7rem',
                     height: '24px',
                     fontWeight: 600,
-                    bgcolor: 'primary.50',
-                    color: 'primary.dark',
                     '& .MuiChip-label': { px: 1.5 },
                   }}
                 />
@@ -598,7 +597,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                       fontWeight: 800,
                       fontSize: '1.05rem',
                       fontFamily: 'system-ui',
-                      color: 'primary.main',
+                      color: isDark ? 'text.primary' : 'primary.main',
                       letterSpacing: '-0.5px',
                     }}
                   >

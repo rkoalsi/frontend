@@ -196,10 +196,8 @@ function Shipments() {
           }}
           size='small'
           sx={{
-            backgroundColor: 'white',
             borderRadius: 2,
             '& .MuiOutlinedInput-root': {
-              backgroundColor: 'white',
               borderRadius: 2,
             },
           }}
@@ -220,7 +218,7 @@ function Shipments() {
               height: 28,
               fontSize: '0.75rem',
               cursor: 'pointer',
-              backgroundColor: statusFilter === filter.value ? undefined : 'white',
+              backgroundColor: statusFilter === filter.value ? undefined : 'background.paper',
             }}
           />
         ))}
@@ -228,7 +226,7 @@ function Shipments() {
 
       {/* Total Count */}
       {!loading && total > 0 && (
-        <Typography variant='caption' color='white'>
+        <Typography variant='caption' color='text.secondary'>
           {total} shipment{total !== 1 ? 's' : ''}
         </Typography>
       )}

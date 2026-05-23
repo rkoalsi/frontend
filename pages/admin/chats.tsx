@@ -120,7 +120,7 @@ const ChatsPage = () => {
 
   return (
     <Box sx={{ padding: 3 }}>
-      <Paper elevation={3} sx={{ padding: 4, borderRadius: 4, backgroundColor: 'white' }}>
+      <Paper elevation={3} sx={{ padding: 4, borderRadius: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.5 }}>
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
             WhatsApp Chats
@@ -133,7 +133,7 @@ const ChatsPage = () => {
             </span>
           </Tooltip>
         </Box>
-        <Typography variant='body1' sx={{ color: '#6B7280', mb: 3 }}>
+        <Typography variant='body1' sx={{ mb: 3 }} color='text.secondary'>
           View all incoming and outgoing WhatsApp messages.
         </Typography>
 

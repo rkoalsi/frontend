@@ -283,7 +283,7 @@ const CustomerPaymentsPage = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <IconButton
                 onClick={() => router.push('/customer')}
-                sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.1)' }}
+                sx={{ bgcolor: 'action.hover' }}
                 size={isMobile ? 'small' : 'medium'}
               >
                 <ArrowBack />

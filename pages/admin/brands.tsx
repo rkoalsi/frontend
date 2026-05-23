@@ -223,7 +223,7 @@ const Brands = () => {
     <Box sx={{ padding: { xs: 2, sm: 3 } }}>
       <Paper
         elevation={3}
-        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4, backgroundColor: 'white' }}
+        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4 }}
       >
         <Box
           display='flex'
@@ -246,7 +246,7 @@ const Brands = () => {
             <Refresh onClick={handleBrandsRefresh} />
           </Box>
         </Box>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           A comprehensive list of all brands in your inventory.
         </Typography>
 

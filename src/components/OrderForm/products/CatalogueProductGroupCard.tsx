@@ -9,6 +9,7 @@ import {
   IconButton,
   Tooltip,
   Button,
+  useTheme,
 } from "@mui/material";
 import { ZoomIn } from "@mui/icons-material";
 import ImageCarousel from "./ImageCarousel";
@@ -46,6 +47,8 @@ interface CatalogueProductGroupCardProps {
 
 const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo(
   ({ baseName, products, primaryProduct, onQuickView, viewDensity = '4x4', isOutOfStock = false, onNotifyMe }) => {
+    const theme = useTheme();
+    const isDark = theme.palette.mode === 'dark';
     const [selectedVariantId, setSelectedVariantId] = useState<string>(primaryProduct._id);
     const isCompact = viewDensity === '5x5';
     const isCozy = viewDensity === '4x4';
@@ -193,7 +196,7 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
           onClick={() => onQuickView(currentVariant, products)}
           sx={{
             position: "relative",
-            backgroundColor: 'grey.50',
+            backgroundColor: '#ffffff',
             height: isCompact ? 200 : isCozy ? 280 : 320,
             width: '100%',
             overflow: 'hidden',
@@ -223,11 +226,11 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
                   sx={{
                     fontWeight: 800,
                     fontSize: '0.65rem',
-                    background: 'linear-gradient(135deg, #3F51B5 0%, #2196F3 100%)',
+                    background: 'linear-gradient(135deg, #5e52b5 0%, #7c6fcd 100%)',
                     color: 'white',
                     letterSpacing: '0.8px',
-                    boxShadow: '0 3px 8px rgba(63, 81, 181, 0.4)',
-                    border: '2px solid white',
+                    boxShadow: '0 3px 8px rgba(61, 133, 200, 0.5)',
+                    border: '2px solid rgba(255,255,255,0.8)',
                   }}
                 />
               )
@@ -239,7 +242,7 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
                 sx={{
                   fontWeight: 600,
                   fontSize: '0.65rem',
-                  bgcolor: 'white',
+                  bgcolor: 'background.paper',
                   color: 'text.secondary',
                   boxShadow: 1,
                 }}
@@ -270,7 +273,7 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
             sx={{
               fontWeight: 700,
               mb: isCompact ? 1 : 1.5,
-              color: currentVariant.new ? 'primary.dark' : 'text.primary',
+              color: 'text.primary',
               lineHeight: 1.3,
               wordBreak: 'break-word',
               fontSize: isCompact ? '0.9rem' : isCozy ? '1rem' : '1.1rem',
@@ -324,7 +327,7 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
                       height: 24,
                       fontSize: '0.7rem',
                       fontWeight: 600,
-                      bgcolor: 'grey.200',
+                      bgcolor: 'action.selected',
                       cursor: 'pointer',
                     }}
                     onClick={() => onQuickView(currentVariant, products)}
@@ -340,12 +343,11 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
               <Chip
                 label={currentVariant.brand}
                 size="small"
+                variant="outlined"
                 sx={{
                   height: 24,
                   fontSize: '0.7rem',
                   fontWeight: 600,
-                  bgcolor: 'grey.100',
-                  color: 'text.secondary',
                   '& .MuiChip-label': { px: 1.5 },
                 }}
               />
@@ -354,12 +356,11 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
               <Chip
                 label={currentVariant.category}
                 size="small"
+                color="primary"
                 sx={{
                   height: 24,
                   fontSize: '0.7rem',
                   fontWeight: 600,
-                  bgcolor: 'primary.50',
-                  color: 'primary.dark',
                   '& .MuiChip-label': { px: 1.5 },
                 }}
               />
@@ -368,12 +369,11 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
               <Chip
                 label={currentVariant.sub_category}
                 size="small"
+                color="info"
                 sx={{
                   height: 24,
                   fontSize: '0.7rem',
                   fontWeight: 600,
-                  bgcolor: 'info.50',
-                  color: 'info.dark',
                   '& .MuiChip-label': { px: 1.5 },
                 }}
               />
@@ -385,7 +385,7 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 1 }}>
               <Typography
                 variant="caption"
-                color="text.secondary"
+                color="text.primary"
                 sx={{
                   fontSize: '0.7rem',
                   fontWeight: 600,
@@ -415,7 +415,7 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
                   fontWeight: 800,
                   fontSize: isCompact ? '1.25rem' : '1.5rem',
                   fontFamily: 'system-ui',
-                  color: 'primary.main',
+                  color: isDark ? 'text.primary' : 'primary.main',
                   letterSpacing: '-0.5px',
                 }}
               >
@@ -429,7 +429,7 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
                     sx={{
                       color: 'primary.main',
                       '&:hover': {
-                        bgcolor: 'primary.50',
+                        bgcolor: 'action.hover',
                       },
                     }}
                   >

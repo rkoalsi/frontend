@@ -498,14 +498,14 @@ const UnbilledCustomersComponent = () => {
             <Typography
               variant='h4'
               fontWeight='bold'
-              sx={{ display: 'flex', alignItems: 'center', color: 'white', fontSize: { xs: '1.5rem', sm: '2rem' } }}
+              sx={{ display: 'flex', alignItems: 'center', fontSize: { xs: '1.5rem', sm: '2rem' } }}
             >
               <PendingActionsOutlined
                 sx={{ mr: 2, color: 'warning.main', fontSize: 40 }}
               />
               Unbilled Customers
             </Typography>
-            <Typography variant='body1' color='white'>
+            <Typography variant='body1' color='text.secondary'>
               Active customers who haven't been billed in the selected period
             </Typography>
           </Box>

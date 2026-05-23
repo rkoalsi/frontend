@@ -168,9 +168,9 @@ const PastOrders = () => {
       {/* Dropdown for filtering orders */}
       <FormControl
         variant='outlined'
-        sx={{ minWidth: isMobile ? 200 : 250, color: 'white' }}
+        sx={{ minWidth: isMobile ? 200 : 250 }}
       >
-        <InputLabel id='order-filter-label' sx={{ color: 'white' }}>
+        <InputLabel id='order-filter-label'>
           Filter Orders
         </InputLabel>
         <Select
@@ -187,16 +187,6 @@ const PastOrders = () => {
               | 'invoiced'
             )
           }
-          sx={{
-            color: 'white',
-            '.MuiOutlinedInput-notchedOutline': { borderColor: 'white' },
-            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'white',
-            },
-            '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'white',
-            },
-          }}
         >
           <MenuItem value='all'>All Orders</MenuItem>
           <MenuItem value='draft'>Draft Orders</MenuItem>
@@ -237,8 +227,9 @@ const PastOrders = () => {
                       alignItems: 'flex-start',
                       padding: 2,
                       cursor: 'pointer',
-                      backgroundColor: 'white',
-                      border: '2px solid #475569',
+                      bgcolor: 'background.paper',
+                      border: '2px solid',
+                      borderColor: 'divider',
                       borderRadius: 2,
                       mb: 2,
                     }}
@@ -250,7 +241,7 @@ const PastOrders = () => {
                       justifyContent='space-between'
                       sx={{ width: '100%' }}
                     >
-                      <Typography variant='h6' fontWeight='bold' color='black'>
+                      <Typography variant='h6' fontWeight='bold' color='text.primary'>
                         {order.estimate_created
                           ? order.estimate_number
                           : `Order #${order._id.slice(-6)}`}
@@ -283,10 +274,10 @@ const PastOrders = () => {
                         </Box>
                       )}
                     </Box>
-                    <Typography variant='body2' color='black'>
+                    <Typography variant='body2' color='text.primary'>
                       Customer: {order.customer_name}
                     </Typography>
-                    <Typography variant='body2' color='black'>
+                    <Typography variant='body2' color='text.primary'>
                       Date: {new Date(order.created_at).toLocaleDateString()}
                     </Typography>
                     <Box
@@ -328,7 +319,7 @@ const PastOrders = () => {
                             fontWeight: 'bold',
                             fontSize: isMobile ? '0.75rem' : '0.85rem',
                             height: isMobile ? 24 : 'auto',
-                            color: 'black',
+                            color: 'text.primary' as any,
                             '& .MuiChip-label': {
                               padding: isMobile ? '0 8px' : '0 12px',
                             },
@@ -342,7 +333,7 @@ const PastOrders = () => {
                               fontWeight: 'bold',
                               fontSize: isMobile ? '0.75rem' : '0.85rem',
                               height: isMobile ? 24 : 'auto',
-                              color: 'black',
+                              color: 'text.primary' as any,
                               '& .MuiChip-label': {
                                 padding: isMobile ? '0 8px' : '0 12px',
                               },
@@ -357,7 +348,7 @@ const PastOrders = () => {
                               fontWeight: 'bold',
                               fontSize: isMobile ? '0.75rem' : '0.85rem',
                               height: isMobile ? 24 : 'auto',
-                              color: 'black',
+                              color: 'text.primary' as any,
                               '& .MuiChip-label': {
                                 padding: isMobile ? '0 8px' : '0 12px',
                               },
@@ -371,7 +362,7 @@ const PastOrders = () => {
                         variant='body1'
                         fontWeight='bold'
                         sx={{
-                          color: 'black',
+                          color: 'text.primary' as any,
                           fontSize: isMobile ? '0.9rem' : '1rem',
                           mt: isMobile ? 0.5 : 0,
                           alignSelf: isMobile ? 'flex-end' : 'center',
@@ -389,7 +380,7 @@ const PastOrders = () => {
             <Typography
               variant='body1'
               align='center'
-              sx={{ p: 2, color: 'white' }}
+              sx={{ p: 2 }}
             >
               No past orders available.
             </Typography>

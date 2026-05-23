@@ -719,7 +719,7 @@ const LeadsPage = () => {
 
   return (
     <Box sx={{ padding: 3 }}>
-      <Paper elevation={3} sx={{ padding: 4, borderRadius: 4, backgroundColor: 'white' }}>
+      <Paper elevation={3} sx={{ padding: 4, borderRadius: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.5 }}>
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
             Leads
@@ -732,7 +732,7 @@ const LeadsPage = () => {
             </span>
           </Tooltip>
         </Box>
-        <Typography variant='body1' sx={{ color: '#6B7280', mb: 3 }}>
+        <Typography variant='body1' sx={{ mb: 3 }} color='text.secondary'>
           View and manage all leads from brand signups, catalogue downloads, and contact form submissions.
         </Typography>
 

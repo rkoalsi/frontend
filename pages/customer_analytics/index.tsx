@@ -128,18 +128,17 @@ const StyledContainer = styled(Box)(({ theme }) => ({
 }));
 
 const CustomerCard = styled(Card)(({ theme }) => ({
-  background: 'rgba(255, 255, 255, 0.98)',
-  backdropFilter: 'blur(20px)',
+  background: theme.palette.background.paper,
   borderRadius: theme.spacing(2),
-  border: '1px solid rgba(0, 0, 0, 0.08)',
-  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+  border: `1px solid ${theme.palette.divider}`,
+  boxShadow: theme.palette.mode === 'dark' ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0, 0, 0, 0.04)',
   marginBottom: theme.spacing(2),
   transition: 'all 0.2s ease-in-out',
   overflow: 'hidden',
   '&:hover': {
     transform: 'translateY(-2px)',
-    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-    border: '1px solid rgba(0, 0, 0, 0.12)',
+    boxShadow: theme.palette.mode === 'dark' ? '0 4px 16px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0, 0, 0, 0.08)',
+    border: `1px solid ${theme.palette.primary.main}`,
   },
   [theme.breakpoints.up('sm')]: {
     marginBottom: theme.spacing(2.5),
@@ -147,11 +146,13 @@ const CustomerCard = styled(Card)(({ theme }) => ({
 }));
 
 const MetricCard = styled(Box)(({ theme }) => ({
-  background: 'linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%)',
+  background: theme.palette.mode === 'dark'
+    ? 'rgba(255,255,255,0.06)'
+    : 'linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%)',
   borderRadius: theme.spacing(1.5),
   padding: theme.spacing(1.5),
   textAlign: 'center',
-  border: '1px solid rgba(0, 0, 0, 0.06)',
+  border: `1px solid ${theme.palette.divider}`,
   flex: 1,
   minWidth: '90px',
   transition: 'transform 0.2s ease',
@@ -168,10 +169,12 @@ const MetricCard = styled(Box)(({ theme }) => ({
 }));
 
 const PaymentCard = styled(Paper)(({ theme }) => ({
-  background: 'linear-gradient(135deg, #fafbfc 0%, #ffffff 100%)',
+  background: theme.palette.mode === 'dark'
+    ? 'rgba(255,255,255,0.04)'
+    : 'linear-gradient(135deg, #fafbfc 0%, #ffffff 100%)',
   borderRadius: theme.spacing(1.5),
   padding: theme.spacing(2),
-  border: '1px solid rgba(0, 0, 0, 0.06)',
+  border: `1px solid ${theme.palette.divider}`,
   marginTop: theme.spacing(1.5),
   elevation: 0,
   [theme.breakpoints.up('sm')]: {
@@ -195,9 +198,9 @@ const InvoiceChip = styled(Chip)(({ theme }) => ({
 const FilterContainer = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(3),
   padding: theme.spacing(2),
-  background: 'rgba(255, 255, 255, 0.9)',
+  background: theme.palette.background.paper,
+  border: `1px solid ${theme.palette.divider}`,
   borderRadius: theme.spacing(2),
-  backdropFilter: 'blur(10px)',
   [theme.breakpoints.up('sm')]: {
     padding: theme.spacing(2.5),
   },
@@ -210,7 +213,8 @@ const PaginationContainer = styled(Box)(({ theme }) => ({
   gap: theme.spacing(2),
   marginTop: theme.spacing(3),
   padding: theme.spacing(2),
-  background: 'rgba(255, 255, 255, 0.9)',
+  background: theme.palette.background.paper,
+  border: `1px solid ${theme.palette.divider}`,
   borderRadius: theme.spacing(2),
   flexWrap: 'wrap',
 }));
@@ -1256,7 +1260,6 @@ const CustomerAnalytics = () => {
                 <Card sx={{
                   textAlign: 'center',
                   py: { xs: 4, sm: 6 },
-                  background: 'rgba(255, 255, 255, 0.95)'
                 }}>
                   <CardContent>
                     <Typography variant='h6' color='text.secondary' sx={{ mb: 1 }}>
@@ -1327,7 +1330,9 @@ const CustomerAnalytics = () => {
                 justifyContent: 'center',
                 mt: 3,
                 p: 2,
-                background: 'rgba(255, 255, 255, 0.9)',
+                bgcolor: 'background.paper',
+                border: '1px solid',
+                borderColor: 'divider',
                 borderRadius: 2,
               }}>
                 <Chip

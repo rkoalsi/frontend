@@ -451,8 +451,7 @@ const Announcements = () => {
         sx={{
           padding: 4,
           borderRadius: 4,
-          backgroundColor: 'white',
-        }}
+                  }}
       >
         <Box
           sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
@@ -464,7 +463,7 @@ const Announcements = () => {
             Add Announcement
           </Button>
         </Box>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           View and manage all announcements for sales people below.
         </Typography>
         {loading ? (

@@ -390,10 +390,10 @@ const CustomerAnalytics = () => {
                         <Analytics />
                     </Avatar>
                     <Box>
-                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'white', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+                        <Typography variant="h4" sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
                             Customer Analytics Dashboard
                         </Typography>
-                        <Typography variant="body1" color="white">
+                        <Typography variant="body1" color="text.secondary">
                             Comprehensive view of customer performance and insights
                         </Typography>
                     </Box>
@@ -410,7 +410,6 @@ const CustomerAnalytics = () => {
             <Paper
                 sx={{
                     borderRadius: 4,
-                    backgroundColor: 'white',
                     position: 'relative',
                     overflow: 'hidden',
                 }}
@@ -419,8 +418,8 @@ const CustomerAnalytics = () => {
                 <Box
                     sx={{
                         p: 3,
-                        borderBottom: '1px solid #e0e0e0',
-                        backgroundColor: '#fafafa',
+                        borderBottom: `1px solid ${theme.palette.divider}`,
+                        backgroundColor: 'action.hover' as any,
                     }}
                 >
                     <Box
@@ -515,8 +514,8 @@ const CustomerAnalytics = () => {
                                 justifyContent: 'center',
                                 alignItems: 'center',
                                 minHeight: 500,
-                                backgroundColor: '#fafafa',
-                                border: '1px solid #e0e0e0',
+                                backgroundColor: 'action.hover' as any,
+                                border: `1px solid ${theme.palette.divider}`,
                                 borderRadius: 2,
                             }}
                         >
@@ -566,14 +565,16 @@ const CustomerAnalytics = () => {
                                         display: 'flex',
                                         justifyContent: 'center',
                                         alignItems: 'center',
-                                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                        backgroundColor: theme.palette.mode === 'dark'
+                                          ? 'rgba(13,27,42,0.85)'
+                                          : 'rgba(255, 255, 255, 0.9)',
                                         zIndex: 10,
                                         backdropFilter: 'blur(3px)',
                                     }}
                                 >
                                     <Box sx={{ textAlign: 'center' }}>
                                         <CircularProgress size={60} thickness={4} />
-                                        <Typography variant="body1" sx={{ mt: 2, color: '#1976d2' }}>
+                                        <Typography variant="body1" sx={{ mt: 2, color: 'primary.main' }}>
                                             Updating customer data...
                                         </Typography>
                                     </Box>

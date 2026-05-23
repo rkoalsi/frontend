@@ -53,7 +53,7 @@ const ResetPassword = () => {
         borderRadius: '20px',
         overflow: 'hidden',
         boxShadow: '0 25px 60px rgba(0,0,0,0.4)',
-        bgcolor: 'white',
+        bgcolor: 'background.paper',
         p: { xs: 3, sm: 5 },
       }}
     >

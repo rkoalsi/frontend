@@ -144,7 +144,7 @@ const LoginPage = () => {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
-            bgcolor: 'white',
+            bgcolor: 'background.paper',
             minHeight: { xs: 'auto', md: 520 },
           }}
         >

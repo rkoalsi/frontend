@@ -25,9 +25,9 @@ interface SearchBarProps {
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
   borderRadius: 16,
-  border: '1px solid #e2e8f0',
+  border: `1px solid ${theme.palette.divider}`,
   boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-  backgroundColor: '#ffffff',
+  backgroundColor: theme.palette.background.paper,
 }));
 
 const CustomerSearchBar: React.FC<SearchBarProps> = ({
@@ -146,14 +146,7 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
               sx={{
                 '& .MuiOutlinedInput-root': {
                   borderRadius: 2,
-                  backgroundColor: '#fafafa',
                   transition: 'all 0.2s',
-                  '&:hover': {
-                    backgroundColor: '#f5f5f5',
-                  },
-                  '&.Mui-focused': {
-                    backgroundColor: '#ffffff',
-                  },
                 },
               }}
             />
@@ -185,14 +178,7 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 2,
-                    backgroundColor: '#fafafa',
                     transition: 'all 0.2s',
-                    '&:hover': {
-                      backgroundColor: '#f5f5f5',
-                    },
-                    '&.Mui-focused': {
-                      backgroundColor: '#ffffff',
-                    },
                   },
                 }}
               />

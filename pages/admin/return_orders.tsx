@@ -394,7 +394,6 @@ const ReturnOrders = () => {
         sx={{
           padding: { xs: 2, sm: 3, md: 4 },
           borderRadius: 4,
-          backgroundColor: 'white',
         }}
       >
         <Box
@@ -425,7 +424,7 @@ const ReturnOrders = () => {
           </Button>
         </Box>
 
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           View and manage all return orders from customers below.
         </Typography>
 

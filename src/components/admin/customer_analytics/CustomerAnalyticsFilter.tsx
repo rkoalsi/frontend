@@ -113,7 +113,7 @@ const CustomerAnalyticsFilter = ({
                             onClick={onClose} 
                             sx={{ 
                                 color: 'white',
-                                '&:hover': { backgroundColor: 'white'}
+                                '&:hover': { backgroundColor: 'background.paper' as any}
                             }}
                         >
                             <Close />
@@ -126,8 +126,8 @@ const CustomerAnalyticsFilter = ({
                                 label={`${activeFilterCount} filter${activeFilterCount !== 1 ? 's' : ''} active`}
                                 size="small"
                                 sx={{
-                                    backgroundColor: 'white',
-                                    color: 'black',
+                                    backgroundColor: 'background.paper' as any,
+                                    color: 'text.primary' as any,
                                     fontWeight: 600,
                                 }}
                             />
@@ -274,7 +274,7 @@ const CustomerAnalyticsFilter = ({
                                     sx={{
                                         ml: 1,
                                         height: 20,
-                                        backgroundColor: 'white',
+                                        backgroundColor: 'background.paper' as any,
                                         color: 'white',
                                         fontSize: '0.75rem',
                                     }}
