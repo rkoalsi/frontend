@@ -8,12 +8,12 @@ interface ColorModeContextType {
 }
 
 export const ColorModeContext = createContext<ColorModeContextType>({
-  mode: 'dark',
+  mode: 'light',
   toggleColorMode: () => {},
 });
 
 export const ColorModeProvider = ({ children }: { children: React.ReactNode }) => {
-  const [mode, setMode] = useState<ColorMode>('dark');
+  const [mode, setMode] = useState<ColorMode>('light');
 
   useEffect(() => {
     const saved = localStorage.getItem('colorMode') as ColorMode | null;
