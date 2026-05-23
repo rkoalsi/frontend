@@ -333,5 +333,5 @@ export const createAppTheme = (mode: 'dark' | 'light') =>
   });
 
 // Default theme for SSR
-const theme = createAppTheme('dark');
+const theme = createAppTheme('light');
 export default theme;
