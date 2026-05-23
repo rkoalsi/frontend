@@ -24,10 +24,10 @@ interface CheckListProps {
   addressDetails?: Record<string, any>; // keyed by address_id
 }
 
-const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }> = {
-  open: { bg: '#dcfce7', color: '#15803d', label: 'Open' },
-  closed: { bg: '#fee2e2', color: '#dc2626', label: 'Closed' },
-  warehouse: { bg: '#dbeafe', color: '#1d4ed8', label: 'Warehouse' },
+const STATUS_COLORS: Record<string, { bg: string; bgDark: string; color: string; colorDark: string; label: string }> = {
+  open: { bg: '#dcfce7', bgDark: 'rgba(76,175,80,0.2)', color: '#15803d', colorDark: '#66bb6a', label: 'Open' },
+  closed: { bg: '#fee2e2', bgDark: 'rgba(217,83,79,0.2)', color: '#dc2626', colorDark: '#ef9a9a', label: 'Closed' },
+  warehouse: { bg: '#dbeafe', bgDark: 'rgba(124,111,205,0.2)', color: '#1d4ed8', colorDark: '#90caf9', label: 'Warehouse' },
 };
 
 export default function CheckList({
@@ -42,6 +42,7 @@ export default function CheckList({
 
   // Theme-based breakpoint for mobile detection
   const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   /**
@@ -108,13 +109,6 @@ export default function CheckList({
           mb: 2,
           '& .MuiOutlinedInput-root': {
             borderRadius: 2,
-            backgroundColor: '#ffffff',
-            '&:hover': {
-              backgroundColor: '#fafafa',
-            },
-            '&.Mui-focused': {
-              backgroundColor: '#ffffff',
-            },
           },
         }}
         InputProps={{
@@ -141,9 +135,9 @@ export default function CheckList({
                 borderRadius: 2,
                 border: selectedIndex === index
                   ? '2px solid'
-                  : '1px solid #e2e8f0',
-                borderColor: selectedIndex === index ? 'primary.main' : '#e2e8f0',
-                backgroundColor: selectedIndex === index ? '#f0f7ff' : '#ffffff',
+                  : '1px solid',
+                borderColor: selectedIndex === index ? 'primary.main' : 'divider',
+                backgroundColor: selectedIndex === index ? 'action.selected' : 'background.paper',
                 transition: 'all 0.2s ease-in-out',
                 boxShadow: selectedIndex === index
                   ? '0 4px 12px rgba(25, 118, 210, 0.15)'
@@ -175,12 +169,11 @@ export default function CheckList({
                       <Chip
                         label={value.phone}
                         size='small'
+                        variant='outlined'
                         sx={{
                           mt: 1,
                           height: 24,
                           fontSize: '0.75rem',
-                          backgroundColor: '#f1f5f9',
-                          color: 'text.secondary',
                         }}
                       />
                     )}
@@ -196,8 +189,8 @@ export default function CheckList({
                             ml: value.phone ? 1 : 0,
                             height: 24,
                             fontSize: '0.75rem',
-                            backgroundColor: s.bg,
-                            color: s.color,
+                            backgroundColor: isDark ? s.bgDark : s.bg,
+                            color: isDark ? s.colorDark : s.color,
                             fontWeight: 600,
                           }}
                         />
@@ -220,18 +213,14 @@ export default function CheckList({
                   mb: 1.5,
                   borderRadius: 2,
                   border: '1px solid',
-                  borderColor: selectedIndex === index ? 'primary.main' : '#e2e8f0',
-                  backgroundColor: selectedIndex === index ? '#f0f7ff' : '#ffffff',
+                  borderColor: selectedIndex === index ? 'primary.main' : 'divider',
+                  backgroundColor: selectedIndex === index ? 'action.selected' : 'background.paper',
                   transition: 'all 0.2s ease-in-out',
                   '&.Mui-selected': {
-                    backgroundColor: '#f0f7ff',
                     borderWidth: '2px',
-                    '&:hover': {
-                      backgroundColor: '#e3f2fd',
-                    },
                   },
                   '&:hover': {
-                    backgroundColor: '#fafafa',
+                    backgroundColor: 'action.hover',
                     transform: 'translateX(4px)',
                   },
                   padding: 2,
@@ -260,12 +249,11 @@ export default function CheckList({
                         <Chip
                           label={value.phone}
                           size='small'
+                          variant='outlined'
                           sx={{
                             mt: 0.5,
                             height: 24,
                             fontSize: '0.75rem',
-                            backgroundColor: '#f1f5f9',
-                            color: 'text.secondary',
                           }}
                         />
                       )}
@@ -281,8 +269,8 @@ export default function CheckList({
                               ml: value.phone ? 1 : 0,
                               height: 24,
                               fontSize: '0.75rem',
-                              backgroundColor: s.bg,
-                              color: s.color,
+                              backgroundColor: isDark ? s.bgDark : s.bg,
+                              color: isDark ? s.colorDark : s.color,
                               fontWeight: 600,
                             }}
                           />

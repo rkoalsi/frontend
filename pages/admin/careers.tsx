@@ -313,7 +313,7 @@ const Careers = () => {
     <Box sx={{ padding: 3 }}>
       <Paper
         elevation={3}
-        sx={{ padding: 4, borderRadius: 4, backgroundColor: 'white' }}
+        sx={{ padding: 4, borderRadius: 4 }}
       >
         <Box
           display='flex'
@@ -328,7 +328,7 @@ const Careers = () => {
             Add Career
           </Button>
         </Box>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' color='text.secondary' sx={{ marginBottom: 3 }}>
           View and manage all job postings below.
         </Typography>
         {loading ? (
@@ -529,7 +529,6 @@ const Careers = () => {
               </Typography>
               <Box sx={{
                 '& .quill': {
-                  backgroundColor: 'white',
                   borderRadius: 1
                 },
                 '& .ql-container': {
@@ -649,7 +648,7 @@ const Careers = () => {
               </Box>
               <Typography
                 variant='body2'
-                sx={{ color: '#6B7280', mb: 2 }}
+                color='text.secondary' sx={{ mb: 2 }}
               >
                 Add custom questions that applicants must answer for this
                 position. These will appear in the application form.
@@ -659,7 +658,7 @@ const Careers = () => {
                 <Paper
                   key={qIndex}
                   variant='outlined'
-                  sx={{ p: 2, mb: 2, backgroundColor: '#fafafa' }}
+                  sx={{ p: 2, mb: 2 }}
                 >
                   <Box
                     display='flex'

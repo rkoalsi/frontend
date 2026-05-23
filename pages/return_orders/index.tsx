@@ -365,7 +365,7 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
                 {returnOrder.items.map((item: any, index: number) => (
                   <Card
                     key={index}
-                    sx={{ mb: 1, p: 2, backgroundColor: '#fafafa' }}
+                    sx={{ mb: 1, p: 2 }}
                   >
                     <Box
                       sx={{

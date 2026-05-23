@@ -54,7 +54,7 @@ function Training() {
           <CircularProgress />
         </Box>
       ) : trainings.length === 0 ? (
-        <Typography align='center' variant='h6' color='white'>
+        <Typography align='center' variant='h6'>
           No training videos available.
         </Typography>
       ) : (

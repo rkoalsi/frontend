@@ -159,7 +159,7 @@ const MemoizedDesktopProductCard = memo(({
                 fontFamily: 'Poppins, sans-serif',
                 fontWeight: 700,
                 fontSize: '0.75rem',
-                backgroundColor: 'white',
+                backgroundColor: 'background.paper' as any,
                 color: 'primary.main',
                 letterSpacing: '0.5px',
                 textTransform: 'uppercase',
@@ -278,16 +278,14 @@ const MemoizedDesktopProductCard = memo(({
 
             {!isShared && (
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" fontWeight={600}>
                   Margin:
                 </Typography>
                 <Chip
                   label={specialMargins[productId] || customer?.cf_margin || "40%"}
                   size="small"
-                  sx={{
-                    backgroundColor: 'info.light',
-                    color: 'info.contrastText',
-                  }}
+                  color="warning"
+                  sx={{ fontWeight: 700 }}
                 />
               </Box>
             )}
@@ -1646,16 +1644,27 @@ const Products: React.FC<ProductsProps> = ({
                         <Box display="flex" alignItems="center" gap={1}>
                           {(selectedBrand?.image || selectedBrand?.url) && (
                             <Box
-                              component="img"
-                              src={selectedBrand.image || selectedBrand.url}
-                              alt={selectedBrand.brand}
                               sx={{
                                 width: 64,
                                 height: 64,
-                                objectFit: "contain",
-                                borderRadius: "4px",
+                                borderRadius: '4px',
+                                backgroundColor: '#ffffff',
+                                border: '1px solid rgba(0,0,0,0.1)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                overflow: 'hidden',
+                                p: '2px',
                               }}
-                            />
+                            >
+                              <Box
+                                component="img"
+                                src={selectedBrand.image || selectedBrand.url}
+                                alt={selectedBrand.brand}
+                                sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              />
+                            </Box>
                           )}
                           <Typography variant="h6">
                             {selectedBrand?.brand}
@@ -1680,17 +1689,29 @@ const Products: React.FC<ProductsProps> = ({
                             width="100%"
                           >
                             {(b.image || b.url) && (
-                              <Image
-                                src={b.image || b.url}
-                                alt={b.brand}
-                                width={80}
-                                height={80}
-                                style={{
-                                  objectFit: "contain",
-                                  borderRadius: "6px",
+                              <Box
+                                sx={{
+                                  width: 56,
+                                  height: 56,
+                                  borderRadius: '6px',
+                                  backgroundColor: '#ffffff',
+                                  border: '1px solid rgba(0,0,0,0.1)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
                                   flexShrink: 0,
+                                  overflow: 'hidden',
+                                  p: '4px',
                                 }}
-                              />
+                              >
+                                <Image
+                                  src={b.image || b.url}
+                                  alt={b.brand}
+                                  width={48}
+                                  height={48}
+                                  style={{ objectFit: "contain" }}
+                                />
+                              </Box>
                             )}
                             <Box display="flex" flexDirection="column" flex={1}>
                               <Typography variant="h6" fontWeight="medium">
@@ -1718,6 +1739,7 @@ const Products: React.FC<ProductsProps> = ({
                     onChange={(e, newValue) => handleTabChange(newValue)}
                     variant="scrollable"
                     scrollButtons="auto"
+                    textColor="inherit"
                     sx={{
                       mt: 2,
                       ".MuiTab-root": {
@@ -1730,6 +1752,8 @@ const Products: React.FC<ProductsProps> = ({
                         alignItems: "center",
                         gap: 1,
                         transition: "all 0.2s ease-in-out",
+                        color: "text.primary",
+                        opacity: 1,
                         "&:hover": {
                           backgroundColor: "action.hover",
                           transform: "translateY(-2px)",
@@ -1765,21 +1789,30 @@ const Products: React.FC<ProductsProps> = ({
                               gap={1}
                             >
                               {(b.image || b.url) && (
-                                <Image
-                                  src={b.image || b.url}
-                                  alt={b.brand}
+                                <Box
                                   className="brand-image"
-                                  width={80}
-                                  height={80}
-                                  style={{
-                                    objectFit: "contain",
-                                    borderRadius: "8px",
-                                    border: "2px solid transparent",
-                                    transition: "all 0.2s ease-in-out",
-                                    backgroundColor: "background.paper",
-                                    padding: "4px",
+                                  sx={{
+                                    width: 80,
+                                    height: 80,
+                                    borderRadius: '8px',
+                                    backgroundColor: '#ffffff',
+                                    border: '2px solid transparent',
+                                    transition: 'all 0.2s ease-in-out',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    overflow: 'hidden',
+                                    p: '4px',
                                   }}
-                                />
+                                >
+                                  <Image
+                                    src={b.image || b.url}
+                                    alt={b.brand}
+                                    width={72}
+                                    height={72}
+                                    style={{ objectFit: "contain" }}
+                                  />
+                                </Box>
                               )}
                               <Box textAlign="center">
                                 <Typography
@@ -1864,12 +1897,15 @@ const Products: React.FC<ProductsProps> = ({
                   onChange={(e, newValue) => handleCategoryTabChange(newValue)}
                   variant="scrollable"
                   scrollButtons="auto"
+                  textColor="inherit"
                   sx={{
                     mt: 2,
                     ".MuiTab-root": {
                       textTransform: "none",
                       fontWeight: "bold",
                       padding: "10px 20px",
+                      color: "text.primary",
+                      opacity: 1,
                     },
                     ".Mui-selected": { color: "primary.main" },
                   }}
@@ -1895,6 +1931,7 @@ const Products: React.FC<ProductsProps> = ({
                     }
                     variant="scrollable"
                     scrollButtons="auto"
+                    textColor="inherit"
                     sx={{
                       mt: 2,
                       mb: 2,
@@ -1902,6 +1939,8 @@ const Products: React.FC<ProductsProps> = ({
                         textTransform: "none",
                         fontWeight: "bold",
                         padding: "8px 16px",
+                        color: "text.primary",
+                        opacity: 1,
                       },
                       ".Mui-selected": { color: "primary.main" },
                     }}

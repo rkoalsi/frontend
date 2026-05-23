@@ -17,7 +17,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import DownloadIcon from '@mui/icons-material/Download';
-import { useTheme } from '@emotion/react';
+import { useTheme } from '@mui/material/styles';
 import { ShoppingCart, Refresh } from '@mui/icons-material';
 
 const StyledButton = styled(Button)(({ theme }: any) => ({
@@ -42,7 +42,8 @@ const SheetsDisplay = ({
   xlsxLoading = false,
   sort = '',
 }: any) => {
-  const theme: any = useTheme();
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg'));
   const [copied, setCopied] = useState(false);
@@ -76,9 +77,9 @@ const SheetsDisplay = ({
       sx={{
         m: 2,
         borderRadius: 3,
-        border: '1px solid #e2e8f0',
+        border: '1px solid',
+        borderColor: 'divider',
         boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-        backgroundColor: '#ffffff',
         maxWidth: '100%',
         '&:before': {
           display: 'none',
@@ -86,15 +87,22 @@ const SheetsDisplay = ({
       }}
     >
       <AccordionSummary
-        expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}
+        expandIcon={<ExpandMoreIcon sx={{ color: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.95)' }} />}
         sx={{
           px: 3,
           py: 1.5,
-          background: 'linear-gradient(135deg, #6B5B95 0%, #554474 100%)',
+          background: isDark
+            ? 'linear-gradient(135deg, #2a2a38 0%, #1c1c28 100%)'
+            : 'linear-gradient(135deg, #2a4a6b 0%, #192d45 100%)',
           color: 'white',
           borderRadius: '12px 12px 0 0',
           '&.Mui-expanded': {
             minHeight: 56,
+          },
+          '&:hover': {
+            background: isDark
+              ? 'linear-gradient(135deg, #323244 0%, #242434 100%)'
+              : 'linear-gradient(135deg, #1e3a58 0%, #111f30 100%)',
           },
         }}
       >
@@ -105,7 +113,7 @@ const SheetsDisplay = ({
           </Typography>
         </Box>
       </AccordionSummary>
-      <AccordionDetails sx={{ p: { xs: 2, sm: 3, md: 4 }, backgroundColor: '#fafafa' }}>
+      <AccordionDetails sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
         <Paper
           elevation={0}
           sx={{
@@ -114,8 +122,8 @@ const SheetsDisplay = ({
             maxWidth: getResponsiveMaxWidth(),
             mx: 'auto',
             borderRadius: 3,
-            backgroundColor: '#ffffff',
-            border: '1px solid #e2e8f0',
+            border: '1px solid',
+            borderColor: 'divider',
             boxSizing: 'border-box',
           }}
         >
@@ -124,11 +132,6 @@ const SheetsDisplay = ({
               severity='info'
               sx={{
                 borderRadius: 2,
-                border: '1px solid #2196F3',
-                backgroundColor: '#E3F2FD',
-                '& .MuiAlert-icon': {
-                  color: '#1976D2',
-                },
               }}
             >
               You can place the order directly below or generate a Google Sheet
@@ -136,11 +139,12 @@ const SheetsDisplay = ({
             </Alert>
             <Box
               sx={{
-                backgroundColor: '#f1f5f9',
+                backgroundColor: 'action.hover',
                 px: 2.5,
                 py: 1.5,
                 borderRadius: 2,
-                border: '1px solid #cbd5e1',
+                border: '1px solid',
+                borderColor: 'divider',
               }}
             >
               <Typography variant='subtitle2' fontWeight={700} color='text.primary'>
@@ -154,14 +158,9 @@ const SheetsDisplay = ({
               InputProps={{
                 readOnly: true,
                 sx: {
-                  bgcolor: '#f8fafc',
                   fontFamily: 'monospace',
                   fontSize: '0.875rem',
                   borderRadius: 2,
-                  border: '1px solid #e2e8f0',
-                  '&:hover': {
-                    backgroundColor: '#f1f5f9',
-                  },
                 },
               }}
             />
@@ -199,7 +198,7 @@ const SheetsDisplay = ({
                   borderWidth: 2,
                   '&:hover': {
                     borderWidth: 2,
-                    backgroundColor: '#f0f7ff',
+                    backgroundColor: 'action.hover',
                   },
                 }}
               >

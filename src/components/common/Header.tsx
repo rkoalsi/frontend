@@ -19,6 +19,8 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = false, backUrl 
   const router = useRouter();
   const theme: any = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isDark = theme.palette.mode === 'dark';
+  const textColor = isDark ? 'white' : theme.palette.primary.main;
 
   const handleBack = () => {
     if (backUrl) {
@@ -27,6 +29,7 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = false, backUrl 
       router.push('/');
     }
   };
+
   return (
     <Box
       sx={{
@@ -45,7 +48,7 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = false, backUrl 
           sx={{
             position: 'absolute',
             left: { xs: -8, sm: 0, md: 8 },
-            color: 'white',
+            color: textColor,
             p: { xs: 0.75, sm: 1 },
             minWidth: { xs: 36, sm: 44 },
             minHeight: { xs: 36, sm: 44 },
@@ -58,7 +61,7 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = false, backUrl 
         variant={isMobile ? 'h3' : 'h2'}
         fontWeight='bold'
         sx={{
-          color: 'white',
+          color: textColor,
           textAlign: 'center',
           fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' },
           px: showBackButton ? { xs: 4, sm: 6 } : 0,

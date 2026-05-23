@@ -321,7 +321,7 @@ const BlogPosts = () => {
 
   return (
     <Box sx={{ padding: 3 }}>
-      <Paper elevation={3} sx={{ padding: 4, borderRadius: 4, backgroundColor: 'white' }}>
+      <Paper elevation={3} sx={{ padding: 4, borderRadius: 4 }}>
         {/* Header */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
           <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', mb: 0 }}>
@@ -331,7 +331,7 @@ const BlogPosts = () => {
             New Post
           </Button>
         </Box>
-        <Typography variant="body1" sx={{ color: '#6B7280', mb: 3 }}>
+        <Typography variant="body1" sx={{ mb: 3 }} color='text.secondary'>
           Create, edit, and manage blog posts for the BarkButler blog.
         </Typography>
 

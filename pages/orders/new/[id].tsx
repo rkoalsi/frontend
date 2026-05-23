@@ -815,8 +815,8 @@ const NewOrder: React.FC = () => {
           marginBottom: 0,
           borderRadius: 3,
           alignSelf: 'center',
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-          border: '1px solid #e2e8f0',
+          background: theme.palette.background.paper,
+          border: `1px solid ${theme.palette.divider}`,
           boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
         }}
       >
@@ -846,7 +846,9 @@ const NewOrder: React.FC = () => {
                   variant={isMobile ? 'h6' : 'h5'}
                   fontWeight={700}
                   sx={{
-                    background: 'linear-gradient(135deg, #2B4864 0%, #172335 100%)',
+                    background: theme.palette.mode === 'dark'
+                      ? 'linear-gradient(135deg, #9c92d8 0%, #7c6fcd 100%)'
+                      : 'linear-gradient(135deg, #2a4a6b 0%, #192d45 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text',
@@ -918,11 +920,11 @@ const NewOrder: React.FC = () => {
                 {order?.estimate_created && (
                   <Box
                     sx={{
-                      backgroundColor: '#f1f5f9',
+                      backgroundColor: theme.palette.action.hover,
                       px: { xs: 1.5, sm: 2 },
                       py: { xs: 0.75, sm: 1 },
                       borderRadius: 2,
-                      border: '1px solid #cbd5e1',
+                      border: `1px solid ${theme.palette.divider}`,
                       minWidth: { xs: '100px', sm: '120px', md: '150px' },
                       textAlign: 'center',
                       flex: { xs: '1 1 auto', md: '0 0 auto' },
@@ -951,7 +953,7 @@ const NewOrder: React.FC = () => {
                         sx={{
                           padding: { xs: '1px', sm: '2px' },
                           '&:hover': {
-                            backgroundColor: '#e2e8f0',
+                            backgroundColor: theme.palette.action.selected,
                           },
                         }}
                       >
@@ -969,7 +971,9 @@ const NewOrder: React.FC = () => {
               variant={isMobile ? 'h5' : 'h4'}
               fontWeight={700}
               sx={{
-                background: 'linear-gradient(135deg, #2B4864 0%, #172335 100%)',
+                background: theme.palette.mode === 'dark'
+                  ? 'linear-gradient(135deg, #9c92d8 0%, #7c6fcd 100%)'
+                  : 'linear-gradient(135deg, #2a4a6b 0%, #192d45 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
@@ -982,7 +986,7 @@ const NewOrder: React.FC = () => {
               fontWeight={500}
               color='text.secondary'
               sx={{
-                backgroundColor: '#f8fafc',
+                backgroundColor: theme.palette.action.hover,
                 px: 2,
                 py: 1,
                 borderRadius: 1,
@@ -1044,9 +1048,9 @@ const NewOrder: React.FC = () => {
             width: '100%',
             borderRadius: 3,
             overflow: 'hidden',
-            border: '1px solid #e2e8f0',
+            border: `1px solid ${theme.palette.divider}`,
             boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-            background: '#ffffff',
+            background: theme.palette.background.paper,
           }}
         >
           <CardContent sx={{ padding: { xs: 1.5, sm: 2.5, md: 3.5 }, overflow: 'visible' }}>
@@ -1060,29 +1064,46 @@ const NewOrder: React.FC = () => {
                   fontSize: { xs: '0.7rem', sm: '0.875rem', md: '1rem' },
                   marginTop: { xs: '4px', md: '8px' },
                   fontWeight: 600,
+                  color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'text.secondary',
                   '&.Mui-active': {
                     color: 'primary.main',
                     fontWeight: 700,
                   },
                   '&.Mui-completed': {
+                    color: 'success.main',
                     fontWeight: 600,
                   },
                 },
                 '& .MuiStepConnector-root': {
-                  top: { xs: 10, md: 12 },
+                  top: { xs: 10, md: 14 },
+                  '&.Mui-completed .MuiStepConnector-line': {
+                    borderColor: theme.palette.success.main,
+                  },
+                  '&.Mui-active .MuiStepConnector-line': {
+                    borderColor: theme.palette.primary.main,
+                  },
                 },
                 '& .MuiStepConnector-line': {
-                  borderColor: '#cbd5e1',
+                  borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : theme.palette.divider,
                   borderTopWidth: 2,
                 },
                 '& .MuiStepIcon-root': {
-                  fontSize: { xs: '1.2rem', sm: '1.5rem', md: '1.75rem' },
+                  fontSize: { xs: '1.4rem', sm: '1.6rem', md: '1.9rem' },
+                  color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.15)',
+                  transition: 'all 0.25s ease',
                   '&.Mui-active': {
                     color: 'primary.main',
+                    filter: `drop-shadow(0 0 6px ${theme.palette.primary.main}80)`,
                   },
                   '&.Mui-completed': {
                     color: 'success.main',
                   },
+                },
+                '& .MuiStepIcon-text': {
+                  fill: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'white',
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  '& .Mui-active &': { fill: 'white' },
                 },
               }}
             >
@@ -1123,7 +1144,7 @@ const NewOrder: React.FC = () => {
                 alignItems: isMobile ? 'stretch' : 'center',
                 marginTop: '24px',
                 paddingTop: '16px',
-                borderTop: '1px solid #e0e0e0',
+                borderTop: `1px solid ${theme.palette.divider}`,
                 gap: 2,
               }}
             >

@@ -189,8 +189,7 @@ const HooksAndCategories = () => {
         sx={{
           padding: 4,
           borderRadius: 4,
-          backgroundColor: 'white',
-        }}
+                  }}
       >
         <Box
           display='flex'
@@ -205,7 +204,7 @@ const HooksAndCategories = () => {
             Add Category
           </Button>
         </Box>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           View and manage all categories for hooks below.
         </Typography>
         {loading ? (

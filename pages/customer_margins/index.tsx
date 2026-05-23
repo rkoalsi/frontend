@@ -18,6 +18,7 @@ import {
   AccordionDetails,
   CircularProgress,
   capitalize,
+  useTheme,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Header from '../../src/components/common/Header';
@@ -27,6 +28,8 @@ import AuthContext from '../../src/components/Auth';
 import formatAddress from '../../src/util/formatAddress';
 
 const ShopHookCard = ({ user, hookData, onAddNotes }: any) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [specialMargins, setSpecialMargins] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -108,25 +111,25 @@ const ShopHookCard = ({ user, hookData, onAddNotes }: any) => {
         boxShadow: 3,
       }}
     >
-      <div
-        style={{
-          backgroundColor: '#1976d2',
+      <Box
+        sx={{
+          background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
           color: 'white',
-          padding: '16px',
+          p: 2,
           textAlign: 'center',
         }}
       >
         <Typography variant='h6' color='inherit'>
           {hookData.contact_name}
         </Typography>
-      </div>
+      </Box>
       <CardContent>
-        <div
-          style={{
-            backgroundColor: '#f5f5f5',
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 16,
+        <Box
+          sx={{
+            backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f5f5f5',
+            borderRadius: 2,
+            p: 2,
+            mb: 2,
           }}
         >
           <Typography variant='body2' color='textSecondary'>
@@ -149,7 +152,7 @@ const ShopHookCard = ({ user, hookData, onAddNotes }: any) => {
           <Typography variant='subtitle1' fontWeight='bold'>
             {hookData.cf_in_ex}
           </Typography>
-        </div>
+        </Box>
 
         <Accordion expanded={expanded} onChange={handleAccordionChange}>
           <AccordionSummary
@@ -310,29 +313,7 @@ function CustomerMargin() {
           variant='outlined'
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          sx={{
-            width: '100%',
-            maxWidth: 400,
-            // Style for the input text
-            '& .MuiInputBase-input': {
-              color: 'white',
-            },
-            // Style for the label
-            '& .MuiInputLabel-root': {
-              color: 'white',
-            },
-            // Style for the outline
-            '& .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'white',
-            },
-            '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'white',
-            },
-            '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline':
-              {
-                borderColor: 'white',
-              },
-          }}
+          sx={{ width: '100%', maxWidth: 400 }}
         />
       </Box>
 
@@ -341,7 +322,7 @@ function CustomerMargin() {
           <CircularProgress />
         </Box>
       ) : customersMargin.length === 0 ? (
-        <Alert severity='info' variant='outlined' sx={{ color: 'white' }}>
+        <Alert severity='info' variant='outlined'>
           No Customer Margins found.
         </Alert>
       ) : (

@@ -27,6 +27,7 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
+    useTheme,
 } from '@mui/material';
 import {
     Search,
@@ -78,6 +79,7 @@ interface AuthContextType {
 
 const AttendanceViewing: React.FC = () => {
     const { user } = useContext(AuthContext) as AuthContextType;
+    const theme = useTheme();
 
     // State management
     const [attendanceData, setAttendanceData] = useState<EmployeeAttendance[]>([]);
@@ -209,7 +211,7 @@ const AttendanceViewing: React.FC = () => {
     };
 
     return (
-        <Box sx={{ p: { xs: 2, md: 3 }, backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+        <Box sx={{ p: { xs: 2, md: 3 }, minHeight: '100vh' }}>
             {/* Header Section */}
             <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
                 <Box>
@@ -303,7 +305,7 @@ const AttendanceViewing: React.FC = () => {
             </Box>
 
             {/* Search Bar */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: '1px solid #e2e8f0' }}>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: `1px solid ${theme.palette.divider}` }}>
                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }}>
                     <TextField
                         label='Search by Employee Name'
@@ -343,7 +345,7 @@ const AttendanceViewing: React.FC = () => {
             </Paper>
 
             {/* Main Content */}
-            <Paper elevation={0} sx={{ borderRadius: 3, overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+            <Paper elevation={0} sx={{ borderRadius: 3, overflow: 'hidden', border: `1px solid ${theme.palette.divider}` }}>
                 {loading ? (
                     <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '400px', gap: 2 }}>
                         <CircularProgress size={40} />
@@ -395,7 +397,7 @@ const AttendanceViewing: React.FC = () => {
                                     <TableContainer>
                                         <Table size="small">
                                             <TableHead>
-                                                <TableRow sx={{ backgroundColor: '#f8fafc' }}>
+                                                <TableRow>
                                                     <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
                                                     <TableCell sx={{ fontWeight: 600 }}>Check In</TableCell>
                                                     <TableCell sx={{ fontWeight: 600 }}>Check Out</TableCell>

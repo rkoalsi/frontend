@@ -240,7 +240,7 @@ const ProductSearchBar = ({ onProductSelect, disabled }: any) => {
                     mb: 1,
                     borderRadius: 1,
                     overflow: 'hidden',
-                    backgroundColor: 'grey.100',
+                    backgroundColor: '#ffffff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -665,7 +665,7 @@ const ReturnOrderStepper = ({
                                   height: { xs: 80, sm: 100 },
                                   borderRadius: 2,
                                   overflow: 'hidden',
-                                  backgroundColor: 'grey.100',
+                                  backgroundColor: '#ffffff',
                                   border: '1px solid',
                                   borderColor: 'divider',
                                   display: 'flex',
@@ -720,7 +720,7 @@ const ReturnOrderStepper = ({
                                 sx={{
                                   display: 'flex',
                                   alignItems: 'center',
-                                  backgroundColor: 'grey.50',
+                                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#fafafa',
                                   borderRadius: 2,
                                   border: '1px solid',
                                   borderColor: 'divider',
@@ -755,7 +755,7 @@ const ReturnOrderStepper = ({
                                     textAlign: 'center',
                                     px: 1,
                                     py: 0.5,
-                                    backgroundColor: 'white',
+                                    backgroundColor: 'background.paper' as any,
                                   }}
                                 >
                                   {item.quantity}
@@ -926,7 +926,7 @@ const ReturnOrderStepper = ({
                       border: '1px solid',
                       borderColor: 'divider',
                       borderRadius: 2,
-                      backgroundColor: 'grey.50',
+                      backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#fafafa',
                     }}
                   >
                     <Inbox color='primary' />
@@ -1009,7 +1009,7 @@ const ReturnOrderStepper = ({
                     border: '2px dashed',
                     borderColor: 'primary.main',
                     borderRadius: 2,
-                    backgroundColor: 'grey.50',
+                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(124,111,205,0.08)' : 'rgba(42,74,107,0.04)',
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -1347,10 +1347,10 @@ const ReturnOrderStepper = ({
                       sx={{
                         p: 2.5,
                         borderRadius: 2,
-                        backgroundColor: 'grey.50',
+                        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#fafafa',
                         transition: 'all 0.2s ease-in-out',
                         '&:hover': {
-                          backgroundColor: 'grey.100',
+                          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : '#f5f5f5',
                           borderColor: 'primary.main',
                         },
                       }}
@@ -1378,7 +1378,7 @@ const ReturnOrderStepper = ({
                               height: { xs: 80, sm: 100 },
                               borderRadius: 2,
                               overflow: 'hidden',
-                              backgroundColor: 'white',
+                              backgroundColor: 'background.paper' as any,
                               border: '2px solid',
                               borderColor: 'divider',
                               display: 'flex',
@@ -1434,7 +1434,7 @@ const ReturnOrderStepper = ({
                             sx={{
                               display: 'flex',
                               alignItems: 'center',
-                              backgroundColor: 'white',
+                              backgroundColor: 'background.paper' as any,
                               borderRadius: 2,
                               border: '2px solid',
                               borderColor: 'primary.200',
@@ -1455,7 +1455,7 @@ const ReturnOrderStepper = ({
                                   color: 'white',
                                 },
                                 '&:disabled': {
-                                  backgroundColor: 'grey.100',
+                                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : '#f5f5f5',
                                 },
                               }}
                             >
@@ -1470,7 +1470,7 @@ const ReturnOrderStepper = ({
                                 textAlign: 'center',
                                 px: 2,
                                 py: 1,
-                                backgroundColor: 'white',
+                                backgroundColor: 'background.paper' as any,
                                 color: 'primary.main',
                               }}
                             >
@@ -1548,10 +1548,10 @@ const ReturnOrderStepper = ({
                   sx={{
                     lineHeight: 1.6,
                     p: 2,
-                    backgroundColor: 'grey.50',
+                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#fafafa',
                     borderRadius: 2,
                     border: '1px solid',
-                    borderColor: 'grey.200',
+                    borderColor: 'divider',
                   }}
                 >
                   {returnReason}

@@ -175,14 +175,16 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
         borderRadius: 4,
         overflow: 'hidden',
         border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
-        background: 'linear-gradient(135deg, #fafafa 0%, #ffffff 100%)',
+        background: 'background.paper',
       }}
     >
       {/* Enhanced Search Header */}
       <Box sx={{
         p: 4,
-        background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)',
-        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+        background: theme.palette.mode === 'dark'
+          ? `linear-gradient(135deg, ${theme.palette.background.paper} 0%, rgba(255,255,255,0.03) 100%)`
+          : 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)',
+        borderBottom: `1px solid ${theme.palette.divider}`,
       }}>
         <TextField
           fullWidth
@@ -216,7 +218,7 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
           sx={{
             '& .MuiOutlinedInput-root': {
               borderRadius: 3,
-              backgroundColor: 'white',
+              backgroundColor: 'background.paper' as any,
               boxShadow: searchLoading
                 ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.15)}`
                 : '0 2px 8px rgba(0,0,0,0.04)',

@@ -33,6 +33,7 @@ import {
     Checkbox,
     Divider,
     FormHelperText,
+    useTheme,
 } from '@mui/material';
 import {
     Search as SearchIcon,
@@ -93,6 +94,8 @@ const EMPTY_USER_FORM = {
 
 const UserManagement = () => {
     const { user }: any = useContext(AuthContext);
+    const theme = useTheme();
+    const isDark = theme.palette.mode === 'dark';
     const isAdmin = user?.data?.role === 'admin'
     const [tab, setTab] = useState(0);
 
@@ -501,7 +504,7 @@ const UserManagement = () => {
                             <TableContainer>
                                 <Table>
                                     <TableHead>
-                                        <TableRow sx={{ backgroundColor: 'grey.50' }}>
+                                        <TableRow sx={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'grey.50' }}>
                                             <TableCell sx={{ fontWeight: 'bold' }}>User</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Contact</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Role</TableCell>
@@ -515,7 +518,7 @@ const UserManagement = () => {
                                             <TableRow key={user._id} hover>
                                                 <TableCell>
                                                     <Box display="flex" alignItems="center">
-                                                        <Avatar sx={{ bgcolor: 'primary.main', mr: 2, background: 'linear-gradient(45deg, #2196F3 30%, #1976D2 90%)' }}>
+                                                        <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
                                                             {user.name?.charAt(0)?.toUpperCase() || '?'}
                                                         </Avatar>
                                                         <Box>
@@ -615,14 +618,14 @@ const UserManagement = () => {
                                 <Table size="small" stickyHeader>
                                     <TableHead>
                                         <TableRow>
-                                            <TableCell sx={{ fontWeight: 'bold', minWidth: 220, backgroundColor: 'grey.50' }}>
+                                            <TableCell sx={{ fontWeight: 'bold', minWidth: 220, backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'grey.50' }}>
                                                 Feature / Page
                                             </TableCell>
                                             {ROLES.map(role => (
                                                 <TableCell
                                                     key={role.value}
                                                     align="center"
-                                                    sx={{ fontWeight: 'bold', minWidth: 110, backgroundColor: 'grey.50' }}
+                                                    sx={{ fontWeight: 'bold', minWidth: 110, backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'grey.50' }}
                                                 >
                                                     <Chip
                                                         label={role.label}
@@ -923,7 +926,7 @@ const UserManagement = () => {
                 <DialogContent dividers sx={{ p: 0 }}>
                     <Table size="small">
                         <TableHead>
-                            <TableRow sx={{ backgroundColor: 'grey.50' }}>
+                            <TableRow sx={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'grey.50' }}>
                                 <TableCell sx={{ fontWeight: 'bold' }}>Feature / Page</TableCell>
                                 <TableCell align="center" sx={{ fontWeight: 'bold', width: 80 }}>Access</TableCell>
                             </TableRow>
@@ -977,7 +980,7 @@ const UserManagement = () => {
                     </Box>
                     {(selectedUser?.permissions || []).length > 0 ? (
                         (selectedUser.permissions as any[]).map((p: any, i: number) => (
-                            <Paper key={i} sx={{ p: 2, mb: 1, backgroundColor: 'grey.50' }} elevation={0}>
+                            <Paper key={i} sx={{ p: 2, mb: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'grey.50' }} elevation={0}>
                                 <Box display="flex" alignItems="center" justifyContent="space-between">
                                     <Box display="flex" alignItems="center" gap={1.5}>
                                         <Avatar sx={{ bgcolor: 'primary.light', width: 32, height: 32 }}>

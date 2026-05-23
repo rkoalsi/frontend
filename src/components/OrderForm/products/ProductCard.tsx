@@ -87,6 +87,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
       orderStatus?.toLowerCase().includes("declined");
 
     const theme = useTheme();
+    const isDark = theme.palette.mode === 'dark';
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
     const isTablet = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -116,7 +117,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
           <Box
             sx={{
               position: "relative",
-              backgroundColor: 'grey.50',
+              backgroundColor: '#ffffff',
               height: { xs: 220, sm: 260, md: 280, xl: 240 },
               width: '100%',
             }}
@@ -176,13 +177,12 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                     label={product.category}
                     variant="filled"
                     size="small"
+                    color="primary"
                     sx={{
                       borderRadius: 1.5,
                       fontSize: '0.7rem',
                       height: '24px',
                       fontWeight: 600,
-                      bgcolor: 'primary.50',
-                      color: 'primary.dark',
                       '& .MuiChip-label': { px: 1.5 },
                     }}
                   />
@@ -407,7 +407,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                         fontWeight: 800,
                         fontSize: '1.05rem',
                         fontFamily: 'system-ui',
-                        color: 'primary.main',
+                        color: isDark ? 'text.primary' : 'primary.main',
                         letterSpacing: '-0.5px',
                       }}
                     >

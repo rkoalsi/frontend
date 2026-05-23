@@ -68,16 +68,20 @@ const ActionCard = styled(Button)(({ theme }) => ({
   minHeight: 96,
   width: '100%',
   transition: 'all 0.18s ease-in-out',
-  backgroundColor: 'rgba(255,255,255,0.06)',
+  backgroundColor: theme.palette.mode === 'dark'
+    ? 'rgba(255,255,255,0.06)'
+    : theme.palette.background.paper,
   color: theme.palette.text.primary,
-  boxShadow: 'none',
-  border: '1px solid rgba(255,255,255,0.1)',
+  boxShadow: theme.palette.mode === 'light' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+  border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : theme.palette.divider}`,
   backdropFilter: 'blur(4px)',
   '&:hover': {
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: theme.palette.mode === 'dark'
+      ? 'rgba(255,255,255,0.12)'
+      : theme.palette.action.hover,
     transform: 'translateY(-2px)',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-    border: '1px solid rgba(255,255,255,0.2)',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+    border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.2)' : theme.palette.primary.light}`,
   },
   '&:active': {
     transform: 'scale(0.97)',
@@ -89,7 +93,7 @@ const ActionCard = styled(Button)(({ theme }) => ({
 }));
 
 const SectionTitle = styled(Typography)(({ theme }) => ({
-  color: 'rgba(255, 255, 255, 0.55)',
+  color: theme.palette.text.secondary,
   fontWeight: 600,
   fontSize: '0.7rem',
   textTransform: 'uppercase',
@@ -517,17 +521,19 @@ const Home = () => {
           <Box
             mb={3.5}
             sx={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              bgcolor: 'background.paper',
+              border: '1px solid',
+              borderColor: 'divider',
               borderRadius: 3,
               px: 2.5,
               py: 2,
+              boxShadow: 1,
             }}
           >
             <Typography
               variant='caption'
+              color='text.secondary'
               sx={{
-                color: 'rgba(255,255,255,0.45)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.1em',
                 fontSize: '0.65rem',
@@ -541,7 +547,6 @@ const Home = () => {
               component='h1'
               sx={{
                 fontWeight: 700,
-                color: '#ffffff',
                 fontSize: { xs: '1.35rem', sm: '1.6rem' },
                 mt: 0.25,
                 lineHeight: 1.3,
@@ -551,7 +556,8 @@ const Home = () => {
             </Typography>
             <Typography
               variant='body2'
-              sx={{ color: 'rgba(255, 255, 255, 0.5)', mt: 0.5, fontSize: '0.82rem' }}
+              color='text.secondary'
+              sx={{ mt: 0.5, fontSize: '0.82rem' }}
             >
               {isCustomer ? 'Browse catalogues and manage your orders.' : 'Manage orders, customers, and more — all in one place.'}
             </Typography>
@@ -583,7 +589,6 @@ const Home = () => {
                             textAlign: 'center',
                             lineHeight: 1.3,
                             fontSize: '0.78rem',
-                            color: 'rgba(255,255,255,0.85)',
                           }}
                         >
                           {item.text}

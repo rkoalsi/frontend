@@ -490,7 +490,7 @@ const SalesPeople = () => {
     <Box sx={{ padding: { xs: 2, sm: 3 } }}>
       <Paper
         elevation={3}
-        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4, backgroundColor: 'white' }}
+        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4 }}
       >
         <Box
           display={'flex'}

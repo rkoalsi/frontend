@@ -394,13 +394,12 @@ const AdminShipments = () => {
         sx={{
           padding: 4,
           borderRadius: 4,
-          backgroundColor: 'white',
-        }}
+                  }}
       >
         <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
           Manage Shipment Images
         </Typography>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           Search for a shipment and upload images with optional captions.
         </Typography>
 

@@ -484,15 +484,15 @@ const CustomerActivityPage = () => {
       {/* Page header */}
       <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
         <Box>
-          <Typography variant="h5" fontWeight={700} color="white">
+          <Typography variant="h5" fontWeight={700}>
             Customer Activity
           </Typography>
-          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', mt: 0.25 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
             Track logins, page views, and actions across all customer accounts
           </Typography>
         </Box>
         <Tooltip title="Refresh">
-          <IconButton onClick={fetchSummary} sx={{ color: 'white' }}>
+          <IconButton onClick={fetchSummary}>
             <Refresh />
           </IconButton>
         </Tooltip>
@@ -520,7 +520,6 @@ const CustomerActivityPage = () => {
               p: 2.5,
               borderRadius: 3,
               border: `1px solid ${theme.palette.divider}`,
-              backgroundColor: 'white',
             }}
           >
             <Typography variant="h4" fontWeight={800} sx={{ color: s.color }}>{s.value}</Typography>
@@ -558,7 +557,7 @@ const CustomerActivityPage = () => {
             <TableContainer>
               <Table size="small">
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: '#f8fafc' }}>
+                  <TableRow sx={{}}>
                     {['Customer', 'Email', 'Last Login', 'Last Seen', 'Logins', 'Actions', 'Top Activity'].map((h) => (
                       <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.78rem', py: 1.5 }}>{h}</TableCell>
                     ))}

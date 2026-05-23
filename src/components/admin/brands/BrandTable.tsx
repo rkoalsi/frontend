@@ -76,22 +76,31 @@ const BrandTable = ({
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>{brand.name}</TableCell>
                       <TableCell>
-                        <img
-                          onClick={() =>
-                            handleImageClick(
-                              brand.image_url || '/placeholder.png'
-                            )
-                          }
-                          src={brand.image_url || '/placeholder.png'}
-                          alt={brand.name}
-                          style={{
-                            width: '80px',
-                            height: '80px',
-                            borderRadius: '4px',
-                            objectFit: 'cover',
+                        <Box
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 80,
+                            height: 80,
+                            borderRadius: '6px',
+                            backgroundColor: '#ffffff',
+                            border: '1px solid rgba(0,0,0,0.1)',
+                            overflow: 'hidden',
                             cursor: 'pointer',
                           }}
-                        />
+                          onClick={() => handleImageClick(brand.image_url || '/placeholder.png')}
+                        >
+                          <img
+                            src={brand.image_url || '/placeholder.png'}
+                            alt={brand.name}
+                            style={{
+                              width: '72px',
+                              height: '72px',
+                              objectFit: 'contain',
+                            }}
+                          />
+                        </Box>
                       </TableCell>
                       <TableCell>
                         {brand.description ? (
@@ -105,18 +114,27 @@ const BrandTable = ({
                       <TableCell>
                         {brand.secondary_image_url ? (
                           <Tooltip title='View secondary image' placement='top'>
-                            <img
-                              onClick={() => handleImageClick(brand.secondary_image_url)}
-                              src={brand.secondary_image_url}
-                              alt={`${brand.name} secondary`}
-                              style={{
-                                width: '50px',
-                                height: '50px',
-                                borderRadius: '4px',
-                                objectFit: 'cover',
+                            <Box
+                              sx={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 50,
+                                height: 50,
+                                borderRadius: '6px',
+                                backgroundColor: '#ffffff',
+                                border: '1px solid rgba(0,0,0,0.1)',
+                                overflow: 'hidden',
                                 cursor: 'pointer',
                               }}
-                            />
+                              onClick={() => handleImageClick(brand.secondary_image_url)}
+                            >
+                              <img
+                                src={brand.secondary_image_url}
+                                alt={`${brand.name} secondary`}
+                                style={{ width: '44px', height: '44px', objectFit: 'contain' }}
+                              />
+                            </Box>
                           </Tooltip>
                         ) : (
                           <CancelIcon color='disabled' fontSize='small' />

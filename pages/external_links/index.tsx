@@ -33,12 +33,14 @@ import {
 // Enhanced Styled Card with better glassmorphism
 const StyledCard = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
-  background:
-    'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
+  background: theme.palette.mode === 'dark'
+    ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)'
+    : theme.palette.background.paper,
   borderRadius: 20,
-  border: '1px solid rgba(255, 255, 255, 0.2)',
-  boxShadow:
-    '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+  border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : theme.palette.divider}`,
+  boxShadow: theme.palette.mode === 'dark'
+    ? '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+    : '0 4px 16px rgba(0, 0, 0, 0.08)',
   backdropFilter: 'blur(10px)',
   transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
   height: '100%',
@@ -88,13 +90,14 @@ const IconWrapper = styled(Box)(({ theme }) => ({
   width: 80,
   height: 80,
   borderRadius: '50%',
-  background:
-    'linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%)',
+  background: theme.palette.mode === 'dark'
+    ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%)'
+    : `linear-gradient(135deg, ${theme.palette.primary.light}22 0%, ${theme.palette.primary.light}11 100%)`,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
   marginBottom: theme.spacing(2),
-  border: '1px solid rgba(255, 255, 255, 0.15)',
+  border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.15)' : theme.palette.primary.light}`,
   transition: 'all 0.3s ease',
   '&:hover': {
     transform: 'scale(1.1)',
@@ -109,21 +112,21 @@ const IconWrapper = styled(Box)(({ theme }) => ({
 }));
 
 const ActionButton = styled(IconButton)(({ theme }) => ({
-  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  color: 'rgba(255, 255, 255, 0.9)',
+  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : theme.palette.action.hover,
+  color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.9)' : theme.palette.text.secondary,
   borderRadius: 12,
   padding: theme.spacing(1, 2),
   fontSize: '0.85rem',
   fontWeight: 500,
   minWidth: 'auto',
   gap: theme.spacing(1),
-  border: '1px solid rgba(255, 255, 255, 0.15)',
+  border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.15)' : theme.palette.divider}`,
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   '&:hover': {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    color: 'white',
+    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : theme.palette.action.selected,
+    color: theme.palette.mode === 'dark' ? 'white' : theme.palette.primary.main,
     transform: 'translateY(-2px)',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
   },
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(0.5, 1),
@@ -343,7 +346,7 @@ function ExternalLinks(props: Props) {
                               <IconComponent
                                 sx={{
                                   fontSize: isMobile ? 28 : 32,
-                                  color: 'rgba(255, 255, 255, 0.9)',
+                                  color: 'primary.main',
                                 }}
                               />
                             </IconWrapper>
@@ -352,7 +355,6 @@ function ExternalLinks(props: Props) {
                               variant={isMobile ? 'subtitle1' : 'h6'}
                               fontWeight='600'
                               sx={{
-                                color: 'white',
                                 mb: 1,
                                 textAlign: 'center',
                                 lineHeight: 1.3,
