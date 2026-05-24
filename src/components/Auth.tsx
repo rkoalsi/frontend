@@ -1,6 +1,5 @@
 import { createContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import axiosInstance from '../util/axios';
@@ -65,36 +64,46 @@ export const AuthProvider = ({ children }: any) => {
   const login = async (email: string, password: string) => {
     try {
       const base = `${process.env.api_url}`;
-      const res = await axios.post(`${base}/users/login`, {
-        email,
-        password,
-      });
-      const { access_token, user_data } = res.data;
-      
-      // Decode token to get user info
-      const decodedUser: any = jwtDecode(access_token as string);
-      setUser(decodedUser);
-      localStorage.setItem('token', access_token);
-      
-      // Fetch user permissions after login
-      setTimeout(async () => {
-        await fetchUserPermissions();
-      }, 100);
-      
+      // withCredentials so the browser stores the HttpOnly cookie set by the server
+      const res = await axios.post(
+        `${base}/users/login`,
+        { email, password },
+        { withCredentials: true }
+      );
+
+      // Issue 6: use the user object returned by the server — no JWT decoding needed
+      const { user, access_token } = res.data;
+      setUser(user);
+
+      // Keep token in localStorage only as a fallback for header-based auth
+      // (HttpOnly cookie is the authoritative session credential)
+      if (access_token) {
+        localStorage.setItem('token', access_token);
+      }
+
+      // Fetch permissions immediately — no setTimeout race condition
+      await fetchUserPermissions();
+
       router.push('/');
-      toast.success(`You have successfully logged in`);
+      toast.success('You have successfully logged in');
     } catch (error) {
       console.error('Login failed', error);
-      toast.error(`Invalid Email or Password`);
+      toast.error('Invalid Email or Password');
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     setUser(null);
     setPermissions(null);
     localStorage.removeItem('token');
+    // Ask the backend to clear the HttpOnly cookie
+    try {
+      await axiosInstance.post('/users/logout');
+    } catch {
+      // best-effort
+    }
     router.push('/login');
-    toast.info(`You have been logged out`);
+    toast.info('You have been logged out');
   };
 
   const checkRouteAccess = async (routePath: string): Promise<boolean> => {
@@ -123,39 +132,54 @@ export const AuthProvider = ({ children }: any) => {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
     const { shared = '', id } = router.query;
-
     const allowedSharedRoute = '/orders/new/[id]';
 
+    // Shared order-form links are accessible without authentication
     if (shared === 'true') {
       const isExactMatch = router.pathname === allowedSharedRoute && !!id;
       if (!isExactMatch) {
-        if (router.pathname !== '/login') {
-          router.replace('/login');
-        }
+        if (router.pathname !== '/login') router.replace('/login');
+        setLoading(false);
         return;
       }
       setLoading(false);
       return;
     }
 
-    if (token) {
-      try {
-        const decodedUser: any = jwtDecode(token);
-        if (decodedUser.exp * 1000 < Date.now()) {
-          console.log('Token expired');
-          logout();
-          return;
-        }
-        setUser(decodedUser);
-        fetchUserPermissions();
-      } catch (error) {
-        console.error('Error decoding token:', error);
-        logout();
-      }
+    // Pages that are intentionally public — never check session here
+    // NOTE: /orders/new/[id] is NOT here — authenticated users (salesperson/admin)
+    // visit that route too and need /me to be called so `user` gets populated.
+    // The shared-link case is handled by the `shared === 'true'` block above.
+    const PUBLIC_PATHS = [
+      '/login',
+      '/forgot_password',
+      '/reset_password',
+      '/catalogues/all_products',
+    ];
+    if (PUBLIC_PATHS.includes(router.pathname)) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    // Issue 8: validate session via the /me endpoint (cookie is sent automatically).
+    // Only call /me when we don't already have a user loaded — avoids a network
+    // request on every client-side navigation.
+    if (!user) {
+      axiosInstance
+        .get('/users/me')
+        .then((res) => {
+          setUser(res.data.user);
+          fetchUserPermissions();
+        })
+        .catch(() => {
+          // 403/401 → axios interceptor redirects to /login
+          // Don't do anything else here to avoid double-redirect
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, [router.query, router.pathname]);
 
   return (

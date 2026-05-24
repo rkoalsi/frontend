@@ -98,8 +98,8 @@ const DailyVisitDetail = () => {
           `${process.env.api_url}/daily_visits/${id}/comments/${selectedCommentId}/reply`,
           {
             reply: commentText,
-            user_id: user?.data?._id,
-            user_name: user?.data?.name || 'Salesperson',
+            user_id: user?._id,
+            user_name: user?.name || 'Salesperson',
             user_role: 'salesperson',
           }
         );
@@ -153,7 +153,7 @@ const DailyVisitDetail = () => {
   const fetchHooks = async () => {
     try {
       const resp = await axios.get(`${process.env.api_url}/hooks`, {
-        params: { created_by: user?.data?._id },
+        params: { created_by: user?._id },
       });
       setHooks(resp.data);
     } catch (err) {
@@ -202,7 +202,7 @@ const DailyVisitDetail = () => {
     );
     const { data: hooksData = [] } = await axios.get(
       `${process.env.api_url}/hooks`,
-      { params: { created_by: user?.data?._id } }
+      { params: { created_by: user?._id } }
     );
     const { customer: selectedCustomer = {} } = data;
     setOpen(true);
@@ -315,7 +315,7 @@ const DailyVisitDetail = () => {
   const handleDeleteUpdate = async (updateId: string) => {
     try {
       const formData = new FormData();
-      formData.append('uploaded_by', user?.data?._id);
+      formData.append('uploaded_by', user?._id);
       formData.append('delete_update', updateId);
       const response = await axios.put(
         `${process.env.api_url}/daily_visits/${id}`,
@@ -365,7 +365,7 @@ const DailyVisitDetail = () => {
       customer_name: formData.selectedCustomer.contact_name,
       customer_address: formData.customerAddress,
       hooks: hooksWithCategoryName,
-      created_by: user?.data?._id,
+      created_by: user?._id,
     };
 
     try {
@@ -507,7 +507,7 @@ const DailyVisitDetail = () => {
                                   {comment.reply.updated_at && ' (edited)'}
                                 </Typography>
                               </Box>
-                              {comment.reply.user_id === user?.data?._id && (
+                              {comment.reply.user_id === user?._id && (
                                 <Box sx={{ display: 'flex', gap: 0.5 }}>
                                   <IconButton
                                     size='small'
@@ -591,7 +591,7 @@ const DailyVisitDetail = () => {
                                     {comment.reply.updated_at && ' (edited)'}
                                   </Typography>
                                 </Box>
-                                {comment.reply.user_id === user?.data?._id && (
+                                {comment.reply.user_id === user?._id && (
                                   <Box sx={{ display: 'flex', gap: 0.5 }}>
                                     <IconButton
                                       size='small'

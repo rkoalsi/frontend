@@ -128,7 +128,7 @@ const UpdateDialog = ({
       formData.append('address', JSON.stringify(shop?.address)); // Include address for regular customers
     }
 
-    formData.append('uploaded_by', user?.data?._id);
+    formData.append('uploaded_by', user?._id);
     formData.append('update_text', updateText);
     if (updateData?._id) formData.append('update_id', updateData._id);
     newImages.forEach((file) => formData.append('new_images', file));

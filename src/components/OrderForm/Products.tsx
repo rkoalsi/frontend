@@ -1031,7 +1031,7 @@ const Products: React.FC<ProductsProps> = ({
               ? specialMargins[productId]
               : customer?.cf_margin || "40%",
             quantity,
-            added_by: isShared ? "customer" : user?.data?.role || 'sales_person',
+            added_by: isShared ? "customer" : user?.role || 'sales_person',
           },
         ];
 

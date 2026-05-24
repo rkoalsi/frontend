@@ -259,7 +259,7 @@ function CustomerMargin() {
         `${process.env.api_url}/customers/salesperson`,
         {
           params: {
-            code: user?.data?.code,
+            code: user?.code,
             search: query, // Send search parameter to API
           },
         }

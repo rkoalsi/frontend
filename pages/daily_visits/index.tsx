@@ -71,12 +71,12 @@ const ShopCard = memo(function ShopCard({
 
   // Fetch potential customers created by the user
   useEffect(() => {
-    if (shop.editing && shop.potentialCustomer && user?.data?._id) {
+    if (shop.editing && shop.potentialCustomer && user?._id) {
       const fetchPotentialCustomers = async () => {
         setLoadingPotentialCustomers(true);
         try {
           const { data } = await axios.get(
-            `${process.env.api_url}/potential_customers?created_by=${user.data._id}`
+            `${process.env.api_url}/potential_customers?created_by=${user._id}`
           );
           setPotentialCustomers(data || []);
         } catch (err) {
@@ -88,7 +88,7 @@ const ShopCard = memo(function ShopCard({
       };
       fetchPotentialCustomers();
     }
-  }, [shop.editing, shop.potentialCustomer, user?.data?._id]);
+  }, [shop.editing, shop.potentialCustomer, user?._id]);
 
   // Handle selection of an existing potential customer
   const handleSelectPotentialCustomer = (potentialCustomer: any) => {
@@ -712,7 +712,7 @@ function DailyVisits() {
     setLoading(true);
     try {
       const resp = await axios.get(`${process.env.api_url}/daily_visits`, {
-        params: { created_by: user?.data?._id },
+        params: { created_by: user?._id },
       });
       setDailyVisits(resp.data);
     } catch (error) {
@@ -884,7 +884,7 @@ function DailyVisits() {
     });
 
     formData.append('shops', JSON.stringify(formattedShops));
-    formData.append('created_by', user?.data?._id);
+    formData.append('created_by', user?._id);
 
     // Append selfie file if available
     if (selfie) {

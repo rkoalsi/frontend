@@ -156,7 +156,7 @@ function ExpectedReorder() {
   const fetchExpectedReorder = async () => {
     try {
       const resp = await axios.get(`${process.env.api_url}/expected_reorders`, {
-        params: { created_by: user?.data?._id },
+        params: { created_by: user?._id },
       });
       setExpectedReorder(resp.data);
     } catch (err) {
@@ -246,7 +246,7 @@ function ExpectedReorder() {
       } else {
         await axios.post(`${process.env.api_url}/expected_reorders`, {
           ...payload,
-          created_by: user?.data?._id,
+          created_by: user?._id,
         });
         toast.success('Hook details submitted successfully');
       }

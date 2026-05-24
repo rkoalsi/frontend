@@ -309,9 +309,9 @@ const CustomerRequests = () => {
           `/customer_creation_requests/${selectedRequest._id}/comments/${selectedCommentId}/reply`,
           {
             reply: replyText,
-            user_id: user?.data?._id,
-            user_name: `${user?.data?.first_name || ''} ${user?.data?.last_name || ''}`.trim() || 'Salesperson',
-            user_role: user?.data?.role || 'sales_person',
+            user_id: user?._id,
+            user_name: `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Salesperson',
+            user_role: user?.role || 'sales_person',
           }
         );
         toast.success('Reply added successfully');
@@ -320,9 +320,9 @@ const CustomerRequests = () => {
           `/customer_creation_requests/${selectedRequest._id}/comments/${selectedCommentId}/reply`,
           {
             reply: replyText,
-            user_id: user?.data?._id,
-            user_name: `${user?.data?.first_name || ''} ${user?.data?.last_name || ''}`.trim() || 'Salesperson',
-            user_role: user?.data?.role || 'sales_person',
+            user_id: user?._id,
+            user_name: `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Salesperson',
+            user_role: user?.role || 'sales_person',
           }
         );
         toast.success('Reply updated successfully');
@@ -1266,7 +1266,7 @@ const CustomerRequests = () => {
                                 {comment.reply.updated_at && ' (edited)'}
                               </Typography>
                             </Box>
-                            {comment.reply.user_id === user?.data?._id && (
+                            {comment.reply.user_id === user?._id && (
                               <Box sx={{ display: 'flex', gap: 0.5 }}>
                                 <IconButton
                                   size="small"

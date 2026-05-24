@@ -76,7 +76,7 @@ const AdminShipments = () => {
     setLoading(true);
     try {
       const params: any = {
-        created_by: user?.data?._id,
+        created_by: user?._id,
         role: 'admin',
         per_page: perPage,
         page: pageNum + 1, // API uses 1-based pagination
@@ -102,7 +102,7 @@ const AdminShipments = () => {
 
   // Debounced search effect
   useEffect(() => {
-    if (!user?.data?._id) return;
+    if (!user?._id) return;
 
     const debounceTimer = setTimeout(() => {
       setPage(0); // Reset to first page on search
@@ -111,11 +111,11 @@ const AdminShipments = () => {
 
     return () => clearTimeout(debounceTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, user?.data?._id]);
+  }, [searchTerm, user?._id]);
 
   // Load shipments when pagination changes
   useEffect(() => {
-    if (user?.data?._id) {
+    if (user?._id) {
       fetchShipments(searchTerm, page, rowsPerPage);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -168,7 +168,7 @@ const AdminShipments = () => {
       // Create captions array matching images order
       const captionsArray = imagesToUpload.map((_, index) => captions[index] || '');
       formData.append('captions', JSON.stringify(captionsArray));
-      formData.append('uploaded_by', user?.data?._id);
+      formData.append('uploaded_by', user?._id);
 
       await axiosInstance.post(
         `/shipments/${selectedShipment._id}/images`,
@@ -272,7 +272,7 @@ const AdminShipments = () => {
       const formData = new FormData();
       formData.append('images', file);
       formData.append('captions', JSON.stringify([existingCaption]));
-      formData.append('uploaded_by', user?.data?._id);
+      formData.append('uploaded_by', user?._id);
 
       await axiosInstance.post(
         `/shipments/${selectedShipment._id}/images`,
