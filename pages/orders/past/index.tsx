@@ -92,7 +92,7 @@ const PastOrders = () => {
       setLoading(true);
       const queryParams = {
         status: filterType === 'all' ? '' : filterType,
-        created_by: user?.data?._id,
+        created_by: user?._id,
       };
       const queryString = new URLSearchParams(queryParams).toString();
       const resp = await axios.get(
@@ -129,7 +129,7 @@ const PastOrders = () => {
 
     try {
       await axios.delete(`${process.env.api_url}/orders/${orderToDelete}`, {
-        params: { deleted_by: user?.data?._id }
+        params: { deleted_by: user?._id }
       });
       toast.success(`Order Deleted Successfully`);
       setDeleteDialogOpen(false);

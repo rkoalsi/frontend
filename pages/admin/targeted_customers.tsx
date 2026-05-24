@@ -153,7 +153,7 @@ const TargetedCustomers = () => {
             customer_name: selectedCustomer.contact_name,
             address: editedCustomer.address,
             sales_people: editedCustomer.sales_people,
-            created_by: user?.data?._id,
+            created_by: user?._id,
           }
         );
       } else {
@@ -163,7 +163,7 @@ const TargetedCustomers = () => {
           customer_name: selectedCustomer.contact_name,
           address: editedCustomer.address,
           sales_people: editedCustomer.sales_people,
-          created_by: user?.data?._id,
+          created_by: user?._id,
         });
       }
       toast.success(`Customer ${action} successfully.`);

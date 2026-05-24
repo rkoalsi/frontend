@@ -1,36 +1,58 @@
-// axiosInstance.js
+// axiosInstance.ts
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-// Create the axios instance with the base URL from your environment variables
 const axiosInstance = axios.create({
-  baseURL: process.env.api_url, // ensure you have this variable set correctly in your environment
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: process.env.api_url,
+  headers: { 'Content-Type': 'application/json' },
+  // Issue 8: send the HttpOnly auth cookie on every request
+  withCredentials: true,
 });
 
-// Request interceptor to attach the token from localStorage on every request
+// Request interceptor — keep Authorization header attachment as a fallback
+// for environments where cookies are not set (e.g. mobile apps, Postman tests).
+// In the browser the HttpOnly cookie takes precedence (see config/auth.py).
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const token =
+      typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token && !config.headers['Authorization']) {
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor to check for 403 and redirect to login if needed
+// Response interceptor — handle expired / invalid sessions
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 403) {
-      toast.error('Your token has expired. Please login to continue');
-      // Clear the token
-      localStorage.removeItem('token');
-      // Redirect to login (adjust the URL if needed)
+    const status = error.response?.status;
+    const PUBLIC_PATHS = [
+      '/login',
+      '/forgot_password',
+      '/reset_password',
+      '/catalogues/all_products',
+      '/orders/new/',   // prefix-match covers all /orders/new/[id] variants
+    ];
+    const currentPath =
+      typeof window !== 'undefined' ? window.location.pathname : '';
+    const alreadyOnLogin = PUBLIC_PATHS.some((p) => currentPath.startsWith(p));
+
+    if ((status === 403 || status === 401) && !alreadyOnLogin) {
+      toast.error('Your session has expired. Please log in again.');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+      }
+      // Ask the backend to clear the HttpOnly cookie too
+      axios
+        .post(
+          `${process.env.api_url}/users/logout`,
+          {},
+          { withCredentials: true }
+        )
+        .catch(() => {/* best-effort */});
       window.location.href = '/login';
     }
     return Promise.reject(error);

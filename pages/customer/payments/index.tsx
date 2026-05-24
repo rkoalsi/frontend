@@ -96,7 +96,7 @@ const CustomerPaymentsPage = () => {
   const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
 
   const fetchPayments = useCallback(async () => {
-    if (!user?.data?.customer_id) {
+    if (!user?.customer_id) {
       setLoading(false);
       setError('Customer ID not found. Please contact support.');
       return;
@@ -106,7 +106,7 @@ const CustomerPaymentsPage = () => {
       setLoading(true);
       const { data } = await axiosInstance.get('/customer_portal/payments', {
         params: {
-          customer_id: user.data.customer_id,
+          customer_id: user.customer_id,
           page: page + 1,
           per_page: rowsPerPage,
           payment_mode: paymentModeFilter || undefined,
@@ -225,7 +225,7 @@ const CustomerPaymentsPage = () => {
     </Card>
   );
 
-  if (!user?.data?.customer_id) {
+  if (!user?.customer_id) {
     return (
       <Container maxWidth='lg' sx={{ py: 4 }}>
         <Alert severity='warning'>

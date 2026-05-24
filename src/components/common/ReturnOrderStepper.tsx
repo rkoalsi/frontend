@@ -448,7 +448,7 @@ const ReturnOrderStepper = ({
           image_url: item.image_url,
         })),
         status: 'draft',
-        created_by: user.data._id,
+        created_by: user._id,
       };
 
       let returnOrderId = initialData?._id;

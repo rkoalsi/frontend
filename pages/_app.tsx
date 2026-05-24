@@ -15,6 +15,19 @@ import 'react-toastify/dist/ReactToastify.css';
 import 'react-quill/dist/quill.snow.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ColorModeProvider, useColorMode } from '../src/context/ColorModeContext';
+import axios from 'axios';
+
+// Global axios defaults: send cookies and Authorization header on every request
+// This covers pages that use raw `axios` directly (not axiosInstance).
+axios.defaults.withCredentials = true;
+axios.interceptors.request.use((config) => {
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (token && !config.headers['Authorization']) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  return config;
+});
 
 const queryClient = new QueryClient({
   defaultOptions: {

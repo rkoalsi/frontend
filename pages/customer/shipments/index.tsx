@@ -105,7 +105,7 @@ const CustomerShipmentsPage = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const fetchShipments = useCallback(async () => {
-    if (!user?.data?.customer_id) {
+    if (!user?.customer_id) {
       setLoading(false);
       setError('Customer ID not found. Please contact support.');
       return;
@@ -115,7 +115,7 @@ const CustomerShipmentsPage = () => {
       setLoading(true);
       const { data } = await axiosInstance.get('/customer_portal/shipments', {
         params: {
-          customer_id: user.data.customer_id,
+          customer_id: user.customer_id,
           page: page + 1,
           per_page: rowsPerPage,
           status: statusFilter || undefined,
@@ -250,7 +250,7 @@ const CustomerShipmentsPage = () => {
     );
   });
 
-  if (!user?.data?.customer_id) {
+  if (!user?.customer_id) {
     return (
       <Container maxWidth='lg' sx={{ py: 4 }}>
         <Alert severity='warning'>

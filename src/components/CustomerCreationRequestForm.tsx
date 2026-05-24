@@ -203,11 +203,11 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
 
   // Auto-fill sales person when dialog opens
   useEffect(() => {
-    if (open && user?.data) {
-      const isSalesPerson = user.data.role === 'sales_person';
+    if (open && user) {
+      const isSalesPerson = user.role === 'sales_person';
       const salesPersonValue = isSalesPerson
-        ? user.data.code || user.data.first_name
-        : `${user.data.first_name || ''} ${user.data.last_name || ''}`.trim();
+        ? user.code || user.first_name
+        : `${user.first_name || ''} ${user.last_name || ''}`.trim();
 
       setFormData(prev => ({
         ...prev,
@@ -318,10 +318,10 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
       toast.success('Customer creation request submitted successfully!');
 
       // Reset form
-      const isSalesPerson = user?.data?.role === 'sales_person';
+      const isSalesPerson = user?.role === 'sales_person';
       const salesPersonValue = isSalesPerson
-        ? user?.data?.code || user?.data?.first_name
-        : `${user?.data?.first_name || ''} ${user?.data?.last_name || ''}`.trim();
+        ? user?.code || user?.first_name
+        : `${user?.first_name || ''} ${user?.last_name || ''}`.trim();
 
       setFormData({
         shop_name: '',
@@ -405,7 +405,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
         <DialogContent sx={{ py: 3 }}>
           <Box sx={{ mt: 1 }}>
             {/* Business Information Section */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
                 Business Information
               </Typography>
@@ -439,7 +439,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
             </Paper>
 
             {/* Billing Address Section */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
                 Billing Address
               </Typography>
@@ -541,7 +541,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
             </Paper>
 
             {/* Shipping Address Section */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
               <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
                 <Typography variant="subtitle1" fontWeight={600} color="primary.main">
                   Shipping Address
@@ -654,7 +654,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
             </Paper>
 
             {/* Other Address Fields Section */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
                 Additional Information
               </Typography>
@@ -718,7 +718,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
             </Paper>
 
             {/* Tax & Contact Information Section */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
                 Tax & Contact Information
               </Typography>
@@ -784,7 +784,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
             </Paper>
 
             {/* Document Upload Section */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1, color: 'primary.main' }}>
                 Document Uploads
               </Typography>
@@ -941,7 +941,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
             </Paper>
 
             {/* Business Terms Section */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
                 Business Terms
               </Typography>
@@ -1020,7 +1020,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
             </Paper>
 
             {/* Additional Details Section */}
-            <Paper elevation={0} sx={{ p: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
                 Additional Details
               </Typography>

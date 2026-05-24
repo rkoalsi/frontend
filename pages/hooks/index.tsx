@@ -263,7 +263,7 @@ function CustomerHooks() {
   const fetchHooks = async () => {
     try {
       const resp = await axios.get(`${process.env.api_url}/hooks`, {
-        params: { created_by: user?.data?._id },
+        params: { created_by: user?._id },
       });
       setHooks(resp.data);
     } catch (err) {
@@ -421,7 +421,7 @@ function CustomerHooks() {
       customer_name: formData.selectedCustomer.contact_name,
       customer_address: formData.customerAddress,
       hooks: hooksWithCategoryName,
-      created_by: user?.data?._id,
+      created_by: user?._id,
     };
 
     try {

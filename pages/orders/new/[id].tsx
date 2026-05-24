@@ -47,6 +47,17 @@ const Review = lazy(() =>
 // Create an Axios instance
 const api = axios.create({
   baseURL: process.env.api_url,
+  withCredentials: true,
+});
+
+// Attach auth token to every request made through this local instance
+api.interceptors.request.use((config) => {
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (token && !config.headers['Authorization']) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  return config;
 });
 
 
@@ -69,9 +80,9 @@ const NewOrder: React.FC = () => {
   const { id, shared } = router.query;
   const isShared = shared === 'true';
   const { user }: any = useContext(AuthContext);
-  const isAdmin = user?.data?.role.includes('admin');
-  const isCustomerUser = user?.data?.role === 'customer';
-  const userCustomerId = user?.data?.customer_id; // contact_id linked to this user
+  const isAdmin = user?.role.includes('admin');
+  const isCustomerUser = user?.role === 'customer';
+  const userCustomerId = user?.customer_id; // contact_id linked to this user
   // States
   const [customer, setCustomer] = useState<any>(null);
   const [referenceNumber, setReferenceNumber] = useState('');
@@ -319,10 +330,16 @@ const NewOrder: React.FC = () => {
         customerRef.current !== resp.data.customer_id
       ) {
         customerRef.current = resp.data.customer_id;
-        const customerResponse = await api.get(
-          `/customers/${resp.data.customer_id}`
-        );
-        setCustomer(customerResponse.data.customer);
+        // Customer fetch requires auth — shared-link visitors won't have a token.
+        // Wrap in its own try/catch so a 403 here doesn't abort the whole order load.
+        try {
+          const customerResponse = await api.get(
+            `/customers/${resp.data.customer_id}`
+          );
+          setCustomer(customerResponse.data.customer);
+        } catch {
+          // Not authenticated to fetch customer details (e.g. shared link) — ignore
+        }
         setReferenceNumber(resp.data?.reference_number);
       }
       if (resp.data.billing_address)
@@ -360,7 +377,7 @@ const NewOrder: React.FC = () => {
   // Auto-fetch and pre-select customer for customer users
   useEffect(() => {
     const fetchCustomerForUser = async () => {
-      if (isCustomerUser && !customer && id && user?.data) {
+      if (isCustomerUser && !customer && id && user) {
         try {
           let customerData = null;
 
@@ -375,9 +392,9 @@ const NewOrder: React.FC = () => {
           }
 
           // Fallback: Try to match by user's email
-          if (!customerData && user.data.email) {
+          if (!customerData && user.email) {
             try {
-              const response = await api.get(`/customers/by_user_email/${encodeURIComponent(user.data.email)}`);
+              const response = await api.get(`/customers/by_user_email/${encodeURIComponent(user.email)}`);
               customerData = response.data.customer;
             } catch (e) {
               console.log('Customer not found by email');
@@ -411,7 +428,7 @@ const NewOrder: React.FC = () => {
     };
 
     fetchCustomerForUser();
-  }, [isCustomerUser, userCustomerId, user?.data, customer, id]);
+  }, [isCustomerUser, userCustomerId, user, customer, id]);
 
   // Set initial step for customer users when user data becomes available
   useEffect(() => {

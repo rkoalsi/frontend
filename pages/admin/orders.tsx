@@ -329,7 +329,7 @@ const Orders = () => {
     setOrderLoading(true);
     try {
       const resp = await axiosInstance.delete(`/orders/${order._id}`, {
-        params: { deleted_by: user?.data?._id }
+        params: { deleted_by: user?._id }
       });
       console.log(resp.data);
       if (resp.status === 200) {

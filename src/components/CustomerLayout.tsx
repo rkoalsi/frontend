@@ -83,7 +83,7 @@ const CustomerLayout = ({ children }: any) => {
           return;
         }
 
-        const isCustomerRole = user?.data?.role === 'customer';
+        const isCustomerRole = user?.role === 'customer';
         const isCustomerRoute = router.pathname.startsWith('/customer');
 
         if (isCustomerRoute && isCustomerRole) {

@@ -38,7 +38,7 @@ const CustomerAccount = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
   // User data from context
-  const userData = user?.data || {};
+  const userData = user || {};
 
   const handleSaveChanges = () => {
     // This would typically make an API call to update user data
@@ -83,7 +83,9 @@ const CustomerAccount = () => {
         {/* Header section */}
         <Box
           sx={{
-            background: 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 100%)',
+            background: theme.palette.mode === 'dark'
+              ? `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`
+              : 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 100%)',
             color: 'white',
             padding: { xs: 3, md: 4 },
           }}
@@ -110,7 +112,11 @@ const CustomerAccount = () => {
             elevation={0}
             sx={{
               p: 3,
-              backgroundColor: 'grey.50',
+              backgroundColor: theme.palette.mode === 'dark'
+                ? 'rgba(255,255,255,0.04)'
+                : 'grey.50',
+              border: '1px solid',
+              borderColor: 'divider',
               borderRadius: 2,
               mb: 4,
             }}
@@ -159,7 +165,11 @@ const CustomerAccount = () => {
             elevation={0}
             sx={{
               p: 3,
-              backgroundColor: 'grey.50',
+              backgroundColor: theme.palette.mode === 'dark'
+                ? 'rgba(255,255,255,0.04)'
+                : 'grey.50',
+              border: '1px solid',
+              borderColor: 'divider',
               borderRadius: 2,
               mb: 4,
             }}

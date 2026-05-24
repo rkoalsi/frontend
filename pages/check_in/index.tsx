@@ -29,7 +29,7 @@ import AttendanceDataDisplay from '../../src/components/common/AttendanceDisplay
 
 const Checkin = () => {
   const { user }: any = useContext(AuthContext);
-  const userData = user?.data || {};
+  const userData = user || {};
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));

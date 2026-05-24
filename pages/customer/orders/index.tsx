@@ -68,7 +68,7 @@ const CustomerOrders = () => {
       setLoading(true);
       const { data } = await axiosInstance.get(`/orders`, {
         params: {
-          created_by: user?.data?._id,
+          created_by: user?._id,
           page,
           limit: itemsPerPage,
           ...(statusFilter !== 'all' && { status: statusFilter }),
@@ -101,7 +101,7 @@ const CustomerOrders = () => {
   const handleNewOrder = async () => {
     try {
       const resp = await axios.post(`${process.env.api_url}/orders/`, {
-        created_by: user?.data?._id,
+        created_by: user?._id,
         status: 'draft',
       });
       const { data = {} } = resp;

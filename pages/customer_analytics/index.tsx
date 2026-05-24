@@ -456,7 +456,7 @@ const CustomerAnalytics = () => {
       if (statusFilter) queryParams.status = statusFilter;
       if (tierFilter) queryParams.tier = tierFilter;
       if (overdueFilter) queryParams.due_status = overdueFilter;
-      queryParams.sp_code = user?.data?.code;
+      queryParams.sp_code = user?.code;
 
       const queryString = new URLSearchParams(queryParams).toString();
       const url = queryString
@@ -471,7 +471,7 @@ const CustomerAnalytics = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, tierFilter, overdueFilter, user?.data?.code]);
+  }, [statusFilter, tierFilter, overdueFilter, user?.code]);
 
   useEffect(() => {
     getData();

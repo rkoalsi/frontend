@@ -96,7 +96,7 @@ const UserManagement = () => {
     const { user }: any = useContext(AuthContext);
     const theme = useTheme();
     const isDark = theme.palette.mode === 'dark';
-    const isAdmin = user?.data?.role === 'admin'
+    const isAdmin = user?.role === 'admin'
     const [tab, setTab] = useState(0);
 
     // --- Users state ---

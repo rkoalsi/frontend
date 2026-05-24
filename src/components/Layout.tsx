@@ -165,10 +165,10 @@ const Layout = ({ children }: any) => {
 
           {/* Right Side Actions */}
           <Box display='flex' alignItems='center' gap={1}>
-            {user && user.data && (
-              user.data.role.includes('admin') ||
-              user.data.role.includes('catalogue_manager') ||
-              user.data.role.includes('hr')
+            {user && (
+              user.role?.includes('admin') ||
+              user.role?.includes('catalogue_manager') ||
+              user.role?.includes('hr')
             ) && !router.pathname.includes('admin') && (
               isMobileOrTablet ? (
                 <Tooltip title='Admin Panel' arrow>
@@ -189,7 +189,7 @@ const Layout = ({ children }: any) => {
                 <CustomButton color='primary' onClick={() => router.push('/admin')} text='Admin' />
               )
             )}
-            {user && user.data && user.data.role === 'customer' && !router.pathname.includes('customer') && (
+            {user && user.role === 'customer' && !router.pathname.includes('customer') && (
               isMobileOrTablet ? (
                 <Tooltip title='Dashboard' arrow>
                   <IconButton
@@ -226,7 +226,7 @@ const Layout = ({ children }: any) => {
               </IconButton>
             </Tooltip>
 
-            {user && user.data && (
+            {user && (
               <>
                 <Divider orientation='vertical' flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)', mx: 0.5 }} />
                 <Tooltip title='Logout' arrow>

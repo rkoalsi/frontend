@@ -39,7 +39,7 @@ import AuthContext from '../../src/components/Auth';
 
 const SalesPeople = () => {
   const { user }: any = useContext(AuthContext);
-  const isAdmin = user?.data?.role === 'admin';
+  const isAdmin = user?.role === 'admin';
   const [salesPeople, setSalesPeople]: any = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPerson, setSelectedPerson]: any = useState(null);

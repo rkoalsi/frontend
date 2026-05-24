@@ -188,7 +188,7 @@ const OrderDetails = () => {
       setSubmitting(true);
       const formData = new FormData();
       // Append the invoice number from invoiceData
-      formData.append('created_by', user?.data?._id);
+      formData.append('created_by', user?._id);
       formData.append('invoice_number', invoiceData.invoice_number);
       if (additionalInfo) {
         formData.append('additional_info', additionalInfo);
