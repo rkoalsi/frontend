@@ -7,11 +7,12 @@ import {
   useMediaQuery,
   Paper,
   styled,
+  Divider,
 } from '@mui/material';
 import CheckList from './CheckList';
 import axios from 'axios';
 import NewAddress from './NewAddress';
-import { LocationOn, Add } from '@mui/icons-material';
+import { LocationOn, Add, ArrowBack } from '@mui/icons-material';
 
 interface Props {
   address: any;
@@ -29,8 +30,15 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
   borderRadius: 16,
   border: `1px solid ${theme.palette.divider}`,
-  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+  boxShadow:
+    theme.palette.mode === 'dark'
+      ? '0 4px 20px rgba(0,0,0,0.3)'
+      : '0 2px 12px rgba(0,0,0,0.08)',
   backgroundColor: theme.palette.background.paper,
+  [theme.breakpoints.down('sm')]: {
+    padding: theme.spacing(2),
+    borderRadius: 12,
+  },
 }));
 
 function Address(props: Props) {
@@ -45,6 +53,7 @@ function Address(props: Props) {
     setLoading,
     addressDetails = {},
   } = props;
+
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newAddress, setNewAddress] = useState({
     type,
@@ -59,39 +68,38 @@ function Address(props: Props) {
     country_code: '',
     phone: '',
   });
+
   const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  // Using useRef to track if we've already set initial address
   const hasSetInitialAddress = useRef(false);
 
   useEffect(() => {
-    if (customer && customer.addresses && customer.addresses.length > 0 && !hasSetInitialAddress.current && !address) {
+    if (
+      customer &&
+      customer.addresses &&
+      customer.addresses.length > 0 &&
+      !hasSetInitialAddress.current &&
+      !address
+    ) {
       setAddress(customer.addresses[0]);
       hasSetInitialAddress.current = true;
     }
-
-    // Reset the flag when customer changes
-    if (!customer) {
-      hasSetInitialAddress.current = false;
-    }
+    if (!customer) hasSetInitialAddress.current = false;
   }, [customer, setAddress, address]);
+
   const handleInputChange = (field: string, value: string) => {
-    setNewAddress((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setNewAddress((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSave = async () => {
-    setLoading(true); // Go back to the original component
-    // Save new address to state or backend
-    console.log('Saved Address:', newAddress);
+    setLoading(true);
     const resp = await axios.post(`${process.env.api_url}/customers/address`, {
       order_id: id,
       address: newAddress,
     });
     console.log(resp.data);
-    setAddress(newAddress); // Optionally select the new address
+    setAddress(newAddress);
     setNewAddress({
       type,
       attention: '',
@@ -105,8 +113,8 @@ function Address(props: Props) {
       country_code: '',
       phone: '',
     });
-    setIsAddingNew(false); // Go back to the original component
-    setLoading(false); // Go back to the original component
+    setIsAddingNew(false);
+    setLoading(false);
   };
 
   const handleCancel = () => {
@@ -126,6 +134,12 @@ function Address(props: Props) {
     setIsAddingNew(false);
   };
 
+  // Dark mode: billing = blue, shipping = indigo/primary. Light mode: billing = primary, shipping = secondary.
+  const accentColor =
+    type === 'Shipping'
+      ? isDark ? theme.palette.primary.main : theme.palette.secondary.main
+      : isDark ? '#42a5f5' : theme.palette.primary.main;
+
   return (
     <>
       {isAddingNew ? (
@@ -138,40 +152,86 @@ function Address(props: Props) {
         />
       ) : (
         <StyledPaper>
+          {/* ── Header ── */}
           <Box
             sx={{
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center',
-              mb: 3,
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: { xs: 2, sm: 2.5 },
               flexDirection: { xs: 'column', sm: 'row' },
-              gap: 2,
+              gap: { xs: 1.5, sm: 1 },
             }}
           >
-            <Box display='flex' alignItems='center'>
-              <LocationOn sx={{ mr: 1, color: type === 'Billing' ? 'primary.main' : 'secondary.main', fontSize: 28 }} />
-              <Typography variant='h6' fontWeight={600} color='text.primary'>
-                Select {type} Address
-              </Typography>
+            <Box display='flex' alignItems='center' gap={1}>
+              <LocationOn
+                sx={{
+                  color: accentColor,
+                  fontSize: { xs: 24, sm: 28 },
+                }}
+              />
+              <Box>
+                <Typography
+                  variant='h6'
+                  fontWeight={600}
+                  color='text.primary'
+                  sx={{ fontSize: { xs: '1rem', sm: '1.1rem' }, lineHeight: 1.2 }}
+                >
+                  {type} Address
+                </Typography>
+                {customer?.company_name && (
+                  <Typography
+                    variant='caption'
+                    color='text.secondary'
+                    sx={{ fontSize: { xs: '0.72rem', sm: '0.75rem' } }}
+                  >
+                    for {customer.company_name || customer.contact_name}
+                  </Typography>
+                )}
+              </Box>
             </Box>
+
+            {/* Add New Address button */}
+            {addNewAddress && (
+              <Button
+                size={isMobile ? 'medium' : 'small'}
+                variant='outlined'
+                startIcon={<Add />}
+                onClick={() => setIsAddingNew(true)}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: 24,
+                  alignSelf: { xs: 'stretch', sm: 'auto' },
+                  borderColor: accentColor,
+                  color: accentColor,
+                  '&:hover': {
+                    borderColor: accentColor,
+                    bgcolor: isDark
+                      ? 'rgba(124,111,205,0.08)'
+                      : 'rgba(42,74,107,0.06)',
+                  },
+                }}
+              >
+                Add New Address
+              </Button>
+            )}
           </Box>
+
+          <Divider sx={{ mb: { xs: 2, sm: 2.5 } }} />
+
+          {/* ── Address list ── */}
           <Box
             sx={{
-              maxHeight: { xs: 'none', md: '400px' },
+              // On desktop scroll within the container; on mobile let the page scroll
+              maxHeight: { xs: 'none', md: '420px' },
               overflowY: { xs: 'visible', md: 'auto' },
-              padding: { xs: 1, sm: 2 },
+              px: { xs: 0.5, sm: 1 },
               borderRadius: 2,
-              border: '1px solid',
-              borderColor: 'divider',
-              backgroundColor: 'action.hover',
-              '&::-webkit-scrollbar': {
-                width: '8px',
-              },
-              '&::-webkit-scrollbar-track': {
-                borderRadius: '10px',
-              },
+              '&::-webkit-scrollbar': { width: '6px' },
               '&::-webkit-scrollbar-thumb': {
-                borderRadius: '10px',
+                borderRadius: 10,
+                bgcolor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)',
               },
             }}
           >
@@ -179,17 +239,16 @@ function Address(props: Props) {
               <CheckList
                 values={Array.from(
                   new Map(
-                    customer.addresses.map((addr: any) => [
-                      addr.address_id,
-                      addr,
-                    ])
+                    customer.addresses.map((addr: any) => [addr.address_id, addr])
                   ).values()
                 ).filter(
-                  (addr: any) => addressDetails[addr.address_id]?.status !== 'closed'
+                  (addr: any) =>
+                    addressDetails[addr.address_id]?.status !== 'closed'
                 )}
                 selectedValue={selectedAddress}
                 setSelectedValue={setAddress}
                 addressDetails={addressDetails}
+                addressType={type}
               />
             ) : (
               <Box
@@ -197,12 +256,36 @@ function Address(props: Props) {
                 flexDirection='column'
                 alignItems='center'
                 justifyContent='center'
-                py={4}
+                py={{ xs: 5, sm: 6 }}
+                gap={1.5}
               >
-                <LocationOn sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-                <Typography fontWeight='bold' color='text.secondary'>
-                  {customer?.company_name || 'Customer'} has no saved addresses
+                <LocationOn
+                  sx={{ fontSize: { xs: 48, sm: 56 }, color: 'text.disabled' }}
+                />
+                <Typography
+                  fontWeight={600}
+                  color='text.secondary'
+                  textAlign='center'
+                  sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}
+                >
+                  {customer?.company_name || 'This customer'} has no saved addresses
                 </Typography>
+                {addNewAddress && (
+                  <Button
+                    variant='contained'
+                    size='small'
+                    startIcon={<Add />}
+                    onClick={() => setIsAddingNew(true)}
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      borderRadius: 24,
+                      mt: 1,
+                    }}
+                  >
+                    Add First Address
+                  </Button>
+                )}
               </Box>
             )}
           </Box>

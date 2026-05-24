@@ -24,14 +24,28 @@ import {
   Alert,
   IconButton,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Chip,
+  Tooltip,
+  Slide,
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import { useTheme, styled } from '@mui/material/styles';
 import CustomerSearchBar from '../../../src/components/OrderForm/CustomerSearchBar';
 import Address from '../../../src/components/OrderForm/SelectAddress';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { ContentCopy } from '@mui/icons-material';
+import {
+  ContentCopy,
+  ArrowBack,
+  Share,
+  ShoppingCart,
+  ArrowForward,
+  CheckCircle,
+} from '@mui/icons-material';
 import useDebounce from '../../../src/util/useDebounce';
 import AuthContext from '../../../src/components/Auth';
 import SheetsDisplay from '../../../src/components/OrderForm/SheetDisplay';
@@ -43,6 +57,13 @@ const Products = lazy(() =>
 const Review = lazy(() =>
   import('../../../src/components/OrderForm/Review').then(module => ({ default: module.default }))
 );
+
+// Shared styled button — removes repetition across all nav buttons
+const NavButton = styled(Button)(() => ({
+  textTransform: 'none',
+  fontWeight: 700,
+  borderRadius: 24,
+}));
 
 // Create an Axios instance
 const api = axios.create({
@@ -60,7 +81,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-
 // Helper to update order data
 const updateOrderData = async (id: string, data: any) => {
   try {
@@ -72,8 +92,39 @@ const updateOrderData = async (id: string, data: any) => {
 
 interface StepContent {
   name: string;
+  mobileName: string;
+  helpText: string;
   component: React.ReactNode;
 }
+
+// Per-step contextual help shown below the stepper
+const STEP_HELP: { name: string; mobileName: string; helpText: string }[] = [
+  {
+    name: 'Select Customer',
+    mobileName: 'Customer',
+    helpText: 'Search and select the customer placing this order.',
+  },
+  {
+    name: 'Billing Address',
+    mobileName: 'Billing',
+    helpText: 'Choose or add the billing address for this order.',
+  },
+  {
+    name: 'Shipping Address',
+    mobileName: 'Shipping',
+    helpText: 'Choose or add where the order should be delivered.',
+  },
+  {
+    name: 'Products',
+    mobileName: 'Products',
+    helpText: 'Browse and add products. Your running total updates live.',
+  },
+  {
+    name: 'Review',
+    mobileName: 'Review',
+    helpText: 'Confirm everything looks correct before submitting.',
+  },
+];
 
 const NewOrder: React.FC = () => {
   const router = useRouter();
@@ -95,65 +146,52 @@ const NewOrder: React.FC = () => {
   const [activeStep, setActiveStep] = useState<number>(isShared ? 3 : (isCustomerUser ? 1 : 0));
   const [open, setOpen] = useState<boolean>(false);
   const [error, setError] = useState<any>(null);
-
   const [sort, setSort] = useState<string>('default');
   const [link, setLink] = useState(
     order?.spreadsheet_created ? order?.spreadsheet_url : ''
   );
   const [linkCopied, setLinkCopied] = useState<boolean>(false);
-  const [specialMargins, setSpecialMargins] = useState<{
-    [key: string]: string;
-  }>({});
+  const [specialMargins, setSpecialMargins] = useState<{ [key: string]: string }>({});
   const [addressDetails, setAddressDetails] = useState<Record<string, any>>({});
 
+  // Submit confirmation dialog (for shared/customer users)
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+
   const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // ------------------ Fetch Special Margins -------------------------
   useEffect(() => {
     if (!customer?._id) return;
     const controller = new AbortController();
-
     const fetchSpecialMargins = async () => {
       try {
-        const res = await api.get(
-          `/customers/special_margins/${customer._id}`,
-          {
-            signal: controller.signal,
-          }
-        );
-        const marginMap = (res.data.products || []).reduce(
-          (acc: any, item: any) => {
-            acc[item.product_id] = item.margin;
-            return acc;
-          },
-          {}
-        );
+        const res = await api.get(`/customers/special_margins/${customer._id}`, {
+          signal: controller.signal,
+        });
+        const marginMap = (res.data.products || []).reduce((acc: any, item: any) => {
+          acc[item.product_id] = item.margin;
+          return acc;
+        }, {});
         setSpecialMargins(marginMap);
       } catch (error: any) {
-        if (error.name !== 'CanceledError') {
-          console.error('Error fetching special margins:', error);
-        }
+        if (error.name !== 'CanceledError') console.error('Error fetching special margins:', error);
       }
     };
-
     fetchSpecialMargins();
-
-    return () => {
-      controller.abort();
-    };
+    return () => controller.abort();
   }, [customer?._id]);
+
   // ------------------ Fetch Address Details -------------------------
   useEffect(() => {
     if (!customer?._id) return;
     const controller = new AbortController();
-
     const fetchAddressDetails = async () => {
       try {
-        const res = await api.get(
-          `/customer_address_details/${customer._id}`,
-          { signal: controller.signal }
-        );
+        const res = await api.get(`/customer_address_details/${customer._id}`, {
+          signal: controller.signal,
+        });
         const detailMap = (res.data.address_details || []).reduce(
           (acc: Record<string, any>, item: any) => {
             acc[item.address_id] = item;
@@ -163,43 +201,31 @@ const NewOrder: React.FC = () => {
         );
         setAddressDetails(detailMap);
       } catch (error: any) {
-        if (error.name !== 'CanceledError') {
-          console.error('Error fetching address details:', error);
-        }
+        if (error.name !== 'CanceledError') console.error('Error fetching address details:', error);
       }
     };
-
     fetchAddressDetails();
     return () => controller.abort();
   }, [customer?._id]);
 
   const handleSortText = () => {
     switch (sort) {
-      case 'default':
-        return 'Default';
-      case 'price_asc':
-        return 'Price Ascending';
-      case 'price_desc':
-        return 'Price Descending';
-      case 'catalogue':
-        return 'Catalogue Order';
-      default:
-        break;
+      case 'default': return 'Default';
+      case 'price_asc': return 'Price Ascending';
+      case 'price_desc': return 'Price Descending';
+      case 'catalogue': return 'Catalogue Order';
+      default: break;
     }
   };
+
   // ------------------ Calculate Totals ---------------------
   const totals = useMemo(() => {
-    if (!selectedProducts.length || !customer) {
-      return { totalGST: 0, totalAmount: 0 };
-    }
-
+    if (!selectedProducts.length || !customer) return { totalGST: 0, totalAmount: 0 };
     const { totalGST, totalAmount } = selectedProducts.reduce(
       (acc: { totalGST: number; totalAmount: number }, product) => {
-        const taxPercentage =
-          product?.item_tax_preferences?.[0]?.tax_percentage || 0;
+        const taxPercentage = product?.item_tax_preferences?.[0]?.tax_percentage || 0;
         const rate = parseFloat(product.rate.toString()) || 0;
         const quantity = parseInt(product.quantity?.toString() || '1', 10) || 1;
-        // Use special margin if available; fallback to customer's margin (default 40%)
         const margin = specialMargins[product._id]
           ? parseInt(specialMargins[product._id].replace('%', ''), 10) / 100
           : parseInt(customer?.cf_margin?.replace('%', '') || '40', 10) / 100;
@@ -212,8 +238,7 @@ const NewOrder: React.FC = () => {
           total = sellingPrice * quantity;
         } else {
           gstAmount = sellingPrice * (taxPercentage / 100) * quantity;
-          total =
-            (sellingPrice + sellingPrice * (taxPercentage / 100)) * quantity;
+          total = (sellingPrice + sellingPrice * (taxPercentage / 100)) * quantity;
         }
         acc.totalGST += gstAmount;
         acc.totalAmount += total;
@@ -223,24 +248,18 @@ const NewOrder: React.FC = () => {
     );
     return {
       totalGST: Math.round(totalGST * 100) / 100,
-      totalAmount:
-        totalAmount % 1 >= 0.5
-          ? Math.ceil(totalAmount)
-          : Math.floor(totalAmount),
+      totalAmount: totalAmount % 1 >= 0.5 ? Math.ceil(totalAmount) : Math.floor(totalAmount),
     };
   }, [selectedProducts, customer, specialMargins]);
 
   // ------------------ Debounced Order Updates ---------------------
-  // We use a ref to track the last sent update so we don't update if nothing has changed.
   const lastUpdateDataRef = useRef<any>(null);
   const debouncedData = useDebounce({ selectedProducts, totals }, 500);
 
   useEffect(() => {
     const { selectedProducts: debProducts, totals: debTotals } = debouncedData;
     if (!debProducts.length && !debTotals.totalAmount) return;
-
     const prev = lastUpdateDataRef.current;
-    // Lightweight change detection: compare length + total amount + quantities signature
     const quantitySig = debProducts.map((p: any) => `${p._id}:${p.quantity}`).join(',');
     const prevSig = prev?.quantitySig;
     if (
@@ -249,13 +268,16 @@ const NewOrder: React.FC = () => {
       prev.totalAmount === debTotals.totalAmount &&
       prevSig === quantitySig
     ) return;
-
     updateOrderData(id as string, {
       products: debProducts,
       total_gst: parseFloat(debTotals.totalGST.toFixed(2)),
       total_amount: parseFloat(debTotals.totalAmount.toFixed(2)),
     });
-    lastUpdateDataRef.current = { length: debProducts.length, totalAmount: debTotals.totalAmount, quantitySig };
+    lastUpdateDataRef.current = {
+      length: debProducts.length,
+      totalAmount: debTotals.totalAmount,
+      quantitySig,
+    };
   }, [debouncedData, id]);
 
   // ------------------ Update Addresses ---------------------
@@ -273,7 +295,6 @@ const NewOrder: React.FC = () => {
     (step: number) => {
       let message = '';
       let body: any = {};
-
       switch (step) {
         case 0:
           if (!customer) {
@@ -281,22 +302,18 @@ const NewOrder: React.FC = () => {
           } else {
             body = { customer_id: customer?._id };
           }
-          if (referenceNumber !== '') {
-            body['reference_number'] = referenceNumber;
-          }
+          if (referenceNumber !== '') body['reference_number'] = referenceNumber;
           break;
         case 1:
           if (!billingAddress) {
-            message =
-              'Billing address is missing.\nPlease select or add a billing address.';
+            message = 'Billing address is missing.\nPlease select or add a billing address.';
           } else {
             body = { billing_address: billingAddress };
           }
           break;
         case 2:
           if (!shippingAddress) {
-            message =
-              'Shipping address is missing.\nPlease select or add a shipping address.';
+            message = 'Shipping address is missing.\nPlease select or add a shipping address.';
           } else {
             body = { shipping_address: shippingAddress };
           }
@@ -311,13 +328,7 @@ const NewOrder: React.FC = () => {
       }
       return { message, body };
     },
-    [
-      customer,
-      billingAddress,
-      shippingAddress,
-      selectedProducts,
-      referenceNumber,
-    ]
+    [customer, billingAddress, shippingAddress, selectedProducts, referenceNumber]
   );
 
   // ------------------ Get Order Data ---------------------
@@ -325,10 +336,7 @@ const NewOrder: React.FC = () => {
   const getOrder = useCallback(async () => {
     try {
       const resp = await api.get(`/orders/${id}`);
-      if (
-        resp.data.customer_id &&
-        customerRef.current !== resp.data.customer_id
-      ) {
+      if (resp.data.customer_id && customerRef.current !== resp.data.customer_id) {
         customerRef.current = resp.data.customer_id;
         // Customer fetch requires auth — shared-link visitors won't have a token.
         // Wrap in its own try/catch so a 403 here doesn't abort the whole order load.
@@ -342,10 +350,8 @@ const NewOrder: React.FC = () => {
         }
         setReferenceNumber(resp.data?.reference_number);
       }
-      if (resp.data.billing_address)
-        setBillingAddress(resp.data.billing_address);
-      if (resp.data.shipping_address)
-        setShippingAddress(resp.data.shipping_address);
+      if (resp.data.billing_address) setBillingAddress(resp.data.billing_address);
+      if (resp.data.shipping_address) setShippingAddress(resp.data.shipping_address);
       if (resp.data.spreadsheet_created) setLink(resp.data.spreadsheet_url);
       if (resp.data.products && resp.data.products.length > 0) {
         const detailedProducts = await Promise.all(
@@ -354,10 +360,7 @@ const NewOrder: React.FC = () => {
               const res = await api.get(`/products/${product.product_id}`);
               return { ...product, ...res.data };
             } catch (error) {
-              console.error(
-                `Failed to fetch product ${product.product_id}`,
-                error
-              );
+              console.error(`Failed to fetch product ${product.product_id}`, error);
               return product;
             }
           })
@@ -380,8 +383,6 @@ const NewOrder: React.FC = () => {
       if (isCustomerUser && !customer && id && user) {
         try {
           let customerData = null;
-
-          // Try to fetch by customer_id first (if assigned to user)
           if (userCustomerId) {
             try {
               const response = await api.get(`/customers/by_contact_id/${userCustomerId}`);
@@ -400,10 +401,8 @@ const NewOrder: React.FC = () => {
               console.log('Customer not found by email');
             }
           }
-
           if (customerData) {
             setCustomer(customerData);
-            // Auto-set addresses if available
             if (customerData.addresses && customerData.addresses.length > 0) {
               const defaultAddress = customerData.addresses[0];
               setBillingAddress(defaultAddress);
@@ -414,11 +413,8 @@ const NewOrder: React.FC = () => {
                 shipping_address: defaultAddress,
               });
             } else {
-              await updateOrderData(id as string, {
-                customer_id: customerData._id,
-              });
+              await updateOrderData(id as string, { customer_id: customerData._id });
             }
-            // Set active step to 1 (Billing Address) for customer users after fetching their data
             setActiveStep(1);
           }
         } catch (error) {
@@ -426,16 +422,11 @@ const NewOrder: React.FC = () => {
         }
       }
     };
-
     fetchCustomerForUser();
   }, [isCustomerUser, userCustomerId, user, customer, id]);
 
-  // Set initial step for customer users when user data becomes available
   useEffect(() => {
-    if (isCustomerUser && !isShared && activeStep === 0) {
-      // Customer users should skip step 0 (customer selection) as it's pre-filled
-      setActiveStep(1);
-    }
+    if (isCustomerUser && !isShared && activeStep === 0) setActiveStep(1);
   }, [isCustomerUser, isShared, activeStep]);
 
   // ------------------ Navigation & Finalization ---------------------
@@ -447,31 +438,25 @@ const NewOrder: React.FC = () => {
       return;
     }
     await updateOrderData(id as string, body);
-    setActiveStep((prev) => Math.min(prev + 1, steps.length - 1));
+    setActiveStep((prev) => Math.min(prev + 1, STEP_HELP.length - 1));
   }, [activeStep, id, validateAndCollectData]);
 
   const handleEnd = useCallback(
     async (status = 'draft', notify_sp = false) => {
       setLoading(true);
       try {
-        const resp = await api.post('/orders/finalise', {
-          order_id: id,
-          status,
-        });
+        const resp = await api.post('/orders/finalise', { order_id: id, status });
         if (resp.status === 200) {
           await getOrder();
-          toast[resp.data.status === 'success' ? 'success' : 'error'](
-            resp.data.message
-          );
+          toast[resp.data.status === 'success' ? 'success' : 'error'](resp.data.message);
         }
-        if (notify_sp) {
-          await api.post('/orders/notify', { order_id: id });
-        }
+        if (notify_sp) await api.post('/orders/notify', { order_id: id });
       } catch (error: any) {
         console.error(error);
-        const errorMessage = error?.response?.data?.message ||
-                            error?.response?.data?.detail ||
-                            'An error occurred while finalizing the order';
+        const errorMessage =
+          error?.response?.data?.message ||
+          error?.response?.data?.detail ||
+          'An error occurred while finalizing the order';
         toast.error(errorMessage);
       } finally {
         setLoading(false);
@@ -483,17 +468,16 @@ const NewOrder: React.FC = () => {
   const generateSharedLink = useCallback(() => {
     const baseURL = window.location.origin;
     const params = new URLSearchParams();
-    params.set("shared", "true");
+    params.set('shared', 'true');
     const currentParams = new URLSearchParams(window.location.search);
-    const currentSearch = currentParams.get("search");
+    const currentSearch = currentParams.get('search');
     if (currentSearch) {
-      // If there's an active search, only include search (not brand/category)
-      params.set("search", currentSearch);
+      params.set('search', currentSearch);
     } else {
-      const currentBrand = currentParams.get("brand");
-      const currentCategory = currentParams.get("category");
-      if (currentBrand) params.set("brand", currentBrand);
-      if (currentCategory) params.set("category", currentCategory);
+      const currentBrand = currentParams.get('brand');
+      const currentCategory = currentParams.get('category');
+      if (currentBrand) params.set('brand', currentBrand);
+      if (currentCategory) params.set('category', currentCategory);
     }
     const link = `${baseURL}/orders/new/${id}?${params.toString()}`;
     navigator.clipboard.writeText(link);
@@ -502,11 +486,7 @@ const NewOrder: React.FC = () => {
 
   const handleStepClick = useCallback(
     async (index: number) => {
-      // Prevent customer users from clicking on Select Customer step (step 0)
-      if (isCustomerUser && index === 0) {
-        return; // Silently ignore - customer selection is pre-filled for customer users
-      }
-
+      if (isCustomerUser && index === 0) return;
       if (isShared) {
         if (index < 3 || index > 4) {
           setError({
@@ -517,28 +497,22 @@ const NewOrder: React.FC = () => {
           return;
         }
         if (index === 3 && selectedProducts.length === 0) {
-          setError({
-            message: 'Cannot proceed as no products are selected.',
-            status: 'error',
-          });
+          setError({ message: 'Cannot proceed as no products are selected.', status: 'error' });
           setOpen(true);
           return;
         }
         setActiveStep(index);
         return;
       }
-
       if (index < activeStep) {
         setActiveStep(index);
         return;
       }
-
       const { message, body } = validateAndCollectData(activeStep);
       if (message) {
         toast.error(message);
         return;
       }
-
       try {
         await updateOrderData(id as string, body);
         setActiveStep(index);
@@ -547,7 +521,7 @@ const NewOrder: React.FC = () => {
         toast.error('Failed to update order. Please try again.');
       }
     },
-    [activeStep, isShared, selectedProducts, validateAndCollectData, id]
+    [activeStep, isShared, selectedProducts, validateAndCollectData, id, isCustomerUser]
   );
 
   const handleClose = useCallback((reason: any) => {
@@ -557,14 +531,9 @@ const NewOrder: React.FC = () => {
 
   useEffect(() => {
     if (isShared && order) {
-      const status =
-        typeof order.status === 'string'
-          ? order.status.trim().toLowerCase()
-          : '';
+      const status = typeof order.status === 'string' ? order.status.trim().toLowerCase() : '';
       if (!['draft', 'sent'].includes(status)) {
-        toast.error(`You cannot view this order as its status is not draft`, {
-          autoClose: 5000,
-        });
+        toast.error(`You cannot view this order as its status is not draft`, { autoClose: 5000 });
         router.push('/login');
       }
     }
@@ -572,110 +541,106 @@ const NewOrder: React.FC = () => {
 
   // ------------------ Steps Configuration ---------------------
   const steps: StepContent[] = useMemo(() => {
-    return [
-      {
-        name: 'Select Customer',
-        component: isShared ? null : (
-          <CustomerSearchBar
-            disabled={
-              isCustomerUser || // Disable for customer users - they can't change their linked customer
-              ['declined', 'accepted'].includes(order?.status?.toLowerCase())
-            }
-            label={isCustomerUser ? 'Your Account' : 'Select Customer'}
-            onChange={async (value: any) => {
-              setCustomer(value);
-              if (value?.addresses && value.addresses.length > 0) {
-                const defaultAddress = value.addresses[0];
-                setBillingAddress(defaultAddress);
-                setShippingAddress(defaultAddress);
-                await updateOrderData(id as string, {
-                  customer_id: value._id,
-                  billing_address: defaultAddress,
-                  shipping_address: defaultAddress,
-                });
-              } else {
-                setBillingAddress(null);
-                setShippingAddress(null);
-                await updateOrderData(id as string, {
-                  customer_id: value?._id,
-                });
+    return STEP_HELP.map((meta, index) => {
+      let component: React.ReactNode = null;
+      switch (index) {
+        case 0:
+          component = isShared ? null : (
+            <CustomerSearchBar
+              disabled={isCustomerUser || ['declined', 'accepted'].includes(order?.status?.toLowerCase())}
+              label={isCustomerUser ? 'Your Account' : 'Select Customer'}
+              onChange={async (value: any) => {
+                setCustomer(value);
+                if (value?.addresses && value.addresses.length > 0) {
+                  const defaultAddress = value.addresses[0];
+                  setBillingAddress(defaultAddress);
+                  setShippingAddress(defaultAddress);
+                  await updateOrderData(id as string, {
+                    customer_id: value._id,
+                    billing_address: defaultAddress,
+                    shipping_address: defaultAddress,
+                  });
+                } else {
+                  setBillingAddress(null);
+                  setShippingAddress(null);
+                  await updateOrderData(id as string, { customer_id: value?._id });
+                }
+              }}
+              value={customer}
+              initialValue={customer}
+              onChangeReference={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setReferenceNumber(e.target.value)
               }
-            }}
-            value={customer}
-            initialValue={customer}
-            onChangeReference={(e: React.ChangeEvent<HTMLInputElement>) => {
-              setReferenceNumber(e.target.value);
-            }}
-            reference={referenceNumber}
-          />
-        ),
-      },
-      {
-        name: 'Billing Address',
-        component: isShared ? null : (
-          <Address
-            type='Billing'
-            id={id as string}
-            address={billingAddress}
-            setAddress={setBillingAddress}
-            selectedAddress={billingAddress}
-            customer={customer}
-            setLoading={setLoading}
-            addressDetails={addressDetails}
-          />
-        ),
-      },
-      {
-        name: 'Shipping Address',
-        component: isShared ? null : (
-          <Address
-            type='Shipping'
-            id={id as string}
-            address={shippingAddress}
-            setAddress={setShippingAddress}
-            selectedAddress={shippingAddress}
-            customer={customer}
-            setLoading={setLoading}
-            addressDetails={addressDetails}
-          />
-        ),
-      },
-      {
-        name: 'Products',
-        component: (
-          <Products
-            totals={totals}
-            label='Search Products'
-            customer={customer}
-            selectedProducts={selectedProducts}
-            setSelectedProducts={setSelectedProducts}
-            specialMargins={specialMargins}
-            order={order}
-            onCheckout={() => setActiveStep((prev) => prev + 1)}
-            isShared={isShared}
-            setSort={setSort}
-          />
-        ),
-      },
-      {
-        name: 'Review',
-        component: (
-          <Review
-            totals={totals}
-            customer={customer}
-            products={selectedProducts}
-            shippingAddress={shippingAddress}
-            billingAddress={billingAddress}
-            setSelectedProducts={setSelectedProducts}
-            setActiveStep={setActiveStep}
-            specialMargins={specialMargins}
-            isShared={isShared}
-            order={order}
-            referenceNumber={referenceNumber}
-          />
-        ),
-      },
-    ];
+              reference={referenceNumber}
+            />
+          );
+          break;
+        case 1:
+          component = isShared ? null : (
+            <Address
+              type='Billing'
+              id={id as string}
+              address={billingAddress}
+              setAddress={setBillingAddress}
+              selectedAddress={billingAddress}
+              customer={customer}
+              setLoading={setLoading}
+              addressDetails={addressDetails}
+              addNewAddress={false}
+            />
+          );
+          break;
+        case 2:
+          component = isShared ? null : (
+            <Address
+              type='Shipping'
+              id={id as string}
+              address={shippingAddress}
+              setAddress={setShippingAddress}
+              selectedAddress={shippingAddress}
+              customer={customer}
+              setLoading={setLoading}
+              addressDetails={addressDetails}
+              addNewAddress={false}
+            />
+          );
+          break;
+        case 3:
+          component = (
+            <Products
+              totals={totals}
+              label='Search Products'
+              customer={customer}
+              selectedProducts={selectedProducts}
+              setSelectedProducts={setSelectedProducts}
+              specialMargins={specialMargins}
+              order={order}
+              onCheckout={() => setActiveStep((prev) => prev + 1)}
+              isShared={isShared}
+              setSort={setSort}
+            />
+          );
+          break;
+        case 4:
+          component = (
+            <Review
+              totals={totals}
+              customer={customer}
+              products={selectedProducts}
+              shippingAddress={shippingAddress}
+              billingAddress={billingAddress}
+              setSelectedProducts={setSelectedProducts}
+              setActiveStep={setActiveStep}
+              specialMargins={specialMargins}
+              isShared={isShared}
+              order={order}
+              referenceNumber={referenceNumber}
+            />
+          );
+          break;
+      }
+      return { ...meta, component };
+    });
   }, [
     isShared,
     isCustomerUser,
@@ -688,13 +653,13 @@ const NewOrder: React.FC = () => {
     order,
     id,
     referenceNumber,
+    addressDetails,
   ]);
 
   const handleCopyEstimate = () => {
-    if (order?.estimate_number) {
-      navigator.clipboard.writeText(order.estimate_number);
-    }
+    if (order?.estimate_number) navigator.clipboard.writeText(order.estimate_number);
   };
+
   const updateCart = async () => {
     setLoading(true);
     try {
@@ -710,23 +675,16 @@ const NewOrder: React.FC = () => {
       setLoading(false);
     }
   };
+
   const handleDownload = async () => {
     setLoading(true);
     try {
       const { data = {} } = await axios.get(
         `${process.env.api_url}/orders/download_order_form`,
-        {
-          params: {
-            customer_id: customer._id,
-            order_id: order._id,
-            sort,
-          },
-        }
+        { params: { customer_id: customer._id, order_id: order._id, sort } }
       );
       const { google_sheet_url = '', cart_products_added = 0 } = data;
       setLink(google_sheet_url);
-
-      // Display success message based on whether cart products were added
       if (cart_products_added > 0) {
         toast.success(
           `Sheet Successfully Created with ${cart_products_added} product${cart_products_added > 1 ? 's' : ''} from cart`
@@ -741,6 +699,7 @@ const NewOrder: React.FC = () => {
       setLoading(false);
     }
   };
+
   const handleDownloadXlsx = async () => {
     setXlsxLoading(true);
     try {
@@ -769,22 +728,14 @@ const NewOrder: React.FC = () => {
       setXlsxLoading(false);
     }
   };
+
   const handleRecreateSheet = async () => {
     setLoading(true);
     try {
-      // First, clear the existing sheet
       await axios.delete(`${process.env.api_url}/orders/clear_sheet/${order._id}`);
-
-      // Then create a new sheet
       const { data = {} } = await axios.get(
         `${process.env.api_url}/orders/download_order_form`,
-        {
-          params: {
-            customer_id: customer._id,
-            order_id: order._id,
-            sort,
-          },
-        }
+        { params: { customer_id: customer._id, order_id: order._id, sort } }
       );
       const { google_sheet_url = '' } = data;
       setLink(google_sheet_url);
@@ -797,18 +748,32 @@ const NewOrder: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // ------------------ Status helpers ---------------------
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'draft':
-        return '#FFA500';
-      case 'accepted':
-        return '#2ecc71';
-      case 'declined':
-        return '#e74c3c';
-      default:
-        return 'black';
+      case 'draft': return '#FFA500';
+      case 'accepted': return '#2ecc71';
+      case 'declined': return '#e74c3c';
+      default: return theme.palette.text.primary; // was 'black' — broken in dark mode
     }
   };
+
+  const getStatusLabel = (status: string) => status?.toUpperCase() || '—';
+
+  // Derived: whether the "Submit Order" / "Save As Draft" button is for a retailer
+  const isRetailerFlow = isShared || isCustomerUser;
+  const saveDraftLabel = isRetailerFlow ? 'Submit Order' : 'Save As Draft';
+  const saveDraftDisabled =
+    !customer ||
+    !billingAddress ||
+    !shippingAddress ||
+    selectedProducts.length === 0 ||
+    loading ||
+    (!isShared && !['deleted', 'draft', 'sent'].includes(order?.status?.toLowerCase()));
+
+  // Floating cart bar: show on Products step when items are selected
+  const showCartBar = activeStep === 3 && selectedProducts.length > 0;
 
   return (
     <Box
@@ -820,50 +785,79 @@ const NewOrder: React.FC = () => {
         gap: { xs: 1.5, sm: 2, md: 3 },
         width: '100%',
         maxWidth: '100%',
+        // Extra bottom padding when cart bar is visible so content isn't hidden behind it
+        paddingBottom: showCartBar ? { xs: '80px', sm: '88px', md: '96px', lg: '96px' } : undefined,
       }}
     >
-      {/* Header */}
+      {/* ── Back navigation (not shown on shared/customer links) ── */}
+      {!isShared && !isCustomerUser && (
+        <Box
+          sx={{
+            width: '100%',
+            maxWidth: { xs: '100%', sm: '700px', md: '900px' },
+            alignSelf: 'center',
+          }}
+        >
+          <Button
+            startIcon={<ArrowBack sx={{ fontSize: 18 }} />}
+            onClick={() => router.push('/')}
+            size='small'
+            sx={{
+              textTransform: 'none',
+              color: 'text.secondary',
+              fontWeight: 500,
+              '&:hover': { color: 'text.primary', backgroundColor: 'action.hover' },
+            }}
+          >
+            Back to Orders
+          </Button>
+        </Box>
+      )}
+
+      {/* ── Header card ── */}
       <Paper
         elevation={0}
         sx={{
           width: '100%',
           maxWidth: { xs: '100%', sm: '700px', md: '900px' },
           padding: { xs: 2.5, sm: 3, md: 4 },
-          marginBottom: 0,
           borderRadius: 3,
           alignSelf: 'center',
           background: theme.palette.background.paper,
           border: `1px solid ${theme.palette.divider}`,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+          boxShadow: isDark
+            ? '0 4px 20px rgba(0,0,0,0.3)'
+            : '0 4px 20px rgba(0,0,0,0.08)',
         }}
       >
         {customer ? (
           <Box>
-            {/* Customer Info Section */}
             <Box
               display='flex'
-              flexDirection={{ xs: 'column', sm: 'column', md: 'row' }}
+              flexDirection={{ xs: 'column', md: 'row' }}
               justifyContent='space-between'
-              alignItems={{ xs: 'stretch', md: 'center' }}
-              gap={{ xs: 2, sm: 2.5, md: 2 }}
+              alignItems={{ xs: 'stretch', md: 'flex-start' }}
+              gap={{ xs: 2, md: 2 }}
             >
-              <Box flex={1}>
+              {/* Left: customer name + order ID + date */}
+              <Box flex={1} minWidth={0}>
                 <Typography
                   variant='overline'
                   sx={{
                     color: 'text.secondary',
                     fontWeight: 600,
                     letterSpacing: '0.1em',
-                    fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+                    fontSize: { xs: '0.65rem', sm: '0.7rem' },
                   }}
                 >
-                  Customer
+                  New Order
                 </Typography>
                 <Typography
                   variant={isMobile ? 'h6' : 'h5'}
                   fontWeight={700}
+                  noWrap
                   sx={{
-                    background: theme.palette.mode === 'dark'
+                    background: isDark
                       ? 'linear-gradient(135deg, #9c92d8 0%, #7c6fcd 100%)'
                       : 'linear-gradient(135deg, #2a4a6b 0%, #192d45 100%)',
                     WebkitBackgroundClip: 'text',
@@ -876,119 +870,93 @@ const NewOrder: React.FC = () => {
                 >
                   {customer.company_name || customer.contact_name}
                 </Typography>
-                {order?.created_at && (
-                  <Typography
-                    variant='caption'
-                    color='text.secondary'
-                    fontWeight={400}
-                    sx={{
-                      fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' },
-                      display: 'block',
-                    }}
-                  >
-                    Created: {new Date(order.created_at).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </Typography>
-                )}
-              </Box>
 
-              <Box
-                display='flex'
-                flexDirection={{ xs: 'row', sm: 'row', md: 'column' }}
-                gap={{ xs: 1, sm: 1.5 }}
-                flexWrap='wrap'
-                justifyContent={{ xs: 'flex-start', md: 'flex-end' }}
-              >
-                <Box
-                  sx={{
-                    backgroundColor: getStatusColor(order?.status) + '15',
-                    px: { xs: 1.5, sm: 2 },
-                    py: { xs: 0.75, sm: 1 },
-                    borderRadius: 2,
-                    border: `1.5px solid ${getStatusColor(order?.status)}40`,
-                    minWidth: { xs: '100px', sm: '120px', md: '150px' },
-                    textAlign: 'center',
-                    flex: { xs: '1 1 auto', md: '0 0 auto' },
-                  }}
-                >
-                  <Typography
-                    variant='caption'
-                    color='text.secondary'
-                    fontWeight={600}
-                    sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}
-                  >
-                    STATUS
-                  </Typography>
-                  <Typography
-                    variant='subtitle2'
-                    fontWeight={700}
-                    color={getStatusColor(order?.status)}
-                    sx={{ fontSize: { xs: '0.8rem', sm: '0.85rem', md: '0.9rem' } }}
-                  >
-                    {order?.status?.toUpperCase()}
-                  </Typography>
-                </Box>
-
-                {order?.estimate_created && (
-                  <Box
-                    sx={{
-                      backgroundColor: theme.palette.action.hover,
-                      px: { xs: 1.5, sm: 2 },
-                      py: { xs: 0.75, sm: 1 },
-                      borderRadius: 2,
-                      border: `1px solid ${theme.palette.divider}`,
-                      minWidth: { xs: '100px', sm: '120px', md: '150px' },
-                      textAlign: 'center',
-                      flex: { xs: '1 1 auto', md: '0 0 auto' },
-                    }}
-                  >
+                <Box display='flex' alignItems='center' gap={1} flexWrap='wrap' mt={0.5}>
+                  {order?.created_at && (
                     <Typography
                       variant='caption'
                       color='text.secondary'
-                      fontWeight={600}
-                      sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}
+                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                     >
-                      ESTIMATE
+                      {new Date(order.created_at).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
                     </Typography>
-                    <Box display='flex' alignItems='center' justifyContent='center' gap={0.5}>
-                      <Typography
-                        variant='subtitle2'
-                        fontWeight={700}
-                        color='text.primary'
-                        sx={{ fontSize: { xs: '0.8rem', sm: '0.85rem', md: '0.9rem' } }}
-                      >
-                        {order?.estimate_number}
-                      </Typography>
-                      <IconButton
-                        size='small'
-                        onClick={handleCopyEstimate}
-                        sx={{
-                          padding: { xs: '1px', sm: '2px' },
-                          '&:hover': {
-                            backgroundColor: theme.palette.action.selected,
-                          },
-                        }}
-                      >
-                        <ContentCopy sx={{ fontSize: { xs: 12, sm: 13, md: 14 } }} />
-                      </IconButton>
-                    </Box>
-                  </Box>
+                  )}
+                </Box>
+              </Box>
+
+              {/* Right: status, estimate, share button */}
+              <Box
+                display='flex'
+                flexDirection={{ xs: 'row', md: 'column' }}
+                alignItems={{ xs: 'center', md: 'flex-end' }}
+                gap={1}
+                flexWrap='wrap'
+              >
+                {/* Status chip */}
+                {order?.status && (
+                  <Chip
+                    size='small'
+                    label={getStatusLabel(order.status)}
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.7rem',
+                      letterSpacing: '0.05em',
+                      backgroundColor: getStatusColor(order.status) + '20',
+                      color: getStatusColor(order.status),
+                      border: `1.5px solid ${getStatusColor(order.status)}50`,
+                    }}
+                  />
+                )}
+
+                {/* Estimate number */}
+                {order?.estimate_created && (
+                  <Tooltip title='Copy estimate number'>
+                    <Chip
+                      size='small'
+                      label={order.estimate_number}
+                      icon={<ContentCopy sx={{ fontSize: '12px !important' }} />}
+                      onClick={handleCopyEstimate}
+                      variant='outlined'
+                      sx={{
+                        fontWeight: 600,
+                        fontSize: '0.7rem',
+                        cursor: 'pointer',
+                        '&:hover': { bgcolor: 'action.hover' },
+                      }}
+                    />
+                  </Tooltip>
+                )}
+
+                {/* Generate Shared Link — moved here from footer */}
+                {!isShared && customer && billingAddress && shippingAddress && (
+                  <Tooltip title='Copy a link to share this order with the customer'>
+                    <NavButton
+                      size='small'
+                      variant='outlined'
+                      color='info'
+                      startIcon={<Share sx={{ fontSize: 16 }} />}
+                      onClick={generateSharedLink}
+                      sx={{ fontSize: '0.75rem', px: 1.5, py: 0.5 }}
+                    >
+                      Share Link
+                    </NavButton>
+                  </Tooltip>
                 )}
               </Box>
             </Box>
           </Box>
         ) : (
+          /* No customer selected yet */
           <Box display='flex' flexDirection='column' alignItems='center' gap='12px'>
             <Typography
               variant={isMobile ? 'h5' : 'h4'}
               fontWeight={700}
               sx={{
-                background: theme.palette.mode === 'dark'
+                background: isDark
                   ? 'linear-gradient(135deg, #9c92d8 0%, #7c6fcd 100%)'
                   : 'linear-gradient(135deg, #2a4a6b 0%, #192d45 100%)',
                 WebkitBackgroundClip: 'text',
@@ -1003,7 +971,7 @@ const NewOrder: React.FC = () => {
               fontWeight={500}
               color='text.secondary'
               sx={{
-                backgroundColor: theme.palette.action.hover,
+                backgroundColor: 'action.hover',
                 px: 2,
                 py: 1,
                 borderRadius: 1,
@@ -1014,7 +982,8 @@ const NewOrder: React.FC = () => {
           </Box>
         )}
       </Paper>
-      {/* Google Sheet Content if in draft */}
+
+      {/* ── Google Sheet section ── */}
       {!isShared &&
         customer &&
         billingAddress &&
@@ -1042,15 +1011,14 @@ const NewOrder: React.FC = () => {
               borderRadius: '24px',
               marginBottom: '12px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              '&:hover': {
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              },
+              '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.15)' },
             }}
           >
-            {loading ? <CircularProgress /> : 'Download Order Form'}
+            {loading ? <CircularProgress size={22} /> : 'Download Order Form'}
           </Button>
         ))}
-      {/* Main content */}
+
+      {/* ── Main stepper card ── */}
       <Box
         sx={{
           flexGrow: 1,
@@ -1066,30 +1034,27 @@ const NewOrder: React.FC = () => {
             borderRadius: 3,
             overflow: 'hidden',
             border: `1px solid ${theme.palette.divider}`,
-            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+            boxShadow: isDark
+              ? '0 4px 20px rgba(0,0,0,0.3)'
+              : '0 4px 20px rgba(0,0,0,0.08)',
             background: theme.palette.background.paper,
           }}
         >
           <CardContent sx={{ padding: { xs: 1.5, sm: 2.5, md: 3.5 }, overflow: 'visible' }}>
+            {/* Stepper */}
             <Stepper
               activeStep={activeStep}
               alternativeLabel
               sx={{
                 marginTop: { xs: 1, md: 0 },
-                marginBottom: { xs: 3, md: 4 },
+                marginBottom: { xs: 1.5, md: 2.5 },
                 '& .MuiStepLabel-label': {
-                  fontSize: { xs: '0.7rem', sm: '0.875rem', md: '1rem' },
+                  fontSize: { xs: '0.65rem', sm: '0.8rem', md: '0.9rem' },
                   marginTop: { xs: '4px', md: '8px' },
                   fontWeight: 600,
-                  color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'text.secondary',
-                  '&.Mui-active': {
-                    color: 'primary.main',
-                    fontWeight: 700,
-                  },
-                  '&.Mui-completed': {
-                    color: 'success.main',
-                    fontWeight: 600,
-                  },
+                  color: isDark ? 'rgba(255,255,255,0.45)' : 'text.secondary',
+                  '&.Mui-active': { color: 'primary.main', fontWeight: 700 },
+                  '&.Mui-completed': { color: 'success.main', fontWeight: 600 },
                 },
                 '& .MuiStepConnector-root': {
                   top: { xs: 10, md: 14 },
@@ -1101,31 +1066,31 @@ const NewOrder: React.FC = () => {
                   },
                 },
                 '& .MuiStepConnector-line': {
-                  borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : theme.palette.divider,
+                  borderColor: isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider,
                   borderTopWidth: 2,
                 },
                 '& .MuiStepIcon-root': {
                   fontSize: { xs: '1.4rem', sm: '1.6rem', md: '1.9rem' },
-                  color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.15)',
+                  color: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.15)',
                   transition: 'all 0.25s ease',
                   '&.Mui-active': {
                     color: 'primary.main',
                     filter: `drop-shadow(0 0 6px ${theme.palette.primary.main}80)`,
                   },
-                  '&.Mui-completed': {
-                    color: 'success.main',
-                  },
+                  '&.Mui-completed': { color: 'success.main' },
                 },
                 '& .MuiStepIcon-text': {
-                  fill: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'white',
+                  fill: isDark ? 'rgba(255,255,255,0.5)' : 'white',
                   fontSize: '0.7rem',
                   fontWeight: 700,
-                  '& .Mui-active &': { fill: 'white' },
                 },
               }}
             >
               {steps.map((step, index) => {
                 const isDisabledForCustomer = isCustomerUser && index === 0;
+                // Customer users: step 0 is always shown as completed "Your Account"
+                const displayName = isMobile ? step.mobileName : step.name;
+                const customerStep0Label = isMobile ? 'Account ✓' : 'Your Account';
                 return (
                   <Step
                     key={index}
@@ -1134,25 +1099,53 @@ const NewOrder: React.FC = () => {
                   >
                     <StepLabel
                       sx={{
-                        cursor: isDisabledForCustomer ? 'not-allowed' : 'pointer',
-                        opacity: isDisabledForCustomer ? 0.6 : 1,
+                        cursor: isDisabledForCustomer ? 'default' : 'pointer',
+                        opacity: isDisabledForCustomer ? 0.7 : 1,
                       }}
                     >
-                      {step.name}
+                      {isDisabledForCustomer ? customerStep0Label : displayName}
                     </StepLabel>
                   </Step>
                 );
               })}
             </Stepper>
+
+            {/* Per-step contextual help text */}
+            {steps[activeStep]?.helpText && (
+              <Typography
+                variant='caption'
+                color='text.secondary'
+                sx={{
+                  display: 'block',
+                  textAlign: 'center',
+                  mb: { xs: 2, md: 3 },
+                  fontSize: { xs: '0.72rem', sm: '0.8rem' },
+                  bgcolor: 'action.hover',
+                  borderRadius: 1.5,
+                  px: 2,
+                  py: 0.75,
+                  maxWidth: 480,
+                  mx: 'auto',
+                }}
+              >
+                {steps[activeStep].helpText}
+              </Typography>
+            )}
+
+            {/* Step content */}
             <Box sx={{ padding: activeStep === 3 ? 0 : { xs: 1.5, sm: 2, md: 3 }, minHeight: '100px' }}>
-              <Suspense fallback={
-                <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
-                  <CircularProgress />
-                </Box>
-              }>
+              <Suspense
+                fallback={
+                  <Box display='flex' justifyContent='center' alignItems='center' minHeight='300px'>
+                    <CircularProgress />
+                  </Box>
+                }
+              >
                 {steps[activeStep]?.component}
               </Suspense>
             </Box>
+
+            {/* Navigation buttons */}
             <Box
               sx={{
                 display: 'flex',
@@ -1165,48 +1158,28 @@ const NewOrder: React.FC = () => {
                 gap: 2,
               }}
             >
+              {/* Left group: Previous / Cancel */}
               <Box
                 sx={{
                   display: 'flex',
-                  flexDirection: isMobile ? 'column' : 'row',
                   gap: 2,
                   width: isMobile ? '100%' : 'auto',
                 }}
               >
-                <Button
+                <NavButton
                   variant='outlined'
                   color='secondary'
-                  onClick={() => {
-                    activeStep === 0
-                      ? router.push('/')
-                      : handleStepClick(activeStep - 1);
-                  }}
+                  fullWidth={isMobile}
+                  onClick={() =>
+                    activeStep === 0 ? router.push('/') : handleStepClick(activeStep - 1)
+                  }
                   disabled={isShared && activeStep === 3}
-                  sx={{
-                    textTransform: 'none',
-                    fontWeight: 'bold',
-                    borderRadius: '24px',
-                    width: isMobile ? '100%' : 'auto',
-                  }}
                 >
                   {activeStep === 0 ? 'Cancel' : 'Previous'}
-                </Button>
-                {!isShared && customer && billingAddress && shippingAddress && (
-                  <Button
-                    variant='outlined'
-                    color='info'
-                    onClick={generateSharedLink}
-                    sx={{
-                      textTransform: 'none',
-                      fontWeight: 'bold',
-                      borderRadius: '24px',
-                      width: isMobile ? '100%' : 'auto',
-                    }}
-                  >
-                    Generate Shared Link
-                  </Button>
-                )}
+                </NavButton>
               </Box>
+
+              {/* Right group: action buttons */}
               <Box
                 sx={{
                   display: 'flex',
@@ -1215,39 +1188,31 @@ const NewOrder: React.FC = () => {
                   width: isMobile ? '100%' : 'auto',
                 }}
               >
+                {/* Save as Draft / Submit Order — last step only */}
                 {activeStep === steps.length - 1 && (
-                  <Button
+                  <NavButton
                     variant='contained'
                     color='secondary'
-                    onClick={() =>
-                      isShared ? handleEnd('draft', true) : handleEnd()
-                    }
-                    disabled={
-                      !customer ||
-                      !billingAddress ||
-                      !shippingAddress ||
-                      selectedProducts.length === 0 ||
-                      // !totals.totalAmount ||
-                      loading ||
-                      (!isShared &&
-                        !['deleted', 'draft', 'sent'].includes(
-                          order?.status?.toLowerCase()
-                        ))
-                    }
-                    sx={{
-                      textTransform: 'none',
-                      fontWeight: 'bold',
-                      borderRadius: '24px',
-                      width: isMobile ? '100%' : 'auto',
+                    fullWidth={isMobile}
+                    onClick={() => {
+                      if (isRetailerFlow) {
+                        setSubmitDialogOpen(true);
+                      } else {
+                        handleEnd('draft');
+                      }
                     }}
+                    disabled={saveDraftDisabled}
                   >
-                    Save As Draft
-                  </Button>
+                    {loading ? <CircularProgress size={22} color='inherit' /> : saveDraftLabel}
+                  </NavButton>
                 )}
+
+                {/* Decline — admin only, last step */}
                 {activeStep === steps.length - 1 && !isShared && isAdmin && (
-                  <Button
+                  <NavButton
                     variant='contained'
                     color='error'
+                    fullWidth={isMobile}
                     onClick={() => handleEnd('declined')}
                     disabled={
                       !customer ||
@@ -1258,20 +1223,17 @@ const NewOrder: React.FC = () => {
                       loading ||
                       !['draft', 'sent'].includes(order?.status?.toLowerCase())
                     }
-                    sx={{
-                      textTransform: 'none',
-                      fontWeight: 'bold',
-                      borderRadius: '24px',
-                      width: isMobile ? '100%' : 'auto',
-                    }}
                   >
                     Decline
-                  </Button>
+                  </NavButton>
                 )}
+
+                {/* Accept (admin) OR Next */}
                 {activeStep === steps.length - 1 && !isShared && isAdmin ? (
-                  <Button
+                  <NavButton
                     variant='contained'
                     color='primary'
+                    fullWidth={isMobile}
                     onClick={() => handleEnd('accepted')}
                     disabled={
                       !customer ||
@@ -1282,29 +1244,18 @@ const NewOrder: React.FC = () => {
                       loading ||
                       !['draft', 'sent'].includes(order?.status?.toLowerCase())
                     }
-                    sx={{
-                      textTransform: 'none',
-                      fontWeight: 'bold',
-                      borderRadius: '24px',
-                      width: isMobile ? '100%' : 'auto',
-                    }}
                   >
                     Accept
-                  </Button>
+                  </NavButton>
                 ) : activeStep < steps.length - 1 ? (
-                  <Button
+                  <NavButton
                     variant='contained'
                     color='primary'
+                    fullWidth={isMobile}
                     onClick={handleNext}
-                    sx={{
-                      textTransform: 'none',
-                      fontWeight: 'bold',
-                      borderRadius: '24px',
-                      width: isMobile ? '100%' : 'auto',
-                    }}
                   >
                     Next
-                  </Button>
+                  </NavButton>
                 ) : null}
               </Box>
             </Box>
@@ -1312,6 +1263,124 @@ const NewOrder: React.FC = () => {
         </Card>
       </Box>
 
+      {/* ── Floating cart bar (Products step only) ── */}
+      <Slide direction='up' in={showCartBar} mountOnEnter unmountOnExit>
+        <Paper
+          elevation={8}
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1200,
+            px: { xs: 2, sm: 4, md: 6 },
+            py: { xs: 1.5, sm: 2 },
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderTop: `2px solid ${theme.palette.primary.main}40`,
+            background: isDark
+              ? 'rgba(18,18,28,0.96)'
+              : 'rgba(255,255,255,0.97)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          {/* Cart summary */}
+          <Box display='flex' alignItems='center' gap={1.5}>
+            <ShoppingCart sx={{ color: 'primary.main', fontSize: { xs: 20, sm: 24 } }} />
+            <Box>
+              <Typography
+                variant='subtitle1'
+                fontWeight={700}
+                sx={{ lineHeight: 1.1, fontSize: { xs: '0.9rem', sm: '1rem' } }}
+              >
+                ₹{totals.totalAmount.toLocaleString('en-IN')}
+              </Typography>
+              <Typography
+                variant='caption'
+                color='text.secondary'
+                sx={{ fontSize: { xs: '0.65rem', sm: '0.72rem' } }}
+              >
+                {selectedProducts.length} item{selectedProducts.length !== 1 ? 's' : ''} selected
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Go to Review */}
+          <NavButton
+            variant='contained'
+            color='primary'
+            endIcon={<ArrowForward />}
+            onClick={() => setActiveStep(steps.length - 1)}
+            sx={{ px: { xs: 2, sm: 3 }, py: { xs: 0.75, sm: 1 } }}
+          >
+            {isMobile ? 'Review' : 'Review Order'}
+          </NavButton>
+        </Paper>
+      </Slide>
+
+      {/* ── Submit Order confirmation dialog (shared / customer users) ── */}
+      <Dialog
+        open={submitDialogOpen}
+        onClose={() => setSubmitDialogOpen(false)}
+        maxWidth='xs'
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+          Submit Order?
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant='body2' color='text.secondary'>
+            Your order will be sent to your sales representative for processing.
+            Please confirm all products and quantities are correct before submitting.
+          </Typography>
+          {totals.totalAmount > 0 && (
+            <Box
+              sx={{
+                mt: 2,
+                p: 1.5,
+                borderRadius: 2,
+                bgcolor: 'action.hover',
+                border: `1px solid ${theme.palette.divider}`,
+                display: 'flex',
+                justifyContent: 'space-between',
+              }}
+            >
+              <Typography variant='body2' color='text.secondary' fontWeight={500}>
+                Order Total
+              </Typography>
+              <Typography variant='body2' fontWeight={700} color='primary.main'>
+                ₹{totals.totalAmount.toLocaleString('en-IN')}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <NavButton
+            variant='outlined'
+            color='secondary'
+            onClick={() => setSubmitDialogOpen(false)}
+            disabled={loading}
+          >
+            Go Back
+          </NavButton>
+          <NavButton
+            variant='contained'
+            color='primary'
+            startIcon={loading ? undefined : <CheckCircle />}
+            onClick={async () => {
+              setSubmitDialogOpen(false);
+              await handleEnd('draft', isShared);
+            }}
+            disabled={loading}
+          >
+            {loading ? <CircularProgress size={22} color='inherit' /> : 'Confirm & Submit'}
+          </NavButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Snackbars ── */}
       <Snackbar
         open={linkCopied}
         autoHideDuration={3000}
@@ -1330,11 +1399,7 @@ const NewOrder: React.FC = () => {
           onClose={handleClose}
           anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         >
-          <Alert
-            onClose={handleClose}
-            severity={error.status}
-            sx={{ width: '100%' }}
-          >
+          <Alert onClose={handleClose} severity={error.status} sx={{ width: '100%' }}>
             {error.message}
           </Alert>
         </Snackbar>
