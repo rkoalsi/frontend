@@ -17,6 +17,7 @@ import {
   TextField,
   Autocomplete,
   CircularProgress,
+  InputAdornment,
   Table,
   TableBody,
   TableCell,
@@ -50,6 +51,7 @@ import {
   Chip,
   Alert,
   Tooltip,
+  Fade,
 } from "@mui/material";
 import {
   ArrowDownward,
@@ -59,6 +61,7 @@ import {
   Sort,
   AddShoppingCart,
   RemoveShoppingCart,
+  Search as SearchIcon,
 } from "@mui/icons-material";
 import debounce from "lodash.debounce";
 import { toast } from "react-toastify";
@@ -1556,45 +1559,51 @@ const Products: React.FC<ProductsProps> = ({
             </DialogActions>
           </Dialog>
         </Box>
-        <Tooltip title="Search for products by name, SKU, or brand. Results will appear as you type." arrow placement="top">
-          <Autocomplete
-            freeSolo
-            options={options}
-            getOptionLabel={(option: SearchResult | string) =>
-              typeof option === "string" ? option : option.name
-            }
-            isOptionEqualToValue={(
-              option: SearchResult | string,
-              value: SearchResult | string
-            ) =>
-              typeof option === "string" && typeof value === "string"
-                ? option === value
-                : typeof option !== "string" &&
-                typeof value !== "string" &&
-                option._id === value._id
-            }
-            onInputChange={handleInputChange}
-            value={query}
-            loading={loading}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label={label}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {loading && <CircularProgress color="inherit" size={20} />}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-          />
-        </Tooltip>
+        <TextField
+          label={label}
+          variant="outlined"
+          fullWidth
+          value={query}
+          onChange={(e) => {
+            const val = e.target.value;
+            setQuery(val);
+            handleSearch(val);
+          }}
+          placeholder="Search by name, SKU, or brand…"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ color: 'text.secondary', fontSize: { xs: 18, sm: 20 } }} />
+              </InputAdornment>
+            ),
+            endAdornment: loading ? (
+              <InputAdornment position="end">
+                <CircularProgress color="inherit" size={20} />
+              </InputAdornment>
+            ) : query ? (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={() => { setQuery(''); handleSearch(''); }}
+                  edge="end"
+                  sx={{ color: 'text.secondary' }}
+                >
+                  <CloseIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </InputAdornment>
+            ) : undefined,
+          }}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 2,
+              fontSize: { xs: '1rem', sm: '0.95rem' },
+              transition: 'box-shadow 0.2s ease',
+              '&:focus-within': {
+                boxShadow: `0 0 0 3px ${theme.palette.primary.main}20`,
+              },
+            },
+          }}
+        />
 
         {/* Hide/Show Out of Stock Toggle */}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
@@ -2159,6 +2168,7 @@ const Products: React.FC<ProductsProps> = ({
 
         {/* Products Display */}
         {isMobile || isTablet ? (
+          <Fade in key={productsKey} timeout={250}>
           <Box>
             {loading || loadingOutOfStock ? (
               // Loading skeletons for mobile/tablet
@@ -2519,6 +2529,7 @@ const Products: React.FC<ProductsProps> = ({
             {/* Intersection Observer target for infinite scroll */}
             <div ref={intersectionRef} style={{ height: '20px', margin: '20px 0' }} />
           </Box>
+          </Fade>
         ) : isMobile ? (
           <DoubleScrollTable ref={tableScrollRef} tableWidth={3200}>
             <Box sx={{ minWidth: "3200px", width: "3200px" }}>
@@ -2644,6 +2655,7 @@ const Products: React.FC<ProductsProps> = ({
           </DoubleScrollTable>
         ) : (
           // Desktop Card Grid View
+          <Fade in key={productsKey} timeout={250}>
           <Box ref={cardScrollRef}>
             {loading || loadingOutOfStock ? (
               // Loading skeletons for desktop
@@ -3024,12 +3036,13 @@ const Products: React.FC<ProductsProps> = ({
             {/* Intersection Observer target for infinite scroll - Desktop */}
             <div ref={intersectionRef} style={{ height: '20px', margin: '20px 0' }} />
           </Box>
+          </Fade>
         )}
       </Box>
       <Box
         sx={{
           position: 'fixed',
-          bottom: { xs: theme.spacing(20), sm: theme.spacing(12), md: theme.spacing(16) },
+          bottom: { xs: theme.spacing(20), sm: theme.spacing(19), md: theme.spacing(23) },
           right: { xs: theme.spacing(1), sm: theme.spacing(3), md: theme.spacing(2) },
           display: 'flex',
           flexDirection: 'column',
@@ -3106,7 +3119,7 @@ const Products: React.FC<ProductsProps> = ({
         onClick={() => setCartDrawerOpen(true)}
         sx={{
           position: "fixed",
-          bottom: { xs: theme.spacing(10), sm: theme.spacing(4), md: theme.spacing(3) },
+          bottom: { xs: theme.spacing(10), sm: theme.spacing(10), md: theme.spacing(10) },
           right: { xs: theme.spacing(1), sm: theme.spacing(3), md: theme.spacing(2) },
           backgroundColor: "background.paper",
           color: "primary.main",
