@@ -20,6 +20,7 @@ import {
   Chip,
   IconButton,
   Divider,
+  Autocomplete,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -52,6 +53,10 @@ const DailyVisits = () => {
   const [startDate, setStartDate]: any = useState<dayjs.Dayjs | null>(null);
   const [endDate, setEndDate]: any = useState<dayjs.Dayjs | null>(null);
 
+  // Salesperson filter state
+  const [salespersonFilter, setSalespersonFilter] = useState<string | null>(null);
+  const [salespersonOptions, setSalespersonOptions] = useState<string[]>([]);
+
   // Loading states
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -73,6 +78,17 @@ const DailyVisits = () => {
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
 
+  // Fetch salespeople options for the filter dropdown
+  const fetchSalespeopleOptions = async () => {
+    try {
+      const response = await axiosInstance.get('/admin/daily_visits/salespeople');
+      const names: string[] = response.data.salespeople.map((sp: any) => sp.name);
+      setSalespersonOptions(names);
+    } catch (error) {
+      console.error('Error fetching salespeople:', error);
+    }
+  };
+
   // Fetch daily visits from server
   const fetchDailyVisits = async () => {
     setLoading(true);
@@ -87,6 +103,11 @@ const DailyVisits = () => {
         // Add one day to include the end date in results
         const nextDay = endDate.add(1, 'day');
         params.end_date = nextDay.format('YYYY-MM-DD');
+      }
+
+      // Add salesperson filter if set
+      if (salespersonFilter) {
+        params.salesperson_name = salespersonFilter;
       }
 
       const response = await axiosInstance.get('/admin/daily_visits', {
@@ -107,6 +128,11 @@ const DailyVisits = () => {
   };
 
   useEffect(() => {
+    fetchSalespeopleOptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     fetchDailyVisits();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, rowsPerPage, actionLoading]);
@@ -117,10 +143,11 @@ const DailyVisits = () => {
     fetchDailyVisits();
   };
 
-  // Clear date filters
+  // Clear all filters
   const handleClearDateFilter = () => {
     setStartDate(null);
     setEndDate(null);
+    setSalespersonFilter(null);
     setPage(0);
     // Fetch data automatically after clearing
     setTimeout(() => {
@@ -385,6 +412,11 @@ const DailyVisits = () => {
         params.end_date = nextDay.format('YYYY-MM-DD');
       }
 
+      // Add salesperson filter if set
+      if (salespersonFilter) {
+        params.salesperson_name = salespersonFilter;
+      }
+
       const response = await axiosInstance.get('/admin/daily_visits/report', {
         params,
         responseType: 'blob', // important for binary data!
@@ -395,8 +427,11 @@ const DailyVisits = () => {
       const link = document.createElement('a');
       link.href = url;
 
-      // Add date range to filename if dates are selected
+      // Add salesperson + date range to filename if filters are active
       let filename = 'daily_visits_report';
+      if (salespersonFilter) {
+        filename += `_${salespersonFilter.replace(/ /g, '_')}`;
+      }
       if (startDate && endDate) {
         const startDateStr = startDate.format('YYYY-MM-DD');
         const endDateStr = endDate.format('YYYY-MM-DD');
@@ -436,7 +471,7 @@ const DailyVisits = () => {
           View all daily visits from sales people below.
         </Typography>
 
-        {/* Date Filter Section */}
+        {/* Filter Section */}
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <Box
             sx={{
@@ -462,11 +497,26 @@ const DailyVisits = () => {
               minDate={startDate || undefined}
               disableFuture
             />
+            <Autocomplete
+              options={salespersonOptions}
+              value={salespersonFilter}
+              onChange={(_event, newValue) => setSalespersonFilter(newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label='Salesperson'
+                  size='small'
+                  sx={{ minWidth: 200 }}
+                />
+              )}
+              clearOnEscape
+              sx={{ minWidth: 200 }}
+            />
             <Button
               variant='contained'
               color='primary'
               onClick={handleApplyDateFilter}
-              disabled={!startDate && !endDate}
+              disabled={!startDate && !endDate && !salespersonFilter}
             >
               Apply Filter
             </Button>
@@ -474,7 +524,7 @@ const DailyVisits = () => {
               variant='outlined'
               color='secondary'
               onClick={handleClearDateFilter}
-              disabled={!startDate && !endDate}
+              disabled={!startDate && !endDate && !salespersonFilter}
             >
               Clear Filter
             </Button>
