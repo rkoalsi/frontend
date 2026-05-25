@@ -133,7 +133,7 @@ const HookDialog: React.FC<HookDialogProps> = ({
                 sx={{
                   mt: 2,
                   p: 2,
-                  backgroundColor: '#f9f9f9',
+                  bgcolor: 'action.hover',
                   borderRadius: 2,
                 }}
               >

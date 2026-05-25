@@ -430,8 +430,10 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
                               size="small"
                               label={customer.status === 'active' ? 'Active' : 'Inactive'}
                               sx={{
-                                backgroundColor: customer.status === 'active' ? '#e8f5e8' : '#ffebee',
-                                color: customer.status === 'active' ? '#2e7d32' : '#d32f2f',
+                                backgroundColor: customer.status === 'active'
+                                  ? (theme.palette.mode === 'dark' ? 'rgba(46,125,50,0.25)' : '#e8f5e8')
+                                  : (theme.palette.mode === 'dark' ? 'rgba(211,47,47,0.25)' : '#ffebee'),
+                                color: customer.status === 'active' ? '#4caf50' : '#ef5350',
                                 fontWeight: 600,
                                 fontSize: '0.7rem',
                                 height: 24,
@@ -589,8 +591,8 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
                               size="small"
                               label={paymentConfig.count}
                               sx={{
-                                backgroundColor: '#ffebee',
-                                color: '#d32f2f',
+                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(211,47,47,0.25)' : '#ffebee',
+                                color: '#ef5350',
                                 fontWeight: 600,
                                 minWidth: 24,
                                 height: 20,
@@ -605,8 +607,8 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
                               size="small"
                               label="Last Month"
                               sx={{
-                                backgroundColor: '#e8f5e8',
-                                color: '#2e7d32',
+                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(46,125,50,0.25)' : '#e8f5e8',
+                                color: '#4caf50',
                                 fontSize: '0.65rem',
                                 height: 20,
                               }}
@@ -617,7 +619,7 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
                               size="small"
                               label="45 Days"
                               sx={{
-                                backgroundColor: '#fff4e6',
+                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(237,108,2,0.25)' : '#fff4e6',
                                 color: '#ed6c02',
                                 fontSize: '0.65rem',
                                 height: 20,

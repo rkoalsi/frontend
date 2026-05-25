@@ -76,7 +76,7 @@ const CatalogueProductCard: React.FC<CatalogueProductCardProps> = memo(
         <Box
           sx={{
             position: "relative",
-            backgroundColor: '#ffffff',
+            bgcolor: 'background.paper',
             height: isCompact ? 200 : isCozy ? 280 : 320,
             width: '100%',
             overflow: 'hidden',

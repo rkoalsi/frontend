@@ -713,7 +713,7 @@ const DailyVisits = () => {
                     {selectedVisit.admin_comments
                       .filter((c: any) => !c.shop_id)
                       .map((comment: any) => (
-                        <Paper key={comment._id} sx={{ p: 1.5, my: 1, backgroundColor: '#fff3e0' }}>
+                        <Paper key={comment._id} sx={{ p: 1.5, my: 1, bgcolor: 'action.hover' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <Box sx={{ flex: 1 }}>
                               <Typography variant='body2' sx={{ fontWeight: 500 }}>
@@ -753,7 +753,7 @@ const DailyVisits = () => {
                           </Box>
                           {/* Reply display */}
                           {comment.reply && (
-                            <Paper sx={{ p: 1, mt: 1, ml: 2, backgroundColor: '#e8f5e9' }}>
+                            <Paper sx={{ p: 1, mt: 1, ml: 2, bgcolor: 'action.selected' }}>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <Box sx={{ flex: 1 }}>
                                   <Typography variant='caption' sx={{ fontWeight: 500 }}>
@@ -881,7 +881,7 @@ const DailyVisits = () => {
                         {selectedVisit.admin_comments && selectedVisit.admin_comments
                           .filter((c: any) => c.shop_id === shopKey)
                           .map((comment: any) => (
-                            <Paper key={comment._id} sx={{ p: 1, my: 0.5, backgroundColor: '#e3f2fd' }}>
+                            <Paper key={comment._id} sx={{ p: 1, my: 0.5, bgcolor: 'action.hover' }}>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <Box sx={{ flex: 1 }}>
                                   <Typography variant='caption' sx={{ fontWeight: 500 }}>
@@ -921,7 +921,7 @@ const DailyVisits = () => {
                               </Box>
                               {/* Reply display */}
                               {comment.reply && (
-                                <Paper sx={{ p: 1, mt: 1, ml: 2, backgroundColor: '#e8f5e9' }}>
+                                <Paper sx={{ p: 1, mt: 1, ml: 2, bgcolor: 'action.selected' }}>
                                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <Box sx={{ flex: 1 }}>
                                       <Typography variant='caption' sx={{ fontWeight: 500 }}>

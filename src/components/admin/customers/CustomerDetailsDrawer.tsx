@@ -570,10 +570,10 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                       <AccordionSummary
                         expandIcon={<ExpandMore />}
                         sx={{
-                          backgroundColor: '#f0f7ff',
+                          bgcolor: 'action.hover',
                           borderRadius: '8px',
                           '&:hover': {
-                            backgroundColor: '#e3f2fd',
+                            bgcolor: 'action.selected',
                           },
                         }}
                       >
@@ -625,7 +625,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                 <TableCell
                                   sx={{
                                     fontWeight: 'bold',
-                                    backgroundColor: '#f5f5f5',
+                                    bgcolor: 'action.hover',
                                   }}
                                 >
                                   #
@@ -633,7 +633,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                 <TableCell
                                   sx={{
                                     fontWeight: 'bold',
-                                    backgroundColor: '#f5f5f5',
+                                    bgcolor: 'action.hover',
                                   }}
                                 >
                                   Product Name
@@ -641,7 +641,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                 <TableCell
                                   sx={{
                                     fontWeight: 'bold',
-                                    backgroundColor: '#f5f5f5',
+                                    bgcolor: 'action.hover',
                                   }}
                                 >
                                   Margin
@@ -649,7 +649,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                 <TableCell
                                   sx={{
                                     fontWeight: 'bold',
-                                    backgroundColor: '#f5f5f5',
+                                    bgcolor: 'action.hover',
                                   }}
                                 >
                                   Action
@@ -662,7 +662,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                   key={prod.product_id}
                                   sx={{
                                     '&:hover': {
-                                      backgroundColor: '#f9f9f9',
+                                      bgcolor: 'action.selected',
                                     },
                                   }}
                                 >
@@ -760,7 +760,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                   <TableCell
                                     sx={{
                                       fontWeight: 'bold',
-                                      backgroundColor: '#f5f5f5',
+                                      bgcolor: 'action.hover',
                                     }}
                                   >
                                     #
@@ -768,7 +768,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                   <TableCell
                                     sx={{
                                       fontWeight: 'bold',
-                                      backgroundColor: '#f5f5f5',
+                                      bgcolor: 'action.hover',
                                     }}
                                   >
                                     Product Name
@@ -776,7 +776,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                   <TableCell
                                     sx={{
                                       fontWeight: 'bold',
-                                      backgroundColor: '#f5f5f5',
+                                      bgcolor: 'action.hover',
                                     }}
                                   >
                                     Margin
@@ -784,7 +784,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                   <TableCell
                                     sx={{
                                       fontWeight: 'bold',
-                                      backgroundColor: '#f5f5f5',
+                                      bgcolor: 'action.hover',
                                     }}
                                   >
                                     Action
@@ -797,7 +797,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                     key={prod.product_id}
                                     sx={{
                                       '&:hover': {
-                                        backgroundColor: '#f9f9f9',
+                                        bgcolor: 'action.selected',
                                       },
                                     }}
                                   >

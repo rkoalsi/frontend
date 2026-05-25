@@ -447,7 +447,7 @@ const ReturnOrders = () => {
                 <TableContainer component={Paper} elevation={1}>
                   <Table>
                     <TableHead>
-                      <TableRow sx={{ backgroundColor: '#f8f9fa' }}>
+                      <TableRow sx={{ bgcolor: 'action.hover' }}>
                         <TableCell sx={{ fontWeight: 'bold' }}>
                           Customer
                         </TableCell>

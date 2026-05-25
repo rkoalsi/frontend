@@ -175,7 +175,7 @@ const ChatsPage = () => {
               <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', minWidth: 900 }}>
                 <Table stickyHeader>
                   <TableHead>
-                    <TableRow sx={{ backgroundColor: '#f8f9fa' }}>
+                    <TableRow sx={{ bgcolor: 'action.hover' }}>
                       <TableCell sx={{ fontWeight: 600 }}>#</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>From</TableCell>

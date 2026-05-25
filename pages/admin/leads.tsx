@@ -310,7 +310,7 @@ const BrandLeadsTab = () => {
           <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
             <Table>
               <TableHead>
-                <TableRow sx={{ backgroundColor: '#f8f9fa' }}>
+                <TableRow sx={{ bgcolor: 'action.hover' }}>
                   <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Brand Name</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Created At (IST)</TableCell>
@@ -420,7 +420,7 @@ const CatalogueLeadsTab = () => {
           <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
             <Table>
               <TableHead>
-                <TableRow sx={{ backgroundColor: '#f8f9fa' }}>
+                <TableRow sx={{ bgcolor: 'action.hover' }}>
                   <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Created At (IST)</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Verified</TableCell>
@@ -558,7 +558,7 @@ const ContactFormLeadsTab = () => {
             <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', minWidth: 900 }}>
               <Table>
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: '#f8f9fa' }}>
+                  <TableRow sx={{ bgcolor: 'action.hover' }}>
                     <TableCell sx={{ fontWeight: 600 }}>#</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
