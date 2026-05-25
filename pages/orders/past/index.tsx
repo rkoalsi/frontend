@@ -307,19 +307,19 @@ const PastOrders = () => {
                             order.status.slice(1).toLowerCase()
                           }
                           color={
-                            order.status.toLowerCase() === 'draft' ||
-                              order.status.toLowerCase() === 'sent'
-                              ? 'default'
+                            order.status.toLowerCase() === 'draft'
+                              ? 'warning'
+                              : order.status.toLowerCase() === 'sent'
+                              ? 'info'
                               : order.status.toLowerCase() === 'accepted' ||
                                 order.status.toLowerCase() === 'invoiced'
-                                ? 'success'
-                                : 'error'
+                              ? 'success'
+                              : 'error'
                           }
                           sx={{
                             fontWeight: 'bold',
                             fontSize: isMobile ? '0.75rem' : '0.85rem',
                             height: isMobile ? 24 : 'auto',
-                            color: 'text.primary' as any,
                             '& .MuiChip-label': {
                               padding: isMobile ? '0 8px' : '0 12px',
                             },
@@ -333,7 +333,6 @@ const PastOrders = () => {
                               fontWeight: 'bold',
                               fontSize: isMobile ? '0.75rem' : '0.85rem',
                               height: isMobile ? 24 : 'auto',
-                              color: 'text.primary' as any,
                               '& .MuiChip-label': {
                                 padding: isMobile ? '0 8px' : '0 12px',
                               },
@@ -343,12 +342,11 @@ const PastOrders = () => {
                         {order?.spreadsheet_created && (
                           <Chip
                             label={'XLSX Created'}
-                            color={'success'}
+                            color={'primary'}
                             sx={{
                               fontWeight: 'bold',
                               fontSize: isMobile ? '0.75rem' : '0.85rem',
                               height: isMobile ? 24 : 'auto',
-                              color: 'text.primary' as any,
                               '& .MuiChip-label': {
                                 padding: isMobile ? '0 8px' : '0 12px',
                               },

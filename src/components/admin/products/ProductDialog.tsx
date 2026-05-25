@@ -356,7 +356,7 @@ const ProductDialog = ({
                                               width: 28,
                                               height: 28,
                                               '&:hover': {
-                                                backgroundColor: '#ffebee',
+                                                backgroundColor: 'rgba(244,67,54,0.12)',
                                               },
                                             }}
                                           >
@@ -576,7 +576,7 @@ const ProductDialog = ({
                                               width: 28,
                                               height: 28,
                                               '&:hover': {
-                                                backgroundColor: '#ffebee',
+                                                backgroundColor: 'rgba(244,67,54,0.12)',
                                               },
                                             }}
                                           >

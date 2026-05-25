@@ -665,7 +665,7 @@ const CustomerRequests = () => {
         <TableContainer component={Paper} elevation={2}>
           <Table>
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+              <TableRow sx={{ bgcolor: 'action.hover' }}>
                 <TableCell><strong>Shop Name</strong></TableCell>
                 <TableCell><strong>Customer Name</strong></TableCell>
                 <TableCell><strong>Zoho Customer Name</strong></TableCell>
@@ -1227,7 +1227,7 @@ const CustomerRequests = () => {
                   {selectedRequest.admin_comments.map((comment) => (
                     <Paper
                       key={comment._id}
-                      sx={{ p: 1.5, my: 1, backgroundColor: '#fff3e0' }}
+                      sx={{ p: 1.5, my: 1, bgcolor: 'action.hover' }}
                     >
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <Box sx={{ flex: 1 }}>
@@ -1254,7 +1254,7 @@ const CustomerRequests = () => {
 
                       {/* Reply display */}
                       {comment.reply && (
-                        <Paper sx={{ p: 1, mt: 1, ml: 2, backgroundColor: '#e8f5e9' }}>
+                        <Paper sx={{ p: 1, mt: 1, ml: 2, bgcolor: 'action.selected' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <Box sx={{ flex: 1 }}>
                               <Typography variant="caption" sx={{ fontWeight: 500 }}>

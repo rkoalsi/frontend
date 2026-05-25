@@ -469,7 +469,7 @@ const DailyVisitDetail = () => {
                     .map((comment: any) => (
                       <Paper
                         key={comment._id}
-                        sx={{ p: 1.5, my: 1, backgroundColor: '#fff3e0' }}
+                        sx={{ p: 1.5, my: 1, bgcolor: 'action.hover' }}
                       >
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <Box sx={{ flex: 1 }}>
@@ -495,7 +495,7 @@ const DailyVisitDetail = () => {
                         </Box>
                         {/* Reply display */}
                         {comment.reply && (
-                          <Paper sx={{ p: 1, mt: 1, ml: 2, backgroundColor: '#e8f5e9' }}>
+                          <Paper sx={{ p: 1, mt: 1, ml: 2, bgcolor: 'action.selected' }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                               <Box sx={{ flex: 1 }}>
                                 <Typography variant='caption' sx={{ fontWeight: 500 }}>
@@ -553,7 +553,7 @@ const DailyVisitDetail = () => {
                       {shopComments.map((comment: any) => (
                         <Paper
                           key={comment._id}
-                          sx={{ p: 1.5, my: 1, backgroundColor: '#e3f2fd' }}
+                          sx={{ p: 1.5, my: 1, bgcolor: 'action.hover' }}
                         >
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <Box sx={{ flex: 1 }}>
@@ -579,7 +579,7 @@ const DailyVisitDetail = () => {
                           </Box>
                           {/* Reply display */}
                           {comment.reply && (
-                            <Paper sx={{ p: 1, mt: 1, ml: 2, backgroundColor: '#e8f5e9' }}>
+                            <Paper sx={{ p: 1, mt: 1, ml: 2, bgcolor: 'action.selected' }}>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <Box sx={{ flex: 1 }}>
                                   <Typography variant='caption' sx={{ fontWeight: 500 }}>

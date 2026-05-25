@@ -398,9 +398,10 @@ const Hooks = () => {
                         sx={{
                           mt: 1,
                           p: 2,
-                          border: '1px solid #ddd',
+                          border: '1px solid',
+                          borderColor: 'divider',
                           borderRadius: '8px',
-                          backgroundColor: '#f9f9f9',
+                          bgcolor: 'action.hover',
                         }}
                       >
                         <Typography variant='body2' color='textSecondary'>

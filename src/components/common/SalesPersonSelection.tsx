@@ -1,12 +1,12 @@
 import {
   FormControl,
-  FormControlLabel,
-  FormLabel,
+  InputLabel,
+  Select,
+  MenuItem,
+  OutlinedInput,
+  Chip,
+  Box,
   Typography,
-  List,
-  ListItem,
-  ListItemText,
-  Checkbox,
 } from '@mui/material';
 
 interface SalesPerson {
@@ -25,53 +25,46 @@ const SalesPersonSelection = ({
   selectedSalesPeople: string[]; // Array of selected salesperson IDs
   handleSalesPeopleChange: (selectedIds: string[]) => void;
 }) => {
-  // Handle checkbox toggle
-  const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const spId = event.target.value;
-    let updatedSalesPeople = [...selectedSalesPeople];
+  const handleChange = (event: any) => {
+    const value = event.target.value;
+    handleSalesPeopleChange(typeof value === 'string' ? value.split(',') : value);
+  };
 
-    if (event.target.checked) {
-      // Add salesperson
-      updatedSalesPeople.push(spId);
-    } else {
-      // Remove salesperson
-      updatedSalesPeople = updatedSalesPeople.filter((id) => id !== spId);
-    }
-
-    handleSalesPeopleChange(updatedSalesPeople);
+  const getLabel = (id: string) => {
+    const sp = salesPeople.find((s) => s._id === id);
+    if (!sp) return id;
+    return sp.code ? `${sp.name} (${sp.code})` : sp.name;
   };
 
   return (
-    <FormControl component='fieldset' fullWidth>
-      <FormLabel
-        component='legend'
-        sx={{ mb: 2, fontWeight: 'bold', fontSize: '1.2rem' }}
+    <FormControl fullWidth>
+      <InputLabel id='sales-people-label'>Sales People</InputLabel>
+      <Select
+        labelId='sales-people-label'
+        multiple
+        value={selectedSalesPeople}
+        onChange={handleChange}
+        input={<OutlinedInput label='Sales People' />}
+        renderValue={(selected) => (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {(selected as string[]).map((id) => (
+              <Chip key={id} label={getLabel(id)} size='small' />
+            ))}
+          </Box>
+        )}
       >
-        Select Sales People
-      </FormLabel>
-      {salesPeople.length > 0 ? (
-        <List>
-          {salesPeople.map((sp) => (
-            <ListItem key={sp._id} sx={{ borderBottom: '1px solid #ddd' }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={selectedSalesPeople.includes(sp._id)}
-                    onChange={handleCheckboxChange}
-                    value={sp._id}
-                  />
-                }
-                label={sp.name}
-              />
-              <ListItemText secondary={sp.code || 'N/A'} sx={{ ml: 2 }} />
-            </ListItem>
-          ))}
-        </List>
-      ) : (
-        <Typography color='textSecondary' sx={{ mt: 2 }}>
-          No salespeople available.
-        </Typography>
-      )}
+        {salesPeople.length > 0 ? (
+          salesPeople.map((sp) => (
+            <MenuItem key={sp._id} value={sp._id}>
+              {sp.name}{sp.code ? ` (${sp.code})` : ''}
+            </MenuItem>
+          ))
+        ) : (
+          <MenuItem disabled>
+            <Typography color='text.secondary'>No salespeople available.</Typography>
+          </MenuItem>
+        )}
+      </Select>
     </FormControl>
   );
 };

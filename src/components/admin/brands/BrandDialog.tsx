@@ -43,8 +43,9 @@ const ProductDialog = ({
     >
       <DialogTitle
         sx={{
-          borderBottom: '1px solid #e0e0e0',
-          backgroundColor: '#f8f9fa',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'action.hover',
           py: 2,
           display: 'flex',
           alignItems: 'center',
@@ -110,7 +111,7 @@ const ProductDialog = ({
                         p: 1,
                         borderRadius: 2,
                         overflow: 'hidden',
-                        backgroundColor: '#f5f5f5',
+                        bgcolor: 'action.hover',
                       }}
                     >
                       <img
@@ -169,7 +170,7 @@ const ProductDialog = ({
                         p: 1,
                         borderRadius: 2,
                         overflow: 'hidden',
-                        backgroundColor: '#f5f5f5',
+                        bgcolor: 'action.hover',
                       }}
                     >
                       <img
@@ -210,8 +211,9 @@ const ProductDialog = ({
         sx={{
           px: 3,
           py: 2,
-          borderTop: '1px solid #e0e0e0',
-          backgroundColor: '#f8f9fa',
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'action.hover',
         }}
       >
         <Button

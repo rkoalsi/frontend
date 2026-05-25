@@ -117,7 +117,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
           <Box
             sx={{
               position: "relative",
-              backgroundColor: '#ffffff',
+              bgcolor: 'background.paper',
               height: { xs: 220, sm: 260, md: 280, xl: 240 },
               width: '100%',
             }}

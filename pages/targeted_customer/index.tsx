@@ -43,12 +43,12 @@ const ShopHookCard = ({ user, hookData, onAddNotes }: any) => {
         </Typography>
       </div>
       <CardContent>
-        <div
-          style={{
-            backgroundColor: '#f5f5f5',
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 16,
+        <Box
+          sx={{
+            bgcolor: 'action.hover',
+            borderRadius: 2,
+            p: 2,
+            mb: 2,
           }}
         >
           <Typography variant='body2' color='textSecondary'>
@@ -83,7 +83,7 @@ const ShopHookCard = ({ user, hookData, onAddNotes }: any) => {
                 ))}
             </>
           )}
-        </div>
+        </Box>
         <Button
           variant='contained'
           color='primary'

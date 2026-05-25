@@ -375,7 +375,7 @@ const BlogPosts = () => {
             <TableContainer component={Paper} variant="outlined">
               <Table size="small">
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: '#f9fafb' }}>
+                  <TableRow sx={{ bgcolor: 'action.hover' }}>
                     <TableCell sx={{ fontWeight: 'bold' }}>Title</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Slug</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Categories</TableCell>

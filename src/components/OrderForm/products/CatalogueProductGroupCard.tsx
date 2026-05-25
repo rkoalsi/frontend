@@ -196,7 +196,7 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
           onClick={() => onQuickView(currentVariant, products)}
           sx={{
             position: "relative",
-            backgroundColor: '#ffffff',
+            bgcolor: 'background.paper',
             height: isCompact ? 200 : isCozy ? 280 : 320,
             width: '100%',
             overflow: 'hidden',
