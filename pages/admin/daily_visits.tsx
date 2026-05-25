@@ -90,24 +90,35 @@ const DailyVisits = () => {
   };
 
   // Fetch daily visits from server
-  const fetchDailyVisits = async () => {
+  // Accepts optional overrides so callers (e.g. clear-filter) can bypass
+  // stale closure values without waiting for state to settle.
+  const fetchDailyVisits = async (overrides?: {
+    salesperson?: string | null;
+    start?: dayjs.Dayjs | null;
+    end?: dayjs.Dayjs | null;
+  }) => {
+    const activeStart = overrides && 'start' in overrides ? overrides.start : startDate;
+    const activeEnd = overrides && 'end' in overrides ? overrides.end : endDate;
+    const activeSalesperson =
+      overrides && 'salesperson' in overrides ? overrides.salesperson : salespersonFilter;
+
     setLoading(true);
     try {
       const params: any = { page, limit: rowsPerPage };
 
       // Add date filters if they exist
-      if (startDate) {
-        params.start_date = startDate.format('YYYY-MM-DD'); // Format: YYYY-MM-DD
+      if (activeStart) {
+        params.start_date = activeStart.format('YYYY-MM-DD');
       }
-      if (endDate) {
+      if (activeEnd) {
         // Add one day to include the end date in results
-        const nextDay = endDate.add(1, 'day');
+        const nextDay = activeEnd.add(1, 'day');
         params.end_date = nextDay.format('YYYY-MM-DD');
       }
 
       // Add salesperson filter if set
-      if (salespersonFilter) {
-        params.salesperson_name = salespersonFilter;
+      if (activeSalesperson) {
+        params.salesperson_name = activeSalesperson;
       }
 
       const response = await axiosInstance.get('/admin/daily_visits', {
@@ -149,10 +160,8 @@ const DailyVisits = () => {
     setEndDate(null);
     setSalespersonFilter(null);
     setPage(0);
-    // Fetch data automatically after clearing
-    setTimeout(() => {
-      fetchDailyVisits();
-    }, 0);
+    // Pass cleared values explicitly so fetchDailyVisits doesn't read stale state
+    fetchDailyVisits({ salesperson: null, start: null, end: null });
   };
 
   const handleImageClick = useCallback((src: string) => {
