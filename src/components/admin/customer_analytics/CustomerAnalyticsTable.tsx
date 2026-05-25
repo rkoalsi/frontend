@@ -175,14 +175,16 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
         borderRadius: 4,
         overflow: 'hidden',
         border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
-        background: 'linear-gradient(135deg, #fafafa 0%, #ffffff 100%)',
+        background: 'background.paper',
       }}
     >
       {/* Enhanced Search Header */}
       <Box sx={{
         p: 4,
-        background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)',
-        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+        background: theme.palette.mode === 'dark'
+          ? `linear-gradient(135deg, ${theme.palette.background.paper} 0%, rgba(255,255,255,0.03) 100%)`
+          : 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)',
+        borderBottom: `1px solid ${theme.palette.divider}`,
       }}>
         <TextField
           fullWidth
@@ -216,7 +218,7 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
           sx={{
             '& .MuiOutlinedInput-root': {
               borderRadius: 3,
-              backgroundColor: 'white',
+              backgroundColor: 'background.paper' as any,
               boxShadow: searchLoading
                 ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.15)}`
                 : '0 2px 8px rgba(0,0,0,0.04)',
@@ -428,8 +430,10 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
                               size="small"
                               label={customer.status === 'active' ? 'Active' : 'Inactive'}
                               sx={{
-                                backgroundColor: customer.status === 'active' ? '#e8f5e8' : '#ffebee',
-                                color: customer.status === 'active' ? '#2e7d32' : '#d32f2f',
+                                backgroundColor: customer.status === 'active'
+                                  ? (theme.palette.mode === 'dark' ? 'rgba(46,125,50,0.25)' : '#e8f5e8')
+                                  : (theme.palette.mode === 'dark' ? 'rgba(211,47,47,0.25)' : '#ffebee'),
+                                color: customer.status === 'active' ? '#4caf50' : '#ef5350',
                                 fontWeight: 600,
                                 fontSize: '0.7rem',
                                 height: 24,
@@ -587,8 +591,8 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
                               size="small"
                               label={paymentConfig.count}
                               sx={{
-                                backgroundColor: '#ffebee',
-                                color: '#d32f2f',
+                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(211,47,47,0.25)' : '#ffebee',
+                                color: '#ef5350',
                                 fontWeight: 600,
                                 minWidth: 24,
                                 height: 20,
@@ -603,8 +607,8 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
                               size="small"
                               label="Last Month"
                               sx={{
-                                backgroundColor: '#e8f5e8',
-                                color: '#2e7d32',
+                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(46,125,50,0.25)' : '#e8f5e8',
+                                color: '#4caf50',
                                 fontSize: '0.65rem',
                                 height: 20,
                               }}
@@ -615,7 +619,7 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
                               size="small"
                               label="45 Days"
                               sx={{
-                                backgroundColor: '#fff4e6',
+                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(237,108,2,0.25)' : '#fff4e6',
                                 color: '#ed6c02',
                                 fontSize: '0.65rem',
                                 height: 20,

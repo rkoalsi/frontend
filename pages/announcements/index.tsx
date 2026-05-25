@@ -1,13 +1,7 @@
 import {
   Box,
-  Card,
-  CardContent,
-  CardHeader,
   Typography,
   CircularProgress,
-  List,
-  ListItem,
-  Divider,
   useMediaQuery,
   useTheme,
   Paper,
@@ -210,56 +204,67 @@ function Announcements() {
           <CircularProgress />
         </Box>
       ) : announcements.length === 0 ? (
-        <Typography align='center' variant='h6' color='white'>
+        <Typography align='center' variant='h6' color='text.secondary'>
           No Announcements available.
         </Typography>
       ) : (
         <Box
           sx={{
+            width: '100%',
+            maxWidth: 800,
             display: 'flex',
-            flexDirection: 'row',
-            background: 'none',
-            borderRadius: '8px',
+            flexDirection: 'column',
+            gap: 2,
           }}
         >
-          <List>
-            {announcements.map((announcement: any, index) => (
-              <Fragment key={announcement._id}>
-                <ListItem
-                  component='div'
+          {announcements.map((announcement: any, index) => (
+            <Fragment key={announcement._id}>
+              <Box
+                sx={{
+                  bgcolor: 'background.paper',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  boxShadow: theme.palette.mode === 'dark'
+                    ? '0 2px 12px rgba(0,0,0,0.4)'
+                    : '0 2px 8px rgba(0,0,0,0.06)',
+                  transition: 'box-shadow 0.2s ease',
+                  '&:hover': {
+                    boxShadow: theme.palette.mode === 'dark'
+                      ? '0 4px 20px rgba(0,0,0,0.5)'
+                      : '0 4px 16px rgba(0,0,0,0.1)',
+                  },
+                }}
+              >
+                {/* Card Header */}
+                <Box
                   sx={{
+                    px: 2.5,
+                    py: 1.5,
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
                     display: 'flex',
-                    justifyContent: 'space-between',
                     alignItems: 'center',
-                    padding: '16px',
-                    textAlign: 'flex-start',
-                    backgroundColor: 'white',
-                    border: '2px solid #475569',
-                    borderRadius: '8px',
-                    marginBottom: '16px',
-                    cursor: 'pointer',
+                    justifyContent: 'space-between',
                   }}
                 >
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                      width: '100%',
-                      minWidth: '320px',
-                      textAlign: 'flex-start',
-                    }}
+                  <Typography variant='subtitle1' fontWeight={700} sx={{ color: '#fff' }}>
+                    {announcement.title}
+                  </Typography>
+                  <Typography variant='caption' sx={{ color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap', ml: 2 }}>
+                    {new Date(announcement.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </Typography>
+                </Box>
+
+                {/* Card Body */}
+                <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Typography
+                    variant='body2'
+                    color='text.primary'
+                    sx={{ whiteSpace: 'pre-line', lineHeight: 1.75 }}
                   >
-                    <Typography variant='h6' fontWeight='bold' color='black'>
-                      {index + 1}. {announcement.title}
-                    </Typography>
-                    <Typography
-                      variant='body2'
-                      color='black'
-                      style={{ whiteSpace: 'pre-line' }}
-                    >
-                      {announcement.description}
-                    </Typography>
+                    {announcement.description}
+                  </Typography>
                     {/* Image display section */}
                     {announcement.image_url && (
                       <Box
@@ -384,7 +389,7 @@ function Announcements() {
                                 ml: 1,
                                 minWidth: '60px',
                                 textAlign: 'right',
-                                color: 'black',
+                                color: 'text.primary' as any,
                               }}
                             >
                               {audioStates[announcement._id].isLoaded
@@ -407,7 +412,7 @@ function Announcements() {
                               <IconButton
                                 onClick={() => toggleMute(announcement._id)}
                                 size='small'
-                                sx={{ ml: 1, color: 'black' }}
+                                sx={{ ml: 1, color: 'text.primary' as any }}
                               >
                                 {audioStates[announcement._id].isMuted ? (
                                   <VolumeMuteIcon fontSize='small' />
@@ -424,7 +429,7 @@ function Announcements() {
                                 download
                                 target='_blank'
                                 size='small'
-                                sx={{ color: 'black' }}
+                                sx={{ color: 'text.primary' as any }}
                               >
                                 <DownloadIcon fontSize='small' />
                               </IconButton>
@@ -450,15 +455,10 @@ function Announcements() {
                         </Paper>
                       )}
 
-                    <Typography variant='body2' color='black'>
-                      {new Date(announcement.created_at).toLocaleDateString()}
-                    </Typography>
-                  </Box>
-                </ListItem>
-                {index < announcements.length - 1 && <Divider />}
-              </Fragment>
-            ))}
-          </List>
+                </Box>
+              </Box>
+            </Fragment>
+          ))}
         </Box>
       )}
     </Box>

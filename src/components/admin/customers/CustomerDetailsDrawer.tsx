@@ -24,8 +24,15 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  CircularProgress,
+  Tooltip,
 } from '@mui/material';
-import { Delete, ExpandMore } from '@mui/icons-material';
+import { Delete, ExpandMore, Refresh } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../../util/axios';
 import capitalize from '../../../util/capitalize';
@@ -40,6 +47,7 @@ export interface CustomerDetailsDrawerProps {
   handleDeleteAllSpecialMargins: () => void;
   onCustomerUpdate: (updatedCustomer: any) => void;
   onMarginsUpdated?: () => void;
+  onCustomerDelete?: (customerId: string) => void;
 }
 
 const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
@@ -51,6 +59,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   onCustomerUpdate,
   handleDeleteAllSpecialMargins,
   onMarginsUpdated,
+  onCustomerDelete,
 }) => {
   const [editMargin, setEditMargin] = useState('');
   const [editTier, setEditTier] = useState('');
@@ -58,7 +67,15 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   const [status, setStatus] = useState('');
   const [assignedSalesPeople, setAssignedSalesPeople] = useState<string[]>([]);
   const [salesPeople, setSalesPeople] = useState<string[]>([]);
-  const [showAddresses, setShowAddresses] = useState(false); // New state for toggling addresses
+  const [showAddresses, setShowAddresses] = useState(false);
+  const [addressDetails, setAddressDetails] = useState<Record<string, any>>({});
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [localAddresses, setLocalAddresses] = useState<any[]>([]);
+  const [deleteAddressConfirm, setDeleteAddressConfirm] = useState<string | null>(null);
+  const [billedAddresses, setBilledAddresses] = useState<Record<string, boolean>>({});
+  const [inAnalyticsAddresses, setInAnalyticsAddresses] = useState<Record<string, boolean>>({});
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Local state for special margins (copied from prop)
   const [localSpecialMargins, setLocalSpecialMargins] = useState<any[]>(
@@ -93,6 +110,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
           ? customer.cf_sales_person
           : [];
       setAssignedSalesPeople(arrayOfCodes);
+      setLocalAddresses(customer.addresses || []);
     }
   }, [customer]);
 
@@ -100,6 +118,96 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   useEffect(() => {
     setLocalSpecialMargins(specialMarginProducts);
   }, [specialMarginProducts]);
+
+  useEffect(() => {
+    if (!customer?._id || !open) return;
+    axiosInstance
+      .get(`/customer_address_details/${customer._id}`)
+      .then((res) => {
+        const map = (res.data.address_details || []).reduce(
+          (acc: Record<string, any>, item: any) => {
+            acc[item.address_id] = item;
+            return acc;
+          },
+          {}
+        );
+        setAddressDetails(map);
+      })
+      .catch(() => {});
+    axiosInstance
+      .get(`/customer_address_details/${customer._id}/billed`)
+      .then((res) => setBilledAddresses(res.data.billed || {}))
+      .catch(() => {});
+    axiosInstance
+      .get(`/customer_address_details/${customer._id}/in_analytics`)
+      .then((res) => setInAnalyticsAddresses(res.data.in_analytics || {}))
+      .catch(() => {});
+  }, [customer?._id, open, refreshTick]);
+
+  const handleRefresh = async () => {
+    if (!customer?._id) return;
+    setRefreshing(true);
+    try {
+      const res = await axiosInstance.get(`/customers/${customer._id}`);
+      const fresh = res.data.customer;
+      onCustomerUpdate(fresh);
+      // Sync local form state
+      let margin = fresh.cf_margin || '40';
+      margin = margin.endsWith('%') ? margin.slice(0, -1) : margin;
+      setEditMargin(margin);
+      setEditInEx(fresh.cf_in_ex || 'Exclusive');
+      setEditTier(String(fresh.cf_tier).toUpperCase() || '');
+      setStatus(String(fresh.status) || '');
+      const codes =
+        typeof fresh.cf_sales_person === 'string'
+          ? fresh.cf_sales_person.split(',').map((s: string) => s.trim())
+          : Array.isArray(fresh.cf_sales_person)
+          ? fresh.cf_sales_person
+          : [];
+      setAssignedSalesPeople(codes);
+      setLocalAddresses(fresh.addresses || []);
+      setInAnalyticsAddresses({});
+      setRefreshTick((t) => t + 1);
+      toast.success('Customer details refreshed.');
+    } catch {
+      toast.error('Failed to refresh customer details.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleAddressStatusChange = async (addressId: string, newStatus: string) => {
+    try {
+      const res = await axiosInstance.put(
+        `/customer_address_details/${customer._id}/${addressId}`,
+        { status: newStatus }
+      );
+      setAddressDetails((prev) => ({
+        ...prev,
+        [addressId]: res.data.address_detail,
+      }));
+      toast.success('Address status updated');
+    } catch {
+      toast.error('Failed to update address status');
+    }
+  };
+
+  const handleDeleteAddress = async (addressId: string) => {
+    try {
+      await axiosInstance.delete(`/admin/customers/${customer._id}/address/${addressId}`);
+      setLocalAddresses((prev) => prev.filter((a) => a.address_id !== addressId));
+      setAddressDetails((prev) => {
+        const next = { ...prev };
+        delete next[addressId];
+        return next;
+      });
+      toast.success('Address deleted successfully.');
+    } catch {
+      toast.error('Failed to delete address.');
+    } finally {
+      setDeleteAddressConfirm(null);
+    }
+  };
 
   const handleSave = async () => {
     if (!customer) return;
@@ -142,6 +250,19 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
       onClose();
     } catch (error) {
       toast.error('Failed to update customer details.');
+    }
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!customer) return;
+    try {
+      await axiosInstance.delete(`/admin/customers/${customer._id}`);
+      toast.success('Customer deleted successfully.');
+      setDeleteConfirmOpen(false);
+      onClose();
+      if (onCustomerDelete) onCustomerDelete(customer._id);
+    } catch (error) {
+      toast.error('Failed to delete customer.');
     }
   };
 
@@ -227,13 +348,22 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
       anchor='right'
       open={open}
       onClose={onClose}
-      sx={{ '& .MuiDrawer-paper': { width: 600, padding: 3 } }}
+      sx={{ '& .MuiDrawer-paper': { width: 600, display: 'flex', flexDirection: 'column' } }}
     >
       {customer && (
-        <Box>
-          <Typography variant='h5' sx={{ fontWeight: 'bold', mb: 2 }}>
-            Customer Details
-          </Typography>
+        <Box sx={{ flex: 1, overflowY: 'auto', p: 3, pt: '80px' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
+            <Typography variant='h5' sx={{ fontWeight: 'bold', flex: 1 }}>
+              Customer Details
+            </Typography>
+            <Tooltip title='Refresh customer details'>
+              <span>
+                <IconButton onClick={handleRefresh} disabled={refreshing} size='small'>
+                  {refreshing ? <CircularProgress size={18} /> : <Refresh />}
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Box>
           <Typography>
             <strong>Name:</strong> {customer.contact_name}
           </Typography>
@@ -254,7 +384,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                 value={editTier}
                 onChange={(e) => setEditTier(e.target.value)}
               >
-                {TIERS.map((letter: string, index: number) => (
+                {TIERS.map((letter: string) => (
                   <MenuItem value={letter} defaultValue={editTier}>
                     {letter}
                   </MenuItem>
@@ -326,7 +456,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
               </Select>
             </FormControl>
           </Box>
-          {customer.addresses.length > 0 && (
+          {localAddresses.length > 0 && (
             <Box sx={{ mt: 2, mb: 2 }}>
               <Button
                 variant='outlined'
@@ -335,19 +465,62 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                 {showAddresses ? 'Hide Addresses' : 'Show Addresses'}
               </Button>
               {showAddresses && (
-                <List>
-                  {customer.addresses.map((a: any, i: number) => (
-                    <ListItem key={a.address_id}>
-                      <ListItemText
-                        primary={`Address ${i + 1}: ${a.attention}`}
-                        secondary={
-                          <>
-                            {a.address}, {a.street2 && `${a.street2}, `}
-                            {a.city}, {a.state} - {a.zip} <br />
-                            {a.country} ({a.country_code})
-                          </>
-                        }
-                      />
+                <List disablePadding>
+                  {localAddresses.map((a: any, i: number) => (
+                    <ListItem
+                      key={a.address_id}
+                      alignItems='flex-start'
+                      sx={{ flexDirection: 'column', py: 1.5, borderBottom: '1px solid #f0f0f0' }}
+                    >
+                      <Box sx={{ display: 'flex', width: '100%', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                        <ListItemText
+                          primary={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                              <span>{`Address ${i + 1}: ${a.attention}`}</span>
+                              <Chip
+                                label={billedAddresses[a.address_id] ? 'Billed' : 'Never Billed'}
+                                color={billedAddresses[a.address_id] ? 'success' : 'default'}
+                                size='small'
+                              />
+                              <Chip
+                                label={inAnalyticsAddresses[a.address_id] ? 'In Analytics' : 'Not in Analytics'}
+                                color={inAnalyticsAddresses[a.address_id] ? 'info' : 'default'}
+                                size='small'
+                                variant='outlined'
+                              />
+                            </Box>
+                          }
+                          secondary={
+                            <>
+                              {a.address} {a.street2 && `${a.street2} `}
+                              {a.city} {a.state} - {a.zip} <br />
+                              {a.country} ({a.country_code})
+                            </>
+                          }
+                        />
+                        <IconButton
+                          color='error'
+                          size='small'
+                          onClick={() => setDeleteAddressConfirm(a.address_id)}
+                        >
+                          <Delete />
+                        </IconButton>
+                      </Box>
+                      <FormControl size='small' sx={{ mt: 1, minWidth: 160 }}>
+                        <InputLabel>Status</InputLabel>
+                        <Select
+                          label='Status'
+                          value={addressDetails[a.address_id]?.status || ''}
+                          onChange={(e) =>
+                            handleAddressStatusChange(a.address_id, e.target.value)
+                          }
+                        >
+                          <MenuItem value=''>— None —</MenuItem>
+                          <MenuItem value='open'>Open</MenuItem>
+                          <MenuItem value='closed'>Closed</MenuItem>
+                          <MenuItem value='warehouse'>Warehouse</MenuItem>
+                        </Select>
+                      </FormControl>
                     </ListItem>
                   ))}
                 </List>
@@ -397,10 +570,10 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                       <AccordionSummary
                         expandIcon={<ExpandMore />}
                         sx={{
-                          backgroundColor: '#f0f7ff',
+                          bgcolor: 'action.hover',
                           borderRadius: '8px',
                           '&:hover': {
-                            backgroundColor: '#e3f2fd',
+                            bgcolor: 'action.selected',
                           },
                         }}
                       >
@@ -452,7 +625,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                 <TableCell
                                   sx={{
                                     fontWeight: 'bold',
-                                    backgroundColor: '#f5f5f5',
+                                    bgcolor: 'action.hover',
                                   }}
                                 >
                                   #
@@ -460,7 +633,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                 <TableCell
                                   sx={{
                                     fontWeight: 'bold',
-                                    backgroundColor: '#f5f5f5',
+                                    bgcolor: 'action.hover',
                                   }}
                                 >
                                   Product Name
@@ -468,7 +641,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                 <TableCell
                                   sx={{
                                     fontWeight: 'bold',
-                                    backgroundColor: '#f5f5f5',
+                                    bgcolor: 'action.hover',
                                   }}
                                 >
                                   Margin
@@ -476,7 +649,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                 <TableCell
                                   sx={{
                                     fontWeight: 'bold',
-                                    backgroundColor: '#f5f5f5',
+                                    bgcolor: 'action.hover',
                                   }}
                                 >
                                   Action
@@ -489,7 +662,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                   key={prod.product_id}
                                   sx={{
                                     '&:hover': {
-                                      backgroundColor: '#f9f9f9',
+                                      bgcolor: 'action.selected',
                                     },
                                   }}
                                 >
@@ -541,7 +714,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                         p: 2,
                         border: '1px solid #e0e0e0',
                         borderRadius: 2,
-                        backgroundColor: '#fafafa',
+                        backgroundColor: 'action.hover' as any,
                       }}
                     >
                       <Box
@@ -587,7 +760,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                   <TableCell
                                     sx={{
                                       fontWeight: 'bold',
-                                      backgroundColor: '#f5f5f5',
+                                      bgcolor: 'action.hover',
                                     }}
                                   >
                                     #
@@ -595,7 +768,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                   <TableCell
                                     sx={{
                                       fontWeight: 'bold',
-                                      backgroundColor: '#f5f5f5',
+                                      bgcolor: 'action.hover',
                                     }}
                                   >
                                     Product Name
@@ -603,7 +776,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                   <TableCell
                                     sx={{
                                       fontWeight: 'bold',
-                                      backgroundColor: '#f5f5f5',
+                                      bgcolor: 'action.hover',
                                     }}
                                   >
                                     Margin
@@ -611,7 +784,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                   <TableCell
                                     sx={{
                                       fontWeight: 'bold',
-                                      backgroundColor: '#f5f5f5',
+                                      bgcolor: 'action.hover',
                                     }}
                                   >
                                     Action
@@ -624,7 +797,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                     key={prod.product_id}
                                     sx={{
                                       '&:hover': {
-                                        backgroundColor: '#f9f9f9',
+                                        bgcolor: 'action.selected',
                                       },
                                     }}
                                   >
@@ -668,16 +841,57 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
             )}
           </Box>
 
-          <Box sx={{ mt: 3, mb: 3, display: ' flex', gap: 2 }}>
+          <Box sx={{ mt: 3, mb: 3, display: 'flex', gap: 2 }}>
             <Button variant='contained' onClick={handleSave}>
               Save Changes
             </Button>
             <Button variant='contained' color='secondary' onClick={onClose}>
               Cancel
             </Button>
+            <Button
+              variant='contained'
+              color='error'
+              onClick={() => setDeleteConfirmOpen(true)}
+            >
+              Delete Customer
+            </Button>
           </Box>
         </Box>
       )}
+
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
+        <DialogTitle>Delete Customer</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete <strong>{customer?.contact_name}</strong>? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+          <Button color='error' variant='contained' onClick={handleDeleteCustomer}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!deleteAddressConfirm} onClose={() => setDeleteAddressConfirm(null)}>
+        <DialogTitle>Delete Address</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this address? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteAddressConfirm(null)}>Cancel</Button>
+          <Button
+            color='error'
+            variant='contained'
+            onClick={() => deleteAddressConfirm && handleDeleteAddress(deleteAddressConfirm)}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Drawer>
   );
 };

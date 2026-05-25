@@ -14,6 +14,12 @@ import {
     Tooltip,
     IconButton,
     useTheme,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Checkbox,
+    Divider,
 } from '@mui/material';
 import {
     FilterAlt,
@@ -78,6 +84,10 @@ const CustomerAnalytics = () => {
     const [detailsDrawerOpen, setDetailsDrawerOpen] = useState(false);
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [downloadLoading, setDownloadLoading] = useState(false);
+    const [exportModalOpen, setExportModalOpen] = useState(false);
+    const [availableBrands, setAvailableBrands] = useState<string[]>([]);
+    const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+    const [brandsLoading, setBrandsLoading] = useState(false);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-IN', {
@@ -290,10 +300,26 @@ const CustomerAnalytics = () => {
         }
     };
 
+    const handleOpenExportModal = async () => {
+        setExportModalOpen(true);
+        setBrandsLoading(true);
+        try {
+            const response = await axiosInstance.get('/admin/brands');
+            const brands: string[] = response.data.brands || [];
+            setAvailableBrands(brands);
+            setSelectedBrands(brands);
+        } catch (error) {
+            console.error(error);
+            toast.error('Error fetching brands.');
+        } finally {
+            setBrandsLoading(false);
+        }
+    };
+
     const handleDownloadReport = async () => {
         setDownloadLoading(true);
         try {
-            const params = {
+            const params: any = {
                 name: debouncedSearchQuery,
                 status: filterOptions.status,
                 tier: filterOptions.tier,
@@ -302,6 +328,10 @@ const CustomerAnalytics = () => {
                 sort: 'asc',
                 include_brand_breakdown: true,
             };
+
+            if (selectedBrands.length > 0 && selectedBrands.length < availableBrands.length) {
+                params.brands = selectedBrands.join(',');
+            }
 
             const response = await axiosInstance.get('/admin/customer_analytics/report', {
                 params,
@@ -317,12 +347,27 @@ const CustomerAnalytics = () => {
             link.remove();
             window.URL.revokeObjectURL(url);
             toast.success('Report downloaded successfully!');
+            setExportModalOpen(false);
         } catch (error) {
             console.error(error);
             toast.error('Error downloading report.');
         } finally {
             setDownloadLoading(false);
         }
+    };
+
+    const handleBrandToggle = (brand: string) => {
+        setSelectedBrands(prev =>
+            prev.includes(brand) ? prev.filter(b => b !== brand) : [...prev, brand]
+        );
+    };
+
+    const handleSelectAllBrands = () => {
+        setSelectedBrands(availableBrands);
+    };
+
+    const handleDeselectAllBrands = () => {
+        setSelectedBrands([]);
     };
 
     const handleRefresh = () => {
@@ -345,10 +390,10 @@ const CustomerAnalytics = () => {
                         <Analytics />
                     </Avatar>
                     <Box>
-                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'white', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+                        <Typography variant="h4" sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
                             Customer Analytics Dashboard
                         </Typography>
-                        <Typography variant="body1" color="white">
+                        <Typography variant="body1" color="text.secondary">
                             Comprehensive view of customer performance and insights
                         </Typography>
                     </Box>
@@ -365,7 +410,6 @@ const CustomerAnalytics = () => {
             <Paper
                 sx={{
                     borderRadius: 4,
-                    backgroundColor: 'white',
                     position: 'relative',
                     overflow: 'hidden',
                 }}
@@ -374,8 +418,8 @@ const CustomerAnalytics = () => {
                 <Box
                     sx={{
                         p: 3,
-                        borderBottom: '1px solid #e0e0e0',
-                        backgroundColor: '#fafafa',
+                        borderBottom: `1px solid ${theme.palette.divider}`,
+                        backgroundColor: 'action.hover' as any,
                     }}
                 >
                     <Box
@@ -438,12 +482,12 @@ const CustomerAnalytics = () => {
 
                             <Button
                                 variant="contained"
-                                startIcon={downloadLoading ? <CircularProgress size={20} color="inherit" /> : <Download />}
-                                onClick={handleDownloadReport}
+                                startIcon={<Download />}
+                                onClick={handleOpenExportModal}
                                 sx={{ borderRadius: 2 }}
                                 disabled={initialLoading || downloadLoading}
                             >
-                                {downloadLoading ? 'Downloading...' : 'Export XLSX'}
+                                Export XLSX
                             </Button>
 
                             <Button
@@ -470,8 +514,8 @@ const CustomerAnalytics = () => {
                                 justifyContent: 'center',
                                 alignItems: 'center',
                                 minHeight: 500,
-                                backgroundColor: '#fafafa',
-                                border: '1px solid #e0e0e0',
+                                backgroundColor: 'action.hover' as any,
+                                border: `1px solid ${theme.palette.divider}`,
                                 borderRadius: 2,
                             }}
                         >
@@ -521,14 +565,16 @@ const CustomerAnalytics = () => {
                                         display: 'flex',
                                         justifyContent: 'center',
                                         alignItems: 'center',
-                                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                        backgroundColor: theme.palette.mode === 'dark'
+                                          ? 'rgba(13,27,42,0.85)'
+                                          : 'rgba(255, 255, 255, 0.9)',
                                         zIndex: 10,
                                         backdropFilter: 'blur(3px)',
                                     }}
                                 >
                                     <Box sx={{ textAlign: 'center' }}>
                                         <CircularProgress size={60} thickness={4} />
-                                        <Typography variant="body1" sx={{ mt: 2, color: '#1976d2' }}>
+                                        <Typography variant="body1" sx={{ mt: 2, color: 'primary.main' }}>
                                             Updating customer data...
                                         </Typography>
                                     </Box>
@@ -538,6 +584,147 @@ const CustomerAnalytics = () => {
                     )}
                 </Box>
             </Paper>
+            <Dialog open={exportModalOpen} onClose={() => !downloadLoading && setExportModalOpen(false)} maxWidth="md" fullWidth>
+                <DialogTitle sx={{ pb: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.12), width: 44, height: 44 }}>
+                            <Download sx={{ color: theme.palette.primary.main, fontSize: 22 }} />
+                        </Avatar>
+                        <Box sx={{ flex: 1 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                                Export Report
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Select brands to include in the brand breakdown sheet
+                            </Typography>
+                        </Box>
+                        {!brandsLoading && (
+                            <Chip
+                                label={`${selectedBrands.length} / ${availableBrands.length} selected`}
+                                size="small"
+                                color={selectedBrands.length > 0 ? 'primary' : 'default'}
+                                sx={{ fontWeight: 600 }}
+                            />
+                        )}
+                    </Box>
+                </DialogTitle>
+                <Divider />
+                <DialogContent sx={{ pt: 2.5, pb: 2 }}>
+                    {brandsLoading ? (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 6, gap: 2 }}>
+                            <CircularProgress size={40} />
+                            <Typography variant="body2" color="text.secondary">Loading brands...</Typography>
+                        </Box>
+                    ) : (
+                        <>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    Click to toggle brands
+                                </Typography>
+                                <Stack direction="row" spacing={1}>
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        onClick={handleSelectAllBrands}
+                                        sx={{ borderRadius: 2, textTransform: 'none' }}
+                                    >
+                                        Select All
+                                    </Button>
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        color="inherit"
+                                        onClick={handleDeselectAllBrands}
+                                        sx={{ borderRadius: 2, textTransform: 'none', color: 'text.secondary' }}
+                                    >
+                                        Clear
+                                    </Button>
+                                </Stack>
+                            </Box>
+                            <Box
+                                sx={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(3, 1fr)',
+                                    gap: 1,
+                                }}
+                            >
+                                {availableBrands.map(brand => {
+                                    const isSelected = selectedBrands.includes(brand);
+                                    return (
+                                        <Box
+                                            key={brand}
+                                            onClick={() => handleBrandToggle(brand)}
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 1,
+                                                px: 1.5,
+                                                py: 1.25,
+                                                borderRadius: 2,
+                                                border: '1.5px solid',
+                                                borderColor: isSelected ? theme.palette.primary.main : alpha(theme.palette.divider, 1),
+                                                backgroundColor: isSelected ? alpha(theme.palette.primary.main, 0.06) : 'transparent',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s ease',
+                                                userSelect: 'none',
+                                                '&:hover': {
+                                                    borderColor: theme.palette.primary.main,
+                                                    backgroundColor: alpha(theme.palette.primary.main, isSelected ? 0.08 : 0.03),
+                                                },
+                                            }}
+                                        >
+                                            <Checkbox
+                                                checked={isSelected}
+                                                size="small"
+                                                disableRipple
+                                                sx={{
+                                                    p: 0,
+                                                    color: isSelected ? theme.palette.primary.main : 'text.disabled',
+                                                    '&.Mui-checked': { color: theme.palette.primary.main },
+                                                }}
+                                            />
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    fontWeight: isSelected ? 600 : 400,
+                                                    color: isSelected ? theme.palette.primary.main : 'text.primary',
+                                                    fontSize: '0.8125rem',
+                                                    lineHeight: 1.3,
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                {brand}
+                                            </Typography>
+                                        </Box>
+                                    );
+                                })}
+                            </Box>
+                        </>
+                    )}
+                </DialogContent>
+                <Divider />
+                <DialogActions sx={{ px: 3, py: 2 }}>
+                    <Button
+                        onClick={() => setExportModalOpen(false)}
+                        disabled={downloadLoading}
+                        sx={{ borderRadius: 2, textTransform: 'none' }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleDownloadReport}
+                        disabled={downloadLoading || selectedBrands.length === 0}
+                        startIcon={downloadLoading ? <CircularProgress size={16} color="inherit" /> : <Download />}
+                        sx={{ borderRadius: 2, textTransform: 'none', minWidth: 160 }}
+                    >
+                        {downloadLoading ? 'Downloading...' : `Export (${selectedBrands.length} brands)`}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
  <CustomerAnalyticsFilter
                 open={openFilterDrawer}
                 onClose={() => setOpenFilterDrawer(false)}

@@ -7,6 +7,7 @@ interface QuantitySelectorProps {
   max: number;
   onChange: (newQuantity: number) => void;
   disabled?: boolean;
+  step?: number;
 }
 
 const QuantitySelector: React.FC<QuantitySelectorProps> = ({
@@ -14,6 +15,7 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   max,
   onChange,
   disabled = false,
+  step = 1,
 }) => {
   const theme = useTheme()
   const [inputValue, setInputValue] = useState<string>(quantity.toString());
@@ -31,10 +33,10 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
     if (e && 'touches' in e) {
       e.preventDefault();
     }
-    if (quantity < max) {
-      onChange(quantity + 1);
+    if (quantity + step <= max) {
+      onChange(quantity + step);
     }
-  }, [quantity, max, onChange]);
+  }, [quantity, max, step, onChange]);
 
   const handleDecrease = useCallback((e?: React.MouseEvent | React.TouchEvent) => {
     e?.preventDefault();
@@ -43,10 +45,10 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
     if (e && 'touches' in e) {
       e.preventDefault();
     }
-    if (quantity > 1) {
-      onChange(quantity - 1);
+    if (quantity - step >= step) {
+      onChange(quantity - step);
     }
-  }, [quantity, onChange]);
+  }, [quantity, step, onChange]);
 
   const handleInputChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,10 +63,17 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
 
   const handleInputBlur = useCallback(() => {
     let newQuantity = parseInt(inputValue, 10);
-    if (isNaN(newQuantity) || newQuantity < 1) {
-      newQuantity = 1;
+    if (isNaN(newQuantity) || newQuantity < step) {
+      newQuantity = step;
     } else if (newQuantity > max) {
-      newQuantity = max;
+      // Round down to nearest multiple of step that fits within max
+      newQuantity = Math.floor(max / step) * step;
+      if (newQuantity < step) newQuantity = step;
+    } else {
+      // Round to nearest multiple of step
+      newQuantity = Math.round(newQuantity / step) * step;
+      if (newQuantity > max) newQuantity = Math.floor(max / step) * step;
+      if (newQuantity < step) newQuantity = step;
     }
     if (newQuantity !== quantity) {
       onChange(newQuantity);
@@ -72,7 +81,7 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
       // Reset inputValue to reflect any adjustments
       setInputValue(newQuantity.toString());
     }
-  }, [inputValue, max, onChange, quantity]);
+  }, [inputValue, max, step, onChange, quantity]);
 
   return (
     <Box
@@ -94,7 +103,7 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
     >
       <IconButton
         onClick={handleDecrease}
-        disabled={disabled || quantity <= 1}
+        disabled={disabled || quantity <= step}
         aria-label='Decrease quantity'
         size={isMobile ? 'medium' : 'small'}
         sx={{
@@ -181,7 +190,7 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
       />
       <IconButton
         onClick={handleIncrease}
-        disabled={disabled || quantity >= max}
+        disabled={disabled || quantity + step > max}
         aria-label='Increase quantity'
         size={isMobile ? 'medium' : 'small'}
         sx={{

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useContext } from 'react';
 import {
   Typography,
   List,
@@ -35,8 +35,11 @@ import { toast } from 'react-toastify';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { green, red } from '@mui/material/colors';
 import axiosInstance from '../../src/util/axios';
+import AuthContext from '../../src/components/Auth';
 
 const SalesPeople = () => {
+  const { user }: any = useContext(AuthContext);
+  const isAdmin = user?.role === 'admin';
   const [salesPeople, setSalesPeople]: any = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPerson, setSelectedPerson]: any = useState(null);
@@ -50,12 +53,14 @@ const SalesPeople = () => {
     name: '',
     code: '',
     salesperson_id: '',
-    designation: '',
+    designation: 'Sales Person',
     email: '',
     phone: '',
+    password: '',
     status: 'active',
     role: 'sales_person',
   });
+  const [editPassword, setEditPassword] = useState('');
   const [zohoSalespersons, setZohoSalespersons]: any = useState([]);
   const [zohoLoading, setZohoLoading] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
@@ -78,6 +83,32 @@ const SalesPeople = () => {
       setLoading(false);
     }
   }, [baseApiUrl]);
+
+  
+  const createSalesPersonZoho = useCallback(async () => {
+    try {
+      const response = await axiosInstance.post(`/admin/salespeople`);
+      setSalesPeople(response.data.users);
+    } catch (error) {
+      console.error(error);
+      toast.error('Error fetching Sales People.');
+    } finally {
+      setLoading(false);
+    }
+  }, [baseApiUrl]);
+
+ 
+  const handleDeleteSalesPerson = useCallback(async (personId: string) => {
+    if (!confirm('Are you sure you want to delete this salesperson?')) return;
+    try {
+      await axiosInstance.delete(`/admin/salespeople/${personId}`);
+      setSalesPeople((prev: any) => prev.filter((p: any) => p._id !== personId));
+      toast.success('Salesperson deleted successfully');
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.response?.data?.detail || 'Failed to delete salesperson');
+    }
+  }, []);
 
   useEffect(() => {
     fetchSalesPeople();
@@ -147,25 +178,41 @@ const SalesPeople = () => {
     setDrawerOpen(false);
     setSelectedPerson(null);
     setRowErrors({});
+    setEditPassword('');
   }, []);
 
   // Handle creating a new salesperson
   const handleCreateSalesPerson = useCallback(async () => {
+    if (!newSalesPerson.name.trim() || !newSalesPerson.email.trim()) {
+      toast.error('Name and email are required');
+      return;
+    }
     try {
-      const response = await axiosInstance.post(
-        `/admin/salespeople`,
-        newSalesPerson
+      // Step 1: Create on Zoho and get back the salesperson_id + code
+      const zohoResponse = await axiosInstance.post(
+        `/admin/salespeople/zoho/salesperson`,
+        { name: newSalesPerson.name, email: newSalesPerson.email }
       );
-      setSalesPeople((prev: any) => [...prev, response.data]);
+      const zohoSalesperson = zohoResponse.data.salesperson;
+
+      // Step 2: Create local user with Zoho data attached
+      const payload = {
+        ...newSalesPerson,
+        code: zohoSalesperson.salesperson_name,
+        salesperson_id: zohoSalesperson.salesperson_id,
+      };
+      await axiosInstance.post(`/admin/salespeople`, payload);
+      await fetchSalesPeople();
       toast.success('Salesperson added successfully');
       setAddDialogOpen(false);
       setNewSalesPerson({
         name: '',
         code: '',
         salesperson_id: '',
-        designation: '',
+        designation: 'Sales Person',
         email: '',
         phone: '',
+        password: '',
         status: 'active',
         role: 'sales_person',
       });
@@ -174,7 +221,7 @@ const SalesPeople = () => {
       const errorMessage = error?.response?.data?.detail || 'Failed to add salesperson';
       toast.error(errorMessage);
     }
-  }, [baseApiUrl, newSalesPerson]);
+  }, [newSalesPerson]);
 
   // Handle field changes for new salesperson form
   const handleAddFieldChange = useCallback((field: any, value: any) => {
@@ -184,22 +231,6 @@ const SalesPeople = () => {
     }));
   }, []);
 
-  // Handle Zoho salesperson selection
-  const handleZohoSalespersonSelect = useCallback((salesperson: any) => {
-    if (salesperson) {
-      setNewSalesPerson((prev) => ({
-        ...prev,
-        code: salesperson.salesperson_name,
-        salesperson_id: salesperson.salesperson_id,
-      }));
-    } else {
-      setNewSalesPerson((prev) => ({
-        ...prev,
-        code: '',
-        salesperson_id: '',
-      }));
-    }
-  }, []);
 
   // Handle field changes in selected person
   const handleFieldChange = useCallback((field: any, value: any) => {
@@ -397,26 +428,32 @@ const SalesPeople = () => {
     }
   }, [baseApiUrl, refetchSelectedPerson, selectedCustomers, selectedPerson]);
 
-  // Save salesperson details (name, status, code, salesperson_id)
+  // Save salesperson details
   const handleSaveSalesperson = useCallback(async () => {
     if (!selectedPerson) return;
     try {
-      await axiosInstance.put(`/admin/salespeople/${selectedPerson._id}`, {
+      const payload: any = {
         name: selectedPerson.name,
+        email: selectedPerson.email,
+        designation: selectedPerson.designation,
         status: selectedPerson.status,
         code: selectedPerson.code,
         salesperson_id: selectedPerson.salesperson_id,
         phone: selectedPerson.phone ? parseInt(selectedPerson.phone, 10) : undefined,
-      });
+      };
+      if (editPassword.trim()) {
+        payload.password = editPassword.trim();
+      }
+      await axiosInstance.put(`/admin/salespeople/${selectedPerson._id}`, payload);
       toast.success('Salesperson updated successfully.');
+      setEditPassword('');
       await refetchSelectedPerson(selectedPerson._id);
-      // Also refresh the list
-      fetchSalesPeople();
+      await fetchSalesPeople();
     } catch (err) {
       console.error(err);
       toast.error('Failed to update salesperson');
     }
-  }, [selectedPerson, refetchSelectedPerson, fetchSalesPeople]);
+  }, [selectedPerson, editPassword, refetchSelectedPerson, fetchSalesPeople]);
 
   // Bulk save customer changes
   const handleBulkSaveCustomers = useCallback(async () => {
@@ -453,7 +490,7 @@ const SalesPeople = () => {
     <Box sx={{ padding: { xs: 2, sm: 3 } }}>
       <Paper
         elevation={3}
-        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4, backgroundColor: 'white' }}
+        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4 }}
       >
         <Box
           display={'flex'}
@@ -499,33 +536,17 @@ const SalesPeople = () => {
               onChange={(e) => handleAddFieldChange('name', e.target.value)}
               fullWidth
               margin='normal'
+              required
             />
-            <FormControl fullWidth margin='normal'>
-              <InputLabel>Code (Zoho Salesperson)</InputLabel>
-              <Select
-                label='Code (Zoho Salesperson)'
-                value={newSalesPerson.salesperson_id}
-                onChange={(e) => {
-                  const selected = zohoSalespersons.find(
-                    (sp: any) => sp.salesperson_id === e.target.value
-                  );
-                  handleZohoSalespersonSelect(selected);
-                }}
-                disabled={zohoLoading}
-              >
-                {zohoLoading ? (
-                  <MenuItem disabled>Loading...</MenuItem>
-                ) : zohoSalespersons.length === 0 ? (
-                  <MenuItem disabled>No salespersons found</MenuItem>
-                ) : (
-                  zohoSalespersons.map((sp: any) => (
-                    <MenuItem key={sp.salesperson_id} value={sp.salesperson_id}>
-                      {sp.salesperson_name} - {sp.email}
-                    </MenuItem>
-                  ))
-                )}
-              </Select>
-            </FormControl>
+            <TextField
+              label='Email'
+              variant='outlined'
+              value={newSalesPerson.email}
+              onChange={(e) => handleAddFieldChange('email', e.target.value)}
+              fullWidth
+              margin='normal'
+              required
+            />
             <TextField
               label='Designation'
               variant='outlined'
@@ -537,20 +558,22 @@ const SalesPeople = () => {
               margin='normal'
             />
             <TextField
-              label='Email'
-              variant='outlined'
-              value={newSalesPerson.email}
-              onChange={(e) => handleAddFieldChange('email', e.target.value)}
-              fullWidth
-              margin='normal'
-            />
-            <TextField
               label='Phone'
               variant='outlined'
               value={newSalesPerson.phone}
               onChange={(e) => handleAddFieldChange('phone', e.target.value)}
               fullWidth
               margin='normal'
+            />
+            <TextField
+              label='Password'
+              variant='outlined'
+              type='password'
+              value={newSalesPerson.password}
+              onChange={(e) => handleAddFieldChange('password', e.target.value)}
+              fullWidth
+              margin='normal'
+              helperText='Leave blank to use the default password'
             />
             <TextField
               select
@@ -619,12 +642,22 @@ const SalesPeople = () => {
                       />
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant='contained'
-                        onClick={() => handleViewDetails(person)}
-                      >
-                        Edit
-                      </Button>
+                      <Box display='flex' alignItems='center' gap={1}>
+                        <Button
+                          variant='contained'
+                          onClick={() => handleViewDetails(person)}
+                        >
+                          Edit
+                        </Button>
+                        {isAdmin && (
+                          <IconButton
+                            color='error'
+                            onClick={() => handleDeleteSalesPerson(person._id)}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        )}
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -690,6 +723,30 @@ const SalesPeople = () => {
                   value={selectedPerson.name || ''}
                   onChange={(e) => handleFieldChange('name', e.target.value)}
                   fullWidth
+                />
+                <TextField
+                  label='Email'
+                  variant='outlined'
+                  type='email'
+                  value={selectedPerson.email || ''}
+                  onChange={(e) => handleFieldChange('email', e.target.value)}
+                  fullWidth
+                />
+                <TextField
+                  label='Designation'
+                  variant='outlined'
+                  value={selectedPerson.designation || ''}
+                  onChange={(e) => handleFieldChange('designation', e.target.value)}
+                  fullWidth
+                />
+                <TextField
+                  label='New Password'
+                  variant='outlined'
+                  type='password'
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  fullWidth
+                  helperText='Leave blank to keep existing password'
                 />
                 <TextField
                   label='Code'

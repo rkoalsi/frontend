@@ -20,6 +20,7 @@ import {
   Chip,
   IconButton,
   Divider,
+  Autocomplete,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -52,6 +53,10 @@ const DailyVisits = () => {
   const [startDate, setStartDate]: any = useState<dayjs.Dayjs | null>(null);
   const [endDate, setEndDate]: any = useState<dayjs.Dayjs | null>(null);
 
+  // Salesperson filter state
+  const [salespersonFilter, setSalespersonFilter] = useState<string | null>(null);
+  const [salespersonOptions, setSalespersonOptions] = useState<string[]>([]);
+
   // Loading states
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -73,20 +78,47 @@ const DailyVisits = () => {
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
 
+  // Fetch salespeople options for the filter dropdown
+  const fetchSalespeopleOptions = async () => {
+    try {
+      const response = await axiosInstance.get('/admin/daily_visits/salespeople');
+      const names: string[] = response.data.salespeople.map((sp: any) => sp.name);
+      setSalespersonOptions(names);
+    } catch (error) {
+      console.error('Error fetching salespeople:', error);
+    }
+  };
+
   // Fetch daily visits from server
-  const fetchDailyVisits = async () => {
+  // Accepts optional overrides so callers (e.g. clear-filter) can bypass
+  // stale closure values without waiting for state to settle.
+  const fetchDailyVisits = async (overrides?: {
+    salesperson?: string | null;
+    start?: dayjs.Dayjs | null;
+    end?: dayjs.Dayjs | null;
+  }) => {
+    const activeStart = overrides && 'start' in overrides ? overrides.start : startDate;
+    const activeEnd = overrides && 'end' in overrides ? overrides.end : endDate;
+    const activeSalesperson =
+      overrides && 'salesperson' in overrides ? overrides.salesperson : salespersonFilter;
+
     setLoading(true);
     try {
       const params: any = { page, limit: rowsPerPage };
 
       // Add date filters if they exist
-      if (startDate) {
-        params.start_date = startDate.format('YYYY-MM-DD'); // Format: YYYY-MM-DD
+      if (activeStart) {
+        params.start_date = activeStart.format('YYYY-MM-DD');
       }
-      if (endDate) {
+      if (activeEnd) {
         // Add one day to include the end date in results
-        const nextDay = endDate.add(1, 'day');
+        const nextDay = activeEnd.add(1, 'day');
         params.end_date = nextDay.format('YYYY-MM-DD');
+      }
+
+      // Add salesperson filter if set
+      if (activeSalesperson) {
+        params.salesperson_name = activeSalesperson;
       }
 
       const response = await axiosInstance.get('/admin/daily_visits', {
@@ -107,6 +139,11 @@ const DailyVisits = () => {
   };
 
   useEffect(() => {
+    fetchSalespeopleOptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     fetchDailyVisits();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, rowsPerPage, actionLoading]);
@@ -117,15 +154,14 @@ const DailyVisits = () => {
     fetchDailyVisits();
   };
 
-  // Clear date filters
+  // Clear all filters
   const handleClearDateFilter = () => {
     setStartDate(null);
     setEndDate(null);
+    setSalespersonFilter(null);
     setPage(0);
-    // Fetch data automatically after clearing
-    setTimeout(() => {
-      fetchDailyVisits();
-    }, 0);
+    // Pass cleared values explicitly so fetchDailyVisits doesn't read stale state
+    fetchDailyVisits({ salesperson: null, start: null, end: null });
   };
 
   const handleImageClick = useCallback((src: string) => {
@@ -385,6 +421,11 @@ const DailyVisits = () => {
         params.end_date = nextDay.format('YYYY-MM-DD');
       }
 
+      // Add salesperson filter if set
+      if (salespersonFilter) {
+        params.salesperson_name = salespersonFilter;
+      }
+
       const response = await axiosInstance.get('/admin/daily_visits/report', {
         params,
         responseType: 'blob', // important for binary data!
@@ -395,8 +436,11 @@ const DailyVisits = () => {
       const link = document.createElement('a');
       link.href = url;
 
-      // Add date range to filename if dates are selected
+      // Add salesperson + date range to filename if filters are active
       let filename = 'daily_visits_report';
+      if (salespersonFilter) {
+        filename += `_${salespersonFilter.replace(/ /g, '_')}`;
+      }
       if (startDate && endDate) {
         const startDateStr = startDate.format('YYYY-MM-DD');
         const endDateStr = endDate.format('YYYY-MM-DD');
@@ -424,7 +468,7 @@ const DailyVisits = () => {
     <Box sx={{ padding: { xs: 2, sm: 3 } }}>
       <Paper
         elevation={3}
-        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4, backgroundColor: 'white' }}
+        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4 }}
       >
         <Box display='flex' flexDirection={{ xs: 'column', sm: 'row' }} justifyContent='space-between' alignItems={{ xs: 'flex-start', sm: 'center' }} gap={{ xs: 2, sm: 0 }}>
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
@@ -432,11 +476,11 @@ const DailyVisits = () => {
           </Typography>
           <Button onClick={handleDownload}>Download Daily Visits XLSX</Button>
         </Box>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           View all daily visits from sales people below.
         </Typography>
 
-        {/* Date Filter Section */}
+        {/* Filter Section */}
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <Box
             sx={{
@@ -462,11 +506,26 @@ const DailyVisits = () => {
               minDate={startDate || undefined}
               disableFuture
             />
+            <Autocomplete
+              options={salespersonOptions}
+              value={salespersonFilter}
+              onChange={(_event, newValue) => setSalespersonFilter(newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label='Salesperson'
+                  size='small'
+                  sx={{ minWidth: 200 }}
+                />
+              )}
+              clearOnEscape
+              sx={{ minWidth: 200 }}
+            />
             <Button
               variant='contained'
               color='primary'
               onClick={handleApplyDateFilter}
-              disabled={!startDate && !endDate}
+              disabled={!startDate && !endDate && !salespersonFilter}
             >
               Apply Filter
             </Button>
@@ -474,7 +533,7 @@ const DailyVisits = () => {
               variant='outlined'
               color='secondary'
               onClick={handleClearDateFilter}
-              disabled={!startDate && !endDate}
+              disabled={!startDate && !endDate && !salespersonFilter}
             >
               Clear Filter
             </Button>
@@ -654,7 +713,7 @@ const DailyVisits = () => {
                     {selectedVisit.admin_comments
                       .filter((c: any) => !c.shop_id)
                       .map((comment: any) => (
-                        <Paper key={comment._id} sx={{ p: 1.5, my: 1, backgroundColor: '#fff3e0' }}>
+                        <Paper key={comment._id} sx={{ p: 1.5, my: 1, bgcolor: 'action.hover' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <Box sx={{ flex: 1 }}>
                               <Typography variant='body2' sx={{ fontWeight: 500 }}>
@@ -694,7 +753,7 @@ const DailyVisits = () => {
                           </Box>
                           {/* Reply display */}
                           {comment.reply && (
-                            <Paper sx={{ p: 1, mt: 1, ml: 2, backgroundColor: '#e8f5e9' }}>
+                            <Paper sx={{ p: 1, mt: 1, ml: 2, bgcolor: 'action.selected' }}>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <Box sx={{ flex: 1 }}>
                                   <Typography variant='caption' sx={{ fontWeight: 500 }}>
@@ -822,7 +881,7 @@ const DailyVisits = () => {
                         {selectedVisit.admin_comments && selectedVisit.admin_comments
                           .filter((c: any) => c.shop_id === shopKey)
                           .map((comment: any) => (
-                            <Paper key={comment._id} sx={{ p: 1, my: 0.5, backgroundColor: '#e3f2fd' }}>
+                            <Paper key={comment._id} sx={{ p: 1, my: 0.5, bgcolor: 'action.hover' }}>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <Box sx={{ flex: 1 }}>
                                   <Typography variant='caption' sx={{ fontWeight: 500 }}>
@@ -862,7 +921,7 @@ const DailyVisits = () => {
                               </Box>
                               {/* Reply display */}
                               {comment.reply && (
-                                <Paper sx={{ p: 1, mt: 1, ml: 2, backgroundColor: '#e8f5e9' }}>
+                                <Paper sx={{ p: 1, mt: 1, ml: 2, bgcolor: 'action.selected' }}>
                                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <Box sx={{ flex: 1 }}>
                                       <Typography variant='caption' sx={{ fontWeight: 500 }}>

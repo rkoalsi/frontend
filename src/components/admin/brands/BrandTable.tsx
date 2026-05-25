@@ -13,14 +13,18 @@ import {
   TextField,
   Switch,
   Button,
+  Tooltip,
 } from '@mui/material';
 import { toast } from 'react-toastify';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
 
 const BrandTable = ({
   brands,
   loading,
   handleImageClick,
   handleOpenEditModal,
+  handleToggleVisibility,
 }: any) => {
   return (
     <>
@@ -53,6 +57,9 @@ const BrandTable = ({
                   <TableCell>S. No.</TableCell>
                   <TableCell>Name</TableCell>
                   <TableCell>Image</TableCell>
+                  <TableCell>Description</TableCell>
+                  <TableCell>Secondary Image</TableCell>
+                  <TableCell>Visible</TableCell>
                   <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -69,22 +76,78 @@ const BrandTable = ({
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>{brand.name}</TableCell>
                       <TableCell>
-                        <img
-                          onClick={() =>
-                            handleImageClick(
-                              brand.image_url || '/placeholder.png'
-                            )
-                          }
-                          src={brand.image_url || '/placeholder.png'}
-                          alt={brand.name}
-                          style={{
-                            width: '80px',
-                            height: '80px',
-                            borderRadius: '4px',
-                            objectFit: 'cover',
+                        <Box
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 80,
+                            height: 80,
+                            borderRadius: '6px',
+                            bgcolor: 'background.paper',
+                            border: '1px solid rgba(0,0,0,0.1)',
+                            overflow: 'hidden',
                             cursor: 'pointer',
                           }}
-                        />
+                          onClick={() => handleImageClick(brand.image_url || '/placeholder.png')}
+                        >
+                          <img
+                            src={brand.image_url || '/placeholder.png'}
+                            alt={brand.name}
+                            style={{
+                              width: '72px',
+                              height: '72px',
+                              objectFit: 'contain',
+                            }}
+                          />
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        {brand.description ? (
+                          <Tooltip title={brand.description} placement='top'>
+                            <CheckCircleIcon color='success' fontSize='small' />
+                          </Tooltip>
+                        ) : (
+                          <CancelIcon color='disabled' fontSize='small' />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {brand.secondary_image_url ? (
+                          <Tooltip title='View secondary image' placement='top'>
+                            <Box
+                              sx={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 50,
+                                height: 50,
+                                borderRadius: '6px',
+                                bgcolor: 'background.paper',
+                                border: '1px solid rgba(0,0,0,0.1)',
+                                overflow: 'hidden',
+                                cursor: 'pointer',
+                              }}
+                              onClick={() => handleImageClick(brand.secondary_image_url)}
+                            >
+                              <img
+                                src={brand.secondary_image_url}
+                                alt={`${brand.name} secondary`}
+                                style={{ width: '44px', height: '44px', objectFit: 'contain' }}
+                              />
+                            </Box>
+                          </Tooltip>
+                        ) : (
+                          <CancelIcon color='disabled' fontSize='small' />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip title={brand.hidden ? 'Hidden from orders & catalogue' : 'Visible in orders & catalogue'}>
+                          <Switch
+                            checked={!brand.hidden}
+                            onChange={() => handleToggleVisibility(brand)}
+                            color='success'
+                          />
+                        </Tooltip>
                       </TableCell>
                       <TableCell>
                         <Button

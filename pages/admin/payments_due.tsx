@@ -266,7 +266,6 @@ const PaymentsDue = () => {
         sx={{
           padding: { xs: 2, sm: 3, md: 4 },
           borderRadius: 4,
-          backgroundColor: 'white',
         }}
       >
         <Box
@@ -309,11 +308,16 @@ const PaymentsDue = () => {
                 }}
               >
                 <MenuItem value=''>All</MenuItem>
-                {salesPeople.map((person) => (
-                  <MenuItem key={person} value={person}>
-                    {person}
-                  </MenuItem>
-                ))}
+                {salesPeople.map((person: any) => {
+                  const label = person?.name ?? person;
+                  const value = person?.code ?? person;
+                  const key = person?._id ?? person;
+                  return (
+                    <MenuItem key={key} value={value}>
+                      {label}{person?.code ? ` (${person.code})` : ''}
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
             <Button variant='contained' onClick={handleDownloadCSV}>

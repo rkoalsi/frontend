@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -18,8 +18,16 @@ import {
   FormControl,
   InputLabel,
   Autocomplete,
+  Chip,
+  Tooltip,
 } from '@mui/material';
-import { Close as CloseIcon, ContentCopy as CopyIcon } from '@mui/icons-material';
+import {
+  Close as CloseIcon,
+  ContentCopy as CopyIcon,
+  CloudUpload as UploadIcon,
+  Delete as DeleteIcon,
+  InsertDriveFile as FileIcon,
+} from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../util/axios';
 import AuthContext from './Auth';
@@ -132,8 +140,19 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
 }) => {
   const { user }: any = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
-  const [cities, setCities] = useState<string[]>([]); 
+  const [cities, setCities] = useState<string[]>([]);
   const [citiesLoading, setCitiesLoading] = useState(false);
+
+  // Document upload state
+  type DocState = { url: string; key: string; name: string } | null;
+  const [gstCertDoc, setGstCertDoc] = useState<DocState>(null);
+  const [panCardDoc, setPanCardDoc] = useState<DocState>(null);
+  const [aadharDoc, setAadharDoc] = useState<DocState>(null);
+  const [docUploading, setDocUploading] = useState<Record<string, boolean>>({});
+
+  const gstCertRef = useRef<HTMLInputElement>(null);
+  const panCardRef = useRef<HTMLInputElement>(null);
+  const aadharRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     shop_name: '',
     customer_name: '',
@@ -184,11 +203,11 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
 
   // Auto-fill sales person when dialog opens
   useEffect(() => {
-    if (open && user?.data) {
-      const isSalesPerson = user.data.role === 'sales_person';
+    if (open && user) {
+      const isSalesPerson = user.role === 'sales_person';
       const salesPersonValue = isSalesPerson
-        ? user.data.code || user.data.first_name
-        : `${user.data.first_name || ''} ${user.data.last_name || ''}`.trim();
+        ? user.code || user.first_name
+        : `${user.first_name || ''} ${user.last_name || ''}`.trim();
 
       setFormData(prev => ({
         ...prev,
@@ -231,6 +250,44 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
     toast.success('Billing address copied to shipping address');
   };
 
+  const handleDocUpload = async (
+    file: File,
+    docType: 'gst_certificate' | 'pan_card' | 'aadhar',
+    setter: (v: DocState) => void,
+  ) => {
+    setDocUploading((prev) => ({ ...prev, [docType]: true }));
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('doc_type', docType);
+      const res = await axiosInstance.post('/customer_creation_requests/upload-document', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setter({ url: res.data.url, key: res.data.key, name: file.name });
+      toast.success('Document uploaded successfully');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Failed to upload document');
+    } finally {
+      setDocUploading((prev) => ({ ...prev, [docType]: false }));
+    }
+  };
+
+  const handleDocDelete = async (
+    doc: DocState,
+    setter: (v: DocState) => void,
+    inputRef: React.RefObject<HTMLInputElement | null>,
+  ) => {
+    if (!doc) return;
+    try {
+      await axiosInstance.delete('/customer_creation_requests/document', { params: { key: doc.key } });
+      setter(null);
+      if (inputRef.current) inputRef.current.value = '';
+      toast.success('Document removed');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Failed to remove document');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -251,14 +308,20 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
 
     setLoading(true);
     try {
-      await axiosInstance.post('/customer_creation_requests/', formData);
+      const payload = {
+        ...formData,
+        gst_certificate_url: gstCertDoc?.url ?? null,
+        pan_card_url: panCardDoc?.url ?? null,
+        aadhar_url: aadharDoc?.url ?? null,
+      };
+      await axiosInstance.post('/customer_creation_requests/', payload);
       toast.success('Customer creation request submitted successfully!');
 
       // Reset form
-      const isSalesPerson = user?.data?.role === 'sales_person';
+      const isSalesPerson = user?.role === 'sales_person';
       const salesPersonValue = isSalesPerson
-        ? user?.data?.code || user?.data?.first_name
-        : `${user?.data?.first_name || ''} ${user?.data?.last_name || ''}`.trim();
+        ? user?.code || user?.first_name
+        : `${user?.first_name || ''} ${user?.last_name || ''}`.trim();
 
       setFormData({
         shop_name: '',
@@ -280,6 +343,9 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
         pincode: '',
         in_ex: 'Exclusive'
       });
+      setGstCertDoc(null);
+      setPanCardDoc(null);
+      setAadharDoc(null);
 
       if (onSuccess) {
         onSuccess();
@@ -339,7 +405,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
         <DialogContent sx={{ py: 3 }}>
           <Box sx={{ mt: 1 }}>
             {/* Business Information Section */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
                 Business Information
               </Typography>
@@ -373,7 +439,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
             </Paper>
 
             {/* Billing Address Section */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
                 Billing Address
               </Typography>
@@ -400,9 +466,11 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                 <Grid size={{ xs: 12, md: 4 }}>
                   <Autocomplete
                     fullWidth
+                    freeSolo
                     options={cities}
                     value={formData.billing_address.city || null}
                     onChange={(_, newValue) => handleAddressChange('billing_address', 'city', newValue || '')}
+                    onInputChange={(_, newValue) => handleAddressChange('billing_address', 'city', newValue || '')}
                     disabled={citiesLoading}
                     loading={citiesLoading}
                     renderInput={(params) => (
@@ -410,7 +478,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                         {...params}
                         required
                         label="City"
-                        placeholder="Search or select city"
+                        placeholder="Search, select, or type city"
                         InputProps={{
                           ...params.InputProps,
                           endAdornment: (
@@ -473,7 +541,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
             </Paper>
 
             {/* Shipping Address Section */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
               <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
                 <Typography variant="subtitle1" fontWeight={600} color="primary.main">
                   Shipping Address
@@ -511,9 +579,11 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                 <Grid size={{ xs: 12, md: 4 }}>
                   <Autocomplete
                     fullWidth
+                    freeSolo
                     options={cities}
                     value={formData.shipping_address.city || null}
                     onChange={(_, newValue) => handleAddressChange('shipping_address', 'city', newValue || '')}
+                    onInputChange={(_, newValue) => handleAddressChange('shipping_address', 'city', newValue || '')}
                     disabled={citiesLoading}
                     loading={citiesLoading}
                     renderInput={(params) => (
@@ -521,7 +591,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
                         {...params}
                         required
                         label="City"
-                        placeholder="Search or select city"
+                        placeholder="Search, select, or type city"
                         InputProps={{
                           ...params.InputProps,
                           endAdornment: (
@@ -584,7 +654,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
             </Paper>
 
             {/* Other Address Fields Section */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
                 Additional Information
               </Typography>
@@ -648,7 +718,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
             </Paper>
 
             {/* Tax & Contact Information Section */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
                 Tax & Contact Information
               </Typography>
@@ -713,8 +783,165 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
               </Grid>
             </Paper>
 
+            {/* Document Upload Section */}
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
+              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1, color: 'primary.main' }}>
+                Document Uploads
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {formData.gst_treatment === 'Business GST'
+                  ? 'Please upload your GST Certificate.'
+                  : 'Please upload your PAN Card and Aadhaar Card.'}
+              </Typography>
+
+              <Grid container spacing={3}>
+                {formData.gst_treatment === 'Business GST' && (
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <input
+                      ref={gstCertRef}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleDocUpload(f, 'gst_certificate', setGstCertDoc);
+                      }}
+                    />
+                    <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                      <Button
+                        variant="outlined"
+                        startIcon={docUploading['gst_certificate'] ? <CircularProgress size={16} /> : <UploadIcon />}
+                        disabled={!!gstCertDoc || docUploading['gst_certificate']}
+                        onClick={() => gstCertRef.current?.click()}
+                        size="small"
+                      >
+                        {docUploading['gst_certificate'] ? 'Uploading...' : 'Upload GST Certificate'}
+                      </Button>
+                      {gstCertDoc && (
+                        <Chip
+                          icon={<FileIcon />}
+                          label={
+                            <Tooltip title={gstCertDoc.url}>
+                              <span>{gstCertDoc.name}</span>
+                            </Tooltip>
+                          }
+                          onDelete={() => handleDocDelete(gstCertDoc, setGstCertDoc, gstCertRef)}
+                          deleteIcon={<DeleteIcon />}
+                          color="success"
+                          variant="outlined"
+                          size="small"
+                          component="a"
+                          href={gstCertDoc.url}
+                          target="_blank"
+                          clickable
+                        />
+                      )}
+                    </Box>
+                  </Grid>
+                )}
+
+                {formData.gst_treatment !== 'Business GST' && formData.gst_treatment !== '' && (
+                  <>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <input
+                        ref={panCardRef}
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleDocUpload(f, 'pan_card', setPanCardDoc);
+                        }}
+                      />
+                      <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                        <Button
+                          variant="outlined"
+                          startIcon={docUploading['pan_card'] ? <CircularProgress size={16} /> : <UploadIcon />}
+                          disabled={!!panCardDoc || docUploading['pan_card']}
+                          onClick={() => panCardRef.current?.click()}
+                          size="small"
+                        >
+                          {docUploading['pan_card'] ? 'Uploading...' : 'Upload PAN Card'}
+                        </Button>
+                        {panCardDoc && (
+                          <Chip
+                            icon={<FileIcon />}
+                            label={
+                              <Tooltip title={panCardDoc.url}>
+                                <span>{panCardDoc.name}</span>
+                              </Tooltip>
+                            }
+                            onDelete={() => handleDocDelete(panCardDoc, setPanCardDoc, panCardRef)}
+                            deleteIcon={<DeleteIcon />}
+                            color="success"
+                            variant="outlined"
+                            size="small"
+                            component="a"
+                            href={panCardDoc.url}
+                            target="_blank"
+                            clickable
+                          />
+                        )}
+                      </Box>
+                    </Grid>
+
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <input
+                        ref={aadharRef}
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleDocUpload(f, 'aadhar', setAadharDoc);
+                        }}
+                      />
+                      <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                        <Button
+                          variant="outlined"
+                          startIcon={docUploading['aadhar'] ? <CircularProgress size={16} /> : <UploadIcon />}
+                          disabled={!!aadharDoc || docUploading['aadhar']}
+                          onClick={() => aadharRef.current?.click()}
+                          size="small"
+                        >
+                          {docUploading['aadhar'] ? 'Uploading...' : 'Upload Aadhaar Card'}
+                        </Button>
+                        {aadharDoc && (
+                          <Chip
+                            icon={<FileIcon />}
+                            label={
+                              <Tooltip title={aadharDoc.url}>
+                                <span>{aadharDoc.name}</span>
+                              </Tooltip>
+                            }
+                            onDelete={() => handleDocDelete(aadharDoc, setAadharDoc, aadharRef)}
+                            deleteIcon={<DeleteIcon />}
+                            color="success"
+                            variant="outlined"
+                            size="small"
+                            component="a"
+                            href={aadharDoc.url}
+                            target="_blank"
+                            clickable
+                          />
+                        )}
+                      </Box>
+                    </Grid>
+                  </>
+                )}
+
+                {!formData.gst_treatment && (
+                  <Grid size={{ xs: 12 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Select a GST Treatment above to see the required document uploads.
+                    </Typography>
+                  </Grid>
+                )}
+              </Grid>
+            </Paper>
+
             {/* Business Terms Section */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
                 Business Terms
               </Typography>
@@ -793,7 +1020,7 @@ const CustomerCreationRequestForm: React.FC<CustomerCreationRequestFormProps> = 
             </Paper>
 
             {/* Additional Details Section */}
-            <Paper elevation={0} sx={{ p: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
                 Additional Details
               </Typography>

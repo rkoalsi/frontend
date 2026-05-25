@@ -5,36 +5,126 @@ import {
   Typography,
   Paper,
   Stack,
-  Card,
-  CardContent,
+  Chip,
   Button,
-  Grid,
-  Badge,
-  CardMedia,
-  Tooltip,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Fab,
-  Zoom,
-  useScrollTrigger,
   IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
   Edit,
-  ExpandMore,
-  KeyboardArrowUp,
-  KeyboardArrowDown,
+  Person,
+  LocationOn,
+  ShoppingCart,
   ArrowUpward,
   ArrowDownward,
+  Close,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import QuantitySelector from './QuantitySelector'; // Adjust the path as necessary
+import QuantitySelector from './QuantitySelector';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import ImagePopupDialog from '../common/ImagePopUp';
 import ImageCarousel from './products/ImageCarousel';
+
+// ── Helper sub-components ──────────────────────────────────────────
+
+function InfoRow({ label, value }: { label: string; value?: string }) {
+  return (
+    <Box display='flex' gap={1.5} alignItems='baseline'>
+      <Typography
+        variant='caption'
+        color='text.disabled'
+        fontWeight={600}
+        sx={{
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          fontSize: '0.62rem',
+          width: { xs: 80, sm: 92 },
+          flexShrink: 0,
+        }}
+      >
+        {label}
+      </Typography>
+      <Typography
+        variant='body2'
+        color='text.primary'
+        fontWeight={500}
+        sx={{ fontSize: { xs: '0.875rem', sm: '0.9rem' } }}
+      >
+        {value || '—'}
+      </Typography>
+    </Box>
+  );
+}
+
+function SectionHeader({
+  icon,
+  title,
+  color,
+  badge,
+  onEdit,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  color: string;
+  badge?: number;
+  onEdit?: () => void;
+}) {
+  return (
+    <>
+      <Box display='flex' alignItems='center' justifyContent='space-between' mb={1.5}>
+        <Box display='flex' alignItems='center' gap={1}>
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              bgcolor: `${color}20`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            {icon}
+          </Box>
+          <Typography variant='subtitle1' fontWeight={700} color='text.primary'>
+            {title}
+          </Typography>
+          {badge !== undefined && (
+            <Chip
+              label={badge}
+              size='small'
+              sx={{
+                height: 20,
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                bgcolor: `${color}20`,
+                color,
+              }}
+            />
+          )}
+        </Box>
+        {onEdit && (
+          <IconButton
+            size='small'
+            onClick={onEdit}
+            sx={{
+              color: 'text.secondary',
+              '&:hover': { color: 'text.primary', bgcolor: 'action.hover' },
+            }}
+          >
+            <Edit sx={{ fontSize: 18 }} />
+          </IconButton>
+        )}
+      </Box>
+      <Divider sx={{ mb: { xs: 1.5, sm: 2 } }} />
+    </>
+  );
+}
+
+// ── Props ──────────────────────────────────────────────────────────
 
 interface Props {
   customer: any;
@@ -42,16 +132,15 @@ interface Props {
   billingAddress: any;
   products: any[];
   setSelectedProducts: any;
-  totals: {
-    totalGST: number;
-    totalAmount: number;
-  };
+  totals: { totalGST: number; totalAmount: number };
   specialMargins: { [key: string]: string };
   setActiveStep: (step: number) => void;
   isShared: boolean;
   order: any;
   referenceNumber: any;
 }
+
+// ── Main component ─────────────────────────────────────────────────
 
 const Review: React.FC<Props> = React.memo((props) => {
   const {
@@ -69,53 +158,34 @@ const Review: React.FC<Props> = React.memo((props) => {
   } = props;
 
   const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const primaryColor = theme.palette.primary.main;
+  const secondaryColor = theme.palette.secondary.main;
 
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc]: any = useState([]);
   const [popupImageIndex, setPopupImageIndex] = useState(0);
-
-  // Page navigation refs
   const pageTopRef = useRef<HTMLDivElement>(null);
   const pageBottomRef = useRef<HTMLDivElement>(null);
 
-  // Scroll trigger for showing/hiding navigation buttons
-  const trigger = useScrollTrigger({
-    disableHysteresis: true,
-    threshold: 0,
-  });
-
-  // PDF Download Ref & Logic
-  const componentRef = useRef<HTMLDivElement>(null);
+  // ── PDF Download ────────────────────────────────────────────────
   const downloadAsPDF = async () => {
     try {
       const resp = await axios.get(
         `${process.env.api_url}/orders/download_pdf/${order._id}`,
-        {
-          responseType: 'blob', // Receive the response as binary data
-        }
+        { responseType: 'blob' }
       );
-
-      // Check if the blob is an actual PDF or an error message
       if (resp.data.type !== 'application/pdf') {
-        // Convert to text to read the error response
         toast.error('Draft Estimate Not Created');
         return;
       }
-
-      // Extract filename from headers or set default
       const contentDisposition = resp.headers['content-disposition'];
       let fileName = `${order.estimate_number}.pdf`;
-
       if (contentDisposition) {
         const match = contentDisposition.match(/filename="(.+)"/);
-        if (match && match[1]) {
-          fileName = match[1];
-        }
+        if (match && match[1]) fileName = match[1];
       }
-
-      // Create and trigger download
       const blob = new Blob([resp.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -131,762 +201,597 @@ const Review: React.FC<Props> = React.memo((props) => {
     }
   };
 
-  // Quantity Change Handler
+  // ── Handlers ───────────────────────────────────────────────────
   const handleQuantityChange = useCallback(
     (id: string, newQuantity: number) => {
-      const updatedProducts = products.map((product) => {
-        const pid = product._id;
-
-        if (pid === id) {
-          return {
-            ...product,
-            quantity: Math.max(1, Math.min(newQuantity, product.stock)),
-          };
-        }
-        return product;
-      });
-
-      setSelectedProducts(updatedProducts);
-      // Parent component handles totals and order update via useEffect
+      setSelectedProducts(
+        products.map((p) =>
+          p._id === id
+            ? { ...p, quantity: Math.max(1, Math.min(newQuantity, p.stock)) }
+            : p
+        )
+      );
     },
     [products, setSelectedProducts]
   );
 
-  // Remove Product Handler
   const handleRemoveProduct = useCallback(
     (id: string) => {
-      const updatedProducts = products.filter((product) => {
-        const pid = product._id;
-        return pid !== id;
-      });
-
-      setSelectedProducts(updatedProducts);
-      // Parent component handles totals and order update via useEffect
+      setSelectedProducts(products.filter((p) => p._id !== id));
     },
     [products, setSelectedProducts]
   );
 
   const handleImageClick = useCallback((srcList: any, index: number) => {
-    // Check if items already have src property (media items with type)
-    // Make sure src is a string, not an object
-    const formattedImages = srcList[0]?.src && typeof srcList[0].src === 'string'
-      ? srcList
-      : srcList.map((src: string) => ({ src }));
+    const formattedImages =
+      srcList[0]?.src && typeof srcList[0].src === 'string'
+        ? srcList
+        : srcList.map((src: string) => ({ src }));
     setPopupImageSrc(formattedImages);
     setPopupImageIndex(index);
     setOpenImagePopup(true);
   }, []);
 
-  const handleClosePopup = useCallback(() => {
-    setOpenImagePopup(false);
-  }, []);
+  const handleClosePopup = useCallback(() => setOpenImagePopup(false), []);
 
-  // Page navigation handlers
-  const scrollToTop = useCallback(() => {
-    pageTopRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
-
-  const scrollToBottom = useCallback(() => {
-    pageBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+  const calculatePrices = useCallback(
+    (product: any) => {
+      const productId = product._id;
+      const marginPercent = specialMargins[productId]
+        ? parseInt(specialMargins[productId].replace('%', ''))
+        : parseInt(customer?.cf_margin?.replace('%', '') || '40');
+      const margin = marginPercent / 100;
+      const sellingPrice = parseFloat(
+        (product.rate - product.rate * margin).toFixed(2)
+      );
+      const quantity = product.quantity || 1;
+      const itemTotal = (quantity * sellingPrice).toFixed(2);
+      return { sellingPrice, itemTotal, marginPercent };
+    },
+    [specialMargins, customer?.cf_margin]
+  );
 
   if (!customer) {
     return <Typography>This is content for Review</Typography>;
   }
 
-  // Helper function to calculate selling price and item total
-  const calculatePrices = useCallback((product: any) => {
-    const productId = product._id;
-
-    // Determine margin
-    const marginPercent = specialMargins[productId]
-      ? parseInt(specialMargins[productId].replace('%', ''))
-      : parseInt(customer?.cf_margin?.replace('%', '') || '40');
-    const margin = marginPercent / 100;
-
-    // Calculate selling price
-    const sellingPrice = parseFloat(
-      (product.rate - product.rate * margin).toFixed(2)
-    );
-
-    // Calculate item total
-    const quantity = product.quantity || 1;
-    const itemTotal = (quantity * sellingPrice).toFixed(2);
-
-    return { sellingPrice, itemTotal, marginPercent };
-  }, [specialMargins, customer?.cf_margin]);
+  const isOrderLocked =
+    order?.status?.toLowerCase()?.includes('accepted') ||
+    order?.status?.toLowerCase()?.includes('declined');
 
   return (
-    <Box sx={{ p: { xs: 0, sm: 2, md: 3 }, flex: 1, position: 'relative', width: '100%' }}>
-      {/* Reference for top of page */}
+    <Box sx={{ p: { xs: 0, sm: 1 }, width: '100%', position: 'relative' }}>
       <div ref={pageTopRef} />
 
-      {/* Header */}
+      {/* ── Header ── */}
       <Box
         display='flex'
         justifyContent='space-between'
-        alignItems='flex-start'
-        flexDirection={{ xs: 'column', md: 'row', lg: 'row', xl: 'row' }}
-        mb={2}
+        alignItems={{ xs: 'flex-start', sm: 'center' }}
+        flexDirection={{ xs: 'column', sm: 'row' }}
+        gap={2}
+        mb={3}
       >
-        <Typography variant='h6' sx={{ mb: 1 }}>
-          Review
-        </Typography>
+        <Box>
+          <Typography
+            variant='h5'
+            fontWeight={700}
+            color='text.primary'
+            sx={{ fontSize: { xs: '1.15rem', sm: '1.4rem' } }}
+          >
+            Order Review
+          </Typography>
+          <Typography variant='body2' color='text.secondary' mt={0.25}>
+            {products.length} product{products.length !== 1 ? 's' : ''} ·{' '}
+            ₹{totals.totalAmount.toLocaleString('en-IN')} total
+          </Typography>
+        </Box>
         {!isShared && (
           <Button
             variant='contained'
             color='primary'
             onClick={downloadAsPDF}
             disabled={!order?.estimate_created}
-            sx={{ color: 'primary.contrastText' }}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              borderRadius: 24,
+              whiteSpace: 'nowrap',
+              fontSize: { xs: '0.8rem', sm: '0.875rem' },
+              alignSelf: { xs: 'stretch', sm: 'auto' },
+            }}
           >
-            {!order?.estimate_created
-              ? 'Save Estimate As Draft Before Downloading'
-              : 'Download as PDF'}
+            {!order?.estimate_created ? 'Save as Draft to Create Estimate' : 'Download PDF'}
           </Button>
         )}
       </Box>
 
-      {/* PDF Content */}
-      <Box ref={componentRef}>
-        {/* Customer Info */}
-        <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 }, mb: 2, borderRadius: 2 }}>
-          <Box
-            display='flex'
-            alignItems='center'
-            justifyContent='space-between'
-          >
-            <Typography variant='h6' fontWeight='bold' gutterBottom>
-              Customer Information
-            </Typography>
-            {!isShared && (
-              <Edit
-                onClick={() => setActiveStep(0)}
-                className='no-pdf'
-                sx={{ cursor: 'pointer' }}
-              />
-            )}
-          </Box>
-          <Typography variant='body1'>
-            <strong>Shop Name:</strong> {customer?.contact_name}
-          </Typography>
-          <Typography variant='body1'>
-            <strong>Contact Name:</strong> {customer?.first_name}{' '}
-            {customer?.last_name}
-          </Typography>
-          <Typography variant='body1'>
-            <strong>Phone:</strong>{' '}
-            {customer?.mobile || customer?.phone || 'N/A'}
-          </Typography>
-          {referenceNumber && (
-            <Typography variant='body1'>
-              <strong>Reference Number:</strong> {referenceNumber || 'N/A'}
-            </Typography>
-          )}
-        </Paper>
+      {/* ── Customer Information ── */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2, sm: 2.5 },
+          mb: 2,
+          borderRadius: 2,
+          border: `1px solid ${theme.palette.divider}`,
+          bgcolor: 'background.paper',
+        }}
+      >
+        <SectionHeader
+          icon={<Person sx={{ color: primaryColor, fontSize: 18 }} />}
+          title='Customer Information'
+          color={primaryColor}
+          onEdit={!isShared ? () => setActiveStep(0) : undefined}
+        />
+        <Box display='flex' flexDirection='column' gap={0.75}>
+          <InfoRow label='Shop Name' value={customer?.contact_name} />
+          <InfoRow
+            label='Contact'
+            value={
+              `${customer?.first_name || ''} ${customer?.last_name || ''}`.trim() ||
+              undefined
+            }
+          />
+          <InfoRow label='Phone' value={customer?.mobile || customer?.phone} />
+          {referenceNumber && <InfoRow label='Reference' value={referenceNumber} />}
+        </Box>
+      </Paper>
 
-        <Divider sx={{ my: 2 }} />
-
-        {/* Addresses */}
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={2}
-          sx={{ mb: 2 }}
+      {/* ── Addresses ── */}
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 2 }}>
+        {/* Billing */}
+        <Paper
+          elevation={0}
+          sx={{
+            flex: 1,
+            p: { xs: 2, sm: 2.5 },
+            borderRadius: 2,
+            border: `1.5px solid ${primaryColor}30`,
+            bgcolor: isDark ? `${primaryColor}08` : `${primaryColor}04`,
+          }}
         >
-          {/* Billing Address */}
-          <Card sx={{ flex: 1 }}>
-            <CardContent>
-              <Box
-                display='flex'
-                alignItems='center'
-                justifyContent='space-between'
-              >
-                <Typography variant='h6' fontWeight='bold' gutterBottom>
-                  Billing Address
+          <SectionHeader
+            icon={<LocationOn sx={{ color: primaryColor, fontSize: 18 }} />}
+            title='Billing Address'
+            color={primaryColor}
+            onEdit={!isShared ? () => setActiveStep(1) : undefined}
+          />
+          {billingAddress ? (
+            <Box display='flex' flexDirection='column' gap={0.4}>
+              {billingAddress.attention && (
+                <Typography variant='body2' fontWeight={600} color='text.primary'>
+                  {billingAddress.attention}
                 </Typography>
-                {!isShared && (
-                  <Edit
-                    onClick={() => setActiveStep(1)}
-                    className='no-pdf'
-                    sx={{ cursor: 'pointer' }}
-                  />
-                )}
-              </Box>
-              <Typography variant='body2'>{billingAddress?.address}</Typography>
-              <Typography variant='body2'>{billingAddress?.city}</Typography>
-              <Typography variant='body2'>{billingAddress?.state}</Typography>
-              <Typography variant='body2'>{billingAddress?.zip}</Typography>
-            </CardContent>
-          </Card>
-
-          {/* Shipping Address */}
-          <Card sx={{ flex: 1 }}>
-            <CardContent>
-              <Box
-                display='flex'
-                alignItems='center'
-                justifyContent='space-between'
-              >
-                <Typography variant='h6' fontWeight='bold' gutterBottom>
-                  Shipping Address
-                </Typography>
-                {!isShared && (
-                  <Edit
-                    onClick={() => setActiveStep(2)}
-                    className='no-pdf'
-                    sx={{ cursor: 'pointer' }}
-                  />
-                )}
-              </Box>
-              <Typography variant='body2'>
-                {shippingAddress?.address}
-              </Typography>
-              <Typography variant='body2'>{shippingAddress?.city}</Typography>
-              <Typography variant='body2'>{shippingAddress?.state}</Typography>
-              <Typography variant='body2'>{shippingAddress?.zip}</Typography>
-            </CardContent>
-          </Card>
-        </Stack>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* Products */}
-        <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 }, borderRadius: 2 }}>
-          <Box
-            display='flex'
-            alignItems='center'
-            justifyContent={'space-between'}
-          >
-            <Typography variant='h6' fontWeight='bold' gutterBottom>
-              Products
-            </Typography>
-            {!isShared && (
-              <Edit
-                onClick={() => setActiveStep(3)}
-                className='no-pdf'
-                sx={{ cursor: 'pointer' }}
-              />
-            )}
-          </Box>
-
-          {/* Responsive Products Display */}
-          {!isMobile ? (
-            // Desktop/Grid View
-            <Box sx={{ mt: 2 }}>
-              <Grid container spacing={3}>
-                {products.length > 0 ? (
-                  products.map((product, index) => {
-                    const isActive = product.status === 'active';
-                    const productId = product._id;
-
-                    const { sellingPrice, itemTotal, marginPercent } =
-                      calculatePrices(product);
-
-                    return (
-                      <Grid
-                        minWidth={'100%'}
-                        mt={1}
-                        mb={2}
-                        display={'flex'}
-                        justifyContent={'center'}
-                        alignItems={'center'}
-                      >
-                        <Card
-                          sx={{
-                            minWidth: '100%',
-                            display: 'flex',
-                            p: 2,
-                            backgroundColor: !isActive ? '#f0f0f0' : 'inherit',
-                            opacity: !isActive ? 0.7 : 1,
-                          }}
-                        >
-                          <Typography variant='h6'>{index + 1}.</Typography>
-                          <Box sx={{ mr: 2 }}>
-                            <Badge
-                              badgeContent={product.new ? 'New' : undefined}
-                              color='secondary'
-                              overlap='rectangular'
-                              anchorOrigin={{
-                                vertical: 'top',
-                                horizontal: 'right',
-                              }}
-                            >
-                              <CardMedia
-                                component='img'
-                                image={
-                                  product.images && product.images.length > 0
-                                    ? product.images[0]
-                                    : product.image_url || '/placeholder.png'
-                                }
-                                alt={product.name}
-                                onError={(e) =>
-                                  (e.currentTarget.src = '/placeholder.png')
-                                }
-                                // crossOrigin='anonymous'
-                                sx={{
-                                  width: 100,
-                                  height: 100,
-                                  objectFit: 'cover',
-                                  cursor: 'pointer',
-                                }}
-                                onClick={() => {
-                                  const imageList = product.images && product.images.length > 0
-                                    ? product.images
-                                    : product.image_url
-                                      ? [product.image_url]
-                                      : ['/placeholder.png'];
-                                  handleImageClick(imageList, 0);
-                                }}
-                              />
-                            </Badge>
-                          </Box>
-                          {/* Details Section */}
-                          <Box sx={{ flex: 1 }}>
-                            <Box
-                              display='flex'
-                              justifyContent='space-between'
-                              alignItems='center'
-                            >
-                              <Typography variant='h6'>
-                                {product.name}
-                              </Typography>
-                              <Tooltip title='Remove Product'>
-                                <Button
-                                  variant='outlined'
-                                  color='error'
-                                  size='small'
-                                  disabled={
-                                    order?.status
-                                      ?.toLowerCase()
-                                      ?.includes('accepted') ||
-                                    order?.status
-                                      ?.toLowerCase()
-                                      ?.includes('declined')
-                                  }
-                                  onClick={() => handleRemoveProduct(productId)}
-                                >
-                                  Remove
-                                </Button>
-                              </Tooltip>
-                            </Box>
-
-                            {/* Basic Info */}
-                            <Typography variant='body2' color='textSecondary'>
-                              <strong>Brand:</strong> {product.brand}
-                            </Typography>
-                            <Typography variant='body2' color='textSecondary'>
-                              <strong>SKU:</strong> {product.cf_sku_code || '-'}
-                            </Typography>
-                            <Typography variant='body2' color='textSecondary'>
-                              <strong>UPC/EAN Code:</strong> {product.upc_code || '-'}
-                            </Typography>
-                            <Typography variant='body2' color='textSecondary'>
-                              <strong>Category:</strong> {product.category}
-                            </Typography>
-                            <Typography variant='body2' color='textSecondary'>
-                              <strong>Sub Category:</strong>{' '}
-                              {product.sub_category || '-'}
-                            </Typography>
-
-                            {/* Additional Info in Accordion */}
-                            <Accordion>
-                              <AccordionSummary
-                                expandIcon={<ExpandMore />}
-                                aria-controls={`panel-content-${productId}`}
-                                id={`panel-header-${productId}`}
-                              >
-                                <Typography>More Details</Typography>
-                              </AccordionSummary>
-                              <AccordionDetails>
-                                <Typography
-                                  variant='body2'
-                                  color='textSecondary'
-                                >
-                                  <strong>Series:</strong>{' '}
-                                  {product.series || '-'}
-                                </Typography>
-                                <Typography
-                                  variant='body2'
-                                  color='textSecondary'
-                                >
-                                  <strong>GST:</strong>{' '}
-                                  {product?.item_tax_preferences?.[0]
-                                    ?.tax_percentage || 'N/A'}
-                                  %
-                                </Typography>
-                                <Typography
-                                  variant='body2'
-                                  color='textSecondary'
-                                >
-                                  <strong>MRP:</strong> ₹{product.rate}
-                                </Typography>
-                                {isShared ? null : (
-                                  <Typography
-                                    variant='body2'
-                                    color='textSecondary'
-                                  >
-                                    <strong>Margin:</strong> {marginPercent}%
-                                  </Typography>
-                                )}
-                                <Typography
-                                  variant='body2'
-                                  color='textSecondary'
-                                >
-                                  <strong>Selling Price:</strong> ₹
-                                  {sellingPrice}
-                                </Typography>
-                                <Typography
-                                  variant='body2'
-                                  color='textSecondary'
-                                >
-                                  <strong>Stock:</strong> {product.stock}
-                                </Typography>
-                                <Typography
-                                  variant='body2'
-                                  color='textSecondary'
-                                >
-                                  <strong>GST:</strong>{' '}
-                                  {
-                                    product.item_tax_preferences[
-                                      product?.item_tax_preferences.length - 1
-                                    ].tax_percentage
-                                  }
-                                  %
-                                </Typography>
-                              </AccordionDetails>
-                            </Accordion>
-
-                            {/* Quantity and Total */}
-                            <Box
-                              display='flex'
-                              alignItems='center'
-                              justifyContent='space-between'
-                              mt={2}
-                            >
-                              <QuantitySelector
-                                quantity={product.quantity || 1}
-                                max={product.stock}
-                                onChange={(newQuantity) =>
-                                  handleQuantityChange(productId, newQuantity)
-                                }
-                                disabled={
-                                  !isActive ||
-                                  order?.status
-                                    ?.toLowerCase()
-                                    ?.includes('accepted') ||
-                                  order?.status
-                                    ?.toLowerCase()
-                                    ?.includes('declined')
-                                }
-                              />
-                              <Typography variant='body1'>
-                                <strong>Total:</strong> ₹{itemTotal}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        </Card>
-                      </Grid>
-                    );
-                  })
-                ) : (
-                  <Grid>
-                    <Typography variant='body1' align='center'>
-                      {products.length > 0
-                        ? 'Loading products...'
-                        : 'No products found.'}
-                    </Typography>
-                  </Grid>
-                )}
-              </Grid>
-
-              {/* Totals Section */}
-              {products.length > 0 && (
-                <Box mt={4}>
-                  <Paper elevation={3} sx={{ p: 2, borderRadius: 2 }}>
-                    <Typography variant='h6' gutterBottom>
-                      Total
-                    </Typography>
-                    <Typography variant='body1'>
-                      <strong>Total GST:</strong> ₹{totals.totalGST.toFixed(2)}{' '}
-                      <strong>({customer?.cf_in_ex || 'Exclusive'})</strong>
-                    </Typography>
-                    <Typography variant='body1'>
-                      <strong>Total Amount:</strong> ₹
-                      {totals.totalAmount.toFixed(2)}{' '}
-                      <strong>(GST {customer?.cf_in_ex || 'Exclusive'})</strong>
-                    </Typography>
-                  </Paper>
-                </Box>
               )}
+              <Typography variant='body2' color='text.secondary'>
+                {billingAddress.address}
+              </Typography>
+              {billingAddress.street2 && (
+                <Typography variant='body2' color='text.secondary'>
+                  {billingAddress.street2}
+                </Typography>
+              )}
+              <Typography variant='body2' color='text.secondary'>
+                {[billingAddress.city, billingAddress.state, billingAddress.zip]
+                  .filter(Boolean)
+                  .join(', ')}
+              </Typography>
             </Box>
           ) : (
-            // Mobile/Card View
-            <Box>
-              {products.length > 0 ? (
-                <Grid container spacing={2}>
-                  {products.map((product, index) => {
-                    const isActive = product.status === 'active';
-                    const productId = product._id;
-                    const { sellingPrice, itemTotal, marginPercent } =
-                      calculatePrices(product);
-
-                    return (
-                      <Grid>
-                        <Card
-                          sx={{
-                            width: '100%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <Typography
-                            variant='h6'
-                            fontWeight={'bold'}
-                            textAlign={'left'}
-                            width={'85%'}
-                          >
-                            {index + 1}.
-                          </Typography>
-                          {/* Image Section */}
-                          <Box>
-                            <Badge
-                              badgeContent={product.new ? 'New' : undefined}
-                              color='secondary'
-                              overlap='rectangular'
-                              anchorOrigin={{
-                                vertical: 'top',
-                                horizontal: 'right',
-                              }}
-                            >
-                              <ImageCarousel
-                                handleImageClick={handleImageClick}
-                                product={product}
-                                small={true}
-                              />
-                              {/* <CardMedia
-                                component='img'
-                                image={product.image_url || '/placeholder.png'}
-                                alt={product.name}
-                                sx={{
-                                  width: '100%',
-                                  height: '200px',
-                                  objectFit: 'cover',
-                                  cursor: 'pointer',
-                                }}
-                                onClick={() =>
-                                  handleImageClick(product.images, index)
-                                }
-                              /> */}
-                            </Badge>
-                          </Box>
-                          {/* Details Section */}
-                          <CardContent>
-                            <Box
-                              display='flex'
-                              justifyContent='space-between'
-                              alignItems='center'
-                            >
-                              <Typography variant='h6' gutterBottom>
-                                {product.name}
-                              </Typography>
-                            </Box>
-                            <Typography variant='body2' color='textSecondary'>
-                              <strong>Sub Category:</strong>{' '}
-                              {product.sub_category || '-'}
-                            </Typography>
-                            <Typography variant='body2' color='textSecondary'>
-                              <strong>Series:</strong> {product.series || '-'}
-                            </Typography>
-                            <Typography variant='body2' color='textSecondary'>
-                              <strong>SKU:</strong> {product.cf_sku_code || '-'}
-                            </Typography>
-                            <Typography variant='body2' color='textSecondary'>
-                              <strong>UPC/EAN Code:</strong> {product.upc_code || '-'}
-                            </Typography>
-                            <Typography variant='body2' color='textSecondary'>
-                              <strong>MRP:</strong> ₹{product.rate}
-                            </Typography>
-                            <Typography variant='body2' color='textSecondary'>
-                              <strong>Stock:</strong> {product.stock}
-                            </Typography>
-                            {isShared ? null : (
-                              <Typography variant='body2' color='textSecondary'>
-                                <strong>Margin:</strong> {marginPercent}%
-                              </Typography>
-                            )}
-
-                            <Typography variant='body2' color='textSecondary'>
-                              <strong>GST:</strong>{' '}
-                              {
-                                product.item_tax_preferences[
-                                  product?.item_tax_preferences.length - 1
-                                ].tax_percentage
-                              }
-                              %
-                            </Typography>
-                            <Typography variant='body2' color='textSecondary'>
-                              <strong>Selling Price:</strong> ₹{sellingPrice}
-                            </Typography>
-
-                            {/* Quantity Selector */}
-                            <Box mt={1}>
-                              <QuantitySelector
-                                quantity={product.quantity || 1}
-                                max={product.stock}
-                                onChange={(newQuantity) =>
-                                  handleQuantityChange(productId, newQuantity)
-                                }
-                                disabled={
-                                  !isActive ||
-                                  order?.status
-                                    ?.toLowerCase()
-                                    ?.includes('accepted') ||
-                                  order?.status
-                                    ?.toLowerCase()
-                                    ?.includes('declined')
-                                }
-                              />
-                              {product.quantity > product.stock && (
-                                <Typography variant='caption' color='error'>
-                                  Exceeds stock!
-                                </Typography>
-                              )}
-                            </Box>
-
-                            {/* Item Total */}
-                            {isActive && (
-                              <Typography variant='body2' mt={1}>
-                                <strong>Total:</strong> ₹{itemTotal}
-                              </Typography>
-                            )}
-
-                            {/* Action Button */}
-                            <Box mt={1}>
-                              <Button
-                                variant='outlined'
-                                color='error'
-                                size='small'
-                                disabled={
-                                  order?.status
-                                    ?.toLowerCase()
-                                    ?.includes('accepted') ||
-                                  order?.status
-                                    ?.toLowerCase()
-                                    ?.includes('declined')
-                                }
-                                onClick={() => handleRemoveProduct(productId)}
-                                fullWidth
-                              >
-                                Remove
-                              </Button>
-                            </Box>
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-              ) : (
-                <Box mt={2}>
-                  <Typography variant='body1' align='center'>
-                    {products.length > 0
-                      ? 'Loading products...'
-                      : 'No products found.'}
-                  </Typography>
-                </Box>
-              )}
-
-              {/* Totals Section */}
-              <Box mt={2}>
-                <Paper elevation={3} sx={{ p: 2, borderRadius: 2 }}>
-                  <Typography variant='h6' gutterBottom>
-                    Totals
-                  </Typography>
-                  <Typography variant='body1'>
-                    <strong>Total GST:</strong> ₹{totals.totalGST.toFixed(2)}{' '}
-                    <strong>({customer?.cf_in_ex || 'Exclusive'})</strong>
-                  </Typography>
-                  <Typography variant='body1'>
-                    <strong>Total Amount:</strong> ₹
-                    {totals.totalAmount.toFixed(2)}{' '}
-                    <strong>(GST {customer?.cf_in_ex || 'Exclusive'})</strong>
-                  </Typography>
-                </Paper>
-              </Box>
-            </Box>
+            <Typography variant='body2' color='text.disabled'>
+              No address selected
+            </Typography>
           )}
         </Paper>
 
-        {/* Reference for bottom of page */}
-        <div ref={pageBottomRef} />
-
-        <ImagePopupDialog
-          open={openImagePopup}
-          onClose={handleClosePopup}
-          imageSources={popupImageSrc}
-          initialSlide={popupImageIndex}
-          setIndex={(newIndex: number) => {
-            setPopupImageIndex(newIndex);
+        {/* Shipping */}
+        <Paper
+          elevation={0}
+          sx={{
+            flex: 1,
+            p: { xs: 2, sm: 2.5 },
+            borderRadius: 2,
+            border: `1.5px solid ${secondaryColor}30`,
+            bgcolor: isDark ? `${secondaryColor}08` : `${secondaryColor}04`,
           }}
-        />
-      </Box>
+        >
+          <SectionHeader
+            icon={<LocationOn sx={{ color: secondaryColor, fontSize: 18 }} />}
+            title='Shipping Address'
+            color={secondaryColor}
+            onEdit={!isShared ? () => setActiveStep(2) : undefined}
+          />
+          {shippingAddress ? (
+            <Box display='flex' flexDirection='column' gap={0.4}>
+              {shippingAddress.attention && (
+                <Typography variant='body2' fontWeight={600} color='text.primary'>
+                  {shippingAddress.attention}
+                </Typography>
+              )}
+              <Typography variant='body2' color='text.secondary'>
+                {shippingAddress.address}
+              </Typography>
+              {shippingAddress.street2 && (
+                <Typography variant='body2' color='text.secondary'>
+                  {shippingAddress.street2}
+                </Typography>
+              )}
+              <Typography variant='body2' color='text.secondary'>
+                {[shippingAddress.city, shippingAddress.state, shippingAddress.zip]
+                  .filter(Boolean)
+                  .join(', ')}
+              </Typography>
+            </Box>
+          ) : (
+            <Typography variant='body2' color='text.disabled'>
+              No address selected
+            </Typography>
+          )}
+        </Paper>
+      </Stack>
 
-      {/* Navigation Buttons */}
+      {/* ── Products ── */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2, sm: 2.5 },
+          mb: 2,
+          borderRadius: 2,
+          border: `1px solid ${theme.palette.divider}`,
+          bgcolor: 'background.paper',
+        }}
+      >
+        <SectionHeader
+          icon={<ShoppingCart sx={{ color: primaryColor, fontSize: 18 }} />}
+          title='Products'
+          color={primaryColor}
+          badge={products.length}
+          onEdit={!isShared ? () => setActiveStep(3) : undefined}
+        />
+
+        <Box display='flex' flexDirection='column' gap={1.5}>
+          {products.length === 0 ? (
+            <Typography
+              variant='body2'
+              color='text.disabled'
+              textAlign='center'
+              py={4}
+            >
+              No products added
+            </Typography>
+          ) : (
+            products.map((product, index) => {
+              const { sellingPrice, itemTotal, marginPercent } =
+                calculatePrices(product);
+              const isActive = product.status !== 'inactive';
+              const productId = product._id;
+              const taxPct =
+                product?.item_tax_preferences?.[
+                  product.item_tax_preferences.length - 1
+                ]?.tax_percentage ?? 0;
+
+              return (
+                <Box
+                  key={productId}
+                  sx={{
+                    display: 'flex',
+                    gap: { xs: 1.5, sm: 2 },
+                    alignItems: 'flex-start',
+                    p: { xs: 1.5, sm: 2 },
+                    borderRadius: 2,
+                    border: `1px solid ${theme.palette.divider}`,
+                    bgcolor: !isActive
+                      ? isDark
+                        ? 'rgba(255,255,255,0.02)'
+                        : 'rgba(0,0,0,0.02)'
+                      : 'transparent',
+                    opacity: !isActive ? 0.75 : 1,
+                    transition: 'box-shadow 0.2s ease',
+                    '&:hover': {
+                      boxShadow: isDark
+                        ? '0 2px 10px rgba(0,0,0,0.35)'
+                        : '0 2px 10px rgba(0,0,0,0.08)',
+                    },
+                  }}
+                >
+                  {/* Product image */}
+                  <Box
+                    sx={{
+                      width: { xs: 76, sm: 96 },
+                      height: { xs: 76, sm: 96 },
+                      flexShrink: 0,
+                      borderRadius: 1.5,
+                      overflow: 'hidden',
+                      border: `1px solid ${theme.palette.divider}`,
+                    }}
+                  >
+                    <ImageCarousel
+                      product={product}
+                      handleImageClick={handleImageClick}
+                      small
+                    />
+                  </Box>
+
+                  {/* Details */}
+                  <Box flex={1} minWidth={0}>
+                    {/* Name + remove button */}
+                    <Box
+                      display='flex'
+                      justifyContent='space-between'
+                      alignItems='flex-start'
+                      gap={1}
+                    >
+                      <Typography
+                        variant='subtitle2'
+                        fontWeight={700}
+                        color='text.primary'
+                        sx={{
+                          fontSize: { xs: '0.82rem', sm: '0.9rem' },
+                          lineHeight: 1.35,
+                          flex: 1,
+                        }}
+                      >
+                        <Typography
+                          component='span'
+                          variant='caption'
+                          color='text.disabled'
+                          fontWeight={600}
+                          sx={{ mr: 0.5 }}
+                        >
+                          {index + 1}.
+                        </Typography>
+                        {product.name}
+                      </Typography>
+                      <Tooltip title='Remove product'>
+                        <span>
+                          <IconButton
+                            size='small'
+                            color='error'
+                            disabled={isOrderLocked}
+                            onClick={() => handleRemoveProduct(productId)}
+                            sx={{ flexShrink: 0, mt: -0.5, mr: -0.5 }}
+                          >
+                            <Close sx={{ fontSize: { xs: 16, sm: 18 } }} />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </Box>
+
+                    {/* Meta chips */}
+                    <Box display='flex' flexWrap='wrap' gap={0.5} mt={0.5} mb={1}>
+                      {product.brand && (
+                        <Chip
+                          label={product.brand}
+                          size='small'
+                          sx={{ height: 20, fontSize: '0.62rem', fontWeight: 600 }}
+                        />
+                      )}
+                      {product.cf_sku_code && (
+                        <Chip
+                          label={product.cf_sku_code}
+                          size='small'
+                          variant='outlined'
+                          sx={{ height: 20, fontSize: '0.62rem' }}
+                        />
+                      )}
+                      {product.sub_category && (
+                        <Chip
+                          label={product.sub_category}
+                          size='small'
+                          variant='outlined'
+                          sx={{ height: 20, fontSize: '0.62rem' }}
+                        />
+                      )}
+                    </Box>
+
+                    {/* Price info + qty + total */}
+                    <Box
+                      display='flex'
+                      flexDirection={{ xs: 'column', sm: 'row' }}
+                      alignItems={{ xs: 'flex-start', sm: 'center' }}
+                      gap={{ xs: 0.75, sm: 2 }}
+                    >
+                      {/* Unit price / GST / margin */}
+                      <Box
+                        display='flex'
+                        flexDirection={{ xs: 'column', sm: 'row' }}
+                        flexWrap='wrap'
+                        gap={{ xs: 0.3, sm: 0.75 }}
+                        alignItems={{ xs: 'flex-start', sm: 'center' }}
+                      >
+                        <Typography variant='caption' color='text.secondary'>
+                          MRP ₹{sellingPrice.toLocaleString('en-IN')}/unit
+                        </Typography>
+                        <Typography
+                          variant='caption'
+                          color='text.disabled'
+                          sx={{ display: { xs: 'none', sm: 'inline' } }}
+                        >·</Typography>
+                        <Typography variant='caption' color='text.secondary'>
+                          GST {taxPct}%
+                        </Typography>
+                        {!isShared && (
+                          <>
+                            <Typography
+                              variant='caption'
+                              color='text.disabled'
+                              sx={{ display: { xs: 'none', sm: 'inline' } }}
+                            >·</Typography>
+                            <Typography variant='caption' color='text.secondary'>
+                              Margin {marginPercent}%
+                            </Typography>
+                          </>
+                        )}
+                      </Box>
+
+                      {/* Qty + total */}
+                      <Box display='flex' alignItems='center' gap={1.5} flexWrap='wrap'>
+                        <Box
+                          sx={{
+                            transform: { xs: 'scale(0.82)', sm: 'none' },
+                            transformOrigin: 'left center',
+                          }}
+                        >
+                          <QuantitySelector
+                            quantity={product.quantity || 1}
+                            max={product.stock}
+                            onChange={(newQty) =>
+                              handleQuantityChange(productId, newQty)
+                            }
+                            disabled={!isActive || isOrderLocked}
+                          />
+                        </Box>
+                        <Typography
+                          variant='body2'
+                          fontWeight={700}
+                          color='primary.main'
+                          sx={{ whiteSpace: 'nowrap' }}
+                        >
+                          ₹{parseFloat(itemTotal).toLocaleString('en-IN')}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    {product.quantity > product.stock && (
+                      <Typography
+                        variant='caption'
+                        color='error.main'
+                        sx={{ display: 'block', mt: 0.5 }}
+                      >
+                        ⚠ Exceeds stock ({product.stock} available)
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              );
+            })
+          )}
+        </Box>
+      </Paper>
+
+      {/* ── Order Summary ── */}
+      {products.length > 0 && (
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2, sm: 2.5 },
+            mb: 2,
+            borderRadius: 2,
+            border: `2px solid ${primaryColor}30`,
+            background: isDark
+              ? `linear-gradient(135deg, ${primaryColor}14, ${primaryColor}06)`
+              : `linear-gradient(135deg, ${primaryColor}08, ${primaryColor}02)`,
+          }}
+        >
+          <Typography
+            variant='subtitle1'
+            fontWeight={700}
+            color='text.primary'
+            mb={1.5}
+          >
+            Order Summary
+          </Typography>
+          <Box display='flex' justifyContent='space-between' mb={0.75}>
+            <Typography variant='body2' color='text.secondary'>
+              Total GST{' '}
+              <Typography
+                component='span'
+                variant='caption'
+                color='text.disabled'
+              >
+                ({customer?.cf_in_ex || 'Exclusive'})
+              </Typography>
+            </Typography>
+            <Typography variant='body2' fontWeight={600} color='text.primary'>
+              ₹{totals.totalGST.toFixed(2)}
+            </Typography>
+          </Box>
+          <Divider sx={{ my: 1 }} />
+          <Box display='flex' justifyContent='space-between' alignItems='center'>
+            <Typography variant='subtitle1' fontWeight={700} color='text.primary'>
+              Grand Total
+            </Typography>
+            <Typography
+              variant='h6'
+              fontWeight={800}
+              color='primary.main'
+              sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+            >
+              ₹{totals.totalAmount.toLocaleString('en-IN')}
+            </Typography>
+          </Box>
+        </Paper>
+      )}
+
+      <div ref={pageBottomRef} />
+
+      <ImagePopupDialog
+        open={openImagePopup}
+        onClose={handleClosePopup}
+        imageSources={popupImageSrc}
+        initialSlide={popupImageIndex}
+        setIndex={(newIndex: number) => setPopupImageIndex(newIndex)}
+      />
+
+      {/* ── Scroll navigation ── */}
       <Box
         sx={{
           position: 'fixed',
-          bottom: { xs: theme.spacing(20), sm: theme.spacing(12), md: theme.spacing(16) },
-          right: { xs: theme.spacing(1), sm: theme.spacing(3), md: theme.spacing(2) },
+          bottom: { xs: theme.spacing(14), sm: theme.spacing(10), md: theme.spacing(5) },
+          right: { xs: theme.spacing(1.5), sm: theme.spacing(2.5), md: theme.spacing(2) },
           display: 'flex',
           flexDirection: 'column',
-          gap: 1.5,
+          gap: 1,
           zIndex: 1000,
-          pointerEvents: 'none',
         }}
-        className='no-pdf'
       >
         <IconButton
-          color='primary'
-          onClick={scrollToTop}
+          onClick={() =>
+            pageTopRef.current?.scrollIntoView({ behavior: 'smooth' })
+          }
+          size={isMobile ? 'medium' : 'large'}
           sx={{
-            backgroundColor: 'primary.main',
+            bgcolor: isDark
+              ? 'rgba(124,111,205,0.85)'
+              : 'rgba(42,74,107,0.85)',
             color: 'white',
-            width: { xs: 48, sm: 56 },
-            height: { xs: 48, sm: 56 },
-            boxShadow: 6,
+            width: { xs: 40, sm: 48 },
+            height: { xs: 40, sm: 48 },
+            boxShadow: 4,
+            backdropFilter: 'blur(8px)',
             '&:hover': {
-              backgroundColor: 'primary.dark',
-              boxShadow: 8,
-              transform: 'scale(1.1)',
+              bgcolor: 'primary.main',
+              boxShadow: 6,
+              transform: 'scale(1.08)',
             },
-            transition: 'all 0.2s ease-in-out',
-            pointerEvents: 'auto',
+            transition: 'all 0.2s ease',
           }}
         >
-          <ArrowUpward fontSize={isMobile ? 'medium' : 'large'} />
+          <ArrowUpward fontSize='small' />
         </IconButton>
-
         <IconButton
-          color='primary'
-          onClick={scrollToBottom}
+          onClick={() =>
+            pageBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+          }
+          size={isMobile ? 'medium' : 'large'}
           sx={{
-            backgroundColor: 'primary.main',
+            bgcolor: isDark
+              ? 'rgba(124,111,205,0.85)'
+              : 'rgba(42,74,107,0.85)',
             color: 'white',
-            width: { xs: 48, sm: 56 },
-            height: { xs: 48, sm: 56 },
-            boxShadow: 6,
+            width: { xs: 40, sm: 48 },
+            height: { xs: 40, sm: 48 },
+            boxShadow: 4,
+            backdropFilter: 'blur(8px)',
             '&:hover': {
-              backgroundColor: 'primary.dark',
-              boxShadow: 8,
-              transform: 'scale(1.1)',
+              bgcolor: 'primary.main',
+              boxShadow: 6,
+              transform: 'scale(1.08)',
             },
-            transition: 'all 0.2s ease-in-out',
-            pointerEvents: 'auto',
+            transition: 'all 0.2s ease',
           }}
         >
-          <ArrowDownward fontSize={isMobile ? 'medium' : 'large'} />
+          <ArrowDownward fontSize='small' />
         </IconButton>
       </Box>
     </Box>

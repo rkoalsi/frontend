@@ -23,9 +23,10 @@ import {
   ShoppingCartOutlined,
   ArrowForward,
   LocalOffer,
-  DeleteOutline,
+  DeleteOutlined,
 } from '@mui/icons-material';
 import QuantitySelector from '../QuantitySelector';
+import { getPackStep } from '../../../util/groupProducts';
 
 interface CartDrawerProps {
   open: boolean;
@@ -169,7 +170,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                   },
                 }}
               >
-                <DeleteOutline />
+                <DeleteOutlined />
               </IconButton>
             )}
             <IconButton
@@ -308,8 +309,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                           borderRadius: 2,
                           overflow: 'hidden',
                           border: '2px solid',
-                          borderColor: 'grey.200',
-                          bgcolor: 'grey.50',
+                          borderColor: 'divider',
+                          bgcolor: 'action.hover',
                           position: 'relative',
                           transition: 'all 0.3s ease',
                           cursor: 'pointer',
@@ -450,6 +451,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                             <QuantitySelector
                               quantity={product.quantity}
                               max={product.stock}
+                              step={getPackStep(product.name)}
                               onChange={(newQuantity) =>
                                 handleQuantityChange(productId, newQuantity)
                               }
@@ -516,9 +518,9 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                   mb: 2.5,
                   p: 2,
                   borderRadius: 2,
-                  bgcolor: 'grey.50',
+                  bgcolor: 'action.hover',
                   border: '1px solid',
-                  borderColor: 'grey.200',
+                  borderColor: 'divider',
                 }}
               >
                 <Box
@@ -528,7 +530,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                     mb: 1.5,
                     pb: 1.5,
                     borderBottom: '1px dashed',
-                    borderColor: 'grey.300',
+                    borderColor: 'divider',
                   }}
                 >
                   <Typography

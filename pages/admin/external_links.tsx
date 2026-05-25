@@ -233,8 +233,7 @@ const ExternalLinks = () => {
         sx={{
           padding: 4,
           borderRadius: 4,
-          backgroundColor: 'white',
-        }}
+                  }}
       >
         <Box
           display='flex'
@@ -249,7 +248,7 @@ const ExternalLinks = () => {
             Add External Link
           </Button>
         </Box>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           View and manage all external links below.
         </Typography>
         {loading ? (

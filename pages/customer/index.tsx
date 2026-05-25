@@ -40,6 +40,7 @@ import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
 import { format } from 'date-fns';
 import axios from 'axios';
+import { trackActivity } from '../../src/util/trackActivity';
 
 interface CustomerStats {
   total_orders: number;
@@ -108,7 +109,7 @@ const CustomerDashboard = () => {
     try {
       setLoading(true);
       const { data } = await axiosInstance.get(`/orders`, {
-        params: { created_by: user?.data?._id, limit: 5 },
+        params: { created_by: user?._id, limit: 5 },
       });
 
       const orders = data.orders || data || [];
@@ -132,14 +133,14 @@ const CustomerDashboard = () => {
   }, [user]);
 
   const fetchDashboardSummary = useCallback(async () => {
-    if (!user?.data?.customer_id) {
+    if (!user?.customer_id) {
       setSummaryLoading(false);
       return;
     }
     try {
       setSummaryLoading(true);
       const { data } = await axiosInstance.get(`/customer_portal/dashboard-summary`, {
-        params: { customer_id: user?.data?.customer_id },
+        params: { customer_id: user?.customer_id },
       });
       setDashboardSummary(data);
     } catch (err: any) {
@@ -156,10 +157,18 @@ const CustomerDashboard = () => {
     }
   }, [user, fetchStats, fetchDashboardSummary]);
 
+  useEffect(() => {
+    if (user) {
+      trackActivity({ action: 'view_dashboard', category: 'portal' });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   const handleNewOrder = async () => {
+    trackActivity({ action: 'click_new_order', category: 'orders' });
     try {
       const resp = await axios.post(`${process.env.api_url}/orders/`, {
-        created_by: user?.data?._id,
+        created_by: user?._id,
         status: 'draft',
       });
       const { data = {} } = resp;
@@ -177,11 +186,11 @@ const CustomerDashboard = () => {
   };
 
   const handleDownloadStatement = async () => {
-    if (!user?.data?.customer_id) return;
+    if (!user?.customer_id) return;
     try {
       setDownloadingStatement(true);
       const response = await axiosInstance.get('/customer_portal/statement/download', {
-        params: { customer_id: user.data.customer_id },
+        params: { customer_id: user.customer_id },
         responseType: 'blob',
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -306,7 +315,7 @@ const CustomerDashboard = () => {
       icon: <ReceiptLong />,
       color: '#8b5cf6',
       onClick: () => router.push('/customer/invoices'),
-      show: !!user?.data?.customer_id,
+      show: !!user?.customer_id,
     },
     {
       title: 'Payments',
@@ -314,7 +323,7 @@ const CustomerDashboard = () => {
       icon: <Payment />,
       color: '#10b981',
       onClick: () => router.push('/customer/payments'),
-      show: !!user?.data?.customer_id,
+      show: !!user?.customer_id,
     },
     {
       title: 'Shipments',
@@ -322,7 +331,7 @@ const CustomerDashboard = () => {
       icon: <LocalShipping />,
       color: '#f59e0b',
       onClick: () => router.push('/customer/shipments'),
-      show: !!user?.data?.customer_id,
+      show: !!user?.customer_id,
     },
     // {
     //   title: 'Analytics',
@@ -338,12 +347,12 @@ const CustomerDashboard = () => {
       icon: downloadingStatement ? <CircularProgress size={18} color='inherit' /> : <Download />,
       color: '#0891b2',
       onClick: handleDownloadStatement,
-      show: !!user?.data?.customer_id,
+      show: !!user?.customer_id,
       disabled: downloadingStatement,
     },
     {
       title: 'My Account',
-      description: 'Manage your profile',
+      description: 'View your profile details',
       icon: <ManageAccounts />,
       color: '#64748b',
       onClick: () => router.push('/customer/account'),
@@ -389,7 +398,7 @@ const CustomerDashboard = () => {
               variant={isMobile ? 'h6' : 'h4'}
               sx={{ fontWeight: 700, mb: 0.5 }}
             >
-              Welcome back, {user?.data?.first_name || 'Customer'}
+              Welcome back, {user?.first_name || 'Customer'}
             </Typography>
             <Typography
               variant='body2'
@@ -522,14 +531,14 @@ const CustomerDashboard = () => {
                     icon={<ShoppingCartOutlined sx={{ fontSize: { xs: 16, sm: 20 } }} />}
                     iconPosition='start'
                   />
-                  {user?.data?.customer_id && (
+                  {user?.customer_id && (
                     <Tab
                       label='Invoices'
                       icon={<Receipt sx={{ fontSize: { xs: 16, sm: 20 } }} />}
                       iconPosition='start'
                     />
                   )}
-                  {user?.data?.customer_id && (
+                  {user?.customer_id && (
                     <Tab
                       label={isMobile ? 'Credits' : 'Credit Notes'}
                       icon={<CreditCard sx={{ fontSize: { xs: 16, sm: 20 } }} />}
@@ -644,7 +653,7 @@ const CustomerDashboard = () => {
                 )}
 
                 {/* Invoices Tab */}
-                {activeTab === 1 && user?.data?.customer_id && (
+                {activeTab === 1 && user?.customer_id && (
                   <>
                     <Box
                       sx={{
@@ -711,7 +720,7 @@ const CustomerDashboard = () => {
                 )}
 
                 {/* Credit Notes Tab */}
-                {activeTab === 2 && user?.data?.customer_id && (
+                {activeTab === 2 && user?.customer_id && (
                   <>
                     <Box
                       sx={{

@@ -17,6 +17,7 @@ import {
   TextField,
   Autocomplete,
   CircularProgress,
+  InputAdornment,
   Table,
   TableBody,
   TableCell,
@@ -50,6 +51,7 @@ import {
   Chip,
   Alert,
   Tooltip,
+  Fade,
 } from "@mui/material";
 import {
   ArrowDownward,
@@ -59,6 +61,7 @@ import {
   Sort,
   AddShoppingCart,
   RemoveShoppingCart,
+  Search as SearchIcon,
 } from "@mui/icons-material";
 import debounce from "lodash.debounce";
 import { toast } from "react-toastify";
@@ -72,7 +75,7 @@ import Image from "next/image";
 import DoubleScrollTable, { DoubleScrollTableRef } from "./DoubleScrollTable";
 import ImageCarousel from "./products/ImageCarousel";
 import QuantitySelector from "./QuantitySelector";
-import { groupProductsByName, ProductGroup, GroupedProducts } from "../../util/groupProducts";
+import { groupProductsByName, ProductGroup, GroupedProducts, getPackStep } from "../../util/groupProducts";
 import AuthContext from "../Auth";
 
 interface SearchResult {
@@ -119,6 +122,7 @@ const MemoizedDesktopProductCard = memo(({
   isShared
 }: any) => {
   const productId = product._id;
+  const packStep = getPackStep(product.name);
   const selectedProduct: any = selectedProducts.find((p: any) => p._id === productId);
   const quantity: any = selectedProduct?.quantity || temporaryQuantities[productId] || "";
   const sellingPrice = getSellingPrice(product);
@@ -158,7 +162,7 @@ const MemoizedDesktopProductCard = memo(({
                 fontFamily: 'Poppins, sans-serif',
                 fontWeight: 700,
                 fontSize: '0.75rem',
-                backgroundColor: 'white',
+                backgroundColor: 'background.paper' as any,
                 color: 'primary.main',
                 letterSpacing: '0.5px',
                 textTransform: 'uppercase',
@@ -277,16 +281,14 @@ const MemoizedDesktopProductCard = memo(({
 
             {!isShared && (
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" fontWeight={600}>
                   Margin:
                 </Typography>
                 <Chip
                   label={specialMargins[productId] || customer?.cf_margin || "40%"}
                   size="small"
-                  sx={{
-                    backgroundColor: 'info.light',
-                    color: 'info.contrastText',
-                  }}
+                  color="warning"
+                  sx={{ fontWeight: 700 }}
                 />
               </Box>
             )}
@@ -316,6 +318,7 @@ const MemoizedDesktopProductCard = memo(({
             <QuantitySelector
               quantity={quantity}
               max={product.stock}
+              step={packStep}
               onChange={(newQuantity: number) => handleQuantityChange(productId, newQuantity)}
               disabled={isDisabled}
             />
@@ -1017,7 +1020,8 @@ const Products: React.FC<ProductsProps> = ({
         (p) => p._id === product._id
       );
       const productId = product._id;
-      const quantity = temporaryQuantities[productId] || product.quantity || 1;
+      const packStep = getPackStep(product.name);
+      const quantity = temporaryQuantities[productId] || product.quantity || packStep;
       if (!isAlreadySelected) {
         const isShared = new URLSearchParams(window.location.search).has(
           "shared"
@@ -1030,7 +1034,7 @@ const Products: React.FC<ProductsProps> = ({
               ? specialMargins[productId]
               : customer?.cf_margin || "40%",
             quantity,
-            added_by: isShared ? "customer" : user?.data?.role || 'sales_person',
+            added_by: isShared ? "customer" : user?.role || 'sales_person',
           },
         ];
 
@@ -1086,8 +1090,9 @@ const Products: React.FC<ProductsProps> = ({
     (id: string, newQuantity: number) => {
       const productInCart = selectedProducts.find((p) => p._id === id);
       if (productInCart) {
+        const minQty = getPackStep(productInCart.name);
         const sanitized = Math.max(
-          1,
+          minQty,
           Math.min(newQuantity, productInCart.stock)
         );
         const updated = selectedProducts.map((p) =>
@@ -1134,7 +1139,7 @@ const Products: React.FC<ProductsProps> = ({
         }
 
         if (product) {
-          const sanitized = Math.max(1, Math.min(newQuantity, product.stock));
+          const sanitized = Math.max(getPackStep(product.name), Math.min(newQuantity, product.stock));
           const isShared = new URLSearchParams(window.location.search).has(
             "shared"
           );
@@ -1554,45 +1559,51 @@ const Products: React.FC<ProductsProps> = ({
             </DialogActions>
           </Dialog>
         </Box>
-        <Tooltip title="Search for products by name, SKU, or brand. Results will appear as you type." arrow placement="top">
-          <Autocomplete
-            freeSolo
-            options={options}
-            getOptionLabel={(option: SearchResult | string) =>
-              typeof option === "string" ? option : option.name
-            }
-            isOptionEqualToValue={(
-              option: SearchResult | string,
-              value: SearchResult | string
-            ) =>
-              typeof option === "string" && typeof value === "string"
-                ? option === value
-                : typeof option !== "string" &&
-                typeof value !== "string" &&
-                option._id === value._id
-            }
-            onInputChange={handleInputChange}
-            value={query}
-            loading={loading}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label={label}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {loading && <CircularProgress color="inherit" size={20} />}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-          />
-        </Tooltip>
+        <TextField
+          label={label}
+          variant="outlined"
+          fullWidth
+          value={query}
+          onChange={(e) => {
+            const val = e.target.value;
+            setQuery(val);
+            handleSearch(val);
+          }}
+          placeholder="Search by name, SKU, or brand…"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ color: 'text.secondary', fontSize: { xs: 18, sm: 20 } }} />
+              </InputAdornment>
+            ),
+            endAdornment: loading ? (
+              <InputAdornment position="end">
+                <CircularProgress color="inherit" size={20} />
+              </InputAdornment>
+            ) : query ? (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={() => { setQuery(''); handleSearch(''); }}
+                  edge="end"
+                  sx={{ color: 'text.secondary' }}
+                >
+                  <CloseIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </InputAdornment>
+            ) : undefined,
+          }}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 2,
+              fontSize: { xs: '1rem', sm: '0.95rem' },
+              transition: 'box-shadow 0.2s ease',
+              '&:focus-within': {
+                boxShadow: `0 0 0 3px ${theme.palette.primary.main}20`,
+              },
+            },
+          }}
+        />
 
         {/* Hide/Show Out of Stock Toggle */}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
@@ -1642,16 +1653,27 @@ const Products: React.FC<ProductsProps> = ({
                         <Box display="flex" alignItems="center" gap={1}>
                           {(selectedBrand?.image || selectedBrand?.url) && (
                             <Box
-                              component="img"
-                              src={selectedBrand.image || selectedBrand.url}
-                              alt={selectedBrand.brand}
                               sx={{
                                 width: 64,
                                 height: 64,
-                                objectFit: "contain",
-                                borderRadius: "4px",
+                                borderRadius: '4px',
+                                backgroundColor: '#ffffff',
+                                border: '1px solid rgba(0,0,0,0.1)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                overflow: 'hidden',
+                                p: '2px',
                               }}
-                            />
+                            >
+                              <Box
+                                component="img"
+                                src={selectedBrand.image || selectedBrand.url}
+                                alt={selectedBrand.brand}
+                                sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              />
+                            </Box>
                           )}
                           <Typography variant="h6">
                             {selectedBrand?.brand}
@@ -1676,17 +1698,29 @@ const Products: React.FC<ProductsProps> = ({
                             width="100%"
                           >
                             {(b.image || b.url) && (
-                              <Image
-                                src={b.image || b.url}
-                                alt={b.brand}
-                                width={80}
-                                height={80}
-                                style={{
-                                  objectFit: "contain",
-                                  borderRadius: "6px",
+                              <Box
+                                sx={{
+                                  width: 56,
+                                  height: 56,
+                                  borderRadius: '6px',
+                                  backgroundColor: '#ffffff',
+                                  border: '1px solid rgba(0,0,0,0.1)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
                                   flexShrink: 0,
+                                  overflow: 'hidden',
+                                  p: '4px',
                                 }}
-                              />
+                              >
+                                <Image
+                                  src={b.image || b.url}
+                                  alt={b.brand}
+                                  width={48}
+                                  height={48}
+                                  style={{ objectFit: "contain" }}
+                                />
+                              </Box>
                             )}
                             <Box display="flex" flexDirection="column" flex={1}>
                               <Typography variant="h6" fontWeight="medium">
@@ -1714,6 +1748,7 @@ const Products: React.FC<ProductsProps> = ({
                     onChange={(e, newValue) => handleTabChange(newValue)}
                     variant="scrollable"
                     scrollButtons="auto"
+                    textColor="inherit"
                     sx={{
                       mt: 2,
                       ".MuiTab-root": {
@@ -1726,6 +1761,8 @@ const Products: React.FC<ProductsProps> = ({
                         alignItems: "center",
                         gap: 1,
                         transition: "all 0.2s ease-in-out",
+                        color: "text.primary",
+                        opacity: 1,
                         "&:hover": {
                           backgroundColor: "action.hover",
                           transform: "translateY(-2px)",
@@ -1761,21 +1798,30 @@ const Products: React.FC<ProductsProps> = ({
                               gap={1}
                             >
                               {(b.image || b.url) && (
-                                <Image
-                                  src={b.image || b.url}
-                                  alt={b.brand}
+                                <Box
                                   className="brand-image"
-                                  width={80}
-                                  height={80}
-                                  style={{
-                                    objectFit: "contain",
-                                    borderRadius: "8px",
-                                    border: "2px solid transparent",
-                                    transition: "all 0.2s ease-in-out",
-                                    backgroundColor: "background.paper",
-                                    padding: "4px",
+                                  sx={{
+                                    width: 80,
+                                    height: 80,
+                                    borderRadius: '8px',
+                                    backgroundColor: '#ffffff',
+                                    border: '2px solid transparent',
+                                    transition: 'all 0.2s ease-in-out',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    overflow: 'hidden',
+                                    p: '4px',
                                   }}
-                                />
+                                >
+                                  <Image
+                                    src={b.image || b.url}
+                                    alt={b.brand}
+                                    width={72}
+                                    height={72}
+                                    style={{ objectFit: "contain" }}
+                                  />
+                                </Box>
                               )}
                               <Box textAlign="center">
                                 <Typography
@@ -1860,12 +1906,15 @@ const Products: React.FC<ProductsProps> = ({
                   onChange={(e, newValue) => handleCategoryTabChange(newValue)}
                   variant="scrollable"
                   scrollButtons="auto"
+                  textColor="inherit"
                   sx={{
                     mt: 2,
                     ".MuiTab-root": {
                       textTransform: "none",
                       fontWeight: "bold",
                       padding: "10px 20px",
+                      color: "text.primary",
+                      opacity: 1,
                     },
                     ".Mui-selected": { color: "primary.main" },
                   }}
@@ -1891,6 +1940,7 @@ const Products: React.FC<ProductsProps> = ({
                     }
                     variant="scrollable"
                     scrollButtons="auto"
+                    textColor="inherit"
                     sx={{
                       mt: 2,
                       mb: 2,
@@ -1898,6 +1948,8 @@ const Products: React.FC<ProductsProps> = ({
                         textTransform: "none",
                         fontWeight: "bold",
                         padding: "8px 16px",
+                        color: "text.primary",
+                        opacity: 1,
                       },
                       ".Mui-selected": { color: "primary.main" },
                     }}
@@ -2116,6 +2168,7 @@ const Products: React.FC<ProductsProps> = ({
 
         {/* Products Display */}
         {isMobile || isTablet ? (
+          <Fade in key={productsKey} timeout={250}>
           <Box>
             {loading || loadingOutOfStock ? (
               // Loading skeletons for mobile/tablet
@@ -2476,6 +2529,7 @@ const Products: React.FC<ProductsProps> = ({
             {/* Intersection Observer target for infinite scroll */}
             <div ref={intersectionRef} style={{ height: '20px', margin: '20px 0' }} />
           </Box>
+          </Fade>
         ) : isMobile ? (
           <DoubleScrollTable ref={tableScrollRef} tableWidth={3200}>
             <Box sx={{ minWidth: "3200px", width: "3200px" }}>
@@ -2601,6 +2655,7 @@ const Products: React.FC<ProductsProps> = ({
           </DoubleScrollTable>
         ) : (
           // Desktop Card Grid View
+          <Fade in key={productsKey} timeout={250}>
           <Box ref={cardScrollRef}>
             {loading || loadingOutOfStock ? (
               // Loading skeletons for desktop
@@ -2981,12 +3036,13 @@ const Products: React.FC<ProductsProps> = ({
             {/* Intersection Observer target for infinite scroll - Desktop */}
             <div ref={intersectionRef} style={{ height: '20px', margin: '20px 0' }} />
           </Box>
+          </Fade>
         )}
       </Box>
       <Box
         sx={{
           position: 'fixed',
-          bottom: { xs: theme.spacing(20), sm: theme.spacing(12), md: theme.spacing(16) },
+          bottom: { xs: theme.spacing(20), sm: theme.spacing(19), md: theme.spacing(23) },
           right: { xs: theme.spacing(1), sm: theme.spacing(3), md: theme.spacing(2) },
           display: 'flex',
           flexDirection: 'column',
@@ -3063,7 +3119,7 @@ const Products: React.FC<ProductsProps> = ({
         onClick={() => setCartDrawerOpen(true)}
         sx={{
           position: "fixed",
-          bottom: { xs: theme.spacing(10), sm: theme.spacing(4), md: theme.spacing(3) },
+          bottom: { xs: theme.spacing(10), sm: theme.spacing(10), md: theme.spacing(10) },
           right: { xs: theme.spacing(1), sm: theme.spacing(3), md: theme.spacing(2) },
           backgroundColor: "background.paper",
           color: "primary.main",

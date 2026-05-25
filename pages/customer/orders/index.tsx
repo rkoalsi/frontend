@@ -38,6 +38,7 @@ import { useRouter } from 'next/router';
 import axiosInstance from '../../../src/util/axios';
 import { format } from 'date-fns';
 import axios from 'axios';
+import { trackActivity } from '../../../src/util/trackActivity';
 
 interface Order {
   _id: string;
@@ -67,7 +68,7 @@ const CustomerOrders = () => {
       setLoading(true);
       const { data } = await axiosInstance.get(`/orders`, {
         params: {
-          created_by: user?.data?._id,
+          created_by: user?._id,
           page,
           limit: itemsPerPage,
           ...(statusFilter !== 'all' && { status: statusFilter }),
@@ -90,10 +91,17 @@ const CustomerOrders = () => {
     }
   }, [user, fetchOrders]);
 
+  useEffect(() => {
+    if (user) {
+      trackActivity({ action: 'view_orders_list', category: 'orders' });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   const handleNewOrder = async () => {
     try {
       const resp = await axios.post(`${process.env.api_url}/orders/`, {
-        created_by: user?.data?._id,
+        created_by: user?._id,
         status: 'draft',
       });
       const { data = {} } = resp;
@@ -312,7 +320,7 @@ const CustomerOrders = () => {
                             startIcon={<Visibility />}
                             onClick={(e) => {
                               e.stopPropagation();
-                              router.push(`/customer/orders/${order._id}`);
+                              router.push(`/orders/new/${order._id}`);
                             }}
                             sx={{ textTransform: 'none' }}
                           >

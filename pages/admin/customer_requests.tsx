@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -26,13 +26,25 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Autocomplete,
 } from '@mui/material';
-import { Visibility, Check, Close, Edit as EditIcon } from '@mui/icons-material';
+import { Visibility, Check, Close, Edit as EditIcon, CloudUpload as UploadIcon, Delete as DeleteIcon, InsertDriveFile as FileIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import CommentIcon from '@mui/icons-material/Comment';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
+import axios from 'axios';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
+
+const INDIAN_STATES = [
+  'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam',
+  'Bihar', 'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir',
+  'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh',
+  'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha',
+  'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana',
+  'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+];
 
 
 interface Comment {
@@ -69,6 +81,7 @@ interface CustomerRequest {
   _id: string;
   shop_name: string;
   customer_name: string;
+  zoho_customer_name: string;
   address: string;
   gst_no?: string;
   pan_card_no?: string;
@@ -85,6 +98,9 @@ interface CustomerRequest {
   gst_treatment?: string;
   pincode?: string;
   in_ex?: string;
+  gst_certificate_url?: string;
+  pan_card_url?: string;
+  aadhar_url?: string;
   created_by_name: string;
   created_at: string;
   status: 'pending' | 'approved' | 'rejected' | 'admin_commented' | 'salesperson_replied' | 'created_on_zoho';
@@ -134,14 +150,37 @@ const CustomerRequests = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<CustomerRequest>>({});
   const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
+
+  // Document upload state
+  const [docUploading, setDocUploading] = useState<Record<string, boolean>>({});
+  const gstCertRef = useRef<HTMLInputElement>(null);
+  const panCardRef = useRef<HTMLInputElement>(null);
+  const aadharRef = useRef<HTMLInputElement>(null);
   const [newStatus, setNewStatus] = useState<'pending' | 'rejected'>('pending');
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [duplicateCustomerInfo, setDuplicateCustomerInfo] = useState<{ contact_name: string; contact_id: string } | null>(null);
   const [pendingApprovalRequestId, setPendingApprovalRequestId] = useState<string | null>(null);
+  const [cities, setCities] = useState<string[]>([]);
+  const [citiesLoading, setCitiesLoading] = useState(false);
 
   useEffect(() => {
     fetchRequests();
   }, [page, rowsPerPage]);
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      setCitiesLoading(true);
+      try {
+        const response = await axios.get(`${process.env.api_url}/util/indian-cities`);
+        if (response.data?.cities?.length > 0) setCities(response.data.cities);
+      } catch (error) {
+        console.error('Error fetching cities:', error);
+      } finally {
+        setCitiesLoading(false);
+      }
+    };
+    fetchCities();
+  }, []);
 
   const fetchRequests = async () => {
     try {
@@ -413,6 +452,59 @@ const CustomerRequests = () => {
     }
   };
 
+  const extractS3Key = (url: string) => {
+    try { return new URL(url).pathname.slice(1); } catch { return url; }
+  };
+
+  const handleDocUpload = async (
+    file: File,
+    docType: 'gst_certificate' | 'pan_card' | 'aadhar',
+    urlField: 'gst_certificate_url' | 'pan_card_url' | 'aadhar_url',
+  ) => {
+    if (!selectedRequest) return;
+    setDocUploading((prev) => ({ ...prev, [docType]: true }));
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('doc_type', docType);
+      const res = await axiosInstance.post('/customer_creation_requests/upload-document', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      await axiosInstance.put(`/customer_creation_requests/${selectedRequest._id}`, {
+        ...selectedRequest,
+        [urlField]: res.data.url,
+      });
+      toast.success('Document uploaded');
+      fetchRequests();
+      setSelectedRequest((prev: CustomerRequest | null) => prev ? { ...prev, [urlField]: res.data.url } : prev);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Failed to upload document');
+    } finally {
+      setDocUploading((prev) => ({ ...prev, [docType]: false }));
+    }
+  };
+
+  const handleDocDelete = async (
+    docKey: string,
+    urlField: 'gst_certificate_url' | 'pan_card_url' | 'aadhar_url',
+    inputRef: React.RefObject<HTMLInputElement | null>,
+  ) => {
+    if (!selectedRequest) return;
+    try {
+      await axiosInstance.delete('/customer_creation_requests/document', { params: { key: docKey } });
+      await axiosInstance.put(`/customer_creation_requests/${selectedRequest._id}`, {
+        ...selectedRequest,
+        [urlField]: null,
+      });
+      if (inputRef.current) inputRef.current.value = '';
+      toast.success('Document removed');
+      fetchRequests();
+      setSelectedRequest((prev: CustomerRequest | null) => prev ? { ...prev, [urlField]: undefined } : prev);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Failed to remove document');
+    }
+  };
+
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
   };
@@ -447,16 +539,17 @@ const CustomerRequests = () => {
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
-      <Typography variant="h4" sx={{ mb: 3, fontWeight: 600, color: 'white', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+      <Typography variant="h4" sx={{ mb: 3, fontWeight: 600, fontSize: { xs: '1.5rem', sm: '2rem' } }}>
         Customer Creation Requests
       </Typography>
 
       <TableContainer component={Paper} elevation={2}>
         <Table>
           <TableHead>
-            <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+            <TableRow sx={{ bgcolor: 'action.hover' }}>
               <TableCell><strong>Shop Name</strong></TableCell>
               <TableCell><strong>Customer Name</strong></TableCell>
+              <TableCell><strong>Zoho Customer Name</strong></TableCell>
               <TableCell><strong>Sales Person</strong></TableCell>
               <TableCell><strong>Created By</strong></TableCell>
               <TableCell><strong>Tier/Category</strong></TableCell>
@@ -479,6 +572,7 @@ const CustomerRequests = () => {
                 return (<TableRow key={request._id} hover>
                   <TableCell>{request.shop_name}</TableCell>
                   <TableCell>{request.customer_name}</TableCell>
+                  <TableCell>{request.zoho_customer_name}</TableCell>
                   <TableCell>{request.sales_person}</TableCell>
                   <TableCell>{request.created_by_name || 'N/A'}</TableCell>
                   <TableCell>{request.tier_category}</TableCell>
@@ -588,24 +682,65 @@ const CustomerRequests = () => {
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <TextField
-                    fullWidth
-                    label="City"
-                    value={isEditMode ? getAddressField(editFormData.billing_address, 'city') : (getAddressField(selectedRequest.billing_address, 'city') || 'N/A')}
-                    onChange={(e) => handleAddressChange('billing_address', 'city', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <Autocomplete
+                      fullWidth
+                      freeSolo
+                      options={cities}
+                      value={getAddressField(editFormData.billing_address, 'city') || null}
+                      onChange={(_, newValue) => handleAddressChange('billing_address', 'city', newValue || '')}
+                      onInputChange={(_, newValue) => handleAddressChange('billing_address', 'city', newValue || '')}
+                      loading={citiesLoading}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="City"
+                          placeholder="Search, select, or type city"
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {citiesLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
+                      )}
+                    />
+                  ) : (
+                    <TextField
+                      fullWidth
+                      label="City"
+                      value={getAddressField(selectedRequest.billing_address, 'city') || 'N/A'}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <TextField
-                    fullWidth
-                    label="State"
-                    value={isEditMode ? getAddressField(editFormData.billing_address, 'state') : (getAddressField(selectedRequest.billing_address, 'state') || 'N/A')}
-                    onChange={(e) => handleAddressChange('billing_address', 'state', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <FormControl fullWidth>
+                      <InputLabel>State</InputLabel>
+                      <Select
+                        label="State"
+                        value={getAddressField(editFormData.billing_address, 'state') || ''}
+                        onChange={(e) => handleAddressChange('billing_address', 'state', e.target.value)}
+                      >
+                        {INDIAN_STATES.map((state) => (
+                          <MenuItem key={state} value={state}>{state}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      label="State"
+                      value={getAddressField(selectedRequest.billing_address, 'state') || 'N/A'}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
                   <TextField
@@ -640,9 +775,27 @@ const CustomerRequests = () => {
 
                 {/* Shipping Address Section */}
                 <Grid size={{ xs: 12 }}>
-                  <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, mt: 2, color: 'primary.main' }}>
-                    Shipping Address
-                  </Typography>
+                  <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 1, mt: 2 }}>
+                    <Typography variant="subtitle2" fontWeight={600} sx={{ color: 'primary.main' }}>
+                      Shipping Address
+                    </Typography>
+                    {isEditMode && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => {
+                          const billing = isEditMode ? editFormData.billing_address : selectedRequest.billing_address;
+                          if (typeof billing === 'object' && billing !== null) {
+                            setEditFormData(prev => ({ ...prev, shipping_address: { ...billing } }));
+                          } else if (typeof billing === 'string') {
+                            setEditFormData(prev => ({ ...prev, shipping_address: { address: billing } }));
+                          }
+                        }}
+                      >
+                        Copy from Billing
+                      </Button>
+                    )}
+                  </Box>
                   <Divider sx={{ mb: 2 }} />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
@@ -666,24 +819,65 @@ const CustomerRequests = () => {
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <TextField
-                    fullWidth
-                    label="City"
-                    value={isEditMode ? getAddressField(editFormData.shipping_address, 'city') : (getAddressField(selectedRequest.shipping_address, 'city') || 'N/A')}
-                    onChange={(e) => handleAddressChange('shipping_address', 'city', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <Autocomplete
+                      fullWidth
+                      freeSolo
+                      options={cities}
+                      value={getAddressField(editFormData.shipping_address, 'city') || null}
+                      onChange={(_, newValue) => handleAddressChange('shipping_address', 'city', newValue || '')}
+                      onInputChange={(_, newValue) => handleAddressChange('shipping_address', 'city', newValue || '')}
+                      loading={citiesLoading}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="City"
+                          placeholder="Search, select, or type city"
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {citiesLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
+                      )}
+                    />
+                  ) : (
+                    <TextField
+                      fullWidth
+                      label="City"
+                      value={getAddressField(selectedRequest.shipping_address, 'city') || 'N/A'}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <TextField
-                    fullWidth
-                    label="State"
-                    value={isEditMode ? getAddressField(editFormData.shipping_address, 'state') : (getAddressField(selectedRequest.shipping_address, 'state') || 'N/A')}
-                    onChange={(e) => handleAddressChange('shipping_address', 'state', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <FormControl fullWidth>
+                      <InputLabel>State</InputLabel>
+                      <Select
+                        label="State"
+                        value={getAddressField(editFormData.shipping_address, 'state') || ''}
+                        onChange={(e) => handleAddressChange('shipping_address', 'state', e.target.value)}
+                      >
+                        {INDIAN_STATES.map((state) => (
+                          <MenuItem key={state} value={state}>{state}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      label="State"
+                      value={getAddressField(selectedRequest.shipping_address, 'state') || 'N/A'}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
                   <TextField
@@ -750,15 +944,29 @@ const CustomerRequests = () => {
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="GST Treatment"
-                    value={isEditMode ? editFormData.gst_treatment || '' : (selectedRequest.gst_treatment || '')}
-                    onChange={(e) => handleEditFormChange('gst_treatment', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <FormControl fullWidth required>
+                      <InputLabel>GST Treatment</InputLabel>
+                      <Select
+                        label="GST Treatment"
+                        value={editFormData.gst_treatment || ''}
+                        onChange={(e) => handleEditFormChange('gst_treatment', e.target.value)}
+                      >
+                        <MenuItem value="Business GST">Business GST</MenuItem>
+                        <MenuItem value="Unregistered Business">Unregistered Business</MenuItem>
+                        <MenuItem value="Consumer">Consumer</MenuItem>
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      required
+                      label="GST Treatment"
+                      value={selectedRequest.gst_treatment || 'N/A'}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
@@ -794,25 +1002,56 @@ const CustomerRequests = () => {
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Payment Terms"
-                    value={isEditMode ? editFormData.payment_terms || '' : selectedRequest.payment_terms}
-                    onChange={(e) => handleEditFormChange('payment_terms', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <FormControl fullWidth required>
+                      <InputLabel>Payment Terms</InputLabel>
+                      <Select
+                        label="Payment Terms"
+                        value={editFormData.payment_terms || ''}
+                        onChange={(e) => handleEditFormChange('payment_terms', e.target.value)}
+                      >
+                        <MenuItem value="Due On Receipt">Due On Receipt</MenuItem>
+                        <MenuItem value="Upfront">Upfront</MenuItem>
+                        <MenuItem value="Immediate">Immediate</MenuItem>
+                        <MenuItem value="Net 15">Net 15</MenuItem>
+                        <MenuItem value="Net 30">Net 30</MenuItem>
+                        <MenuItem value="Net 45">Net 45</MenuItem>
+                        <MenuItem value="Net 60">Net 60</MenuItem>
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      required
+                      label="Payment Terms"
+                      value={selectedRequest.payment_terms}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Multiple Branches"
-                    value={isEditMode ? editFormData.multiple_branches || '' : (selectedRequest.multiple_branches || 'N/A')}
-                    onChange={(e) => handleEditFormChange('multiple_branches', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <FormControl fullWidth>
+                      <InputLabel>Multiple Branches</InputLabel>
+                      <Select
+                        label="Multiple Branches"
+                        value={editFormData.multiple_branches || ''}
+                        onChange={(e) => handleEditFormChange('multiple_branches', e.target.value)}
+                      >
+                        <MenuItem value="Yes">Yes</MenuItem>
+                        <MenuItem value="No">No</MenuItem>
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      label="Multiple Branches"
+                      value={selectedRequest.multiple_branches || 'N/A'}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   {isEditMode ? (
@@ -896,6 +1135,83 @@ const CustomerRequests = () => {
                 </Grid>
               </Grid>
 
+              {/* Documents Section */}
+              <Box sx={{ mt: 3 }}>
+                <Divider sx={{ mb: 2 }} />
+                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
+                  Documents
+                </Typography>
+                {(() => {
+                  const isGST = selectedRequest.gst_treatment === 'Business GST';
+                  const docs: {
+                    label: string;
+                    urlField: 'gst_certificate_url' | 'pan_card_url' | 'aadhar_url';
+                    docType: 'gst_certificate' | 'pan_card' | 'aadhar';
+                    ref: React.RefObject<HTMLInputElement | null>;
+                    show: boolean;
+                  }[] = [
+                    { label: 'GST Certificate', urlField: 'gst_certificate_url', docType: 'gst_certificate', ref: gstCertRef, show: isGST },
+                    { label: 'PAN Card', urlField: 'pan_card_url', docType: 'pan_card', ref: panCardRef, show: !isGST },
+                    { label: 'Aadhaar Card', urlField: 'aadhar_url', docType: 'aadhar', ref: aadharRef, show: !isGST },
+                  ];
+                  return (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {docs.filter((d) => d.show).map((doc) => {
+                        const url = selectedRequest[doc.urlField];
+                        return (
+                          <Box key={doc.docType} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="body2" sx={{ minWidth: 130, fontWeight: 500 }}>{doc.label}:</Typography>
+                            {url ? (
+                              <>
+                                <Chip
+                                  icon={<FileIcon />}
+                                  label={url.split('/').pop()}
+                                  component="a"
+                                  href={url}
+                                  target="_blank"
+                                  clickable
+                                  color="success"
+                                  variant="outlined"
+                                  size="small"
+                                  deleteIcon={<OpenInNewIcon />}
+                                  onDelete={() => window.open(url, '_blank')}
+                                />
+                                <Tooltip title="Delete document">
+                                  <IconButton size="small" onClick={() => handleDocDelete(extractS3Key(url), doc.urlField, doc.ref)}>
+                                    <DeleteIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">Not uploaded</Typography>
+                            )}
+                            <input
+                              ref={doc.ref}
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              style={{ display: 'none' }}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) handleDocUpload(f, doc.docType, doc.urlField);
+                              }}
+                            />
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={docUploading[doc.docType] ? <CircularProgress size={14} /> : <UploadIcon />}
+                              disabled={docUploading[doc.docType]}
+                              onClick={() => doc.ref.current?.click()}
+                            >
+                              {url ? 'Replace' : 'Upload'}
+                            </Button>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  );
+                })()}
+              </Box>
+
               {/* Admin Comments Section */}
               <Box sx={{ mt: 3 }}>
                 <Divider sx={{ mb: 2 }} />
@@ -934,7 +1250,7 @@ const CustomerRequests = () => {
                     {selectedRequest.admin_comments.map((comment) => (
                       <Paper
                         key={comment._id}
-                        sx={{ p: 1.5, my: 1, backgroundColor: '#fff3e0' }}
+                        sx={{ p: 1.5, my: 1, bgcolor: 'action.hover' }}
                       >
                         <Box>
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -952,7 +1268,7 @@ const CustomerRequests = () => {
 
                         {/* Reply display */}
                         {comment.reply && (
-                          <Paper sx={{ p: 1, mt: 1, ml: 2, backgroundColor: '#e8f5e9' }}>
+                          <Paper sx={{ p: 1, mt: 1, ml: 2, bgcolor: 'action.selected' }}>
                             <Typography variant="caption" sx={{ fontWeight: 500 }}>
                               {comment.reply.user_name} ({comment.reply.user_role})
                             </Typography>

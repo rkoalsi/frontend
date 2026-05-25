@@ -214,8 +214,7 @@ const Customers = () => {
         sx={{
           padding: { xs: 2, sm: 3, md: 4 },
           borderRadius: 4,
-          backgroundColor: 'white',
-          position: 'relative', // added so we can position the overlay
+                    position: 'relative', // added so we can position the overlay
         }}
       >
         <Box

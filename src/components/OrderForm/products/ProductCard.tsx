@@ -5,7 +5,6 @@ import {
   CardContent,
   Typography,
   Box,
-  Grid,
   Button,
   Badge,
   Chip,
@@ -21,6 +20,7 @@ import {
 import { AddShoppingCart, RemoveShoppingCart, ExpandMore } from "@mui/icons-material";
 import QuantitySelector from "../QuantitySelector";
 import ImageCarousel from "./ImageCarousel";
+import { getPackStep } from "../../../util/groupProducts";
 
 interface SearchResult {
   _id: string;
@@ -73,6 +73,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
     isShared = false,
   }) => {
     const productId = product._id;
+    const packStep = getPackStep(product.name);
     const selectedProduct: any = selectedProducts.find(
       (p) => p._id === productId
     );
@@ -86,38 +87,38 @@ const ProductCard: React.FC<ProductCardProps> = memo(
       orderStatus?.toLowerCase().includes("declined");
 
     const theme = useTheme();
+    const isDark = theme.palette.mode === 'dark';
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
     const isTablet = useMediaQuery(theme.breakpoints.down("md"));
 
     return (
-      <Grid sx={{ height: '100%' }}>
-        <Card
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            height: '100%',
-            minHeight: '100%',
-            borderRadius: 3,
-            boxShadow: selectedProduct ? 4 : 2,
-            overflow: "visible",
-            backgroundColor: "background.paper",
-            border: selectedProduct ? '2px solid' : '1px solid',
-            borderColor: selectedProduct ? 'primary.main' : 'divider',
-            transition: isMobile || isTablet ? 'none' : 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
-            contain: 'layout style paint',
-            '&:hover': {
-              boxShadow: 6,
-              transform: isMobile || isTablet ? 'none' : 'translate3d(0, -4px, 0)',
-              borderColor: 'primary.light',
-            },
-          }}
-        >
+      <Card
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          height: '100%',
+          minHeight: '100%',
+          borderRadius: 3,
+          boxShadow: selectedProduct ? 4 : 2,
+          overflow: "visible",
+          backgroundColor: "background.paper",
+          border: selectedProduct ? '2px solid' : '1px solid',
+          borderColor: selectedProduct ? 'primary.main' : 'divider',
+          transition: isMobile || isTablet ? 'none' : 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
+          contain: 'layout style paint',
+          '&:hover': {
+            boxShadow: 6,
+            transform: isMobile || isTablet ? 'none' : 'translate3d(0, -4px, 0)',
+            borderColor: 'primary.light',
+          },
+        }}
+      >
           {/* Image Section */}
           <Box
             sx={{
               position: "relative",
-              backgroundColor: 'grey.50',
-              height: 280,
+              bgcolor: 'background.paper',
+              height: { xs: 220, sm: 260, md: 280, xl: 240 },
               width: '100%',
             }}
           >
@@ -176,13 +177,12 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                     label={product.category}
                     variant="filled"
                     size="small"
+                    color="primary"
                     sx={{
                       borderRadius: 1.5,
                       fontSize: '0.7rem',
                       height: '24px',
                       fontWeight: 600,
-                      bgcolor: 'primary.50',
-                      color: 'primary.dark',
                       '& .MuiChip-label': { px: 1.5 },
                     }}
                   />
@@ -423,7 +423,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                         fontWeight: 800,
                         fontSize: '1.05rem',
                         fontFamily: 'system-ui',
-                        color: 'primary.main',
+                        color: isDark ? 'text.primary' : 'primary.main',
                         letterSpacing: '-0.5px',
                       }}
                     >
@@ -540,6 +540,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               <QuantitySelector
                 quantity={quantity}
                 max={product.stock}
+                step={packStep}
                 onChange={(newQuantity) =>
                   handleQuantityChange(productId, newQuantity)
                 }
@@ -598,7 +599,6 @@ const ProductCard: React.FC<ProductCardProps> = memo(
             </Tooltip>
           </CardContent>
         </Card>
-      </Grid>
     );
   }
 );

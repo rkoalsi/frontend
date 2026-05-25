@@ -32,7 +32,7 @@ import {
   Pause,
   Image,
   PhotoCamera,
-  DeleteOutline,
+  DeleteOutlined,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
@@ -451,14 +451,10 @@ const Announcements = () => {
         sx={{
           padding: 4,
           borderRadius: 4,
-          backgroundColor: 'white',
-        }}
+                  }}
       >
         <Box
-          display='flex'
-          flexDirection='row'
-          justifyContent='space-between'
-          alignItems='center'
+          sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
         >
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
             All Announcements
@@ -467,7 +463,7 @@ const Announcements = () => {
             Add Announcement
           </Button>
         </Box>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           View and manage all announcements for sales people below.
         </Typography>
         {loading ? (
@@ -550,7 +546,7 @@ const Announcements = () => {
                             />
                           </TableCell>
                           <TableCell>
-                            <Box display='flex' flexDirection='row' gap='8px'>
+                            <Box sx={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
                               <IconButton
                                 onClick={() => handleEditClick(announcement)}
                               >
@@ -624,7 +620,7 @@ const Announcements = () => {
                 </Box>
               </>
             ) : (
-              <Box display='flex' justifyContent='center' alignItems='center'>
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <Typography variant='h5' fontWeight='bold'>
                   No Announcements
                 </Typography>
@@ -710,7 +706,7 @@ const Announcements = () => {
                     variant='outlined'
                     color='error'
                     onClick={clearImage}
-                    startIcon={<DeleteOutline />}
+                    startIcon={<DeleteOutlined />}
                   >
                     Clear Image
                   </Button>
@@ -780,7 +776,7 @@ const Announcements = () => {
                     variant='outlined'
                     color='error'
                     onClick={clearAudio}
-                    startIcon={<DeleteOutline />}
+                    startIcon={<DeleteOutlined />}
                   >
                     Clear Audio
                   </Button>

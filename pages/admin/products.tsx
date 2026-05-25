@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
-import { Box, Paper, TextField, Typography } from '@mui/material';
+import { Alert, Box, Paper, TextField, Typography } from '@mui/material';
 import { Download, FilterAlt, Sync } from '@mui/icons-material';
 import { Button, CircularProgress } from '@mui/material';
 import ProductTable from '../../src/components/admin/products/ProductsTable';
@@ -55,7 +55,7 @@ const Products = () => {
   const [filterSortBy, setFilterSortBy] = useState('');
 
   // Dropdown options for filters
-  const [brandOptions, setBrandOptions] = useState([]);
+  const [brandOptions, setBrandOptions] = useState<{ name: string; hidden?: boolean }[]>([]);
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [subCategoryOptions, setSubCategoryOptions] = useState([]);
 
@@ -84,11 +84,13 @@ const Products = () => {
   useEffect(() => {
     const fetchFilterOptions = async () => {
       try {
-        const brands = await axiosInstance.get('/admin/brands');
+        const brands = await axiosInstance.get('/admin/brands_with_images');
         const categories = await axiosInstance.get('/admin/categories');
         const sub_categories = await axiosInstance.get('/admin/sub_categories');
 
-        setBrandOptions(brands.data.brands);
+        setBrandOptions(
+          (brands.data.brands || []).map((b: any) => ({ name: b.name, hidden: !!b.hidden }))
+        );
         setCategoryOptions(categories.data.categories);
         setSubCategoryOptions(sub_categories.data.sub_categories);
       } catch (error) {
@@ -637,7 +639,7 @@ const handleImageUpload = async (files: File[] | File) => {
     <Box sx={{ padding: 3 }}>
       <Paper
         elevation={3}
-        sx={{ padding: 4, borderRadius: 4, backgroundColor: 'white' }}
+        sx={{ padding: 4, borderRadius: 4 }}
       >
         <Box
           display='flex'
@@ -674,7 +676,7 @@ const handleImageUpload = async (files: File[] | File) => {
             />
           </Box>
         </Box>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           A comprehensive list of all products in your inventory.
         </Typography>
 
@@ -685,8 +687,13 @@ const handleImageUpload = async (files: File[] | File) => {
           fullWidth
           value={searchQuery}
           onChange={handleSearch}
-          sx={{ marginBottom: 3 }}
+          sx={{ marginBottom: filterBrand && brandOptions.find((b) => b.name === filterBrand)?.hidden ? 1 : 3 }}
         />
+        {filterBrand && brandOptions.find((b) => b.name === filterBrand)?.hidden && (
+          <Alert severity='warning' sx={{ marginBottom: 3 }}>
+            <strong>{filterBrand}</strong> is currently hidden — it will not appear in the order form or all products catalogue for customers.
+          </Alert>
+        )}
 
         <ProductTable
           products={products}

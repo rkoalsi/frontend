@@ -55,10 +55,10 @@ function Shipments() {
       setLoading(true);
     }
     try {
-      const isAdminOrManager = user?.data?.role?.includes('admin') || user?.data?.role?.includes('catalogue_manager');
+      const isAdminOrManager = user?.role?.includes('admin') || user?.role?.includes('catalogue_manager');
       const resp = await axios.get(`${process.env.api_url}/shipments`, {
         params: {
-          created_by: user?.data?._id,
+          created_by: user?._id,
           page: pageNum,
           per_page: 20,
           ...(searchTerm && { search: searchTerm }),
@@ -84,12 +84,12 @@ function Shipments() {
   };
 
   useEffect(() => {
-    if (user?.data?._id) {
+    if (user?._id) {
       setPage(1);
       setShipments([]);
       getData(search, 1, false, statusFilter);
     }
-  }, [user?.data?._id, statusFilter]);
+  }, [user?._id, statusFilter]);
 
   // Debounced search
   useEffect(() => {
@@ -97,7 +97,7 @@ function Shipments() {
       clearTimeout(debounceRef.current);
     }
     debounceRef.current = setTimeout(() => {
-      if (user?.data?._id) {
+      if (user?._id) {
         setPage(1);
         setShipments([]);
         getData(search, 1, false, statusFilter);
@@ -196,10 +196,8 @@ function Shipments() {
           }}
           size='small'
           sx={{
-            backgroundColor: 'white',
             borderRadius: 2,
             '& .MuiOutlinedInput-root': {
-              backgroundColor: 'white',
               borderRadius: 2,
             },
           }}
@@ -220,7 +218,7 @@ function Shipments() {
               height: 28,
               fontSize: '0.75rem',
               cursor: 'pointer',
-              backgroundColor: statusFilter === filter.value ? undefined : 'white',
+              backgroundColor: statusFilter === filter.value ? undefined : 'background.paper',
             }}
           />
         ))}
@@ -228,7 +226,7 @@ function Shipments() {
 
       {/* Total Count */}
       {!loading && total > 0 && (
-        <Typography variant='caption' color='white'>
+        <Typography variant='caption' color='text.secondary'>
           {total} shipment{total !== 1 ? 's' : ''}
         </Typography>
       )}

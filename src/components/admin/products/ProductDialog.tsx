@@ -14,6 +14,7 @@ import {
   CircularProgress,
   Chip,
   IconButton,
+  useTheme,
 } from '@mui/material';
 import ImageDropzone from '../../common/ImageDropzone';
 import VideoDropzone from '../../common/VideoDropzone';
@@ -45,6 +46,8 @@ const ProductDialog = ({
   handleVideoReorder,
   handleVideoDelete,
 }: any) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const onDragEnd = (result: any) => {
     // Check if drop was successful
     if (!result.destination) return;
@@ -93,8 +96,8 @@ const ProductDialog = ({
     >
       <DialogTitle
         sx={{
-          borderBottom: '1px solid #e0e0e0',
-          backgroundColor: '#f8f9fa',
+          borderBottom: '1px solid divider',
+          backgroundColor: theme.palette.background.default,
           py: 2,
           display: 'flex',
           alignItems: 'center',
@@ -124,7 +127,7 @@ const ProductDialog = ({
               <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 35%' } }}>
                 <Paper
                   elevation={0}
-                  sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}
+                  sx={{ p: 2, border: '1px solid divider', borderRadius: 2 }}
                 >
                   <Typography
                     variant='subtitle2'
@@ -151,7 +154,7 @@ const ProductDialog = ({
                                 ? '100px'
                                 : 'auto',
                               backgroundColor: snapshot.isDraggingOver
-                                ? '#f5f5f5'
+                                ? (isDark ? 'rgba(255,255,255,0.08)' : '#f5f5f5')
                                 : 'transparent',
                               borderRadius: 1,
                               transition: 'background-color 0.2s ease',
@@ -179,12 +182,12 @@ const ProductDialog = ({
                                         alignItems: 'center',
                                         gap: 1.5,
                                         backgroundColor: snapshot.isDragging
-                                          ? '#e3f2fd'
-                                          : '#fff',
+                                          ? (isDark ? 'rgba(124,111,205,0.2)' : 'rgba(124,111,205,0.1)')
+                                          : theme.palette.background.paper,
                                         border:
                                           index === 0
-                                            ? '2px solid #1976d2'
-                                            : '1px solid #e0e0e0',
+                                            ? '2px solid primary.main'
+                                            : '1px solid divider',
                                         position: 'relative',
                                         minHeight: 80,
                                         transform: snapshot.isDragging
@@ -206,15 +209,15 @@ const ProductDialog = ({
                                           alignItems: 'center',
                                           cursor: 'grab',
                                           color: snapshot.isDragging
-                                            ? '#1976d2'
+                                            ? 'primary.main'
                                             : '#666',
                                           '&:hover': {
-                                            color: '#1976d2',
-                                            backgroundColor: '#f5f5f5',
+                                            color: 'primary.main',
+                                            backgroundColor: theme.palette.action.hover,
                                           },
                                           '&:active': {
                                             cursor: 'grabbing',
-                                            color: '#1565c0',
+                                            color: 'primary.dark',
                                           },
                                           padding: '4px',
                                           borderRadius: '4px',
@@ -237,7 +240,7 @@ const ProductDialog = ({
                                           borderRadius: 1,
                                           overflow: 'hidden',
                                           cursor: 'pointer',
-                                          backgroundColor: '#f5f5f5',
+                                          backgroundColor: theme.palette.action.hover,
                                           display: 'flex',
                                           alignItems: 'center',
                                           justifyContent: 'center',
@@ -353,7 +356,7 @@ const ProductDialog = ({
                                               width: 28,
                                               height: 28,
                                               '&:hover': {
-                                                backgroundColor: '#ffebee',
+                                                backgroundColor: 'rgba(244,67,54,0.12)',
                                               },
                                             }}
                                           >
@@ -397,7 +400,7 @@ const ProductDialog = ({
                 {/* Videos Section */}
                 <Paper
                   elevation={0}
-                  sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2, mt: 2 }}
+                  sx={{ p: 2, border: '1px solid divider', borderRadius: 2, mt: 2 }}
                 >
                   <Typography
                     variant='subtitle2'
@@ -424,7 +427,7 @@ const ProductDialog = ({
                                 ? '100px'
                                 : 'auto',
                               backgroundColor: snapshot.isDraggingOver
-                                ? '#f5f5f5'
+                                ? (isDark ? 'rgba(255,255,255,0.08)' : '#f5f5f5')
                                 : 'transparent',
                               borderRadius: 1,
                               transition: 'background-color 0.2s ease',
@@ -452,9 +455,9 @@ const ProductDialog = ({
                                         alignItems: 'center',
                                         gap: 1.5,
                                         backgroundColor: snapshot.isDragging
-                                          ? '#e3f2fd'
-                                          : '#fff',
-                                        border: '1px solid #e0e0e0',
+                                          ? (isDark ? 'rgba(124,111,205,0.2)' : 'rgba(124,111,205,0.1)')
+                                          : theme.palette.background.paper,
+                                        border: '1px solid divider',
                                         position: 'relative',
                                         minHeight: 80,
                                         transform: snapshot.isDragging
@@ -476,15 +479,15 @@ const ProductDialog = ({
                                           alignItems: 'center',
                                           cursor: 'grab',
                                           color: snapshot.isDragging
-                                            ? '#1976d2'
+                                            ? 'primary.main'
                                             : '#666',
                                           '&:hover': {
-                                            color: '#1976d2',
-                                            backgroundColor: '#f5f5f5',
+                                            color: 'primary.main',
+                                            backgroundColor: theme.palette.action.hover,
                                           },
                                           '&:active': {
                                             cursor: 'grabbing',
-                                            color: '#1565c0',
+                                            color: 'primary.dark',
                                           },
                                           padding: '4px',
                                           borderRadius: '4px',
@@ -500,7 +503,7 @@ const ProductDialog = ({
                                           height: 70,
                                           borderRadius: 1,
                                           overflow: 'hidden',
-                                          backgroundColor: '#f5f5f5',
+                                          backgroundColor: theme.palette.action.hover,
                                           display: 'flex',
                                           alignItems: 'center',
                                           justifyContent: 'center',
@@ -573,7 +576,7 @@ const ProductDialog = ({
                                               width: 28,
                                               height: 28,
                                               '&:hover': {
-                                                backgroundColor: '#ffebee',
+                                                backgroundColor: 'rgba(244,67,54,0.12)',
                                               },
                                             }}
                                           >
@@ -618,7 +621,7 @@ const ProductDialog = ({
               <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 65%' } }}>
                 <Paper
                   elevation={0}
-                  sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}
+                  sx={{ p: 2, border: '1px solid divider', borderRadius: 2 }}
                 >
                   <Typography
                     variant='subtitle2'
@@ -945,8 +948,8 @@ const ProductDialog = ({
         sx={{
           px: 3,
           py: 2,
-          borderTop: '1px solid #e0e0e0',
-          backgroundColor: '#f8f9fa',
+          borderTop: '1px solid divider',
+          backgroundColor: theme.palette.background.default,
         }}
       >
         <Button

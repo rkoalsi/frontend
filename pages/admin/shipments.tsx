@@ -68,12 +68,15 @@ const AdminShipments = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<number | null>(null);
   const [replacingImageIndex, setReplacingImageIndex] = useState<number | null>(null);
+  const [deleteShipmentOpen, setDeleteShipmentOpen] = useState(false);
+  const [shipmentToDelete, setShipmentToDelete] = useState<Shipment | null>(null);
+  const [deletingShipment, setDeletingShipment] = useState(false);
 
   const fetchShipments = async (search = '', pageNum = 0, perPage = 25) => {
     setLoading(true);
     try {
       const params: any = {
-        created_by: user?.data?._id,
+        created_by: user?._id,
         role: 'admin',
         per_page: perPage,
         page: pageNum + 1, // API uses 1-based pagination
@@ -99,7 +102,7 @@ const AdminShipments = () => {
 
   // Debounced search effect
   useEffect(() => {
-    if (!user?.data?._id) return;
+    if (!user?._id) return;
 
     const debounceTimer = setTimeout(() => {
       setPage(0); // Reset to first page on search
@@ -108,11 +111,11 @@ const AdminShipments = () => {
 
     return () => clearTimeout(debounceTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, user?.data?._id]);
+  }, [searchTerm, user?._id]);
 
   // Load shipments when pagination changes
   useEffect(() => {
-    if (user?.data?._id) {
+    if (user?._id) {
       fetchShipments(searchTerm, page, rowsPerPage);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -165,7 +168,7 @@ const AdminShipments = () => {
       // Create captions array matching images order
       const captionsArray = imagesToUpload.map((_, index) => captions[index] || '');
       formData.append('captions', JSON.stringify(captionsArray));
-      formData.append('uploaded_by', user?.data?._id);
+      formData.append('uploaded_by', user?._id);
 
       await axiosInstance.post(
         `/shipments/${selectedShipment._id}/images`,
@@ -269,7 +272,7 @@ const AdminShipments = () => {
       const formData = new FormData();
       formData.append('images', file);
       formData.append('captions', JSON.stringify([existingCaption]));
-      formData.append('uploaded_by', user?.data?._id);
+      formData.append('uploaded_by', user?._id);
 
       await axiosInstance.post(
         `/shipments/${selectedShipment._id}/images`,
@@ -294,6 +297,24 @@ const AdminShipments = () => {
       toast.error(error.response?.data?.detail || 'Error replacing image');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDeleteShipment = async () => {
+    if (!shipmentToDelete) return;
+    setDeletingShipment(true);
+    try {
+      await axiosInstance.delete(`/shipments/${shipmentToDelete._id}`);
+      toast.success('Shipment deleted successfully');
+      setShipments((prev) => prev.filter((s) => s._id !== shipmentToDelete._id));
+      setTotalCount((prev) => prev - 1);
+      setDeleteShipmentOpen(false);
+      setShipmentToDelete(null);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.response?.data?.detail || 'Error deleting shipment');
+    } finally {
+      setDeletingShipment(false);
     }
   };
 
@@ -373,13 +394,12 @@ const AdminShipments = () => {
         sx={{
           padding: 4,
           borderRadius: 4,
-          backgroundColor: 'white',
-        }}
+                  }}
       >
         <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
           Manage Shipment Images
         </Typography>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           Search for a shipment and upload images with optional captions.
         </Typography>
 
@@ -474,13 +494,25 @@ const AdminShipments = () => {
                       )}
                     </TableCell>
                     <TableCell align='center'>
-                      <Button
-                        variant='outlined'
-                        size='small'
-                        onClick={() => handleShipmentClick(shipment)}
-                      >
-                        Manage Images
-                      </Button>
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <Button
+                          variant='outlined'
+                          size='small'
+                          onClick={() => handleShipmentClick(shipment)}
+                        >
+                          Manage Images
+                        </Button>
+                        <IconButton
+                          size='small'
+                          color='error'
+                          onClick={() => {
+                            setShipmentToDelete(shipment);
+                            setDeleteShipmentOpen(true);
+                          }}
+                        >
+                          <Delete fontSize='small' />
+                        </IconButton>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -836,6 +868,47 @@ const AdminShipments = () => {
             </Box>
           )}
         </DialogContent>
+      </Dialog>
+
+      {/* Delete Shipment Confirmation Dialog */}
+      <Dialog
+        open={deleteShipmentOpen}
+        onClose={() => {
+          if (!deletingShipment) {
+            setDeleteShipmentOpen(false);
+            setShipmentToDelete(null);
+          }
+        }}
+        maxWidth='xs'
+        fullWidth
+      >
+        <DialogTitle>Delete Shipment?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete shipment <strong>{shipmentToDelete?.shipment_number}</strong> for{' '}
+            <strong>{shipmentToDelete?.customer_name}</strong>? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setDeleteShipmentOpen(false);
+              setShipmentToDelete(null);
+            }}
+            disabled={deletingShipment}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant='contained'
+            color='error'
+            onClick={handleDeleteShipment}
+            disabled={deletingShipment}
+            startIcon={deletingShipment ? <CircularProgress size={16} /> : <Delete />}
+          >
+            {deletingShipment ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}

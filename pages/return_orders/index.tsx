@@ -53,7 +53,7 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
       const response = await axios.get(
         `${process.env.api_url}/return_orders/${returnOrder._id}/download-creditnote-pdf`,
         {
-          params: { created_by: user?.data?._id },
+          params: { created_by: user?._id },
           responseType: 'blob',
         }
       );
@@ -248,7 +248,7 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
             <Typography variant='body2' color='textSecondary' gutterBottom>
               Return Reason
             </Typography>
-            <Alert severity='info' sx={{ backgroundColor: '#f3f4f6' }}>
+            <Alert severity='info'>
               {returnOrder.return_reason}
             </Alert>
           </Box>
@@ -275,7 +275,6 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
                     key={idx}
                     severity='success'
                     sx={{
-                      backgroundColor: '#f0fdf4',
                       display: 'flex',
                       alignItems: 'center',
                     }}
@@ -313,7 +312,6 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
             </Box>
             <Alert
               severity='success'
-              sx={{ backgroundColor: '#f0fdf4' }}
               action={
                 <Button
                   color='inherit'
@@ -351,9 +349,7 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
               aria-controls='return-items-content'
               id='return-items-header'
               sx={{
-                backgroundColor: '#f8f9fa',
                 borderRadius: 1,
-                '&:hover': { backgroundColor: '#e9ecef' },
               }}
             >
               <Typography fontWeight='medium'>
@@ -365,7 +361,7 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
                 {returnOrder.items.map((item: any, index: number) => (
                   <Card
                     key={index}
-                    sx={{ mb: 1, p: 2, backgroundColor: '#fafafa' }}
+                    sx={{ mb: 1, p: 2 }}
                   >
                     <Box
                       sx={{
@@ -435,13 +431,13 @@ function ReturnOrders() {
   const [customer, setCustomer]: any = useState();
 
   const fetchReturnOrders = async (currentPage = 1, query = '') => {
-    if (!user?.data?._id) return;
+    if (!user?._id) return;
 
     try {
       setLoading(true);
       const resp = await axios.get(`${process.env.api_url}/return_orders`, {
         params: {
-          created_by: user.data._id,
+          created_by: user._id,
           search: query,
           page: currentPage,
           limit: 12, // Reduced for better mobile experience
@@ -576,8 +572,6 @@ function ReturnOrders() {
           icon={<AssignmentReturnIcon />}
           sx={{
             mt: 2,
-            backgroundColor: '#e3f2fd',
-            color: '#1565c0',
             fontWeight: 'medium',
             textAlign: 'center',
           }}

@@ -23,6 +23,7 @@ import {
   FormControl,
   InputLabel,
   Divider,
+  Checkbox,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import { Visibility, Delete, Download } from '@mui/icons-material';
@@ -57,6 +58,11 @@ const CareerApplications = () => {
   // Filters
   const [filterCareerId, setFilterCareerId] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+
+  // Selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Detail dialog
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
@@ -65,6 +71,9 @@ const CareerApplications = () => {
 
   // Download report
   const [downloadLoading, setDownloadLoading] = useState(false);
+
+  // Status email
+  const [sendEmailLoading, setSendEmailLoading] = useState(false);
 
   // Careers list for reference
   const [careers, setCareers] = useState<any[]>([]);
@@ -86,6 +95,8 @@ const CareerApplications = () => {
       const params: any = { page, limit: rowsPerPage };
       if (filterCareerId) params.career_id = filterCareerId;
       if (filterStatus) params.status = filterStatus;
+      if (filterDateFrom) params.date_from = filterDateFrom;
+      if (filterDateTo) params.date_to = filterDateTo;
 
       const response = await axiosInstance.get(`/admin/career_applications`, {
         params,
@@ -109,7 +120,7 @@ const CareerApplications = () => {
   useEffect(() => {
     fetchApplications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, rowsPerPage, filterCareerId, filterStatus, actionLoading]);
+  }, [page, rowsPerPage, filterCareerId, filterStatus, filterDateFrom, filterDateTo, actionLoading]);
 
   const handleChangePage = (event: any, newPage: any) => {
     setPage(newPage);
@@ -156,8 +167,12 @@ const CareerApplications = () => {
         { status: statusValue }
       );
       toast.success('Application status updated');
-      setDialogOpen(false);
-      setSelectedApplication(null);
+      const statusChanged = selectedApplication.status !== statusValue;
+      setSelectedApplication((prev: any) => ({
+        ...prev,
+        status: statusValue,
+        ...(statusChanged ? { status_email_sent: false, status_email_sent_at: null } : {}),
+      }));
       fetchApplications();
     } catch (error) {
       console.error(error);
@@ -173,6 +188,11 @@ const CareerApplications = () => {
     try {
       await axiosInstance.delete(`/admin/career_applications/${applicationId}`);
       toast.success('Application deleted successfully');
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(applicationId);
+        return next;
+      });
       fetchApplications();
     } catch (error) {
       console.error(error);
@@ -187,12 +207,67 @@ const CareerApplications = () => {
     setSelectedApplication(null);
   };
 
+  const handleSendStatusEmail = async () => {
+    if (!selectedApplication) return;
+    setSendEmailLoading(true);
+    try {
+      await axiosInstance.post(
+        `/admin/career_applications/${selectedApplication._id}/send-status-email`
+      );
+      toast.success(`${selectedApplication.status.charAt(0).toUpperCase() + selectedApplication.status.slice(1)} email sent to applicant`);
+      setSelectedApplication((prev: any) => ({ ...prev, status_email_sent: true }));
+      fetchApplications();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Error sending status email');
+    } finally {
+      setSendEmailLoading(false);
+    }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const currentPageIds = (applications as any[]).map((a: any) => a._id);
+  const allOnPageSelected =
+    currentPageIds.length > 0 &&
+    currentPageIds.every((id) => selectedIds.has(id));
+  const someOnPageSelected =
+    !allOnPageSelected && currentPageIds.some((id) => selectedIds.has(id));
+
+  const handleToggleSelectAll = () => {
+    if (allOnPageSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        currentPageIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        currentPageIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+  };
+
   const handleDownloadReport = async () => {
     setDownloadLoading(true);
     try {
       const params: any = {};
-      if (filterCareerId) params.career_id = filterCareerId;
-      if (filterStatus) params.status = filterStatus;
+      if (selectedIds.size > 0) {
+        params.selected_ids = Array.from(selectedIds).join(',');
+      } else {
+        if (filterCareerId) params.career_id = filterCareerId;
+        if (filterStatus) params.status = filterStatus;
+        if (filterDateFrom) params.date_from = filterDateFrom;
+        if (filterDateTo) params.date_to = filterDateTo;
+      }
 
       const response = await axiosInstance.get(
         `/admin/career_applications/report`,
@@ -231,17 +306,17 @@ const CareerApplications = () => {
     <Box sx={{ padding: { xs: 2, sm: 3 } }}>
       <Paper
         elevation={3}
-        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4, backgroundColor: 'white' }}
+        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4 }}
       >
         <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
           Career Applications
         </Typography>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           View and manage all career applications below.
         </Typography>
 
         {/* Filters */}
-        <Box display='flex' gap={2} mb={3} alignItems='center'>
+        <Box display='flex' gap={2} mb={3} alignItems='center' flexWrap='wrap'>
           <FormControl size='small' sx={{ minWidth: 200 }}>
             <InputLabel>Filter by Career</InputLabel>
             <Select
@@ -278,6 +353,30 @@ const CareerApplications = () => {
               ))}
             </Select>
           </FormControl>
+          <TextField
+            label='Applied From'
+            type='date'
+            size='small'
+            InputLabelProps={{ shrink: true }}
+            value={filterDateFrom}
+            onChange={(e) => {
+              setFilterDateFrom(e.target.value);
+              setPage(0);
+            }}
+            sx={{ width: 170 }}
+          />
+          <TextField
+            label='Applied To'
+            type='date'
+            size='small'
+            InputLabelProps={{ shrink: true }}
+            value={filterDateTo}
+            onChange={(e) => {
+              setFilterDateTo(e.target.value);
+              setPage(0);
+            }}
+            sx={{ width: 170 }}
+          />
           <Button
             variant='contained'
             startIcon={
@@ -291,7 +390,11 @@ const CareerApplications = () => {
             disabled={downloadLoading}
             sx={{ height: 40 }}
           >
-            {downloadLoading ? 'Downloading...' : 'Download XLSX'}
+            {downloadLoading
+              ? 'Downloading...'
+              : selectedIds.size > 0
+              ? `Download XLSX (${selectedIds.size} selected)`
+              : 'Download XLSX'}
           </Button>
         </Box>
 
@@ -314,6 +417,13 @@ const CareerApplications = () => {
                   <Table>
                     <TableHead>
                       <TableRow>
+                        <TableCell padding='checkbox'>
+                          <Checkbox
+                            indeterminate={someOnPageSelected}
+                            checked={allOnPageSelected}
+                            onChange={handleToggleSelectAll}
+                          />
+                        </TableCell>
                         <TableCell>Applicant Name</TableCell>
                         <TableCell>Email</TableCell>
                         <TableCell>Phone</TableCell>
@@ -326,7 +436,13 @@ const CareerApplications = () => {
                     </TableHead>
                     <TableBody>
                       {applications.map((app: any) => (
-                        <TableRow key={app._id}>
+                        <TableRow key={app._id} selected={selectedIds.has(app._id)}>
+                          <TableCell padding='checkbox'>
+                            <Checkbox
+                              checked={selectedIds.has(app._id)}
+                              onChange={() => handleToggleSelect(app._id)}
+                            />
+                          </TableCell>
                           <TableCell>{app.applicant_name}</TableCell>
                           <TableCell>{app.applicant_email}</TableCell>
                           <TableCell>{app.applicant_phone}</TableCell>
@@ -542,15 +658,30 @@ const CareerApplications = () => {
             </Box>
           )}
           <Box
-            sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}
+            sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3, flexWrap: 'wrap' }}
           >
-            <Button onClick={handleDialogClose} disabled={actionLoading}>
+            <Button onClick={handleDialogClose} disabled={actionLoading || sendEmailLoading}>
               Cancel
             </Button>
+            {selectedApplication && ['accepted', 'rejected'].includes(selectedApplication.status) && (
+              <Button
+                variant='outlined'
+                color={selectedApplication.status === 'accepted' ? 'success' : 'error'}
+                onClick={handleSendStatusEmail}
+                disabled={sendEmailLoading || selectedApplication.status_email_sent}
+                title={selectedApplication.status_email_sent ? `Email already sent on ${selectedApplication.status_email_sent_at ? new Date(selectedApplication.status_email_sent_at).toLocaleString() : ''}` : ''}
+              >
+                {sendEmailLoading
+                  ? 'Sending...'
+                  : selectedApplication.status_email_sent
+                  ? `${selectedApplication.status.charAt(0).toUpperCase() + selectedApplication.status.slice(1)} Email Sent`
+                  : `Send ${selectedApplication.status.charAt(0).toUpperCase() + selectedApplication.status.slice(1)} Email`}
+              </Button>
+            )}
             <Button
               variant='contained'
               onClick={handleStatusUpdate}
-              disabled={actionLoading}
+              disabled={actionLoading || sendEmailLoading}
             >
               {actionLoading ? 'Updating...' : 'Update Status'}
             </Button>

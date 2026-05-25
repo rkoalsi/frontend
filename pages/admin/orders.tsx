@@ -322,14 +322,14 @@ const Orders = () => {
       case 'accepted':
         return 'green';
       default:
-        return 'black';
+        return 'inherit';
     }
   };
   const handleDelete = async (order: any) => {
     setOrderLoading(true);
     try {
       const resp = await axiosInstance.delete(`/orders/${order._id}`, {
-        params: { deleted_by: user?.data?._id }
+        params: { deleted_by: user?._id }
       });
       console.log(resp.data);
       if (resp.status === 200) {
@@ -370,8 +370,7 @@ const Orders = () => {
         sx={{
           padding: 4,
           borderRadius: 4,
-          backgroundColor: 'white',
-        }}
+                  }}
       >
         <Box
           display={'flex'}
@@ -403,7 +402,7 @@ const Orders = () => {
             </IconButton>
           </Box>
         </Box>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           View and manage all orders below.
         </Typography>
         {loading ? (
@@ -865,7 +864,6 @@ const Orders = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {console.log(selectedOrder)}
                       {selectedOrder.products?.map((product: any) => (
                         <TableRow key={product.product_id}>
                           <TableCell>

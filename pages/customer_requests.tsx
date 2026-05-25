@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -29,7 +29,7 @@ import {
   useTheme,
   MenuItem,
 } from '@mui/material';
-import { Visibility, Reply as ReplyIcon, Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon } from '@mui/icons-material';
+import { Visibility, Reply as ReplyIcon, Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon, CloudUpload as UploadIcon, InsertDriveFile as FileIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import CommentIcon from '@mui/icons-material/Comment';
 import { InputAdornment } from '@mui/material';
 import { toast } from 'react-toastify';
@@ -72,6 +72,7 @@ interface CustomerRequest {
   _id: string;
   shop_name: string;
   customer_name: string;
+  zoho_customer_name: string;
   address: string;
   gst_no?: string;
   pan_card_no?: string;
@@ -88,6 +89,9 @@ interface CustomerRequest {
   gst_treatment?: string;
   pincode?: string;
   in_ex?: string;
+  gst_certificate_url?: string;
+  pan_card_url?: string;
+  aadhar_url?: string;
   created_by_name: string;
   created_at: string;
   status: 'pending' | 'approved' | 'rejected' | 'admin_commented' | 'salesperson_replied' | 'created_on_zoho';
@@ -147,6 +151,12 @@ const CustomerRequests = () => {
   // Edit mode states
   const [isEditMode, setIsEditMode] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<CustomerRequest>>({});
+
+  // Document upload state
+  const [docUploading, setDocUploading] = useState<Record<string, boolean>>({});
+  const gstCertRef = useRef<HTMLInputElement>(null);
+  const panCardRef = useRef<HTMLInputElement>(null);
+  const aadharRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Check if user is logged in
@@ -299,9 +309,9 @@ const CustomerRequests = () => {
           `/customer_creation_requests/${selectedRequest._id}/comments/${selectedCommentId}/reply`,
           {
             reply: replyText,
-            user_id: user?.data?._id,
-            user_name: `${user?.data?.first_name || ''} ${user?.data?.last_name || ''}`.trim() || 'Salesperson',
-            user_role: user?.data?.role || 'sales_person',
+            user_id: user?._id,
+            user_name: `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Salesperson',
+            user_role: user?.role || 'sales_person',
           }
         );
         toast.success('Reply added successfully');
@@ -310,9 +320,9 @@ const CustomerRequests = () => {
           `/customer_creation_requests/${selectedRequest._id}/comments/${selectedCommentId}/reply`,
           {
             reply: replyText,
-            user_id: user?.data?._id,
-            user_name: `${user?.data?.first_name || ''} ${user?.data?.last_name || ''}`.trim() || 'Salesperson',
-            user_role: user?.data?.role || 'sales_person',
+            user_id: user?._id,
+            user_name: `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Salesperson',
+            user_role: user?.role || 'sales_person',
           }
         );
         toast.success('Reply updated successfully');
@@ -367,6 +377,66 @@ const CustomerRequests = () => {
       toast.error('Error deleting reply');
     } finally {
       setReplyLoading(false);
+    }
+  };
+
+  const handleDocUpload = async (
+    file: File,
+    docType: 'gst_certificate' | 'pan_card' | 'aadhar',
+    urlField: 'gst_certificate_url' | 'pan_card_url' | 'aadhar_url',
+  ) => {
+    if (!selectedRequest) return;
+    setDocUploading((prev) => ({ ...prev, [docType]: true }));
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('doc_type', docType);
+      const res = await axiosInstance.post('/customer_creation_requests/upload-document', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      // Persist URL on the request record
+      await axiosInstance.put(`/customer_creation_requests/${selectedRequest._id}`, {
+        ...selectedRequest,
+        [urlField]: res.data.url,
+      });
+      toast.success('Document uploaded');
+      fetchRequests();
+      // Refresh selectedRequest inline
+      setSelectedRequest((prev) => prev ? { ...prev, [urlField]: res.data.url } : prev);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Failed to upload document');
+    } finally {
+      setDocUploading((prev) => ({ ...prev, [docType]: false }));
+    }
+  };
+
+  const handleDocDelete = async (
+    docKey: string,
+    urlField: 'gst_certificate_url' | 'pan_card_url' | 'aadhar_url',
+    inputRef: React.RefObject<HTMLInputElement | null>,
+  ) => {
+    if (!selectedRequest) return;
+    try {
+      await axiosInstance.delete('/customer_creation_requests/document', { params: { key: docKey } });
+      await axiosInstance.put(`/customer_creation_requests/${selectedRequest._id}`, {
+        ...selectedRequest,
+        [urlField]: null,
+      });
+      if (inputRef.current) inputRef.current.value = '';
+      toast.success('Document removed');
+      fetchRequests();
+      setSelectedRequest((prev) => prev ? { ...prev, [urlField]: undefined } : prev);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Failed to remove document');
+    }
+  };
+
+  const extractS3Key = (url: string) => {
+    try {
+      const u = new URL(url);
+      return u.pathname.slice(1); // strip leading /
+    } catch {
+      return url;
     }
   };
 
@@ -496,6 +566,12 @@ const CustomerRequests = () => {
                         </Typography>
                         <Typography variant="body2">{request.customer_name}</Typography>
                       </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                          Zoho Company Name
+                        </Typography>
+                        <Typography variant="body2">{request.zoho_customer_name || 'N/A'}</Typography>
+                      </Box>
 
                       <Box>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
@@ -503,6 +579,7 @@ const CustomerRequests = () => {
                         </Typography>
                         <Typography variant="body2">{request.created_by_name || 'N/A'}</Typography>
                       </Box>
+
 
                       <Box>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
@@ -588,9 +665,10 @@ const CustomerRequests = () => {
         <TableContainer component={Paper} elevation={2}>
           <Table>
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+              <TableRow sx={{ bgcolor: 'action.hover' }}>
                 <TableCell><strong>Shop Name</strong></TableCell>
                 <TableCell><strong>Customer Name</strong></TableCell>
+                <TableCell><strong>Zoho Customer Name</strong></TableCell>
                 <TableCell><strong>Created By</strong></TableCell>
                 <TableCell><strong>Tier/Category</strong></TableCell>
                 <TableCell><strong>Status</strong></TableCell>
@@ -612,6 +690,7 @@ const CustomerRequests = () => {
                   <TableRow key={request._id} hover>
                     <TableCell>{request.shop_name}</TableCell>
                     <TableCell>{request.customer_name}</TableCell>
+                    <TableCell>{request.zoho_customer_name || ''}</TableCell>
                     <TableCell>{request.created_by_name || 'N/A'}</TableCell>
                     <TableCell>{request.tier_category}</TableCell>
                     <TableCell>{getStatusChip(request.status)}</TableCell>
@@ -930,15 +1009,34 @@ const CustomerRequests = () => {
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Payment Terms"
-                    value={isEditMode ? editFormData.payment_terms || '' : selectedRequest.payment_terms}
-                    onChange={(e) => handleEditFormChange('payment_terms', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <TextField
+                      fullWidth
+                      required
+                      label="Payment Terms"
+                      value={editFormData.payment_terms || ''}
+                      onChange={(e) => handleEditFormChange('payment_terms', e.target.value)}
+                      variant="outlined"
+                      select
+                    >
+                      <MenuItem value="Due On Receipt">Due On Receipt</MenuItem>
+                      <MenuItem value="Upfront">Upfront</MenuItem>
+                      <MenuItem value="Immediate">Immediate</MenuItem>
+                      <MenuItem value="Net 15">Net 15</MenuItem>
+                      <MenuItem value="Net 30">Net 30</MenuItem>
+                      <MenuItem value="Net 45">Net 45</MenuItem>
+                      <MenuItem value="Net 60">Net 60</MenuItem>
+                    </TextField>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      required
+                      label="Payment Terms"
+                      value={selectedRequest.payment_terms}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
@@ -951,15 +1049,32 @@ const CustomerRequests = () => {
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Tier/Category"
-                    value={isEditMode ? editFormData.tier_category || '' : selectedRequest.tier_category}
-                    onChange={(e) => handleEditFormChange('tier_category', e.target.value)}
-                    InputProps={{ readOnly: !isEditMode }}
-                    variant="outlined"
-                  />
+                  {isEditMode ? (
+                    <TextField
+                      fullWidth
+                      required
+                      label="Tier/Category"
+                      value={editFormData.tier_category || ''}
+                      onChange={(e) => handleEditFormChange('tier_category', e.target.value)}
+                      variant="outlined"
+                      select
+                    >
+                      <MenuItem value="A+">A+</MenuItem>
+                      <MenuItem value="A">A</MenuItem>
+                      <MenuItem value="B">B</MenuItem>
+                      <MenuItem value="C">C</MenuItem>
+                      <MenuItem value="D">D</MenuItem>
+                    </TextField>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      required
+                      label="Tier/Category"
+                      value={selectedRequest.tier_category}
+                      InputProps={{ readOnly: true }}
+                      variant="outlined"
+                    />
+                  )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
@@ -1020,6 +1135,84 @@ const CustomerRequests = () => {
                 </Grid>
               </Grid>
 
+              {/* Documents Section */}
+              <Box sx={{ mt: 3 }}>
+                <Divider sx={{ mb: 2 }} />
+                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
+                  Documents
+                </Typography>
+                {(() => {
+                  const isGST = selectedRequest.gst_treatment === 'Business GST';
+                  const canEdit = !['created_on_zoho', 'approved', 'rejected'].includes(selectedRequest.status);
+                  const docs: { label: string; urlField: 'gst_certificate_url' | 'pan_card_url' | 'aadhar_url'; docType: 'gst_certificate' | 'pan_card' | 'aadhar'; ref: React.RefObject<HTMLInputElement | null>; show: boolean }[] = [
+                    { label: 'GST Certificate', urlField: 'gst_certificate_url', docType: 'gst_certificate', ref: gstCertRef, show: isGST },
+                    { label: 'PAN Card', urlField: 'pan_card_url', docType: 'pan_card', ref: panCardRef, show: !isGST },
+                    { label: 'Aadhaar Card', urlField: 'aadhar_url', docType: 'aadhar', ref: aadharRef, show: !isGST },
+                  ];
+                  return (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {docs.filter((d) => d.show).map((doc) => {
+                        const url = selectedRequest[doc.urlField];
+                        return (
+                          <Box key={doc.docType} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="body2" sx={{ minWidth: 130, fontWeight: 500 }}>{doc.label}:</Typography>
+                            {url ? (
+                              <>
+                                <Chip
+                                  icon={<FileIcon />}
+                                  label={url.split('/').pop()}
+                                  component="a"
+                                  href={url}
+                                  target="_blank"
+                                  clickable
+                                  color="success"
+                                  variant="outlined"
+                                  size="small"
+                                  deleteIcon={<OpenInNewIcon />}
+                                  onDelete={() => window.open(url, '_blank')}
+                                />
+                                {canEdit && (
+                                  <Tooltip title="Delete document">
+                                    <IconButton size="small" onClick={() => handleDocDelete(extractS3Key(url), doc.urlField, doc.ref)}>
+                                      <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+                              </>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">Not uploaded</Typography>
+                            )}
+                            {canEdit && (
+                              <>
+                                <input
+                                  ref={doc.ref}
+                                  type="file"
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  style={{ display: 'none' }}
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) handleDocUpload(f, doc.docType, doc.urlField);
+                                  }}
+                                />
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  startIcon={docUploading[doc.docType] ? <CircularProgress size={14} /> : <UploadIcon />}
+                                  disabled={docUploading[doc.docType]}
+                                  onClick={() => doc.ref.current?.click()}
+                                >
+                                  {url ? 'Replace' : 'Upload'}
+                                </Button>
+                              </>
+                            )}
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  );
+                })()}
+              </Box>
+
               {/* Admin Comments Section */}
               {selectedRequest.admin_comments && selectedRequest.admin_comments.length > 0 && (
                 <Box sx={{ mt: 3 }}>
@@ -1034,7 +1227,7 @@ const CustomerRequests = () => {
                   {selectedRequest.admin_comments.map((comment) => (
                     <Paper
                       key={comment._id}
-                      sx={{ p: 1.5, my: 1, backgroundColor: '#fff3e0' }}
+                      sx={{ p: 1.5, my: 1, bgcolor: 'action.hover' }}
                     >
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <Box sx={{ flex: 1 }}>
@@ -1061,7 +1254,7 @@ const CustomerRequests = () => {
 
                       {/* Reply display */}
                       {comment.reply && (
-                        <Paper sx={{ p: 1, mt: 1, ml: 2, backgroundColor: '#e8f5e9' }}>
+                        <Paper sx={{ p: 1, mt: 1, ml: 2, bgcolor: 'action.selected' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <Box sx={{ flex: 1 }}>
                               <Typography variant="caption" sx={{ fontWeight: 500 }}>
@@ -1073,7 +1266,7 @@ const CustomerRequests = () => {
                                 {comment.reply.updated_at && ' (edited)'}
                               </Typography>
                             </Box>
-                            {comment.reply.user_id === user?.data?._id && (
+                            {comment.reply.user_id === user?._id && (
                               <Box sx={{ display: 'flex', gap: 0.5 }}>
                                 <IconButton
                                   size="small"

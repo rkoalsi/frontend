@@ -183,7 +183,6 @@ const Hooks = () => {
         sx={{
           padding: { xs: 2, sm: 3, md: 4 },
           borderRadius: 4,
-          backgroundColor: 'white',
         }}
       >
         <Box
@@ -200,7 +199,7 @@ const Hooks = () => {
             Download All Shop Hooks
           </Button>
         </Box>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           View all hooks from all shops below.
         </Typography>
         {loading ? (
@@ -399,9 +398,10 @@ const Hooks = () => {
                         sx={{
                           mt: 1,
                           p: 2,
-                          border: '1px solid #ddd',
+                          border: '1px solid',
+                          borderColor: 'divider',
                           borderRadius: '8px',
-                          backgroundColor: '#f9f9f9',
+                          bgcolor: 'action.hover',
                         }}
                       >
                         <Typography variant='body2' color='textSecondary'>

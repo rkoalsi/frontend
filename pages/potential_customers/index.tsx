@@ -218,7 +218,7 @@ function PotentialCustomers() {
       const resp = await axios.get(
         `${process.env.api_url}/potential_customers`,
         {
-          params: { created_by: user?.data?._id },
+          params: { created_by: user?._id },
         }
       );
       setPotentialCustomers(resp.data);
@@ -301,7 +301,7 @@ function PotentialCustomers() {
       } else {
         await axios.post(`${process.env.api_url}/potential_customers`, {
           ...payload,
-          created_by: user?.data?._id,
+          created_by: user?._id,
         });
         toast.success('Potential customer created successfully');
       }

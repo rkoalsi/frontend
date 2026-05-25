@@ -95,12 +95,12 @@ const ShopsDialog = ({
 
   // Fetch potential customers created by the user
   useEffect(() => {
-    if (open && user?.data?._id) {
+    if (open && user?._id) {
       const fetchPotentialCustomers = async () => {
         setLoadingPotentialCustomers(true);
         try {
           const { data } = await axios.get(
-            `${process.env.api_url}/potential_customers?created_by=${user.data._id}`
+            `${process.env.api_url}/potential_customers?created_by=${user._id}`
           );
           setPotentialCustomers(data || []);
         } catch (err) {
@@ -112,7 +112,7 @@ const ShopsDialog = ({
       };
       fetchPotentialCustomers();
     }
-  }, [open, user?.data?._id]);
+  }, [open, user?._id]);
 
   // Only load initial shops data once when the dialog opens
   useEffect(() => {
@@ -360,7 +360,7 @@ const ShopsDialog = ({
         order_expected: shop.order_expected,
       }));
       formData.append('shops', JSON.stringify(shopsData));
-      formData.append('uploaded_by', user?.data?._id);
+      formData.append('uploaded_by', user?._id);
 
       const response = await axios.put(
         `${process.env.api_url}/daily_visits/${dailyVisit._id}`,

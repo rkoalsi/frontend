@@ -19,6 +19,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogActions,
   Switch,
   Chip,
   Select,
@@ -65,6 +66,9 @@ const Careers = () => {
     type: '',
   });
   const [customQuestions, setCustomQuestions] = useState<CustomQuestion[]>([]);
+
+  const [deleteBlockedOpen, setDeleteBlockedOpen] = useState(false);
+  const [deleteBlockedMessage, setDeleteBlockedMessage] = useState('');
 
   // Quill editor modules configuration
   const quillModules = useMemo(() => ({
@@ -205,7 +209,12 @@ const Careers = () => {
       }
     } catch (error: any) {
       console.error(error);
-      toast.error(error.response?.data?.detail || 'Error deleting career');
+      if (error.response?.status === 400 && error.response?.data?.detail) {
+        setDeleteBlockedMessage(error.response.data.detail);
+        setDeleteBlockedOpen(true);
+      } else {
+        toast.error(error.response?.data?.detail || 'Error deleting career');
+      }
     } finally {
       setActionLoading(false);
     }
@@ -304,7 +313,7 @@ const Careers = () => {
     <Box sx={{ padding: 3 }}>
       <Paper
         elevation={3}
-        sx={{ padding: 4, borderRadius: 4, backgroundColor: 'white' }}
+        sx={{ padding: 4, borderRadius: 4 }}
       >
         <Box
           display='flex'
@@ -319,7 +328,7 @@ const Careers = () => {
             Add Career
           </Button>
         </Box>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' color='text.secondary' sx={{ marginBottom: 3 }}>
           View and manage all job postings below.
         </Typography>
         {loading ? (
@@ -468,6 +477,27 @@ const Careers = () => {
         )}
       </Paper>
 
+      {/* Blocked deletion dialog */}
+      <Dialog
+        open={deleteBlockedOpen}
+        onClose={() => setDeleteBlockedOpen(false)}
+        maxWidth='xs'
+        fullWidth
+      >
+        <DialogTitle>Cannot Delete Career</DialogTitle>
+        <DialogContent>
+          <Typography variant='body1'>
+            {deleteBlockedMessage ||
+              'This career cannot be deleted because candidates have already applied for this role.'}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button variant='contained' onClick={() => setDeleteBlockedOpen(false)}>
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Dialog for Add/Edit Career */}
       <Dialog
         open={dialogOpen}
@@ -499,7 +529,6 @@ const Careers = () => {
               </Typography>
               <Box sx={{
                 '& .quill': {
-                  backgroundColor: 'white',
                   borderRadius: 1
                 },
                 '& .ql-container': {
@@ -619,7 +648,7 @@ const Careers = () => {
               </Box>
               <Typography
                 variant='body2'
-                sx={{ color: '#6B7280', mb: 2 }}
+                color='text.secondary' sx={{ mb: 2 }}
               >
                 Add custom questions that applicants must answer for this
                 position. These will appear in the application form.
@@ -629,7 +658,7 @@ const Careers = () => {
                 <Paper
                   key={qIndex}
                   variant='outlined'
-                  sx={{ p: 2, mb: 2, backgroundColor: '#fafafa' }}
+                  sx={{ p: 2, mb: 2 }}
                 >
                   <Box
                     display='flex'

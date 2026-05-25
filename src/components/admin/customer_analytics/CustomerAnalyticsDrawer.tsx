@@ -27,6 +27,10 @@ import {
   useMediaQuery,
   CircularProgress,
   Skeleton,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tab,
+  Tabs,
 } from '@mui/material';
 import {
   Close,
@@ -67,10 +71,13 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   onCustomerUpdate,
 }) => {
   const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [brandBreakdown, setBrandBreakdown] = useState<any[]>([]);
   const [brandFyLabels, setBrandFyLabels] = useState<any>({});
   const [brandLoading, setBrandLoading] = useState(false);
+  const [brandView, setBrandView] = useState<'annual' | 'quarterly'>('annual');
+  const [selectedQuarter, setSelectedQuarter] = useState<'Q1' | 'Q2' | 'Q3' | 'Q4'>('Q1');
 
   useEffect(() => {
     if (open && customer) {
@@ -129,6 +136,21 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   const calculateGrowth = (current: number, previous: number) => {
     if (previous === 0) return current > 0 ? 100 : 0;
     return ((current - previous) / previous) * 100;
+  };
+
+  const renderGrowthBadge = (growth: number | null) => {
+    if (growth === null) return <Typography variant="caption" color="text.disabled">—</Typography>;
+    const isPositive = growth >= 0;
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.3 }}>
+        {isPositive
+          ? <TrendingUp sx={{ color: '#4caf50', fontSize: 13 }} />
+          : <TrendingDown sx={{ color: '#f44336', fontSize: 13 }} />}
+        <Typography variant="caption" sx={{ color: isPositive ? '#4caf50' : '#f44336', fontWeight: 700, fontSize: '0.7rem' }}>
+          {Math.abs(growth).toFixed(1)}%
+        </Typography>
+      </Box>
+    );
   };
 
   const currentYearGrowth = calculateGrowth(
@@ -194,7 +216,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                 variant={isMobile ? "h6" : "h5"}
                 sx={{
                   fontWeight: 'bold',
-                  color: '#1976d2',
+                  color: 'primary.main',
                   mb: 0.5,
                   wordBreak: 'break-word',
                 }}
@@ -231,14 +253,14 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
             width: 8,
           },
           '&::-webkit-scrollbar-track': {
-            backgroundColor: '#f1f1f1',
+            backgroundColor: theme.palette.action.hover,
             borderRadius: 4,
           },
           '&::-webkit-scrollbar-thumb': {
-            backgroundColor: '#c1c1c1',
+            backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : '#c1c1c1',
             borderRadius: 4,
             '&:hover': {
-              backgroundColor: '#a1a1a1',
+              backgroundColor: isDark ? 'rgba(255,255,255,0.35)' : '#a1a1a1',
             },
           },
         }}
@@ -250,8 +272,8 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
               <Card
                 sx={{
                   textAlign: 'center',
-                  background: 'linear-gradient(135deg, #e3f2fd 0%, #f8f9fa 100%)',
-                  border: '1px solid #e3f2fd',
+                  background: isDark ? 'rgba(124,111,205,0.1)' : 'linear-gradient(135deg, #e3f2fd 0%, #f8f9fa 100%)',
+                  border: isDark ? '1px solid rgba(124,111,205,0.25)' : '1px solid #e3f2fd',
                   transition: 'transform 0.2s ease-in-out',
                   '&:hover': {
                     transform: 'translateY(-2px)',
@@ -260,8 +282,8 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                 }}
               >
                 <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                  <AccountBalance sx={{ color: '#1976d2', fontSize: 32, mb: 1 }} />
-                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#1976d2', mb: 0.5 }}>
+                  <AccountBalance sx={{ color: 'primary.main', fontSize: 32, mb: 1 }} />
+                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main', mb: 0.5 }}>
                     {formatCurrency(customer.billingTillDateCurrentYear || 0).replace('₹', '₹ ')}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
@@ -293,8 +315,8 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
               <Card
                 sx={{
                   textAlign: 'center',
-                  background: 'linear-gradient(135deg, #fff3e0 0%, #f8f9fa 100%)',
-                  border: '1px solid #fff3e0',
+                  background: isDark ? 'rgba(255,152,0,0.1)' : 'linear-gradient(135deg, #fff3e0 0%, #f8f9fa 100%)',
+                  border: isDark ? '1px solid rgba(255,152,0,0.25)' : '1px solid #fff3e0',
                   transition: 'transform 0.2s ease-in-out',
                   '&:hover': {
                     transform: 'translateY(-2px)',
@@ -318,7 +340,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
               <Card
                 sx={{
                   textAlign: 'center',
-                  background: 'linear-gradient(135deg, #e8f5e8 0%, #f8f9fa 100%)',
+                  background: isDark ? 'rgba(76,175,80,0.1)' : 'linear-gradient(135deg, #e8f5e8 0%, #f8f9fa 100%)',
                   border: '1px solid #e8f5e8',
                   transition: 'transform 0.2s ease-in-out',
                   '&:hover': {
@@ -343,7 +365,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
               <Card
                 sx={{
                   textAlign: 'center',
-                  background: 'linear-gradient(135deg, #f3e5f5 0%, #f8f9fa 100%)',
+                  background: isDark ? 'rgba(156,107,204,0.1)' : 'linear-gradient(135deg, #f3e5f5 0%, #f8f9fa 100%)',
                   border: '1px solid #f3e5f5',
                   transition: 'transform 0.2s ease-in-out',
                   '&:hover': {
@@ -384,8 +406,8 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
           <Card sx={{ mb: 3, boxShadow: 2 }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <LocationOn sx={{ color: '#1976d2', fontSize: 24 }} />
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                <LocationOn sx={{ color: 'primary.main', fontSize: 24 }} />
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
                   Billing Address
                 </Typography>
               </Box>
@@ -394,7 +416,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                 color="text.secondary"
                 sx={{
                   lineHeight: 1.6,
-                  backgroundColor: '#f8f9fa',
+                  backgroundColor: theme.palette.background.default,
                   p: 2,
                   borderRadius: 2,
                   border: '1px solid #e0e0e0',
@@ -410,7 +432,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
         <Fade in timeout={500}>
           <Card sx={{ mb: 3, boxShadow: 2 }}>
             <CardContent sx={{ p: 3 }}>
-              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 3, color: '#1976d2' }}>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 3, color: 'primary.main' }}>
                 Billing Activity Timeline
               </Typography>
               <Grid container spacing={3} justifyContent="center">
@@ -422,7 +444,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                           width: { xs: 50, sm: 60 },
                           height: { xs: 50, sm: 60 },
                           borderRadius: '50%',
-                          backgroundColor: customer.hasBilledLastMonth ? '#4caf50' : '#e0e0e0',
+                          backgroundColor: customer.hasBilledLastMonth ? '#4caf50' : isDark ? 'rgba(255,255,255,0.15)' : '#e0e0e0',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -457,7 +479,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                           width: { xs: 50, sm: 60 },
                           height: { xs: 50, sm: 60 },
                           borderRadius: '50%',
-                          backgroundColor: customer.hasBilledLast45Days ? '#ff9800' : '#e0e0e0',
+                          backgroundColor: customer.hasBilledLast45Days ? '#ff9800' : isDark ? 'rgba(255,255,255,0.15)' : '#e0e0e0',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -492,7 +514,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                           width: { xs: 50, sm: 60 },
                           height: { xs: 50, sm: 60 },
                           borderRadius: '50%',
-                          backgroundColor: customer.hasBilledLast2Months ? '#ff5722' : '#e0e0e0',
+                          backgroundColor: customer.hasBilledLast2Months ? '#ff5722' : isDark ? 'rgba(255,255,255,0.15)' : '#e0e0e0',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -527,7 +549,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                           width: { xs: 50, sm: 60 },
                           height: { xs: 50, sm: 60 },
                           borderRadius: '50%',
-                          backgroundColor: customer.hasBilledLast3Months ? '#f44336' : '#e0e0e0',
+                          backgroundColor: customer.hasBilledLast3Months ? '#f44336' : isDark ? 'rgba(255,255,255,0.15)' : '#e0e0e0',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -555,9 +577,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                   </Box>
                 </Grid>
               </Grid>
-              <Box sx={{ mt: 3, p: 2, backgroundColor: '#f8f9fa', borderRadius: 2 }}>
+              <Box sx={{ mt: 3, p: 2, backgroundColor: theme.palette.background.default, borderRadius: 2 }}>
                 <Typography variant="body2" color="text.secondary" align="center">
-                  Last Bill Date: <strong style={{ color: '#1976d2' }}>{formatDate(customer.lastBillDate)}</strong>
+                  Last Bill Date: <strong style={{ color: theme.palette.primary.main }}>{formatDate(customer.lastBillDate)}</strong>
                 </Typography>
               </Box>
             </CardContent>
@@ -571,8 +593,8 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
             <Card sx={{ mb: 3, boxShadow: 2 }}>
               <CardContent sx={{ p: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <Payment sx={{ color: '#1976d2', fontSize: 24 }} />
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                  <Payment sx={{ color: 'primary.main', fontSize: 24 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
                     Payment Status
                   </Typography>
                 </Box>
@@ -594,7 +616,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
                         <Table size="small">
                           <TableHead>
-                            <TableRow sx={{ backgroundColor: '#ffebee' }}>
+                            <TableRow sx={{ backgroundColor: isDark ? 'rgba(244,67,54,0.15)' : '#ffebee' }}>
                               <TableCell sx={{ fontWeight: 'bold' }}>Invoice</TableCell>
                               <TableCell sx={{ fontWeight: 'bold' }}>Amount</TableCell>
                               <TableCell sx={{ fontWeight: 'bold' }}>Due Date</TableCell>
@@ -624,7 +646,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
                         <Table size="small">
                           <TableHead>
-                            <TableRow sx={{ backgroundColor: '#e8f5e8' }}>
+                            <TableRow sx={{ backgroundColor: isDark ? 'rgba(76,175,80,0.15)' : '#e8f5e8' }}>
                               <TableCell sx={{ fontWeight: 'bold' }}>Invoice</TableCell>
                               <TableCell sx={{ fontWeight: 'bold' }}>Amount</TableCell>
                               <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
@@ -663,7 +685,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
         <Fade in timeout={700}>
           <Card sx={{ mb: 3, boxShadow: 2 }}>
             <CardContent sx={{ p: 3 }}>
-              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 3, color: '#1976d2' }}>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 3, color: 'primary.main' }}>
                 Sales History Overview
               </Typography>
               <Grid container spacing={2}>
@@ -673,9 +695,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                     sx={{
                       textAlign: 'center',
                       p: 3,
-                      background: 'linear-gradient(135deg, #fff3e0 0%, #fff 100%)',
+                      background: isDark ? 'rgba(255,152,0,0.1)' : 'linear-gradient(135deg, #fff3e0 0%, #fff 100%)',
                       borderRadius: 3,
-                      border: '1px solid #ffcc02',
+                      border: isDark ? '1px solid rgba(255,152,0,0.3)' : '1px solid #ffcc02',
                     }}
                   >
                     <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#ff9800', mb: 1 }}>
@@ -692,9 +714,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                     sx={{
                       textAlign: 'center',
                       p: 3,
-                      background: 'linear-gradient(135deg, #ffebee 0%, #fff 100%)',
+                      background: isDark ? 'rgba(244,67,54,0.1)' : 'linear-gradient(135deg, #ffebee 0%, #fff 100%)',
                       borderRadius: 3,
-                      border: '1px solid #ffcdd2',
+                      border: isDark ? '1px solid rgba(244,67,54,0.3)' : '1px solid #ffcdd2',
                     }}
                   >
                     <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#f44336', mb: 1 }}>
@@ -711,9 +733,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                     sx={{
                       textAlign: 'center',
                       p: 3,
-                      background: 'linear-gradient(135deg, #e8f5e8 0%, #fff 100%)',
+                      background: isDark ? 'rgba(76,175,80,0.1)' : 'linear-gradient(135deg, #e8f5e8 0%, #fff 100%)',
                       borderRadius: 3,
-                      border: '1px solid #c8e6c9',
+                      border: isDark ? '1px solid rgba(76,175,80,0.3)' : '1px solid #c8e6c9',
                     }}
                   >
                     <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#4caf50', mb: 1 }}>
@@ -730,9 +752,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                     sx={{
                       textAlign: 'center',
                       p: 3,
-                      background: 'linear-gradient(135deg, #fff3e0 0%, #fff 100%)',
+                      background: isDark ? 'rgba(255,152,0,0.1)' : 'linear-gradient(135deg, #fff3e0 0%, #fff 100%)',
                       borderRadius: 3,
-                      border: '1px solid #ffcc02',
+                      border: isDark ? '1px solid rgba(255,152,0,0.3)' : '1px solid #ffcc02',
                     }}
                   >
                     <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#ff9800', mb: 1 }}>
@@ -751,12 +773,26 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
         <Fade in timeout={800}>
           <Card sx={{ mb: 3, boxShadow: 2 }}>
             <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <Category sx={{ color: '#1976d2', fontSize: 24 }} />
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-                  Brand-wise Breakdown
-                </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Category sx={{ color: 'primary.main', fontSize: 24 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                    Brand-wise Breakdown
+                  </Typography>
+                </Box>
+                {!brandLoading && brandBreakdown.length > 0 && (
+                  <ToggleButtonGroup
+                    size="small"
+                    value={brandView}
+                    exclusive
+                    onChange={(_, v) => v && setBrandView(v)}
+                  >
+                    <ToggleButton value="annual" sx={{ fontSize: '0.7rem', px: 1.5 }}>Annual</ToggleButton>
+                    <ToggleButton value="quarterly" sx={{ fontSize: '0.7rem', px: 1.5 }}>Quarterly</ToggleButton>
+                  </ToggleButtonGroup>
+                )}
               </Box>
+
               {brandLoading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                   <CircularProgress size={32} />
@@ -765,21 +801,18 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                 <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 3 }}>
                   No brand data available
                 </Typography>
-              ) : (
+              ) : brandView === 'annual' ? (
+                /* Annual YoY view */
                 <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
                   <Table size="small">
                     <TableHead>
-                      <TableRow sx={{ backgroundColor: '#e3f2fd' }}>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Brand</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }} align="right">
-                          {brandFyLabels.previousFY || 'Previous FY'}
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }} align="right">
-                          {brandFyLabels.lastFY || 'Last FY'}
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }} align="right">
-                          {brandFyLabels.currentFY || 'Current FY'}
-                        </TableCell>
+                      <TableRow sx={{ backgroundColor: isDark ? 'rgba(124,111,205,0.15)' : '#e3f2fd' }}>
+                        <TableCell sx={{ fontWeight: 'bold', minWidth: 100 }}>Brand</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.previousFY || 'Previous FY'}</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.lastFY || 'Last FY'}</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', color: '#888', fontSize: '0.7rem' }} align="right">YoY</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.currentFY || 'Current FY'}</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', color: '#888', fontSize: '0.7rem' }} align="right">YoY</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -788,14 +821,76 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                           <TableCell sx={{ fontWeight: 500 }}>{row.brand}</TableCell>
                           <TableCell align="right">{formatCurrency(row.previousFY || 0)}</TableCell>
                           <TableCell align="right">{formatCurrency(row.lastFY || 0)}</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                          <TableCell align="right">{renderGrowthBadge(row.yoyGrowth?.prevToLast ?? null)}</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
                             {formatCurrency(row.currentFY || 0)}
                           </TableCell>
+                          <TableCell align="right">{renderGrowthBadge(row.yoyGrowth?.lastToCurrent ?? null)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </TableContainer>
+              ) : (
+                /* Quarterly view */
+                <Box>
+                  <Tabs
+                    value={selectedQuarter}
+                    onChange={(_, v) => setSelectedQuarter(v)}
+                    sx={{ mb: 1.5, minHeight: 36, '& .MuiTabs-indicator': { height: 3 } }}
+                  >
+                    {[
+                      { value: 'Q1', label: 'Q1 Apr–Jun' },
+                      { value: 'Q2', label: 'Q2 Jul–Sep' },
+                      { value: 'Q3', label: 'Q3 Oct–Dec' },
+                      { value: 'Q4', label: 'Q4 Jan–Mar' },
+                    ].map(({ value, label }) => (
+                      <Tab
+                        key={value}
+                        value={value}
+                        label={label}
+                        sx={{ fontSize: '0.7rem', minHeight: 36, py: 0.5, px: 1 }}
+                      />
+                    ))}
+                  </Tabs>
+                  <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow sx={{ backgroundColor: isDark ? 'rgba(124,111,205,0.15)' : '#e3f2fd' }}>
+                          <TableCell sx={{ fontWeight: 'bold', minWidth: 100 }}>Brand</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.previousFY || 'Previous FY'}</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.lastFY || 'Last FY'}</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: '#888', fontSize: '0.7rem' }} align="right">YoY</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.currentFY || 'Current FY'}</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: '#888', fontSize: '0.7rem' }} align="right">YoY</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {brandBreakdown.map((row: any, index: number) => {
+                          const q = selectedQuarter;
+                          const prevVal = row[`previousFY_${q}`] || 0;
+                          const lastVal = row[`lastFY_${q}`] || 0;
+                          const currVal = row[`currentFY_${q}`] || 0;
+                          const growthPrevToLast = row.quarterlyGrowth?.[q]?.prevToLast ?? null;
+                          const growthLastToCurr = row.quarterlyGrowth?.[q]?.lastToCurrent ?? null;
+                          if (prevVal === 0 && lastVal === 0 && currVal === 0) return null;
+                          return (
+                            <TableRow key={index} hover>
+                              <TableCell sx={{ fontWeight: 500 }}>{row.brand}</TableCell>
+                              <TableCell align="right">{formatCurrency(prevVal)}</TableCell>
+                              <TableCell align="right">{formatCurrency(lastVal)}</TableCell>
+                              <TableCell align="right">{renderGrowthBadge(growthPrevToLast)}</TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                                {formatCurrency(currVal)}
+                              </TableCell>
+                              <TableCell align="right">{renderGrowthBadge(growthLastToCurr)}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
               )}
             </CardContent>
           </Card>

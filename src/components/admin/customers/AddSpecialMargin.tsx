@@ -659,7 +659,7 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
                     <TableCell
                       sx={{
                         fontWeight: 'bold',
-                        backgroundColor: '#f5f5f5',
+                        bgcolor: 'action.hover',
                         width: '80px',
                       }}
                     >
@@ -668,21 +668,21 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
                     <TableCell
                       sx={{
                         fontWeight: 'bold',
-                        backgroundColor: '#f5f5f5',
+                        bgcolor: 'action.hover',
                         width: '100px',
                       }}
                     >
                       Image
                     </TableCell>
                     <TableCell
-                      sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}
+                      sx={{ fontWeight: 'bold', bgcolor: 'action.hover' }}
                     >
                       Product Details
                     </TableCell>
                     <TableCell
                       sx={{
                         fontWeight: 'bold',
-                        backgroundColor: '#f5f5f5',
+                        bgcolor: 'action.hover',
                         width: '150px',
                       }}
                     >
@@ -691,7 +691,7 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
                     <TableCell
                       sx={{
                         fontWeight: 'bold',
-                        backgroundColor: '#f5f5f5',
+                        bgcolor: 'action.hover',
                         width: '180px',
                       }}
                     >
@@ -700,7 +700,7 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
                     <TableCell
                       sx={{
                         fontWeight: 'bold',
-                        backgroundColor: '#f5f5f5',
+                        bgcolor: 'action.hover',
                         width: '100px',
                       }}
                     >
@@ -722,10 +722,10 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
                         key={product._id}
                         sx={{
                           '&:hover': {
-                            backgroundColor: '#f9f9f9',
+                            bgcolor: 'action.selected',
                           },
-                          backgroundColor: displayData.selected
-                            ? '#f0f7ff'
+                          bgcolor: displayData.selected
+                            ? 'action.selected'
                             : 'inherit',
                         }}
                       >
@@ -746,7 +746,7 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
                         <TableCell>
                           <Box
                             component='img'
-                            src={product.image_url || '/placeholder.png'}
+                            src={product.image_url || product.images?.[0] || '/placeholder.png'}
                             alt={product.name}
                             sx={{
                               width: 70,
@@ -816,11 +816,11 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
                             fullWidth
                             error={
                               !!(displayData.margin &&
-                              !validateMargin(displayData.margin))
+                                !validateMargin(displayData.margin))
                             }
                             helperText={
                               displayData.margin &&
-                              !validateMargin(displayData.margin)
+                                !validateMargin(displayData.margin)
                                 ? '0-100'
                                 : ''
                             }
@@ -868,9 +868,8 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
           {modifiedCount > 0 && (
             <Chip
               icon={<InfoIcon />}
-              label={`${modifiedCount} product${
-                modifiedCount !== 1 ? 's' : ''
-              } to update`}
+              label={`${modifiedCount} product${modifiedCount !== 1 ? 's' : ''
+                } to update`}
               color='primary'
               variant='outlined'
             />

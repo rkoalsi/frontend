@@ -132,15 +132,15 @@ const ShopHookCard = ({ hookData, onEdit }: any) => {
 
       <CardContent>
         {/* Address Section */}
-        <div
-          style={{
-            backgroundColor: '#f5f5f5',
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 16,
+        <Box
+          sx={{
+            bgcolor: 'action.hover',
+            borderRadius: 2,
+            p: 2,
+            mb: 2,
             display: 'flex',
             alignItems: 'center',
-            gap: 12,
+            gap: 1.5,
           }}
         >
           <LocationOnIcon color='primary' />
@@ -152,7 +152,7 @@ const ShopHookCard = ({ hookData, onEdit }: any) => {
               {formattedAddress}
             </Typography>
           </div>
-        </div>
+        </Box>
 
         {/* Divider with Collapsible Toggle */}
         <Divider textAlign='center' sx={{ mb: 2 }}>
@@ -263,7 +263,7 @@ function CustomerHooks() {
   const fetchHooks = async () => {
     try {
       const resp = await axios.get(`${process.env.api_url}/hooks`, {
-        params: { created_by: user?.data?._id },
+        params: { created_by: user?._id },
       });
       setHooks(resp.data);
     } catch (err) {
@@ -421,7 +421,7 @@ function CustomerHooks() {
       customer_name: formData.selectedCustomer.contact_name,
       customer_address: formData.customerAddress,
       hooks: hooksWithCategoryName,
-      created_by: user?.data?._id,
+      created_by: user?._id,
     };
 
     try {

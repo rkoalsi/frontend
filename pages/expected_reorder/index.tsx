@@ -72,16 +72,16 @@ const ShopHookCard = ({ hookData, onEdit }: any) => {
 
       <CardContent>
         {/* Address Section */}
-        <div
-          style={{
-            backgroundColor: '#f5f5f5',
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 16,
+        <Box
+          sx={{
+            bgcolor: 'action.hover',
+            borderRadius: 2,
+            p: 2,
+            mb: 2,
             display: 'flex',
             alignItems: 'start',
             flexDirection: 'column',
-            gap: 12,
+            gap: 1.5,
           }}
         >
           <div>
@@ -108,7 +108,7 @@ const ShopHookCard = ({ hookData, onEdit }: any) => {
               {hookData?.expected_amount || 0}
             </Typography>
           </div>
-        </div>
+        </Box>
 
         {/* Edit Button */}
         <div
@@ -156,7 +156,7 @@ function ExpectedReorder() {
   const fetchExpectedReorder = async () => {
     try {
       const resp = await axios.get(`${process.env.api_url}/expected_reorders`, {
-        params: { created_by: user?.data?._id },
+        params: { created_by: user?._id },
       });
       setExpectedReorder(resp.data);
     } catch (err) {
@@ -246,7 +246,7 @@ function ExpectedReorder() {
       } else {
         await axios.post(`${process.env.api_url}/expected_reorders`, {
           ...payload,
-          created_by: user?.data?._id,
+          created_by: user?._id,
         });
         toast.success('Hook details submitted successfully');
       }

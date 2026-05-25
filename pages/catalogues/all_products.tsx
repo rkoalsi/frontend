@@ -26,7 +26,7 @@ import {
   Switch,
 } from '@mui/material';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Search, ArrowDownward, ArrowUpward } from '@mui/icons-material';
+import { Search, ArrowDownward, ArrowUpward, Close } from '@mui/icons-material';
 import axios from 'axios';
 import {
   type Product as GroupProduct,
@@ -796,150 +796,114 @@ export default function AllProductsCatalouge() {
 
 
   return (
+    <>
+    {/* Global keyframe for card stagger animation */}
+    <style>{`
+      @keyframes catalogueFadeUp {
+        from { opacity: 0; transform: translateY(18px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+    `}</style>
     <Box
       sx={{
         display: "flex",
         flexDirection: "column",
         minHeight: "100vh",
         bgcolor: "background.default",
+        backgroundImage: theme.palette.mode === 'dark'
+          ? 'radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px)'
+          : 'radial-gradient(circle, rgba(0,0,0,0.038) 1px, transparent 1px)',
+        backgroundSize: '28px 28px',
       }}
     >
       {/* Reference for top of page */}
       <div ref={pageTopRef} />
 
-      {/* Header Section with Title and Search */}
+      {/* Compact sticky header */}
       <Box
         sx={{
-          bgcolor: "white",
-          borderBottom: "1px solid",
-          borderColor: "divider",
-          position: "sticky",
+          bgcolor: 'background.paper',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          position: 'sticky',
           top: 0,
           zIndex: 100,
-          boxShadow: { xs: 2, md: 1 },
-          backdropFilter: "blur(8px)",
-          backgroundColor: { xs: "rgba(255, 255, 255, 0.98)", md: "white" },
+          boxShadow: '0 2px 16px rgba(0,0,0,0.07)',
+          backdropFilter: 'blur(10px)',
         }}
       >
-        <Box sx={{ maxWidth: "1400px", margin: "0 auto", p: { xs: 1.5, sm: 2, md: 2.5 } }}>
-          {/* Page Title */}
-          <Box sx={{ mb: { xs: 1.5, sm: 2 }, textAlign: 'center' }}>
+        <Box
+          sx={{
+            maxWidth: '1400px',
+            margin: '0 auto',
+            px: { xs: 2, md: 3 },
+            py: { xs: 1.25, md: 1.5 },
+            display: 'flex',
+            alignItems: 'center',
+            gap: { xs: 1.5, md: 3 },
+          }}
+        >
+          {/* Brand / Title */}
+          <Box sx={{ flexShrink: 0, display: { xs: 'none', sm: 'block' } }}>
             <Typography
-              variant="h3"
+              variant="h6"
               sx={{
                 fontWeight: 800,
-                fontSize: { xs: '2rem', sm: '2rem', md: '2.5rem' },
-                background: 'linear-gradient(135deg, #3F51B5 0%, #2196F3 100%)',
+                fontSize: { sm: '1.05rem', md: '1.15rem' },
+                background: theme.palette.mode === 'dark'
+                  ? 'linear-gradient(135deg, #9c92d8 0%, #7c6fcd 100%)'
+                  : 'linear-gradient(135deg, #2a4a6b 0%, #456089 100%)',
                 backgroundClip: 'text',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
-                mb: { xs: 0.25, sm: 0.5 },
-                letterSpacing: '-0.5px',
+                letterSpacing: '-0.3px',
+                whiteSpace: 'nowrap',
               }}
             >
-              All Products
-            </Typography>
-            <Typography
-              variant="subtitle1"
-              color="text.secondary"
-              sx={{
-                fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                fontWeight: 400,
-              }}
-            >
-              Browse our complete product catalogue across all brands
+              Product Catalogue
             </Typography>
           </Box>
 
-          {/* Compact Search Bar */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, maxWidth: '600px', margin: '0 auto' }}>
-            {/* Animated Search Icon */}
-            <IconButton
-              onClick={() => setSearchExpanded(!searchExpanded)}
+          {/* Search — always visible */}
+          <Box sx={{ flex: 1, maxWidth: { xs: '100%', sm: 560 }, mx: 'auto' }}>
+            <TextField
+              placeholder="Search products by name or SKU..."
+              variant="outlined"
+              fullWidth
+              size="small"
+              value={inputValue}
+              onChange={(e) => handleInputChange(e, e.target.value)}
               sx={{
-                color: 'primary.main',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                '&:hover': {
-                  transform: 'scale(1.1) rotate(90deg)',
+                '& .MuiOutlinedInput-root': {
+                  fontSize: { xs: '0.85rem', sm: '0.9rem' },
+                  borderRadius: 2,
                 },
-                transform: searchExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                flexShrink: 0,
-                width: { xs: 36, sm: 40 },
-                height: { xs: 36, sm: 40 },
               }}
-              aria-label="toggle search"
-            >
-              <Search fontSize={isMobile ? "small" : "medium"} />
-            </IconButton>
-
-            {/* Expandable Search Bar */}
-            <Box
-              sx={{
-                flex: 1,
-                overflow: 'hidden',
-                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                maxWidth: searchExpanded ? '100%' : { xs: 0, md: '100%' },
-                opacity: searchExpanded ? 1 : { xs: 0, md: 1 },
-              }}
-            >
-              <Autocomplete
-                freeSolo
-                options={options}
-                value={null}
-                inputValue={inputValue}
-                getOptionLabel={(option: any) =>
-                  typeof option === "string" ? option : option.name
-                }
-                onInputChange={handleInputChange}
-                loading={loading}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder="Search by name or SKU..."
-                    variant="outlined"
-                    fullWidth
+              InputProps={{
+                startAdornment: (
+                  <Search sx={{ color: 'text.secondary', mr: 0.5, fontSize: '1.1rem' }} />
+                ),
+                endAdornment: inputValue ? (
+                  <IconButton
                     size="small"
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        fontSize: { xs: '0.875rem', sm: '0.9375rem' },
-                      },
+                    onClick={() => {
+                      setInputValue('');
+                      setSearchTerm('');
                     }}
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {loading && <CircularProgress color="inherit" size={18} />}
-                          {params.InputProps.endAdornment}
-                        </>
-                      ),
-                    }}
-                  />
-                )}
-              />
-            </Box>
+                    sx={{ p: 0.25 }}
+                  >
+                    <Close sx={{ fontSize: '1rem' }} />
+                  </IconButton>
+                ) : loading ? (
+                  <CircularProgress color="inherit" size={16} />
+                ) : null,
+              }}
+            />
           </Box>
         </Box>
       </Box>
 
       <Box sx={{ maxWidth: "1400px", margin: "0 auto", width: "100%", p: { xs: 2, sm: 2.5, md: 3 } }}>
-
-        {/* Hide/Show Out of Stock Toggle */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-          <Button
-            variant={hideOutOfStock ? "outlined" : "contained"}
-            color="secondary"
-            size="small"
-            onClick={() => setHideOutOfStock(!hideOutOfStock)}
-            sx={{
-              textTransform: 'none',
-              fontWeight: 600,
-              borderRadius: '24px',
-              px: 3,
-            }}
-          >
-            {hideOutOfStock ? "Show Out of Stock Products" : "Hide Out of Stock Products"}
-          </Button>
-        </Box>
 
         {/* Tabs and Sorting Controls */}
         <Box display="flex" flexDirection={"column"} gap={{ xs: 1, sm: 1.5, md: 2 }} sx={{ mb: { xs: 2, md: 3 } }}>
@@ -963,16 +927,27 @@ export default function AllProductsCatalouge() {
                         <Box display="flex" alignItems="center" gap={1}>
                           {(selectedBrand?.image || selectedBrand?.url) && (
                             <Box
-                              component="img"
-                              src={selectedBrand.image || selectedBrand.url}
-                              alt={selectedBrand.brand}
                               sx={{
                                 width: 64,
                                 height: 64,
-                                objectFit: "contain",
-                                borderRadius: "4px",
+                                borderRadius: '4px',
+                                backgroundColor: '#ffffff',
+                                border: '1px solid rgba(0,0,0,0.1)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                overflow: 'hidden',
+                                p: '2px',
                               }}
-                            />
+                            >
+                              <Box
+                                component="img"
+                                src={selectedBrand.image || selectedBrand.url}
+                                alt={selectedBrand.brand}
+                                sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              />
+                            </Box>
                           )}
                           <Typography variant="h6">
                             {selectedBrand?.brand}
@@ -995,17 +970,29 @@ export default function AllProductsCatalouge() {
                             width="100%"
                           >
                             {(b.image || b.url) && (
-                              <Image
-                                src={b.image || b.url}
-                                alt={b.brand}
-                                width={80}
-                                height={80}
-                                style={{
-                                  objectFit: "contain",
-                                  borderRadius: "6px",
+                              <Box
+                                sx={{
+                                  width: 56,
+                                  height: 56,
+                                  borderRadius: '6px',
+                                  backgroundColor: '#ffffff',
+                                  border: '1px solid rgba(0,0,0,0.1)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
                                   flexShrink: 0,
+                                  overflow: 'hidden',
+                                  p: '4px',
                                 }}
-                              />
+                              >
+                                <Image
+                                  src={b.image || b.url}
+                                  alt={b.brand}
+                                  width={48}
+                                  height={48}
+                                  style={{ objectFit: "contain" }}
+                                />
+                              </Box>
                             )}
                             <Box display="flex" flexDirection="column" flex={1}>
                               <Typography variant="h6" fontWeight="medium">
@@ -1027,52 +1014,52 @@ export default function AllProductsCatalouge() {
               ) : (
                 !searchTerm.trim() && (
                   <Tabs
-                    value={
-                      activeBrand || (brandList[0] ? brandList[0].brand : "")
-                    }
+                    value={activeBrand || (brandList[0] ? brandList[0].brand : "")}
                     onChange={(e, newValue) => handleTabChange(newValue)}
                     variant="scrollable"
                     scrollButtons="auto"
+                    textColor="inherit"
                     sx={{
-                      bgcolor: "white",
+                      bgcolor: "background.paper",
                       borderRadius: 3,
-                      p: 1.5,
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                      p: 1,
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
                       border: "1px solid",
-                      borderColor: "grey.200",
+                      borderColor: "divider",
                       ".MuiTab-root": {
                         textTransform: "none",
                         fontWeight: 600,
-                        padding: "16px 24px",
+                        padding: "10px 16px",
                         minHeight: "auto",
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
-                        gap: 1,
-                        color: "grey.700",
+                        gap: 0.75,
+                        color: "text.secondary",
+                        opacity: 1,
                         borderRadius: 2,
-                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
                         "&:hover": {
-                          backgroundColor: "grey.100",
-                          transform: "translateY(-2px)",
-                          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                          backgroundColor: "action.hover",
+                          color: "text.primary",
+                          "& .brand-logo": {
+                            boxShadow: "0 0 0 2px rgba(42,74,107,0.2)",
+                          },
                         },
                       },
                       ".Mui-selected": {
-                        backgroundColor: "#f0f9ff !important",
-                        boxShadow: "0 4px 12px rgba(2, 132, 199, 0.15)",
-                        transform: "scale(1.02)",
-                        "& .brand-image": {
-                          boxShadow: "0 2px 8px rgba(2, 132, 199, 0.2)",
+                        color: "primary.main !important" as any,
+                        "& .brand-logo": {
+                          boxShadow: theme.palette.mode === 'dark'
+                            ? "0 0 0 2.5px #7fa8cc"
+                            : "0 0 0 2.5px #2a4a6b",
                         },
                         "& .MuiTypography-root": {
-                          color: "#0c4a6e !important",
+                          color: "primary.main !important" as any,
                           fontWeight: 700,
                         },
                       },
-                      ".MuiTabs-indicator": {
-                        display: "none",
-                      },
+                      ".MuiTabs-indicator": { display: "none" },
                     }}
                   >
                     {brandList.map((b: any) => {
@@ -1085,50 +1072,47 @@ export default function AllProductsCatalouge() {
                           key={b.brand}
                           value={b.brand}
                           label={
-                            <Box
-                              display="flex"
-                              flexDirection="column"
-                              alignItems="center"
-                              gap={1}
-                            >
+                            <Box display="flex" flexDirection="column" alignItems="center" gap={0.75}>
                               {(b.image || b.url) && (
-                                <Image
-                                  src={b.image || b.url}
-                                  alt={b.brand}
-                                  className="brand-image"
-                                  width={80}
-                                  height={80}
-                                  style={{
-                                    objectFit: "contain",
-                                    borderRadius: "8px",
-                                    border: "2px solid transparent",
-                                    transition: "all 0.2s ease-in-out",
-                                    backgroundColor: "background.paper",
-                                    padding: "4px",
+                                <Box
+                                  className="brand-logo"
+                                  sx={{
+                                    width: 52,
+                                    height: 52,
+                                    borderRadius: '50%',
+                                    backgroundColor: '#ffffff',
+                                    transition: 'box-shadow 0.2s ease',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    overflow: 'hidden',
+                                    p: '3px',
+                                    border: '1px solid',
+                                    borderColor: 'divider',
                                   }}
-                                />
+                                >
+                                  <Image
+                                    src={b.image || b.url}
+                                    alt={b.brand}
+                                    width={46}
+                                    height={46}
+                                    style={{ objectFit: "contain", borderRadius: '50%' }}
+                                  />
+                                </Box>
                               )}
                               <Box textAlign="center">
                                 <Typography
-                                  variant="body2"
-                                  fontWeight="bold"
-                                  sx={{
-                                    fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                                    lineHeight: 1.2,
-                                  }}
+                                  variant="caption"
+                                  sx={{ fontSize: '0.78rem', lineHeight: 1.2, display: 'block' }}
                                 >
                                   {b.brand}
                                 </Typography>
                                 <Typography
                                   variant="caption"
-                                  color="text.secondary"
-                                  sx={{
-                                    fontSize: { xs: "0.65rem", sm: "0.75rem" },
-                                    display: "block",
-                                    mt: 0.5,
-                                  }}
+                                  color="text.disabled"
+                                  sx={{ fontSize: '0.65rem', display: "block" }}
                                 >
-                                  ({brandCount})
+                                  {brandCount}
                                 </Typography>
                               </Box>
                             </Box>
@@ -1187,107 +1171,105 @@ export default function AllProductsCatalouge() {
                   </FormControl>
                 )
               ) : groupByCategory ? (
-                <Tabs
-                  value={activeCategory || allCategories[0] || ""}
-                  onChange={(e, newValue) => handleCategoryTabChange(newValue)}
-                  variant="scrollable"
-                  scrollButtons="auto"
-                  sx={{
-                    bgcolor: "white",
-                    borderRadius: 2,
-                    p: 1,
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                    border: "1px solid",
-                    borderColor: "grey.200",
-                    ".MuiTab-root": {
-                      textTransform: "none",
-                      fontWeight: 600,
-                      padding: "12px 24px",
-                      color: "grey.700",
-                      borderRadius: 2,
-                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                      "&:hover": {
-                        backgroundColor: "grey.100",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                      },
-                    },
-                    ".Mui-selected": {
-                      backgroundColor: "#f0f9ff !important",
-                      border: "2px solid #0284c7 !important",
-                      color: "#0c4a6e !important",
+                <Box>
+                  <Typography
+                    variant="overline"
+                    sx={{
+                      display: 'block',
+                      mb: 1,
+                      fontSize: '0.72rem',
                       fontWeight: 700,
-                      boxShadow: "0 2px 8px rgba(2, 132, 199, 0.15)",
-                    },
-                    ".MuiTabs-indicator": {
-                      display: "none",
-                    },
-                  }}
-                >
-                  {allCategories.map((cat) => (
-                    <Tab
-                      key={cat}
-                      value={cat}
-                      label={`${cat} (${allCategoryCounts[cat] || 0})`}
-                    />
-                  ))}
-                </Tabs>
+                      letterSpacing: '0.08em',
+                      color: 'text.secondary',
+                    }}
+                  >
+                    Categories
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: 1,
+                      p: 1.5,
+                      bgcolor: 'background.paper',
+                      borderRadius: 2,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                    }}
+                  >
+                    {allCategories.map((cat) => (
+                      <Chip
+                        key={cat}
+                        label={`${cat} (${allCategoryCounts[cat] || 0})`}
+                        onClick={() => handleCategoryTabChange(cat)}
+                        color={(activeCategory || allCategories[0]) === cat ? 'primary' : 'default'}
+                        variant={(activeCategory || allCategories[0]) === cat ? 'filled' : 'outlined'}
+                        sx={{
+                          fontWeight: 600,
+                          fontSize: '0.875rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          '&:hover': { boxShadow: 1 },
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
               ) : (
                 !searchTerm.trim() &&
                 activeBrand &&
                 (categoriesByBrand[activeBrand] || []).length > 0 && (
-                  <Tabs
-                    value={
-                      activeCategory || categoriesByBrand[activeBrand][0] || ""
-                    }
-                    onChange={(e, newValue) =>
-                      handleCategoryTabChange(newValue)
-                    }
-                    variant="scrollable"
-                    scrollButtons="auto"
-                    sx={{
-                      bgcolor: "white",
-                      borderRadius: 2,
-                      p: 1,
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                      border: "1px solid",
-                      borderColor: "grey.200",
-                      mb: 2,
-                      ".MuiTab-root": {
-                        textTransform: "none",
-                        fontWeight: 600,
-                        padding: "12px 24px",
-                        color: "grey.700",
-                        borderRadius: 2,
-                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                        "&:hover": {
-                          backgroundColor: "grey.100",
-                          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                        },
-                      },
-                      ".Mui-selected": {
-                        backgroundColor: "#f0f9ff !important",
-                        border: "2px solid #0284c7 !important",
-                        color: "#0c4a6e !important",
+                  <Box>
+                    <Typography
+                      variant="overline"
+                      sx={{
+                        display: 'block',
+                        mb: 1,
+                        fontSize: '0.72rem',
                         fontWeight: 700,
-                        boxShadow: "0 2px 8px rgba(2, 132, 199, 0.15)",
-                      },
-                      ".MuiTabs-indicator": {
-                        display: "none",
-                      },
-                    }}
-                  >
-                    {categoriesByBrand[activeBrand].map((cat) => {
-                      const actualBrand = activeBrand === "Out Of Stock" ? "New Arrivals" : activeBrand;
-                      const catCount = productCounts[actualBrand]?.[cat] || 0;
-                      return (
-                        <Tab
-                          key={cat}
-                          label={`${cat} (${catCount})`}
-                          value={cat}
-                        />
-                      );
-                    })}
-                  </Tabs>
+                        letterSpacing: '0.08em',
+                        color: 'text.secondary',
+                      }}
+                    >
+                      Categories
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 1,
+                        p: 1.5,
+                        bgcolor: 'background.paper',
+                        borderRadius: 2,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                      }}
+                    >
+                      {categoriesByBrand[activeBrand].map((cat) => {
+                        const actualBrand = activeBrand === "Out Of Stock" ? "New Arrivals" : activeBrand;
+                        const catCount = productCounts[actualBrand]?.[cat] || 0;
+                        const isActive = (activeCategory || categoriesByBrand[activeBrand][0]) === cat;
+                        return (
+                          <Chip
+                            key={cat}
+                            label={`${cat} (${catCount})`}
+                            onClick={() => handleCategoryTabChange(cat)}
+                            color={isActive ? 'primary' : 'default'}
+                            variant={isActive ? 'filled' : 'outlined'}
+                            sx={{
+                              fontWeight: 600,
+                              fontSize: '0.875rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              '&:hover': { boxShadow: 1 },
+                            }}
+                          />
+                        );
+                      })}
+                    </Box>
+                  </Box>
                 )
               )}
             </Box>
@@ -1319,6 +1301,8 @@ export default function AllProductsCatalouge() {
                 onBrandChange={handleBrandFilterChange}
                 showNewOnly={showNewOnly}
                 onNewOnlyChange={setShowNewOnly}
+                hideOutOfStock={hideOutOfStock}
+                onHideOutOfStockChange={setHideOutOfStock}
                 onClearFilters={handleClearFilters}
                 activeBrand={activeBrand}
               />
@@ -1338,6 +1322,8 @@ export default function AllProductsCatalouge() {
                 onBrandChange={handleBrandFilterChange}
                 showNewOnly={showNewOnly}
                 onNewOnlyChange={setShowNewOnly}
+                hideOutOfStock={hideOutOfStock}
+                onHideOutOfStockChange={setHideOutOfStock}
                 onClearFilters={handleClearFilters}
                 activeBrand={activeBrand}
                 open={filtersOpen}
@@ -1349,7 +1335,7 @@ export default function AllProductsCatalouge() {
             <Box sx={{ flexGrow: 1, minWidth: 0 }}>
               <Box
                 sx={{
-                  bgcolor: 'white',
+                  bgcolor: 'background.paper',
                   borderRadius: { xs: 2, md: 3 },
                   boxShadow: { xs: 2, md: 3 },
                   p: { xs: 2, sm: 2.5, md: 3 },
@@ -1395,25 +1381,35 @@ export default function AllProductsCatalouge() {
                     }}
                   >
                     {filteredAndSortedItems.map((item: any, index: number) => {
+                      const animDelay = `${Math.min(index * 35, 560)}ms`;
+                      const animStyle = {
+                        animation: 'catalogueFadeUp 0.42s ease both',
+                        animationDelay: animDelay,
+                        display: 'flex',
+                        flexDirection: 'column' as const,
+                        height: '100%',
+                      };
                       if (item.type === 'group') {
                         return (
-                          <CatalogueProductGroupCard
-                            key={item.groupId}
-                            baseName={item.baseName}
-                            products={item.products}
-                            primaryProduct={item.primaryProduct}
-                            onQuickView={(product, variants) => handleQuickView(product, variants)}
-                            viewDensity={viewDensity}
-                          />
+                          <Box key={item.groupId} sx={animStyle}>
+                            <CatalogueProductGroupCard
+                              baseName={item.baseName}
+                              products={item.products}
+                              primaryProduct={item.primaryProduct}
+                              onQuickView={(product, variants) => handleQuickView(product, variants)}
+                              viewDensity={viewDensity}
+                            />
+                          </Box>
                         );
                       } else {
                         return (
-                          <CatalogueProductCard
-                            key={item.product._id}
-                            product={item.product}
-                            onQuickView={(product) => handleQuickView(product, [])}
-                            viewDensity={viewDensity}
-                          />
+                          <Box key={item.product._id} sx={animStyle}>
+                            <CatalogueProductCard
+                              product={item.product}
+                              onQuickView={(product) => handleQuickView(product, [])}
+                              viewDensity={viewDensity}
+                            />
+                          </Box>
                         );
                       }
                     })}
@@ -1426,7 +1422,7 @@ export default function AllProductsCatalouge() {
                       width: '100%',
                       borderRadius: 3,
                       border: '2px dashed',
-                      borderColor: 'grey.300',
+                      borderColor: 'divider',
                       textAlign: 'center',
                     }}
                   >
@@ -1483,114 +1479,26 @@ export default function AllProductsCatalouge() {
                           } else {
                             const product = item.product;
                             return (
-                        <Card key={product._id} sx={{ p: 2, opacity: 0.8, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-                            <Box
-                              sx={{
-                                width: '100%',
-                                height: 200,
-                                position: 'relative',
-                                borderRadius: 2,
-                                overflow: 'hidden',
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              <ImageCarousel
+                              <CatalogueProductCard
+                                key={product._id}
                                 product={product}
-                                handleImageClick={handleImageClick as any}
+                                onQuickView={(p) => handleQuickView(p, [])}
+                                viewDensity={viewDensity}
+                                isOutOfStock={true}
                               />
-                              <Chip
-                                label="OUT OF STOCK"
-                                size="small"
-                                color="error"
-                                sx={{
-                                  position: 'absolute',
-                                  top: 8,
-                                  right: 8,
-                                  fontWeight: 'bold',
-                                }}
-                              />
-                            </Box>
-                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                              {product.name}
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Typography variant="body2" color="text.secondary">Brand:</Typography>
-                                <Typography variant="body2" fontWeight={500}>{product.brand}</Typography>
-                              </Box>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Typography variant="body2" color="text.secondary">Category:</Typography>
-                                <Typography variant="body2" fontWeight={500}>{product.category || '-'}</Typography>
-                              </Box>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Typography variant="body2" color="text.secondary">MRP:</Typography>
-                                <Typography variant="body1" fontWeight={600}>₹{product.rate?.toLocaleString()}</Typography>
-                              </Box>
-                            </Box>
-                          </Box>
-                        </Card>
                             );
                           }
                         })
                       ) : (
                         // Fallback for non-grouped response
                         outOfStockProducts.map((product: Product) => (
-                          <Card key={product._id} sx={{ p: 2, opacity: 0.8, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-                              <Box
-                                sx={{
-                                  width: '100%',
-                                  height: 200,
-                                  position: 'relative',
-                                  borderRadius: 2,
-                                  overflow: 'hidden',
-                                  border: '1px solid',
-                                  borderColor: 'divider',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <ImageCarousel
-                                  product={product}
-                                  handleImageClick={handleImageClick as any}
-                                />
-                                <Chip
-                                  label="OUT OF STOCK"
-                                  size="small"
-                                  color="error"
-                                  sx={{
-                                    position: 'absolute',
-                                    top: 8,
-                                    right: 8,
-                                    fontWeight: 'bold',
-                                  }}
-                                />
-                              </Box>
-                              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                {product.name}
-                              </Typography>
-                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                  <Typography variant="body2" color="text.secondary">Brand:</Typography>
-                                  <Typography variant="body2" fontWeight={500}>{product.brand}</Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                  <Typography variant="body2" color="text.secondary">Category:</Typography>
-                                  <Typography variant="body2" fontWeight={500}>{product.category || '-'}</Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                  <Typography variant="body2" color="text.secondary">MRP:</Typography>
-                                  <Typography variant="body1" fontWeight={600}>₹{product.rate?.toLocaleString()}</Typography>
-                                </Box>
-                              </Box>
-                            </Box>
-                          </Card>
+                          <CatalogueProductCard
+                            key={product._id}
+                            product={product}
+                            onQuickView={(p) => handleQuickView(p, [])}
+                            viewDensity={viewDensity}
+                            isOutOfStock={true}
+                          />
                         ))
                       )}
                     </Box>
@@ -1718,7 +1626,7 @@ export default function AllProductsCatalouge() {
                     width: '100%',
                     borderRadius: 2,
                     border: '1px dashed',
-                    borderColor: 'grey.300'
+                    borderColor: 'divider'
                   }}
                 >
                   <Typography variant="body1" align="center" color="text.secondary">
@@ -2052,7 +1960,7 @@ export default function AllProductsCatalouge() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                bgcolor: 'grey.50',
+                                bgcolor: 'action.hover',
                               }}
                             >
                               <ImageCarousel
@@ -2158,7 +2066,7 @@ export default function AllProductsCatalouge() {
                     width: '100%',
                     borderRadius: 2,
                     border: '1px dashed',
-                    borderColor: 'grey.300'
+                    borderColor: 'divider'
                   }}
                 >
                   <Typography variant="body1" align="center" color="text.secondary">
@@ -2293,5 +2201,6 @@ export default function AllProductsCatalouge() {
         <div ref={pageBottomRef} />
       </Box>
     </Box>
+    </>
   )
 }

@@ -62,38 +62,44 @@ const ActionCard = styled(Button)(({ theme }) => ({
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  padding: theme.spacing(2),
-  borderRadius: 16,
+  padding: theme.spacing(2, 1.5),
+  borderRadius: 14,
   textTransform: 'none',
-  minHeight: 110,
+  minHeight: 96,
   width: '100%',
-  transition: 'all 0.2s ease-in-out',
-  backgroundColor: '#ffffff',
+  transition: 'all 0.18s ease-in-out',
+  backgroundColor: theme.palette.mode === 'dark'
+    ? 'rgba(255,255,255,0.06)'
+    : theme.palette.background.paper,
   color: theme.palette.text.primary,
-  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-  border: '1px solid #e2e8f0',
+  boxShadow: theme.palette.mode === 'light' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+  border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : theme.palette.divider}`,
+  backdropFilter: 'blur(4px)',
   '&:hover': {
-    backgroundColor: '#fafafa',
+    backgroundColor: theme.palette.mode === 'dark'
+      ? 'rgba(255,255,255,0.12)'
+      : theme.palette.action.hover,
     transform: 'translateY(-2px)',
-    boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
-    borderColor: '#cbd5e1',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+    border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.2)' : theme.palette.primary.light}`,
   },
   '&:active': {
-    transform: 'scale(0.98)',
+    transform: 'scale(0.97)',
   },
   '& .MuiSvgIcon-root': {
-    fontSize: '2rem',
-    marginBottom: theme.spacing(1),
+    fontSize: '1.75rem',
+    marginBottom: theme.spacing(0.75),
   },
 }));
 
 const SectionTitle = styled(Typography)(({ theme }) => ({
-  color: 'rgba(255, 255, 255, 0.9)',
+  color: theme.palette.text.secondary,
   fontWeight: 600,
-  fontSize: '0.875rem',
+  fontSize: '0.7rem',
   textTransform: 'uppercase',
-  letterSpacing: '0.05em',
+  letterSpacing: '0.1em',
   marginBottom: theme.spacing(1.5),
+  paddingLeft: theme.spacing(0.5),
 }));
 
 const containerVariants = {
@@ -118,28 +124,41 @@ const itemVariants = {
 };
 
 const CatalogueCard = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(2),
-  background: `linear-gradient(135deg, ${alpha(
-    theme.palette.primary.main,
-    0.95
-  )}, ${alpha(theme.palette.primary.dark, 0.98)})`,
-  borderRadius: 16,
-  border: `2px solid ${alpha(theme.palette.primary.light, 0.2)}`,
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
-  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  padding: theme.spacing(1.5, 2),
+  borderRadius: 12,
+  border: `1px solid ${theme.palette.divider}`,
   display: 'flex',
   alignItems: 'center',
-  gap: theme.spacing(2),
+  gap: theme.spacing(1.5),
   cursor: 'pointer',
+  position: 'relative',
+  overflow: 'hidden',
+  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+  backgroundColor: theme.palette.background.paper,
+  boxShadow: theme.palette.mode === 'dark' ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    background: theme.palette.primary.main,
+    opacity: 0,
+    transition: 'opacity 0.2s ease',
+    borderRadius: '3px 0 0 3px',
+  },
   '&:hover': {
-    transform: 'translateX(4px)',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
-    border: `2px solid ${alpha(theme.palette.info.main, 0.5)}`,
+    backgroundColor: theme.palette.action.hover,
+    transform: 'translateX(2px)',
+    borderColor: alpha(theme.palette.primary.main, 0.4),
+    boxShadow: theme.shadows[2],
+    '&::before': { opacity: 1 },
   },
   [theme.breakpoints.down('sm')]: {
-    padding: theme.spacing(1.5),
-    gap: theme.spacing(1.5),
-    borderRadius: 12,
+    padding: theme.spacing(1.25, 1.5),
+    gap: theme.spacing(1.25),
+    borderRadius: 10,
   },
 }));
 
@@ -147,32 +166,32 @@ const CatalogueIconWrapper = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: '48px',
-  height: '48px',
-  minWidth: '48px',
+  width: '44px',
+  height: '44px',
+  minWidth: '44px',
   borderRadius: 10,
-  background: alpha(theme.palette.info.main, 0.2),
-  border: `2px solid ${alpha(theme.palette.info.light, 0.3)}`,
+  background: alpha(theme.palette.primary.main, 0.1),
+  border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
   [theme.breakpoints.down('sm')]: {
-    width: '40px',
-    height: '40px',
-    minWidth: '40px',
+    width: '38px',
+    height: '38px',
+    minWidth: '38px',
     borderRadius: 8,
   },
 }));
 
 const CatalogueActionButton = styled(IconButton)(({ theme }) => ({
-  color: alpha('#fff', 0.85),
-  backgroundColor: alpha('#fff', 0.1),
+  color: theme.palette.text.secondary,
+  backgroundColor: alpha(theme.palette.action.active, 0.05),
   borderRadius: 8,
   padding: theme.spacing(0.75),
-  transition: 'all 0.3s ease-in-out',
+  transition: 'all 0.2s ease',
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(0.5),
   },
   '&:hover': {
-    backgroundColor: alpha('#fff', 0.2),
-    color: '#fff',
+    backgroundColor: alpha(theme.palette.primary.main, 0.12),
+    color: theme.palette.primary.main,
   },
 }));
 
@@ -343,7 +362,7 @@ const Home = () => {
   const [catalogues, setCatalogues] = useState<any[]>([]);
   const [cataloguesLoading, setCataloguesLoading] = useState(false);
 
-  const isCustomer = user?.data?.role === 'customer';
+  const isCustomer = user?.role === 'customer';
 
   // Fetch catalogues for customer role
   const fetchCatalogues = useCallback(async () => {
@@ -384,9 +403,21 @@ const Home = () => {
     []
   );
 
+  const handleShareAllCatalogues = useCallback(() => {
+    if (catalogues.length === 0) return;
+    const allProductsLink = `All Products Catalogue: ${window.location.origin}/catalogues/all_products`;
+    const brandLinks = catalogues
+      .map((b: any) => `${b.name} Catalogue: ${b.image_url}`)
+      .join('\n\n');
+    navigator.clipboard
+      .writeText(`${allProductsLink}\n\n${brandLinks}`)
+      .then(() => toast.success('All catalogue links copied to clipboard!'))
+      .catch(() => toast.error('Failed to copy links'));
+  }, [catalogues]);
+
   // Filter menu sections based on user role
   const getFilteredMenuSections = () => {
-    const userRole = user?.data?.role;
+    const userRole = user?.role;
 
     // For customer role, filter to only allowed actions and remove Resources section
     if (userRole === 'customer') {
@@ -415,7 +446,7 @@ const Home = () => {
   const handleNewOrder = async () => {
     try {
       const resp = await axios.post(`${process.env.api_url}/orders/`, {
-        created_by: user?.data?._id,
+        created_by: user?._id,
         status: 'draft',
       });
       const { data = {} } = resp;
@@ -498,11 +529,11 @@ const Home = () => {
     <Box
       sx={{
         flex: 1,
-        background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-        pt: { xs: 2, sm: 3 },
-        pb: { xs: 4, sm: 4 },
-        px: { xs: 2, sm: 3 },
+        pt: { xs: 2.5, sm: 3.5 },
+        pb: { xs: 5, sm: 5 },
+        px: { xs: 2, sm: 2.5 },
         mx: { xs: -2, sm: -3 },
+        width: '100%',
       }}
     >
       <Container maxWidth='sm' disableGutters>
@@ -512,33 +543,58 @@ const Home = () => {
           animate='visible'
         >
           {/* Header */}
-          <Box mb={3}>
+          <Box
+            mb={3.5}
+            sx={{
+              bgcolor: 'background.paper',
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 3,
+              px: 2.5,
+              py: 2,
+              boxShadow: 1,
+            }}
+          >
+            <Typography
+              variant='caption'
+              color='text.secondary'
+              sx={{
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                fontSize: '0.65rem',
+                fontWeight: 600,
+              }}
+            >
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </Typography>
             <Typography
               variant='h5'
               component='h1'
               sx={{
                 fontWeight: 700,
-                color: '#ffffff',
-                fontSize: { xs: '1.5rem', sm: '1.75rem' },
+                fontSize: { xs: '1.35rem', sm: '1.6rem' },
+                mt: 0.25,
+                lineHeight: 1.3,
               }}
             >
-              {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}, {user?.data?.first_name}
+              {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}, {user?.first_name} 👋
             </Typography>
             <Typography
-              variant='subtitle1'
-              sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+              variant='body2'
+              color='text.secondary'
+              sx={{ mt: 0.5, fontSize: '0.82rem' }}
             >
-              Your portal to effortless and streamlined order management.
+              {isCustomer ? 'Browse catalogues and manage your orders.' : 'Manage orders, customers, and more — all in one place.'}
             </Typography>
           </Box>
 
           {/* Menu Sections */}
           {filteredMenuSections.map((section) => (
-            <Box key={section.title} sx={{ mb: 3 }}>
+            <Box key={section.title} sx={{ mb: 2.5 }}>
               <SectionTitle>{section.title}</SectionTitle>
               <Grid container spacing={1.5}>
                 {section.items.map((item, index) => (
-                  <Grid size={{ xs: 6, sm: 3 }} key={index}>
+                  <Grid size={{ xs: 6, sm: 4 }} key={index}>
                     <motion.div
                       variants={itemVariants}
                       whileTap={{ scale: 0.95 }}
@@ -554,11 +610,10 @@ const Home = () => {
                         {item.icon}
                         <Typography
                           sx={{
-                            fontWeight: 600,
+                            fontWeight: 500,
                             textAlign: 'center',
                             lineHeight: 1.3,
-                            fontSize: '0.85rem',
-                            color: '#374151',
+                            fontSize: '0.78rem',
                           }}
                         >
                           {item.text}
@@ -574,7 +629,26 @@ const Home = () => {
           {/* Catalogues List for Customer Role */}
           {isCustomer && (
             <Box sx={{ mb: 3 }}>
-              <SectionTitle>Brand Catalogues</SectionTitle>
+              <Box display='flex' alignItems='center' justifyContent='space-between' mb={1.5} px={0.5}>
+                <SectionTitle sx={{ mb: 0 }}>
+                  Brand Catalogues{!cataloguesLoading && catalogues.length > 0 ? ` (${catalogues.length + 1})` : ''}
+                </SectionTitle>
+                <Tooltip title='Copy all catalogue links' arrow>
+                  <span>
+                    <IconButton
+                      size='small'
+                      onClick={handleShareAllCatalogues}
+                      disabled={cataloguesLoading || catalogues.length === 0}
+                      sx={{
+                        color: 'text.secondary',
+                        '&:hover': { color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.08) },
+                      }}
+                    >
+                      <ContentCopy sx={{ fontSize: '16px' }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              </Box>
                 {cataloguesLoading ? (
                   <Stack spacing={1.5}>
                     {[1, 2, 3].map((i) => (
@@ -617,53 +691,50 @@ const Home = () => {
                         {/* All Products Catalogue */}
                         <motion.div variants={itemVariants}>
                           <CatalogueCard
-                            elevation={4}
+                            elevation={0}
                             onClick={() => router.push('/catalogues/all_products')}
                             sx={{
-                              background: `linear-gradient(135deg, ${alpha(
-                                theme.palette.secondary.main,
-                                0.95
-                              )}, ${alpha(theme.palette.secondary.dark, 0.98)})`,
+                              '&::before': { opacity: 1, background: theme.palette.secondary.main },
+                              borderColor: alpha(theme.palette.secondary.main, 0.3),
+                              bgcolor: alpha(theme.palette.secondary.main, theme.palette.mode === 'dark' ? 0.08 : 0.04),
                             }}
                           >
                             <CatalogueIconWrapper
                               sx={{
-                                background: alpha(theme.palette.secondary.light, 0.3),
-                                border: `2px solid ${alpha(theme.palette.secondary.light, 0.4)}`,
+                                background: alpha(theme.palette.secondary.main, 0.12),
+                                border: `1px solid ${alpha(theme.palette.secondary.main, 0.25)}`,
                               }}
                             >
                               <NewReleases
                                 sx={{
-                                  fontSize: { xs: '22px', sm: '28px' },
-                                  color: theme.palette.secondary.light,
+                                  fontSize: { xs: '20px', sm: '24px' },
+                                  color: 'secondary.main',
                                 }}
                               />
                             </CatalogueIconWrapper>
-                            <Box flex={1}>
+                            <Box flex={1} minWidth={0}>
                               <Box display='flex' alignItems='center' gap={1}>
                                 <Typography
                                   variant='body1'
                                   fontWeight='700'
-                                  sx={{ color: 'white' }}
+                                  color='text.primary'
+                                  noWrap
                                 >
                                   All Products
                                 </Typography>
                                 <Chip
-                                  icon={<CheckCircle sx={{ fontSize: '12px !important' }} />}
                                   label='Latest'
                                   size='small'
-                                  sx={{
-                                    background: alpha(theme.palette.warning.main, 0.25),
-                                    color: theme.palette.warning.light,
-                                    border: `1px solid ${alpha(theme.palette.warning.main, 0.5)}`,
-                                    fontWeight: 600,
-                                    height: '22px',
-                                    fontSize: '0.7rem',
-                                  }}
+                                  color='secondary'
+                                  variant='outlined'
+                                  sx={{ fontWeight: 600, height: '20px', fontSize: '0.65rem', flexShrink: 0 }}
                                 />
                               </Box>
+                              <Typography variant='caption' color='text.secondary' noWrap>
+                                Browse all products across brands
+                              </Typography>
                             </Box>
-                            <Box display='flex' gap={0.5} onClick={(e) => e.stopPropagation()}>
+                            <Box display='flex' gap={0.5} onClick={(e) => e.stopPropagation()} flexShrink={0}>
                               <Tooltip title='Copy link' arrow>
                                 <CatalogueActionButton
                                   onClick={(e) => {
@@ -676,15 +747,15 @@ const Home = () => {
                                   }}
                                   size='small'
                                 >
-                                  <ContentCopy sx={{ fontSize: '18px' }} />
+                                  <ContentCopy sx={{ fontSize: '16px' }} />
                                 </CatalogueActionButton>
                               </Tooltip>
-                              <Tooltip title='Open' arrow>
+                              <Tooltip title='Open catalogue' arrow>
                                 <CatalogueActionButton
                                   onClick={() => router.push('/catalogues/all_products')}
                                   size='small'
                                 >
-                                  <OpenInNew sx={{ fontSize: '18px' }} />
+                                  <OpenInNew sx={{ fontSize: '16px' }} />
                                 </CatalogueActionButton>
                               </Tooltip>
                             </Box>
@@ -695,41 +766,45 @@ const Home = () => {
                         {catalogues.map((b: any, index: number) => (
                           <motion.div key={b._id || index} variants={itemVariants}>
                             <CatalogueCard
-                              elevation={4}
+                              elevation={0}
                               onClick={() => handleOpenCatalogue(b.image_url, b.name)}
                             >
                               <CatalogueIconWrapper>
                                 <PictureAsPdf
                                   sx={{
-                                    fontSize: { xs: '22px', sm: '28px' },
-                                    color: theme.palette.info.light,
+                                    fontSize: { xs: '20px', sm: '22px' },
+                                    color: 'primary.main',
                                   }}
                                 />
                               </CatalogueIconWrapper>
-                              <Box flex={1}>
+                              <Box flex={1} minWidth={0}>
                                 <Typography
                                   variant='body1'
-                                  fontWeight='700'
-                                  sx={{ color: 'white' }}
+                                  fontWeight='600'
+                                  color='text.primary'
+                                  noWrap
                                 >
                                   {b.name}
                                 </Typography>
+                                <Typography variant='caption' color='text.secondary' noWrap>
+                                  Tap to view PDF catalogue
+                                </Typography>
                               </Box>
-                              <Box display='flex' gap={0.5} onClick={(e) => e.stopPropagation()}>
+                              <Box display='flex' gap={0.5} onClick={(e) => e.stopPropagation()} flexShrink={0}>
                                 <Tooltip title='Copy link' arrow>
                                   <CatalogueActionButton
                                     onClick={(e) => handleCopyLink(e, b.image_url, b.name)}
                                     size='small'
                                   >
-                                    <ContentCopy sx={{ fontSize: '18px' }} />
+                                    <ContentCopy sx={{ fontSize: '16px' }} />
                                   </CatalogueActionButton>
                                 </Tooltip>
-                                <Tooltip title='Open' arrow>
+                                <Tooltip title='Open catalogue' arrow>
                                   <CatalogueActionButton
                                     onClick={() => handleOpenCatalogue(b.image_url, b.name)}
                                     size='small'
                                   >
-                                    <OpenInNew sx={{ fontSize: '18px' }} />
+                                    <OpenInNew sx={{ fontSize: '16px' }} />
                                   </CatalogueActionButton>
                                 </Tooltip>
                               </Box>

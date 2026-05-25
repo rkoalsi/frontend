@@ -31,20 +31,17 @@ import {
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 
-// Modern List Item Design
+// Modern List Item Design — theme-aware
 const ListItemCard = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(2.5),
-  background: `linear-gradient(135deg, ${alpha(
-    theme.palette.primary.main,
-    0.95
-  )}, ${alpha(theme.palette.primary.dark, 0.98)})`,
-  borderRadius: 16,
-  border: `2px solid ${alpha(theme.palette.primary.light, 0.2)}`,
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
-  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  padding: theme.spacing(2, 2.5),
+  backgroundColor: theme.palette.background.paper,
+  borderRadius: 14,
+  border: `1px solid ${theme.palette.divider}`,
+  boxShadow: theme.palette.mode === 'dark' ? 'none' : '0 1px 4px rgba(0,0,0,0.06)',
+  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
   display: 'flex',
   alignItems: 'center',
-  gap: theme.spacing(2.5),
+  gap: theme.spacing(2),
   position: 'relative',
   overflow: 'hidden',
   cursor: 'pointer',
@@ -55,56 +52,52 @@ const ListItemCard = styled(Paper)(({ theme }) => ({
     top: 0,
     bottom: 0,
     width: '4px',
-    background: `linear-gradient(180deg, ${theme.palette.info.main}, ${theme.palette.secondary.main})`,
+    background: `linear-gradient(180deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
     opacity: 0,
-    transition: 'opacity 0.3s ease-in-out',
+    transition: 'opacity 0.25s ease-in-out',
+    borderRadius: '4px 0 0 4px',
   },
   '&:hover': {
     transform: 'translateX(4px)',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
-    border: `2px solid ${alpha(theme.palette.info.main, 0.5)}`,
-    '&::before': {
-      opacity: 1,
-    },
+    boxShadow: theme.shadows[4],
+    borderColor: alpha(theme.palette.primary.main, 0.35),
+    '&::before': { opacity: 1 },
   },
   [theme.breakpoints.down('sm')]: {
-    flexDirection: 'column',
-    textAlign: 'center',
+    padding: theme.spacing(1.5, 2),
+    gap: theme.spacing(1.5),
   },
 }));
 
 const ShareButton = styled(Button)(({ theme }) => ({
-  padding: theme.spacing(1.5, 4),
-  background: `linear-gradient(135deg, ${theme.palette.secondary.main}, ${theme.palette.secondary.dark})`,
-  color: 'white',
+  padding: theme.spacing(1.25, 3.5),
   borderRadius: 12,
   fontWeight: 600,
-  fontSize: '1rem',
+  fontSize: '0.925rem',
   textTransform: 'none',
-  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
-  transition: 'all 0.3s ease-in-out',
+  transition: 'all 0.25s ease-in-out',
   '&:hover': {
-    background: `linear-gradient(135deg, ${theme.palette.secondary.dark}, ${theme.palette.secondary.main})`,
     transform: 'translateY(-2px)',
-    boxShadow: '0 6px 24px rgba(0, 0, 0, 0.4)',
+    boxShadow: theme.shadows[4],
   },
   '&:disabled': {
-    background: alpha(theme.palette.grey[500], 0.3),
-    color: alpha('#fff', 0.5),
+    opacity: 0.5,
   },
 }));
 
 const ActionButton = styled(IconButton)(({ theme }) => ({
-  color: alpha('#fff', 0.85),
-  backgroundColor: alpha('#fff', 0.1),
+  color: theme.palette.text.secondary,
+  backgroundColor: alpha(theme.palette.action.active, 0.05),
   borderRadius: 10,
-  padding: theme.spacing(1, 2),
+  padding: theme.spacing(0.875, 1.5),
   fontSize: '0.875rem',
-  transition: 'all 0.3s ease-in-out',
+  border: `1px solid ${theme.palette.divider}`,
+  transition: 'all 0.2s ease-in-out',
   '&:hover': {
-    backgroundColor: alpha('#fff', 0.2),
-    color: '#fff',
-    transform: 'scale(1.05)',
+    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+    color: theme.palette.primary.main,
+    borderColor: alpha(theme.palette.primary.main, 0.3),
+    transform: 'scale(1.04)',
   },
 }));
 
@@ -113,13 +106,19 @@ const IconWrapper = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: '64px',
-  height: '64px',
-  minWidth: '64px',
+  width: '56px',
+  height: '56px',
+  minWidth: '56px',
   borderRadius: 12,
-  background: alpha(theme.palette.info.main, 0.2),
-  border: `2px solid ${alpha(theme.palette.info.light, 0.3)}`,
-  transition: 'all 0.3s ease-in-out',
+  background: alpha(theme.palette.primary.main, 0.1),
+  border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
+  transition: 'all 0.25s ease-in-out',
+  [theme.breakpoints.down('sm')]: {
+    width: '48px',
+    height: '48px',
+    minWidth: '48px',
+    borderRadius: 10,
+  },
 }));
 
 // Enhanced Animation Variants
@@ -172,52 +171,28 @@ interface Props {}
 
 // Skeleton Loader Component
 const CatalogueSkeleton = () => {
-  const theme = useTheme();
   return (
     <Paper
+      elevation={0}
       sx={{
-        padding: 2.5,
-        borderRadius: 4,
+        padding: 2,
+        borderRadius: '14px',
         display: 'flex',
         alignItems: 'center',
-        gap: 2.5,
-        background: alpha(theme.palette.primary.main, 0.2),
-        mb: 2,
+        gap: 2,
+        border: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
       }}
     >
-      <Skeleton
-        variant='rounded'
-        width={64}
-        height={64}
-        sx={{ bgcolor: alpha('#fff', 0.1), borderRadius: 3 }}
-      />
+      <Skeleton variant='rounded' width={56} height={56} sx={{ borderRadius: '10px', flexShrink: 0 }} />
       <Box flex={1}>
-        <Skeleton
-          variant='text'
-          width='60%'
-          height={32}
-          sx={{ bgcolor: alpha('#fff', 0.1), mb: 1 }}
-        />
-        <Skeleton
-          variant='text'
-          width='40%'
-          height={24}
-          sx={{ bgcolor: alpha('#fff', 0.1) }}
-        />
+        <Skeleton variant='text' width='55%' height={28} sx={{ mb: 0.5 }} />
+        <Skeleton variant='text' width='35%' height={20} />
       </Box>
       <Box display='flex' gap={1}>
-        <Skeleton
-          variant='rounded'
-          width={80}
-          height={40}
-          sx={{ bgcolor: alpha('#fff', 0.1), borderRadius: 2 }}
-        />
-        <Skeleton
-          variant='rounded'
-          width={80}
-          height={40}
-          sx={{ bgcolor: alpha('#fff', 0.1), borderRadius: 2 }}
-        />
+        <Skeleton variant='rounded' width={72} height={36} sx={{ borderRadius: '10px' }} />
+        <Skeleton variant='rounded' width={72} height={36} sx={{ borderRadius: '10px' }} />
       </Box>
     </Paper>
   );
@@ -326,13 +301,15 @@ function Catalogue(props: Props) {
               style={{ width: isMobile ? '100%' : 'auto' }}
             >
               <ShareButton
+                variant='contained'
+                color='secondary'
                 startIcon={<Share />}
                 onClick={handleShareAll}
                 disabled={brands.length === 0 || loading}
                 fullWidth={isMobile}
                 size={isMobile ? 'medium' : 'large'}
               >
-                Share All Catalogues
+                Copy All Catalogue Links
               </ShareButton>
             </motion.div>
           </Box>
@@ -351,10 +328,13 @@ function Catalogue(props: Props) {
         {error && !loading && (
           <Fade in>
             <Paper
+              elevation={0}
               sx={{
                 padding: 4,
                 textAlign: 'center',
-                background: alpha(theme.palette.error.main, 0.1),
+                bgcolor: 'background.paper',
+                border: '1px solid',
+                borderColor: 'error.main',
                 borderRadius: 4,
               }}
             >
@@ -384,88 +364,56 @@ function Catalogue(props: Props) {
                   whileTap={{ scale: 0.995 }}
                 >
                   <ListItemCard
-                    elevation={4}
+                    elevation={0}
                     onClick={() => router.push('/catalogues/all_products')}
                     sx={{
-                      background: `linear-gradient(135deg, ${alpha(
-                        theme.palette.secondary.main,
-                        0.95
-                      )}, ${alpha(theme.palette.secondary.dark, 0.98)})`,
+                      '&::before': { opacity: 1, background: theme.palette.secondary.main },
+                      borderColor: alpha(theme.palette.secondary.main, 0.3),
+                      bgcolor: alpha(theme.palette.secondary.main, theme.palette.mode === 'dark' ? 0.08 : 0.04),
                     }}
                   >
                     {/* Icon */}
                     <IconWrapper
                       sx={{
-                        background: alpha(theme.palette.secondary.light, 0.3),
-                        border: `2px solid ${alpha(theme.palette.secondary.light, 0.4)}`,
+                        background: alpha(theme.palette.secondary.main, 0.14),
+                        border: `1px solid ${alpha(theme.palette.secondary.main, 0.28)}`,
                       }}
                     >
                       <NewReleases
                         sx={{
-                          fontSize: '36px',
-                          color: theme.palette.secondary.light,
+                          fontSize: '30px',
+                          color: 'secondary.main',
                         }}
                       />
                     </IconWrapper>
 
                     {/* Catalogue Info */}
-                    <Box flex={1}>
-                      <Box
-                        display='flex'
-                        alignItems='center'
-                        gap={1.5}
-                        mb={0.5}
-                      >
+                    <Box flex={1} minWidth={0}>
+                      <Box display='flex' alignItems='center' gap={1.5} mb={0.25}>
                         <Typography
                           variant='h6'
                           fontWeight='700'
-                          sx={{
-                            color: 'white',
-                            letterSpacing: '0.3px',
-                          }}
+                          color='text.primary'
+                          noWrap
                         >
                           All Products Catalogue
                         </Typography>
                         <Chip
-                          icon={
-                            <CheckCircle
-                              sx={{ fontSize: '14px !important' }}
-                            />
-                          }
+                          icon={<CheckCircle sx={{ fontSize: '13px !important' }} />}
                           label='Latest'
                           size='small'
-                          sx={{
-                            background: alpha(
-                              theme.palette.warning.main,
-                              0.25
-                            ),
-                            color: theme.palette.warning.light,
-                            border: `1px solid ${alpha(
-                              theme.palette.warning.main,
-                              0.5
-                            )}`,
-                            fontWeight: 600,
-                            height: '24px',
-                          }}
+                          color='secondary'
+                          variant='outlined'
+                          sx={{ fontWeight: 600, height: '22px', flexShrink: 0 }}
                         />
                       </Box>
-                      <Typography
-                        variant='body2'
-                        sx={{
-                          color: alpha('#fff', 0.85),
-                          fontWeight: 500,
-                        }}
-                      >
-                        Browse all products across all brands
+                      <Typography variant='body2' color='text.secondary'>
+                        Browse all products across every brand
                       </Typography>
                     </Box>
 
                     {/* Action Buttons */}
-                    <Box
-                      display='flex'
-                      gap={1}
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                    <Box display='flex' gap={1} onClick={(e) => e.stopPropagation()} flexShrink={0}>
                       <Tooltip title='Copy link' arrow>
                         <ActionButton
                           onClick={(e) => {
@@ -473,23 +421,15 @@ function Catalogue(props: Props) {
                             const url = `${window.location.origin}/catalogues/all_products`;
                             navigator.clipboard
                               .writeText(url)
-                              .then(() => {
-                                toast.success('All Products catalogue link copied!');
-                              })
-                              .catch(() => {
-                                toast.error('Failed to copy link');
-                              });
+                              .then(() => toast.success('All Products catalogue link copied!'))
+                              .catch(() => toast.error('Failed to copy link'));
                           }}
                           size='small'
                         >
                           <ContentCopy fontSize='small' />
                           <Typography
                             variant='caption'
-                            sx={{
-                              ml: 0.5,
-                              fontWeight: 600,
-                              display: { xs: 'none', sm: 'inline' },
-                            }}
+                            sx={{ ml: 0.5, fontWeight: 600, display: { xs: 'none', sm: 'inline' } }}
                           >
                             Copy
                           </Typography>
@@ -503,11 +443,7 @@ function Catalogue(props: Props) {
                           <OpenInNew fontSize='small' />
                           <Typography
                             variant='caption'
-                            sx={{
-                              ml: 0.5,
-                              fontWeight: 600,
-                              display: { xs: 'none', sm: 'inline' },
-                            }}
+                            sx={{ ml: 0.5, fontWeight: 600, display: { xs: 'none', sm: 'inline' } }}
                           >
                             Open
                           </Typography>
@@ -526,94 +462,57 @@ function Catalogue(props: Props) {
                       whileTap={{ scale: 0.995 }}
                     >
                       <ListItemCard
-                        elevation={4}
+                        elevation={0}
                         onClick={() => handleOpenCatalogue(b.image_url, b.name)}
                       >
                         {/* PDF Icon */}
                         <IconWrapper>
                           <PictureAsPdf
                             sx={{
-                              fontSize: '36px',
-                              color: theme.palette.info.light,
+                              fontSize: '28px',
+                              color: 'primary.main',
                             }}
                           />
                         </IconWrapper>
 
                         {/* Catalogue Info */}
-                        <Box flex={1}>
-                          <Box
-                            display='flex'
-                            alignItems='center'
-                            gap={1.5}
-                            mb={0.5}
-                          >
+                        <Box flex={1} minWidth={0}>
+                          <Box display='flex' alignItems='center' gap={1.5} mb={0.25}>
                             <Typography
                               variant='h6'
                               fontWeight='700'
-                              sx={{
-                                color: 'white',
-                                letterSpacing: '0.3px',
-                              }}
+                              color='text.primary'
+                              noWrap
                             >
                               {b.name}
                             </Typography>
                             {b.is_active !== false && (
                               <Chip
-                                icon={
-                                  <CheckCircle
-                                    sx={{ fontSize: '14px !important' }}
-                                  />
-                                }
+                                icon={<CheckCircle sx={{ fontSize: '13px !important' }} />}
                                 label='Active'
                                 size='small'
-                                sx={{
-                                  background: alpha(
-                                    theme.palette.success.main,
-                                    0.2
-                                  ),
-                                  color: theme.palette.success.light,
-                                  border: `1px solid ${alpha(
-                                    theme.palette.success.main,
-                                    0.4
-                                  )}`,
-                                  fontWeight: 600,
-                                  height: '24px',
-                                }}
+                                color='success'
+                                variant='outlined'
+                                sx={{ fontWeight: 600, height: '22px', flexShrink: 0 }}
                               />
                             )}
                           </Box>
-                          <Typography
-                            variant='body2'
-                            sx={{
-                              color: alpha('#fff', 0.7),
-                              fontWeight: 500,
-                            }}
-                          >
-                            Click to view catalogue
+                          <Typography variant='body2' color='text.secondary'>
+                            Click to view PDF catalogue
                           </Typography>
                         </Box>
 
                         {/* Action Buttons */}
-                        <Box
-                          display='flex'
-                          gap={1}
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                        <Box display='flex' gap={1} onClick={(e) => e.stopPropagation()} flexShrink={0}>
                           <Tooltip title='Copy link' arrow>
                             <ActionButton
-                              onClick={(e) =>
-                                handleCopyLink(e, b.image_url, b.name)
-                              }
+                              onClick={(e) => handleCopyLink(e, b.image_url, b.name)}
                               size='small'
                             >
                               <ContentCopy fontSize='small' />
                               <Typography
                                 variant='caption'
-                                sx={{
-                                  ml: 0.5,
-                                  fontWeight: 600,
-                                  display: { xs: 'none', sm: 'inline' },
-                                }}
+                                sx={{ ml: 0.5, fontWeight: 600, display: { xs: 'none', sm: 'inline' } }}
                               >
                                 Copy
                               </Typography>
@@ -621,19 +520,13 @@ function Catalogue(props: Props) {
                           </Tooltip>
                           <Tooltip title='Open in new tab' arrow>
                             <ActionButton
-                              onClick={() =>
-                                handleOpenCatalogue(b.image_url, b.name)
-                              }
+                              onClick={() => handleOpenCatalogue(b.image_url, b.name)}
                               size='small'
                             >
                               <OpenInNew fontSize='small' />
                               <Typography
                                 variant='caption'
-                                sx={{
-                                  ml: 0.5,
-                                  fontWeight: 600,
-                                  display: { xs: 'none', sm: 'inline' },
-                                }}
+                                sx={{ ml: 0.5, fontWeight: 600, display: { xs: 'none', sm: 'inline' } }}
                               >
                                 Open
                               </Typography>
@@ -648,24 +541,24 @@ function Catalogue(props: Props) {
                 {brands.length === 0 && (
                   <Fade in>
                     <Paper
+                      elevation={0}
                       sx={{
-                        padding: 4,
+                        padding: 6,
                         textAlign: 'center',
-                        background: alpha(theme.palette.primary.main, 0.1),
+                        bgcolor: 'background.paper',
+                        border: '2px dashed',
+                        borderColor: 'divider',
                         borderRadius: 4,
                       }}
                     >
                       <MenuBook
-                        sx={{ fontSize: '64px', color: alpha('#fff', 0.3), mb: 2 }}
+                        sx={{ fontSize: '56px', color: 'text.disabled', mb: 1.5 }}
                       />
-                      <Typography
-                        variant='h6'
-                        sx={{
-                          color: alpha('#fff', 0.7),
-                          fontWeight: 500,
-                        }}
-                      >
-                        No brand catalogues available at the moment
+                      <Typography variant='h6' color='text.secondary' fontWeight={500}>
+                        No brand catalogues available
+                      </Typography>
+                      <Typography variant='body2' color='text.disabled' sx={{ mt: 0.5 }}>
+                        Check back later for brand PDFs
                       </Typography>
                     </Paper>
                   </Fade>

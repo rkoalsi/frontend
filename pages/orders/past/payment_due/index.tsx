@@ -52,11 +52,11 @@ const PaymentDue = () => {
     try {
       setLoading(true);
       let resp;
-      if (user.data.role.includes('admin')) {
+      if (user.role.includes('admin')) {
         resp = await axiosInstance.get(`/admin/payments_due`);
       } else {
         resp = await axios.get(
-          `${process.env.api_url}/invoices?created_by=${user?.data?._id}`
+          `${process.env.api_url}/invoices?created_by=${user?._id}`
         );
       }
       const { data = [] } = resp;
@@ -86,7 +86,7 @@ const PaymentDue = () => {
     try {
       let url = '/admin/payments_due/download_csv';
       url += `?sales_person=${encodeURIComponent(
-        user?.data?.role?.includes('admin') ? '' : user?.data?.code
+        user?.role?.includes('admin') ? '' : user?.code
       )}`;
       const response = await axiosInstance.get(url, {
         responseType: 'blob',
@@ -477,7 +477,7 @@ const PaymentDue = () => {
               Back to Dashboard
             </Button>
 
-            {user.data.role.includes('admin') && (
+            {user.role.includes('admin') && (
               <Button
                 variant='contained'
                 color='primary'

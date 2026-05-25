@@ -43,12 +43,12 @@ const ShopHookCard = ({ user, hookData, onAddNotes }: any) => {
         </Typography>
       </div>
       <CardContent>
-        <div
-          style={{
-            backgroundColor: '#f5f5f5',
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 16,
+        <Box
+          sx={{
+            bgcolor: 'action.hover',
+            borderRadius: 2,
+            p: 2,
+            mb: 2,
           }}
         >
           <Typography variant='body2' color='textSecondary'>
@@ -75,7 +75,7 @@ const ShopHookCard = ({ user, hookData, onAddNotes }: any) => {
                 Notes
               </Typography>
               {hookData.notes
-                .filter((h: any) => h.created_by.includes(user?.data?._id))
+                .filter((h: any) => h.created_by.includes(user?._id))
                 .map((h: any, index: number) => (
                   <Typography variant='subtitle1' fontWeight='bold'>
                     {h.note || 'No notes added'}
@@ -83,7 +83,7 @@ const ShopHookCard = ({ user, hookData, onAddNotes }: any) => {
                 ))}
             </>
           )}
-        </div>
+        </Box>
         <Button
           variant='contained'
           color='primary'
@@ -110,7 +110,7 @@ function TargetedCustomer() {
       const resp = await axios.get(
         `${process.env.api_url}/targeted_customers`,
         {
-          params: { user: user?.data?._id },
+          params: { user: user?._id },
         }
       );
       setTargetedCustomer(resp.data);
@@ -132,7 +132,7 @@ function TargetedCustomer() {
     setCurrentCustomer(customer);
     setNote(
       customer?.notes?.filter((n: any) =>
-        n.created_by.includes(user?.data?._id)
+        n.created_by.includes(user?._id)
       )[0]?.note || ''
     );
     setOpenDialog(true);
@@ -144,7 +144,7 @@ function TargetedCustomer() {
       await axios.post(`${process.env.api_url}/targeted_customers/save_note`, {
         notes: note,
         _id: currentCustomer._id,
-        created_by: user?.data?._id,
+        created_by: user?._id,
       });
       toast.success('Notes updated successfully');
       setOpenDialog(false);

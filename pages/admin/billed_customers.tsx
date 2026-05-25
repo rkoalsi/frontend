@@ -523,7 +523,7 @@ const BilledCustomersComponent = () => {
             <Typography
               variant='h4'
               fontWeight='bold'
-              sx={{ display: 'flex', alignItems: 'center', color: 'white', fontSize: { xs: '1.5rem', sm: '2rem' } }}
+              sx={{ display: 'flex', alignItems: 'center', fontSize: { xs: '1.5rem', sm: '2rem' } }}
             >
               <PaidRounded
                 sx={{ mr: 2, color: 'success.main', fontSize: 40 }}
@@ -531,7 +531,7 @@ const BilledCustomersComponent = () => {
               Billed Customers -{' '}
               {viewType === 'detailed' ? 'Detailed View' : 'Summary View'}
             </Typography>
-            <Typography variant='body1' color='white'>
+            <Typography variant='body1' color='text.secondary'>
               {viewType === 'detailed'
                 ? 'Customer-item combinations with date-wise breakdown'
                 : 'Customers grouped with total quantities and amounts'}

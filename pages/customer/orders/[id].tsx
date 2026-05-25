@@ -34,6 +34,7 @@ import {
 import { useRouter } from 'next/router';
 import axiosInstance from '../../../src/util/axios';
 import { format } from 'date-fns';
+import { trackActivity } from '../../../src/util/trackActivity';
 
 interface OrderProduct {
   _id: string;
@@ -87,6 +88,7 @@ const CustomerOrderDetail = () => {
   useEffect(() => {
     if (id) {
       fetchOrder();
+      trackActivity({ action: 'view_order_detail', category: 'orders', metadata: { order_id: String(id) } });
     }
   }, [id, fetchOrder]);
 

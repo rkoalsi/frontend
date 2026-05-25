@@ -22,17 +22,9 @@ const Brands = () => {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openImagePopup, setOpenImagePopup] = useState(false);
 
-  // States for the currently selected product and its editable fields
+  // States for the currently selected brand and its editable fields
   const [selectedBrand, setSelectedBrand]: any = useState(null);
-  const [editableFields, setEditableFields] = useState({
-    category: '',
-    sub_category: '',
-    series: '',
-    upc_code: '',
-    brand: '',
-    catalogue_order: '',
-    catalogue_page: '',
-  });
+  const [description, setDescription] = useState('');
   const [updating, setUpdating] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
 
@@ -122,13 +114,31 @@ const Brands = () => {
     }
   };
 
+  const handleToggleVisibility = async (brand: any) => {
+    try {
+      const newHidden = !brand.hidden;
+      await axiosInstance.put(`/admin/brands/${brand._id}`, { hidden: newHidden });
+      setBrands((prev: any) =>
+        prev.map((b: any) =>
+          b._id === brand._id ? { ...b, hidden: newHidden } : b
+        )
+      );
+      toast.success(`Brand "${brand.name}" is now ${newHidden ? 'hidden' : 'visible'}.`);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update brand visibility.');
+    }
+  };
+
   const handleOpenEditModal = (brand: any) => {
     setSelectedBrand(brand);
+    setDescription(brand.description || '');
     setOpenEditModal(true);
   };
 
   const handleCloseEditModal = () => {
     setSelectedBrand(null);
+    setDescription('');
     setOpenEditModal(false);
   };
 
@@ -148,18 +158,48 @@ const Brands = () => {
       console.error(error);
       toast.error('Failed to upload image.');
     } finally {
-      setSelectedBrand(brands.map((b: any) => b._id === selectedBrand._id));
       setUpdating(false);
     }
   };
 
-  const handleEditableFieldChange = (e: any) => {
-    const { name, value } = e.target;
-    setEditableFields((prev) => ({ ...prev, [name]: value }));
+  const handleSecondaryImageUpload = async (file: any) => {
+    if (!selectedBrand) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('brand_name', selectedBrand?.name);
+    try {
+      setUpdating(true);
+      await axiosInstance.put(`/admin/brands/secondary_image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      await getData();
+      toast.success('Secondary image updated successfully.');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to upload secondary image.');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const handleSaveEdit = async () => {
-    handleCloseEditModal();
+    if (!selectedBrand) return;
+    try {
+      setUpdating(true);
+      await axiosInstance.put(`/admin/brands/${selectedBrand._id}`, { description });
+      setBrands((prev: any) =>
+        prev.map((b: any) =>
+          b._id === selectedBrand._id ? { ...b, description } : b
+        )
+      );
+      toast.success('Brand updated successfully.');
+      handleCloseEditModal();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update brand.');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const handleImageClick = useCallback((src: any) => {
@@ -183,7 +223,7 @@ const Brands = () => {
     <Box sx={{ padding: { xs: 2, sm: 3 } }}>
       <Paper
         elevation={3}
-        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4, backgroundColor: 'white' }}
+        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4 }}
       >
         <Box
           display='flex'
@@ -206,7 +246,7 @@ const Brands = () => {
             <Refresh onClick={handleBrandsRefresh} />
           </Box>
         </Box>
-        <Typography variant='body1' sx={{ color: '#6B7280', marginBottom: 3 }}>
+        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           A comprehensive list of all brands in your inventory.
         </Typography>
 
@@ -235,6 +275,7 @@ const Brands = () => {
           handleImageClick={handleImageClick}
           handleOpenEditModal={handleOpenEditModal}
           handleToggleActive={handleToggleActive}
+          handleToggleVisibility={handleToggleVisibility}
         />
       </Paper>
 
@@ -243,12 +284,12 @@ const Brands = () => {
         onClose={handleCloseEditModal}
         selectedBrand={selectedBrand}
         updating={updating}
-        editableFields={editableFields}
-        handleEditableFieldChange={handleEditableFieldChange}
         handleSaveEdit={handleSaveEdit}
-        handleToggleActive={handleToggleActive}
         handleImageClick={handleImageClick}
         handleImageUpload={handleImageUpload}
+        handleSecondaryImageUpload={handleSecondaryImageUpload}
+        description={description}
+        onDescriptionChange={setDescription}
       />
 
       <SingleImagePopupDialog

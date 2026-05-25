@@ -97,7 +97,7 @@ const CustomerAnalytics = () => {
       setLoading(true);
 
       const { data: ordersData } = await axiosInstance.get(`/orders`, {
-        params: { created_by: user?.data?._id },
+        params: { created_by: user?._id },
       });
 
       const orders = ordersData.orders || ordersData || [];
@@ -165,11 +165,11 @@ const CustomerAnalytics = () => {
       let invoiceStats = { total: 0, total_amount: 0, total_balance: 0, paid: 0, overdue: 0 };
       let creditNoteStats = { total: 0, total_amount: 0 };
 
-      if (user?.data?.customer_id) {
+      if (user?.customer_id) {
         try {
           const { data: summaryData } = await axiosInstance.get(
             '/customer_portal/dashboard-summary',
-            { params: { customer_id: user.data.customer_id } }
+            { params: { customer_id: user.customer_id } }
           );
           invoiceStats = summaryData.invoice_stats || invoiceStats;
           creditNoteStats = summaryData.credit_note_stats || creditNoteStats;
@@ -349,7 +349,7 @@ const CustomerAnalytics = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <IconButton
               onClick={() => router.push('/customer')}
-              sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.1)' }}
+              sx={{ bgcolor: 'action.hover' }}
               size={isMobile ? 'small' : 'medium'}
             >
               <ArrowBack />
@@ -472,7 +472,7 @@ const CustomerAnalytics = () => {
               </Paper>
 
               {/* Invoice Status & Financial */}
-              {user?.data?.customer_id && invoicePieData.length > 0 && (
+              {user?.customer_id && invoicePieData.length > 0 && (
                 <>
                   <Typography
                     variant='h6'

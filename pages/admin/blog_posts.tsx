@@ -35,7 +35,13 @@ const quillFormats = [
   'link', 'image', 'color', 'background',
 ];
 
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+const ReactQuill = dynamic(
+  async () => {
+    const { default: RQ } = await import('react-quill');
+    return React.forwardRef<any, any>((props, ref) => <RQ ref={ref} {...props} />);
+  },
+  { ssr: false }
+);
 
 interface BlogPost {
   _id: string;
@@ -315,7 +321,7 @@ const BlogPosts = () => {
 
   return (
     <Box sx={{ padding: 3 }}>
-      <Paper elevation={3} sx={{ padding: 4, borderRadius: 4, backgroundColor: 'white' }}>
+      <Paper elevation={3} sx={{ padding: 4, borderRadius: 4 }}>
         {/* Header */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
           <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', mb: 0 }}>
@@ -325,7 +331,7 @@ const BlogPosts = () => {
             New Post
           </Button>
         </Box>
-        <Typography variant="body1" sx={{ color: '#6B7280', mb: 3 }}>
+        <Typography variant="body1" sx={{ mb: 3 }} color='text.secondary'>
           Create, edit, and manage blog posts for the BarkButler blog.
         </Typography>
 
@@ -369,7 +375,7 @@ const BlogPosts = () => {
             <TableContainer component={Paper} variant="outlined">
               <Table size="small">
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: '#f9fafb' }}>
+                  <TableRow sx={{ bgcolor: 'action.hover' }}>
                     <TableCell sx={{ fontWeight: 'bold' }}>Title</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Slug</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Categories</TableCell>
@@ -631,7 +637,7 @@ const BlogPosts = () => {
                   key={dialogOpen ? (selectedPost?._id || 'new') : 'closed'}
                   theme="snow"
                   value={formData.content}
-                  onChange={(value) => handleInputChange('content', value)}
+                  onChange={(value: string) => handleInputChange('content', value)}
                   modules={quillModules}
                   formats={quillFormats}
                   placeholder="Write your post content here…"

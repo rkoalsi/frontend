@@ -10,6 +10,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  useTheme,
 } from "@mui/material";
 import { Close, ExpandMore } from "@mui/icons-material";
 import ImageCarousel from "./ImageCarousel";
@@ -50,6 +51,8 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
   allVariants = [],
   handleImageClick,
 }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [selectedVariantId, setSelectedVariantId] = useState<string>(product?._id || '');
 
   if (!product) return null;
@@ -105,10 +108,10 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
             top: 16,
             right: 16,
             zIndex: 10,
-            bgcolor: 'rgba(255, 255, 255, 0.95)',
+            bgcolor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.95)',
             boxShadow: 2,
             '&:hover': {
-              bgcolor: 'white',
+              bgcolor: isDark ? 'rgba(255,255,255,0.2)' : 'background.paper',
             },
           }}
         >
@@ -124,7 +127,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
             top: 4,
             right: 4,
             zIndex: 10,
-            bgcolor: 'rgba(255, 255, 255, 0.95)',
+            bgcolor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.95)',
             boxShadow: 2,
             ml: 'auto',
             mr: 0.5,
@@ -132,7 +135,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
             width: 36,
             height: 36,
             '&:hover': {
-              bgcolor: 'white',
+              bgcolor: isDark ? 'rgba(255,255,255,0.2)' : 'background.paper',
             },
           }}
         >
@@ -158,7 +161,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
             <Box
               sx={{
                 position: 'relative',
-                bgcolor: 'grey.50',
+                bgcolor: '#ffffff',
                 width: { xs: '100%', md: '100%' },
                 height: { xs: '240px', sm: '280px', md: '100%' },
                 maxHeight: { md: '500px' },
@@ -184,7 +187,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                     fontWeight: 800,
                     fontSize: { xs: '0.6rem', md: '0.7rem' },
                     height: { xs: 20, md: 24 },
-                    background: 'linear-gradient(135deg, #3F51B5 0%, #2196F3 100%)',
+                    background: 'linear-gradient(135deg, #5e52b5 0%, #7c6fcd 100%)',
                     color: 'white',
                     letterSpacing: '0.8px',
                     boxShadow: '0 3px 8px rgba(63, 81, 181, 0.4)',
@@ -225,8 +228,9 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                   fontWeight: 700,
                   mb: { xs: 1, sm: 1.5, md: 2 },
                   fontSize: { xs: '0.9rem', sm: '1rem', md: '1.25rem' },
-                  color: currentProduct.new ? 'primary.dark' : 'text.primary',
+                  color: 'text.primary',
                   lineHeight: 1.3,
+                  pr: { xs: 5, md: 6 },
                 }}
               >
                 {currentProduct.name}
@@ -237,24 +241,22 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                 {currentProduct.brand && (
                   <Chip
                     label={currentProduct.brand}
+                    variant="outlined"
                     sx={{
                       height: { xs: 22, sm: 24, md: 28 },
                       fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
                       fontWeight: 600,
-                      bgcolor: 'grey.100',
-                      color: 'text.secondary',
                     }}
                   />
                 )}
                 {currentProduct.category && (
                   <Chip
                     label={currentProduct.category}
+                    color="primary"
                     sx={{
                       height: { xs: 22, sm: 24, md: 28 },
                       fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
                       fontWeight: 600,
-                      bgcolor: 'primary.50',
-                      color: 'primary.dark',
                     }}
                   />
                 )}
@@ -325,7 +327,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                       fontWeight: 800,
                       fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.75rem' },
                       fontFamily: 'system-ui',
-                      color: 'primary.main',
+                      color: isDark ? 'text.primary' : 'primary.main',
                       letterSpacing: '-0.5px',
                     }}
                   >
