@@ -1,5 +1,6 @@
 import * as React from 'react';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import { AppProps } from 'next/app';
 import { useNetworkStatus } from '../src/util/useNetworkStatus';
 import { AppCacheProvider } from '@mui/material-nextjs/v15-pagesRouter';
@@ -51,9 +52,95 @@ function ThemeWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
+const PAGE_TITLES: Record<string, string> = {
+  // Root
+  '/': 'Home',
+  '/login': 'Login',
+  '/forgot_password': 'Forgot Password',
+  '/reset_password': 'Reset Password',
+  '/customer_requests': 'Customer Requests',
+  // Admin
+  '/admin': 'Admin Dashboard',
+  '/admin/announcements': 'Announcements',
+  '/admin/attendance': 'Attendance',
+  '/admin/billed_customers': 'Billed Customers',
+  '/admin/blog_posts': 'Blog Posts',
+  '/admin/brand_leads': 'Brand Leads',
+  '/admin/brands': 'Brands',
+  '/admin/career_applications': 'Career Applications',
+  '/admin/careers': 'Careers',
+  '/admin/catalogue_leads': 'Catalogue Leads',
+  '/admin/catalogues': 'Catalogues',
+  '/admin/chats': 'Chats',
+  '/admin/contact_submissions': 'Contact Submissions',
+  '/admin/customer_activity': 'Customer Activity',
+  '/admin/customer_analytics': 'Customer Analytics',
+  '/admin/customer_management': 'Customer Management',
+  '/admin/customer_requests': 'Customer Requests',
+  '/admin/customers': 'Customers',
+  '/admin/daily_visits': 'Daily Visits',
+  '/admin/employee_management': 'Employee Management',
+  '/admin/expected_reorders': 'Expected Reorders',
+  '/admin/external_links': 'External Links',
+  '/admin/hooks': 'Hooks',
+  '/admin/hooks_categories': 'Hook Categories',
+  '/admin/leads': 'Leads',
+  '/admin/orders': 'Orders',
+  '/admin/payments_due': 'Payments Due',
+  '/admin/permissions': 'Permissions',
+  '/admin/potential_customers': 'Potential Customers',
+  '/admin/products': 'Products',
+  '/admin/return_orders': 'Return Orders',
+  '/admin/sales_people': 'Sales People',
+  '/admin/shipments': 'Shipments',
+  '/admin/targeted_customers': 'Targeted Customers',
+  '/admin/training': 'Training',
+  '/admin/unbilled_customers': 'Unbilled Customers',
+  // Customer portal
+  '/customer': 'Dashboard',
+  '/customer/account': 'My Account',
+  '/customer/analytics': 'Analytics',
+  '/customer/credit-notes': 'Credit Notes',
+  '/customer/invoices': 'Invoices',
+  '/customer/orders': 'My Orders',
+  '/customer/orders/[id]': 'Order Details',
+  '/customer/payments': 'Payments',
+  '/customer/shipments': 'Shipments',
+  // Salesperson / field pages
+  '/announcements': 'Announcements',
+  '/catalogues': 'Catalogues',
+  '/catalogues/all_products': 'All Products',
+  '/check_in': 'Check In',
+  '/customer_analytics': 'Customer Analytics',
+  '/customer_analytics/[id]': 'Customer Analytics',
+  '/customer_margins': 'Customer Margins',
+  '/daily_visits': 'Daily Visits',
+  '/daily_visits/[id]': 'Daily Visit',
+  '/expected_reorder': 'Expected Reorders',
+  '/external_links': 'External Links',
+  '/hooks': 'Hooks',
+  '/orders/new/[id]': 'New Order',
+  '/orders/past': 'Past Orders',
+  '/orders/past/[id]': 'Order Details',
+  '/orders/past/payment_due': 'Payment Due',
+  '/orders/past/payment_due/[id]': 'Payment Due Details',
+  '/potential_customers': 'Potential Customers',
+  '/return_orders': 'Return Orders',
+  '/shipments': 'Shipments',
+  '/shipments/[id]': 'Shipment Details',
+  '/targeted_customer': 'Targeted Customers',
+  '/training': 'Training',
+};
+
+function getPageTitle(pathname: string): string {
+  const label = PAGE_TITLES[pathname] ?? 'Pupscribe';
+  return label === 'Pupscribe' ? 'Pupscribe' : `${label} | Pupscribe`;
+}
+
 export default function MyApp(props: AppProps) {
   useNetworkStatus();
   const { Component, pageProps } = props;
+  const router = useRouter();
 
   const isAdminRoute = props.router?.pathname.startsWith('/admin');
   const isCustomerRoute =
@@ -74,6 +161,7 @@ export default function MyApp(props: AppProps) {
         <ColorModeProvider>
           <AuthProvider>
             <Head>
+              <title>{getPageTitle(router.pathname)}</title>
               <meta name='viewport' content='initial-scale=1, width=device-width' />
             </Head>
             <ThemeWrapper>
