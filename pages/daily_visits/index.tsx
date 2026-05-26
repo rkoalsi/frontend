@@ -1140,21 +1140,47 @@ function DailyVisits() {
               <Typography variant='subtitle1' gutterBottom>
                 Upload Selfie
               </Typography>
-              <Button variant='outlined' component='label'>
-                {selfie ? 'Change Selfie' : 'Upload Selfie'}
-                <input
-                  hidden
-                  accept='image/*'
-                  type='file'
-                  onChange={handleSelfieChange}
-                />
-              </Button>
+              {isMobile ? (
+                /* On mobile: two buttons — one opens front camera, one opens gallery */
+                <Stack direction='row' spacing={1} flexWrap='wrap' useFlexGap>
+                  <Button variant='outlined' component='label' startIcon={<PersonIcon />}>
+                    {selfie ? 'Retake Selfie' : 'Take Selfie'}
+                    <input
+                      hidden
+                      accept='image/*'
+                      capture='user'
+                      type='file'
+                      onChange={handleSelfieChange}
+                    />
+                  </Button>
+                  <Button variant='outlined' component='label' startIcon={<AddIcon />}>
+                    {selfie ? 'Change from Gallery' : 'Upload from Gallery'}
+                    <input
+                      hidden
+                      accept='image/*'
+                      type='file'
+                      onChange={handleSelfieChange}
+                    />
+                  </Button>
+                </Stack>
+              ) : (
+                /* On desktop: single upload button */
+                <Button variant='outlined' component='label'>
+                  {selfie ? 'Change Selfie' : 'Upload Selfie'}
+                  <input
+                    hidden
+                    accept='image/*'
+                    type='file'
+                    onChange={handleSelfieChange}
+                  />
+                </Button>
+              )}
               {selfie && (
                 <Box mt={2}>
                   <img
                     src={URL.createObjectURL(selfie)}
                     alt='Selfie Preview'
-                    style={{ maxWidth: '100%', height: 'auto' }}
+                    style={{ maxWidth: '100%', height: 'auto', borderRadius: 8 }}
                   />
                 </Box>
               )}
