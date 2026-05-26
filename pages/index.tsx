@@ -631,7 +631,7 @@ const Home = () => {
             <Box sx={{ mb: 3 }}>
               <Box display='flex' alignItems='center' justifyContent='space-between' mb={1.5} px={0.5}>
                 <SectionTitle sx={{ mb: 0 }}>
-                  Brand Catalogues{!cataloguesLoading && catalogues.length > 0 ? ` (${catalogues.length + 1})` : ''}
+                  Brand Catalogues
                 </SectionTitle>
                 <Tooltip title='Copy all catalogue links' arrow>
                   <span>
