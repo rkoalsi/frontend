@@ -251,7 +251,10 @@ const Review: React.FC<Props> = React.memo((props) => {
     [specialMargins, customer?.cf_margin]
   );
 
-  if (!customer) {
+  // For shared-link visitors the customer fetch is unauthenticated and may fail,
+  // so customer can be null. The component already uses optional chaining throughout
+  // so it renders gracefully with null customer — only block non-shared flows.
+  if (!customer && !isShared) {
     return <Typography>This is content for Review</Typography>;
   }
 
@@ -324,15 +327,29 @@ const Review: React.FC<Props> = React.memo((props) => {
           onEdit={!isShared ? () => setActiveStep(0) : undefined}
         />
         <Box display='flex' flexDirection='column' gap={0.75}>
-          <InfoRow label='Shop Name' value={customer?.contact_name} />
+          {/* For shared-link visitors customer is null — fall back to the name
+              stored directly on the order document and the billing address phone. */}
+          <InfoRow
+            label='Shop Name'
+            value={customer?.contact_name || order?.customer_name}
+          />
           <InfoRow
             label='Contact'
             value={
-              `${customer?.first_name || ''} ${customer?.last_name || ''}`.trim() ||
+              customer
+                ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || undefined
+                : undefined
+            }
+          />
+          <InfoRow
+            label='Phone'
+            value={
+              customer?.mobile ||
+              customer?.phone ||
+              billingAddress?.phone ||
               undefined
             }
           />
-          <InfoRow label='Phone' value={customer?.mobile || customer?.phone} />
           {referenceNumber && <InfoRow label='Reference' value={referenceNumber} />}
         </Box>
       </Paper>
