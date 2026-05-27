@@ -220,7 +220,10 @@ const NewOrder: React.FC = () => {
 
   // ------------------ Calculate Totals ---------------------
   const totals = useMemo(() => {
-    if (!selectedProducts.length || !customer) return { totalGST: 0, totalAmount: 0 };
+    // Don't require `customer` here — for shared-link visitors customer may be
+    // null (unauthenticated) but we still want to display the running total using
+    // the defaults already embedded in the calculation below (margin '40', Exclusive).
+    if (!selectedProducts.length) return { totalGST: 0, totalAmount: 0 };
     const { totalGST, totalAmount } = selectedProducts.reduce(
       (acc: { totalGST: number; totalAmount: number }, product) => {
         const taxPercentage = product?.item_tax_preferences?.[0]?.tax_percentage || 0;
@@ -232,7 +235,9 @@ const NewOrder: React.FC = () => {
         const sellingPrice = rate - rate * margin;
         let gstAmount = 0;
         let total = 0;
-        if (customer?.cf_in_ex === 'Inclusive') {
+        // For shared users customer is null; fall back to gst_type stored on the order
+        const gstType = customer?.cf_in_ex || order?.gst_type || 'Exclusive';
+        if (gstType === 'Inclusive') {
           const basePrice = sellingPrice / (1 + taxPercentage / 100);
           gstAmount = (sellingPrice - basePrice) * quantity;
           total = sellingPrice * quantity;
@@ -250,7 +255,7 @@ const NewOrder: React.FC = () => {
       totalGST: Math.round(totalGST * 100) / 100,
       totalAmount: totalAmount % 1 >= 0.5 ? Math.ceil(totalAmount) : Math.floor(totalAmount),
     };
-  }, [selectedProducts, customer, specialMargins]);
+  }, [selectedProducts, customer, specialMargins, order]);
 
   // ------------------ Debounced Order Updates ---------------------
   const lastUpdateDataRef = useRef<any>(null);
@@ -428,6 +433,14 @@ const NewOrder: React.FC = () => {
   useEffect(() => {
     if (isCustomerUser && !isShared && activeStep === 0) setActiveStep(1);
   }, [isCustomerUser, isShared, activeStep]);
+
+  // router.query is empty on the first SSR render so isShared starts false and
+  // activeStep initialises to 0. Once the router hydrates and isShared becomes
+  // true, jump straight to the Products step (3) so shared-link visitors land
+  // on the right step and can proceed to Review.
+  useEffect(() => {
+    if (isShared && activeStep < 3) setActiveStep(3);
+  }, [isShared]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ------------------ Navigation & Finalization ---------------------
   const handleNext = useCallback(async () => {
@@ -765,7 +778,8 @@ const NewOrder: React.FC = () => {
   const isRetailerFlow = isShared || isCustomerUser;
   const saveDraftLabel = isRetailerFlow ? 'Submit Order' : 'Save As Draft';
   const saveDraftDisabled =
-    !customer ||
+    // For shared-link visitors customer is null (unauthenticated) — don't block them
+    (!customer && !isShared) ||
     !billingAddress ||
     !shippingAddress ||
     selectedProducts.length === 0 ||
