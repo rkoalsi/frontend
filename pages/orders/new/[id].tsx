@@ -161,38 +161,26 @@ const NewOrder: React.FC = () => {
   const isDark = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // ------------------ Fetch Special Margins -------------------------
+  // ------------------ Fetch Special Margins + Address Details (parallel) --------
   useEffect(() => {
     if (!customer?._id) return;
     const controller = new AbortController();
-    const fetchSpecialMargins = async () => {
+    const signal = controller.signal;
+
+    (async () => {
       try {
-        const res = await api.get(`/customers/special_margins/${customer._id}`, {
-          signal: controller.signal,
-        });
-        const marginMap = (res.data.products || []).reduce((acc: any, item: any) => {
+        const [marginsRes, addressRes] = await Promise.all([
+          api.get(`/customers/special_margins/${customer._id}`, { signal }),
+          api.get(`/customer_address_details/${customer._id}`, { signal }),
+        ]);
+
+        const marginMap = (marginsRes.data.products || []).reduce((acc: any, item: any) => {
           acc[item.product_id] = item.margin;
           return acc;
         }, {});
         setSpecialMargins(marginMap);
-      } catch (error: any) {
-        if (error.name !== 'CanceledError') console.error('Error fetching special margins:', error);
-      }
-    };
-    fetchSpecialMargins();
-    return () => controller.abort();
-  }, [customer?._id]);
 
-  // ------------------ Fetch Address Details -------------------------
-  useEffect(() => {
-    if (!customer?._id) return;
-    const controller = new AbortController();
-    const fetchAddressDetails = async () => {
-      try {
-        const res = await api.get(`/customer_address_details/${customer._id}`, {
-          signal: controller.signal,
-        });
-        const detailMap = (res.data.address_details || []).reduce(
+        const detailMap = (addressRes.data.address_details || []).reduce(
           (acc: Record<string, any>, item: any) => {
             acc[item.address_id] = item;
             return acc;
@@ -201,10 +189,10 @@ const NewOrder: React.FC = () => {
         );
         setAddressDetails(detailMap);
       } catch (error: any) {
-        if (error.name !== 'CanceledError') console.error('Error fetching address details:', error);
+        if (error.name !== 'CanceledError') console.error('Error fetching customer data:', error);
       }
-    };
-    fetchAddressDetails();
+    })();
+
     return () => controller.abort();
   }, [customer?._id]);
 
@@ -341,38 +329,48 @@ const NewOrder: React.FC = () => {
   const getOrder = useCallback(async () => {
     try {
       const resp = await api.get(`/orders/${id}`);
-      if (resp.data.customer_id && customerRef.current !== resp.data.customer_id) {
-        customerRef.current = resp.data.customer_id;
-        // Customer fetch requires auth — shared-link visitors won't have a token.
-        // Wrap in its own try/catch so a 403 here doesn't abort the whole order load.
-        try {
-          const customerResponse = await api.get(
-            `/customers/${resp.data.customer_id}`
-          );
-          setCustomer(customerResponse.data.customer);
-        } catch {
-          // Not authenticated to fetch customer details (e.g. shared link) — ignore
-        }
-        setReferenceNumber(resp.data?.reference_number);
+
+      // Kick off customer fetch and product batch fetch in parallel
+      const orderData = resp.data;
+
+      const customerPromise =
+        orderData.customer_id && customerRef.current !== orderData.customer_id
+          ? api.get(`/customers/${orderData.customer_id}`).catch(() => null)
+          : Promise.resolve(null);
+
+      const productsPromise =
+        orderData.products && orderData.products.length > 0
+          ? (() => {
+              const ids = orderData.products
+                .map((p: any) => p.product_id)
+                .filter(Boolean)
+                .join(',');
+              return api.get(`/products/batch?ids=${ids}`).catch(() => null);
+            })()
+          : Promise.resolve(null);
+
+      const [customerRes, batchRes] = await Promise.all([customerPromise, productsPromise]);
+
+      if (customerRes && orderData.customer_id && customerRef.current !== orderData.customer_id) {
+        customerRef.current = orderData.customer_id;
+        setCustomer(customerRes.data.customer);
+        setReferenceNumber(orderData?.reference_number);
       }
-      if (resp.data.billing_address) setBillingAddress(resp.data.billing_address);
-      if (resp.data.shipping_address) setShippingAddress(resp.data.shipping_address);
-      if (resp.data.spreadsheet_created) setLink(resp.data.spreadsheet_url);
-      if (resp.data.products && resp.data.products.length > 0) {
-        const detailedProducts = await Promise.all(
-          resp.data.products.map(async (product: any) => {
-            try {
-              const res = await api.get(`/products/${product.product_id}`);
-              return { ...product, ...res.data };
-            } catch (error) {
-              console.error(`Failed to fetch product ${product.product_id}`, error);
-              return product;
-            }
-          })
-        );
+
+      if (orderData.billing_address) setBillingAddress(orderData.billing_address);
+      if (orderData.shipping_address) setShippingAddress(orderData.shipping_address);
+      if (orderData.spreadsheet_created) setLink(orderData.spreadsheet_url);
+
+      if (batchRes && orderData.products && orderData.products.length > 0) {
+        const productMap: Record<string, any> = batchRes.data.products || {};
+        const detailedProducts = orderData.products.map((p: any) => ({
+          ...p,
+          ...(productMap[p.product_id] || {}),
+        }));
         setSelectedProducts(detailedProducts);
       }
-      setOrder(resp.data);
+
+      setOrder(orderData);
     } catch (error) {
       console.error('Error fetching order:', error);
     }

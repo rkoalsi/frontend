@@ -118,12 +118,23 @@ interface CardProps {
   growth?: number;
 }
 
+const STATS_CACHE_KEY = 'admin_stats_cache';
+
 const AdminDashboard = () => {
   const { user, permissions }: any = useContext(AuthContext);
   const theme: any = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const router = useRouter();
-  const [stats, setStats] = useState<Stats | null>(null);
+
+  // Seed from localStorage so the first render shows data immediately
+  const [stats, setStats] = useState<Stats | null>(() => {
+    try {
+      const cached = typeof window !== 'undefined' ? localStorage.getItem(STATS_CACHE_KEY) : null;
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -140,10 +151,9 @@ const AdminDashboard = () => {
 
       try {
         const { data } = await axiosInstance.get(`/admin/stats`);
-        setStats({
-          ...data,
-          last_updated: new Date().toISOString(),
-        });
+        const withTimestamp = { ...data, last_updated: new Date().toISOString() };
+        setStats(withTimestamp);
+        try { localStorage.setItem(STATS_CACHE_KEY, JSON.stringify(withTimestamp)); } catch {}
 
         if (showRefreshing) {
           setSnackbarMessage('Dashboard refreshed successfully');
@@ -175,7 +185,7 @@ const AdminDashboard = () => {
     [error]
   );
 
-  // Fetch stats on mount
+  // Fetch stats on mount — permissions gate only blocks the fetch, not the initial render
   useEffect(() => {
     if (permissions) {
       fetchStats();
@@ -932,23 +942,8 @@ const AdminDashboard = () => {
     </Box>
   );
 
-  // Don't render if permissions are not loaded
-  if (!permissions) {
-    return (
-      <Container maxWidth='xl' sx={{ py: { xs: 2, md: 4 } }}>
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '50vh'
-          }}
-        >
-          <CircularProgress />
-        </Box>
-      </Container>
-    );
-  }
+  // Permissions haven't loaded yet — show the header skeleton but let the rest render
+  const permissionsReady = !!permissions;
 
   return (
     <Container maxWidth='xl' sx={{ py: { xs: 2, md: 4 } }}>
@@ -1058,7 +1053,7 @@ const AdminDashboard = () => {
             backgroundColor: theme.palette.background.default,
           }}
         >
-          {loading && !refreshing ? (
+          {(loading && !refreshing) || !permissionsReady ? (
             renderSkeletons()
           ) : error ? (
             <Alert
