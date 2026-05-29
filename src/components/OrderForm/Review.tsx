@@ -482,10 +482,10 @@ const Review: React.FC<Props> = React.memo((props) => {
                 calculatePrices(product);
               const isActive = product.status !== 'inactive';
               const productId = product._id;
-              const taxPct =
-                product?.item_tax_preferences?.[
-                  product.item_tax_preferences.length - 1
-                ]?.tax_percentage ?? 0;
+              const _prefs = product?.item_tax_preferences;
+              const taxPct = _prefs?.length
+                ? (_prefs[_prefs.length - 1]?.tax_percentage ?? 0)
+                : 0;
 
               return (
                 <Box
