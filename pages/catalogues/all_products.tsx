@@ -12,18 +12,9 @@ import {
   IconButton,
   Tooltip,
   Button,
-  Autocomplete,
   CircularProgress,
   Tab,
   Tabs,
-  TableRow,
-  TableCell,
-  TableBody,
-  TableHead,
-  Table,
-  Card,
-  FormControlLabel,
-  Switch,
 } from '@mui/material';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Search, ArrowDownward, ArrowUpward, Close } from '@mui/icons-material';
@@ -34,15 +25,9 @@ import {
 } from '../../src/util/groupProducts';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
 import Image from 'next/image';
-import { useIntersectionObserver } from '../../src/hooks/useIntersectionObserver';
 import { toast } from 'react-toastify';
 import debounce from 'lodash.debounce';
 import ProductCardSkeleton from '../../src/components/common/ProductCardSkeleton';
-import ImageCarousel from '../../src/components/OrderForm/products/ImageCarousel';
-import ProductCard from '../../src/components/OrderForm/products/ProductCard';
-import ProductGroupCard from '../../src/components/OrderForm/products/ProductGroupCard';
-import ProductRow from '../../src/components/OrderForm/products/ProductRow';
-import DoubleScrollTable, { DoubleScrollTableRef } from '../../src/components/OrderForm/DoubleScrollTable';
 import CatalogueProductCard from '../../src/components/OrderForm/products/CatalogueProductCard';
 import CatalogueProductGroupCard from '../../src/components/OrderForm/products/CatalogueProductGroupCard';
 import CatalogueFilters from '../../src/components/OrderForm/products/CatalogueFilters';
@@ -103,8 +88,6 @@ export default function AllProductsCatalouge() {
   const pageTopRef = useRef<HTMLDivElement>(null);
   const pageBottomRef = useRef<HTMLDivElement>(null);
   const [groupByCategory, setGroupByCategory] = useState<boolean>(false);
-  const [displayedGroups, setDisplayedGroups] = useState<ProductGroup[]>([]);
-  const [displayedUngrouped, setDisplayedUngrouped] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [brands, setBrands] = useState<string[]>([]);
@@ -120,7 +103,6 @@ export default function AllProductsCatalouge() {
   const [brandList, setBrandList] = useState<{ brand: string; url: string }[]>(
     []
   );
-  const [options, setOptions] = useState<SearchResult[]>([]);
   const [productsByBrandCategory, setProductsByBrandCategory] = useState<{
     [key: string]: SearchResult[];
   }>({});
@@ -140,9 +122,8 @@ export default function AllProductsCatalouge() {
   const [paginationState, setPaginationState] = useState<{
     [key: string]: { page: number; hasMore: boolean };
   }>({});
-  const tableScrollRef = useRef<DoubleScrollTableRef>(null);
-  const cardScrollRef = useRef<HTMLDivElement>(null);
   const [searchExpanded, setSearchExpanded] = useState<boolean>(false);
+  const activeCategoryRef = useRef(activeCategory);
 
   // Catalogue-specific state
   const [viewDensity, setViewDensity] = useState<ViewDensity>('4x4');
@@ -361,52 +342,74 @@ export default function AllProductsCatalouge() {
   const fetchAllBrands = useCallback(async () => {
     try {
       setLoading(true);
+      // Use the combined init endpoint — returns brands + counts + categories + first-page products in one shot
+      const initialBrand = activeBrand || "New Arrivals";
       const response = await axios.get(
-        `${process.env.api_url}/products/brands`
+        `${process.env.api_url}/products/catalogue/init`,
+        { params: { brand: initialBrand } }
       );
-      const allBrands: { brand: string; url: string }[] =
-        response.data.brands || [];
 
-      // Add "New Arrivals" as the first brand with a professional badge
+      const allBrands: { brand: string; url: string }[] = response.data.brands || [];
       const newArrivalsBrand = {
         brand: "New Arrivals",
-        url: "https://assets.pupscribe.in/brands/new-arrivals.svg"
+        url: "https://assets.pupscribe.in/brands/new-arrivals.svg",
       };
       const brandsWithNewArrivals = [newArrivalsBrand, ...allBrands];
 
       setBrandList(brandsWithNewArrivals);
-      if (!activeBrand && brandsWithNewArrivals[0]) {
-        setActiveBrand(brandsWithNewArrivals[0].brand);
+      setProductCounts(response.data.counts || {});
+
+      const resolvedBrand = activeBrand || brandsWithNewArrivals[0]?.brand || "New Arrivals";
+      if (!activeBrand) setActiveBrand(resolvedBrand);
+
+      // Seed categories for the active brand from init response
+      const cats: string[] = response.data.categories || [];
+      setCategoriesByBrand((prev) => ({ ...prev, [resolvedBrand]: cats }));
+      if (cats.length > 0) {
+        const cur = activeCategoryRef.current;
+        if (!cur || !cats.includes(cur)) setActiveCategory(cats[0]);
       }
+
+      // Seed products for the active brand — avoids a second round-trip
+      const items = response.data.items || [];
+      const key = resolvedBrand === "New Arrivals" ? "New Arrivals-All Products" : `${resolvedBrand}-${cats[0] || ""}`;
+      setProductsByBrandCategory((prev) => ({
+        ...prev,
+        [key]: { items } as any,
+        // Also store under the standard productsKey pattern used elsewhere
+        ...(resolvedBrand === "New Arrivals" ? { all: { items } as any } : {}),
+        [`${resolvedBrand}-${cats[0] || ""}`]: { items } as any,
+      }));
+
+      setTotal(items.length);
+
       setProductsByBrandCategory((prev) =>
         brandsWithNewArrivals.reduce(
-          (acc, brandObj) => ({ ...acc, [brandObj.brand]: [] }),
+          (acc, brandObj) => ({ ...acc, [brandObj.brand]: acc[brandObj.brand] || [] }),
           { ...prev }
         )
       );
     } catch (error) {
-      showError("Failed to fetch brands.");
+      showError("Failed to fetch catalogue data.");
     } finally {
       setLoading(false);
     }
   }, [activeBrand, showError]);
 
   const fetchProductCounts = useCallback(async () => {
-    try {
-      const response = await axios.get(
-        `${process.env.api_url}/products/counts`
-      );
-      setProductCounts(response.data);
-    } catch (error) {
-      showError("Failed to fetch product counts.");
-    }
-  }, [showError]);
+    // Counts are now fetched inside fetchAllBrands via the init endpoint.
+    // This stub is kept so existing call-sites don't need updating.
+  }, []);
+
+  // Keep ref in sync so fetchCategoriesForBrand can read it without being in deps
+  useEffect(() => { activeCategoryRef.current = activeCategory; }, [activeCategory]);
 
   const fetchCategoriesForBrand = useCallback(async (brand: string) => {
     if (brand === "New Arrivals") {
       const categories = ["All Products"];
       setCategoriesByBrand((prev) => ({ ...prev, [brand]: categories }));
-      if (!activeCategory || !categories.includes(activeCategory)) {
+      const cur = activeCategoryRef.current;
+      if (!cur || !categories.includes(cur)) {
         setActiveCategory(categories[0]);
       }
       return;
@@ -419,13 +422,14 @@ export default function AllProductsCatalouge() {
       );
       const cats = response.data.categories || [];
       setCategoriesByBrand((prev) => ({ ...prev, [brand]: cats }));
-      if (cats.length > 0 && (!activeCategory || !cats.includes(activeCategory))) {
+      const cur = activeCategoryRef.current;
+      if (cats.length > 0 && (!cur || !cats.includes(cur))) {
         setActiveCategory(cats[0]);
       }
     } catch (error) {
       showError("Failed to fetch categories.");
     }
-  }, [activeCategory, showError]);
+  }, [showError]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -542,26 +546,7 @@ export default function AllProductsCatalouge() {
         [key]: { items: sortedItems } as any
       }));
 
-      // Convert sorted backend-grouped items to frontend format
-      const groups: ProductGroup[] = [];
-      const ungrouped: Product[] = [];
-
-      sortedItems.forEach(item => {
-        if (item.type === 'group' && item.products && item.primaryProduct) {
-          groups.push({
-            groupId: item.groupId || '',
-            baseName: item.baseName || '',
-            products: item.products as Product[],
-            primaryProduct: item.primaryProduct as Product,
-          });
-        } else if (item.type === 'product' && item.product) {
-          ungrouped.push(item.product as Product);
-        }
-      });
-
       setTotal(sortedItems.length);
-      setDisplayedGroups(groups);
-      setDisplayedUngrouped(ungrouped);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -694,12 +679,12 @@ export default function AllProductsCatalouge() {
     }
   }, [activeBrand, fetchCategoriesForBrand]);
 
-  // Fetch out of stock products when brand or category changes
+  // Fetch out of stock products only when the toggle is enabled
   useEffect(() => {
-    if (activeBrand) {
+    if (activeBrand && !hideOutOfStock) {
       fetchOutOfStockProducts();
     }
-  }, [activeBrand, activeCategory, fetchOutOfStockProducts]);
+  }, [activeBrand, activeCategory, hideOutOfStock, fetchOutOfStockProducts]);
 
   useEffect(() => {
     // Fetch products when brand, category, or search changes
@@ -776,21 +761,6 @@ export default function AllProductsCatalouge() {
     },
     [debouncedSearch]
   );
-  const COLUMNS = [
-    "Image",
-    "Name",
-    "Sub Category",
-    "Series",
-    "SKU",
-    "MRP",
-    "Stock",
-    "Selling Price",
-    "GST",
-    "Quantity",
-    "Total",
-    "Action",
-    "UPC/EAN Code"
-  ];
 
 
 
@@ -1508,607 +1478,6 @@ export default function AllProductsCatalouge() {
             </Box>
           </Box>
 
-          {/* Keep old display for reference - can be removed later */}
-          <Box sx={{ display: 'none' }}>
-          {isMobile || isTablet ? (
-            <Box>
-              {loading ? (
-                // Loading skeletons for mobile/tablet
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr',
-                    gap: { xs: 1.5, sm: 2 },
-                    width: '100%',
-                  }}
-                >
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <ProductCardSkeleton key={i} variant="card" />
-                  ))}
-                </Box>
-              ) : groupByProductName && itemsData && itemsData.length > 0 ? (
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr',
-                    gap: { xs: 2, sm: 2.5 },
-                    width: '100%',
-                    alignItems: 'stretch',
-                    // Override MRP label margin-bottom and card padding-bottom for this page only
-                    '& .MuiCardContent-root': {
-                      pb: 0,
-                      '& .MuiTypography-caption': {
-                        mb: 0,
-                      },
-                    },
-                  }}
-                >
-                  {/* Render items in exact order from backend */}
-                  {itemsData.map((item: any, index: number) => {
-                    if (item.type === 'group') {
-                      return (
-                        <ProductGroupCard
-                          key={item.groupId}
-                          baseName={item.baseName}
-                          products={item.products}
-                          primaryProduct={item.primaryProduct}
-                          selectedProducts={[]}
-                          temporaryQuantities={{}}
-                          specialMargins={{}}
-                          customerMargin={null as any}
-                          orderStatus={''}
-                          getSellingPrice={() => { }}
-                          handleImageClick={handleImageClick}
-                          handleQuantityChange={() => { }}
-                          handleAddOrRemove={(prod: any) => { }
-                          }
-                          index={index}
-                          isShared={true}
-                        />
-                      );
-                    } else {
-                      // item.type === 'product'
-                      return (
-                        <ProductCard
-                          key={item.product._id}
-                          product={item.product}
-                          selectedProducts={[]}
-                          temporaryQuantities={{}}
-                          specialMargins={{}}
-                          customerMargin={null as any}
-                          orderStatus={''}
-                          getSellingPrice={() => { }}
-                          handleImageClick={handleImageClick}
-                          handleQuantityChange={() => { }}
-                          handleAddOrRemove={(prod: any) => { }
-                          }
-                          index={index}
-                          isShared={true}
-                        />
-                      );
-                    }
-                  })}
-                </Box>
-              ) : displayedProducts.length > 0 ? (
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr',
-                    gap: { xs: 2, sm: 2.5 },
-                    width: '100%',
-                    alignItems: 'stretch',
-                  }}
-                >
-                  {displayedProducts.map((product: any, index: number) => (
-                    <ProductCard
-                      key={product.product._id}
-                      product={product.product}
-                      selectedProducts={[]}
-                      temporaryQuantities={{}}
-                      specialMargins={{}}
-                      customerMargin={null as any}
-                      orderStatus={''}
-                      getSellingPrice={() => { }}
-                      handleImageClick={handleImageClick}
-                      handleQuantityChange={() => { }}
-                      handleAddOrRemove={(prod: any) => { }
-                      }
-                      index={index}
-                      isShared={true}
-                    />
-                  ))}
-                </Box>
-              ) : (
-                <Box
-                  sx={{
-                    mt: 2,
-                    p: 4,
-                    width: '100%',
-                    borderRadius: 2,
-                    border: '1px dashed',
-                    borderColor: 'divider'
-                  }}
-                >
-                  <Typography variant="body1" align="center" color="text.secondary">
-                    {loading
-                      ? "Loading products..."
-                      : searchTerm
-                        ? `No products found with the name "${searchTerm}"`
-                        : "No products found."}
-                  </Typography>
-                </Box>
-              )}
-              {loadingMore && (
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    padding: 2,
-                  }}
-                >
-                  <CircularProgress color="primary" />
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    Loading more products...
-                  </Typography>
-                </Box>
-              )}
-              {!loadingMore && noMoreProducts[productsKey] && (
-                <Box mt={2}>
-                  <Typography
-                    variant="body2"
-                    color="textSecondary"
-                    align="center"
-                  >
-                    No more products for{" "}
-                    {searchTerm
-                      ? searchTerm
-                      : groupByCategory
-                        ? activeCategory
-                        : activeBrand}{" "}
-                    {searchTerm ? "" : activeCategory}.
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-          ) : isMobile ? (
-            <DoubleScrollTable ref={tableScrollRef} tableWidth={3200}>
-              <Box sx={{ minWidth: "3200px", width: "3200px" }}>
-                <Table stickyHeader sx={{ width: "100%", tableLayout: "auto" }}>
-                  <TableHead>
-                    <TableRow
-                      sx={{
-                        '& .MuiTableCell-root': {
-                          borderBottom: '2px solid',
-                          borderBottomColor: 'primary.main',
-                        },
-                      }}
-                    >
-                      {COLUMNS.map((header) => (
-                        <TableCell
-                          key={header}
-                          sx={{
-                            position: "sticky",
-                            top: 0,
-                            zIndex: 1000,
-                            backgroundColor: "background.paper",
-                            fontWeight: "bold",
-                            fontSize: "0.95rem",
-                            whiteSpace: "nowrap",
-                            color: "text.primary",
-                            paddingY: 2,
-                            paddingX: 2.5,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.5px",
-                          }}
-                        >
-                          {header}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {displayedProducts.length > 0 ? (
-                      <>
-                        {displayedProducts.map((product: any) => (
-                          <ProductRow
-                            key={product._id}
-                            product={product}
-                            selectedProducts={[]}
-                            temporaryQuantities={{}}
-                            specialMargins={{}}
-                            customerMargin={null as any}
-                            orderStatus={''}
-                            getSellingPrice={() => { }}
-                            handleImageClick={handleImageClick}
-                            handleQuantityChange={() => { }}
-                            handleAddOrRemove={(prod: any) => { }
-                            }
-                            isShared={true}
-                            showUPC={true}
-                          />
-                        ))}
-                        {!loadingMore && noMoreProducts[productsKey] && (
-                          <TableRow>
-                            <TableCell colSpan={COLUMNS.length} align="center">
-                              <Typography variant="body2" color="textSecondary">
-                                No more products for{" "}
-                                {searchTerm
-                                  ? searchTerm
-                                  : groupByCategory
-                                    ? activeCategory
-                                    : activeBrand}{" "}
-                                {searchTerm ? "" : activeCategory}.
-                              </Typography>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </>
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={COLUMNS.length} align="center">
-                          <Typography variant="body1" color="text.secondary" sx={{ py: 4 }}>
-                            {loading
-                              ? "Loading products..."
-                              : searchTerm
-                                ? `No products found with the name "${searchTerm}"`
-                                : "No products found."}
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                    {loadingMore && (
-                      <TableRow>
-                        <TableCell colSpan={COLUMNS.length} align="center">
-                          <Box
-                            sx={{
-                              display: "flex",
-                              flexDirection: "column",
-                              alignItems: "center",
-                              padding: 2,
-                            }}
-                          >
-                            <CircularProgress color="primary" />
-                            <Typography variant="body2" sx={{ mt: 1 }}>
-                              Loading more products...
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </Box>
-            </DoubleScrollTable>
-          ) : (
-            // Desktop Card Grid View
-            <Box ref={cardScrollRef}>
-              {loading ? (
-                // Loading skeletons for desktop
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: {
-                      xs: '1fr',
-                      sm: 'repeat(2, 1fr)',
-                      md: 'repeat(3, 1fr)',
-                      lg: 'repeat(4, 1fr)',
-                    },
-                    gap: { xs: 1.5, sm: 2, md: 2.5 },
-                    width: '100%',
-                    maxWidth: '100%',
-                  }}
-                >
-                  {Array.from({ length: 9 }).map((_, i) => (
-                    <ProductCardSkeleton key={i} variant="card" />
-                  ))}
-                </Box>
-              ) : groupByProductName && itemsData && itemsData.length > 0 ? (
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: {
-                      xs: '1fr',
-                      sm: 'repeat(2, 1fr)',
-                      md: 'repeat(3, 1fr)',
-                      lg: 'repeat(4, 1fr)',
-                      xl: 'repeat(5, 1fr)',
-                    },
-                    gap: { xs: 2, sm: 2, md: 2.5, lg: 3 },
-                    width: '100%',
-                    maxWidth: '100%',
-                    alignItems: 'stretch',
-                    // Override MRP label margin-bottom and card padding-bottom for this page only
-                    '& .MuiCardContent-root': {
-                      pb: 0,
-                      '& .MuiTypography-caption': {
-                        mb: 0,
-                      },
-                    },
-                  }}
-                >
-                  {/* Render items in exact order from backend */}
-                  {itemsData.map((item: any, index: number) => {
-                    if (item.type === 'group') {
-                      return (
-                        <ProductGroupCard
-                          key={item.groupId}
-                          baseName={item.baseName}
-                          products={item.products}
-                          primaryProduct={item.primaryProduct}
-                          selectedProducts={[]}
-                          temporaryQuantities={{}}
-                          specialMargins={{}}
-                          customerMargin={null as any}
-                          orderStatus={''}
-                          getSellingPrice={() => { }}
-                          handleImageClick={handleImageClick}
-                          handleQuantityChange={() => { }}
-                          handleAddOrRemove={(prod: any) => { }
-                          }
-                          index={index}
-                          isShared={true}
-                        />
-                      );
-                    } else {
-                      // item.type === 'product'
-                      return (
-                        <ProductCard
-                          key={item.product._id}
-                          product={item.product}
-                          selectedProducts={[]}
-                          temporaryQuantities={{}}
-                          specialMargins={{}}
-                          customerMargin={null as any}
-                          orderStatus={''}
-                          getSellingPrice={() => { }}
-                          handleImageClick={handleImageClick}
-                          handleQuantityChange={() => { }}
-                          handleAddOrRemove={(prod: any) => { }
-                          }
-                          index={index}
-                          isShared={true}
-                        />
-                      );
-                    }
-                  })}
-                </Box>
-              ) : displayedProducts.length > 0 ? (
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: {
-                      xs: '1fr',
-                      sm: 'repeat(2, 1fr)',
-                      md: 'repeat(3, 1fr)',
-                      lg: 'repeat(4, 1fr)',
-                      xl: 'repeat(5, 1fr)',
-                    },
-                    gap: { xs: 2, sm: 2, md: 2.5, lg: 3 },
-                    width: '100%',
-                    maxWidth: '100%',
-                    alignItems: 'stretch',
-                  }}
-                >
-                  {displayedProducts.map((product: any) => {
-                    const productId = product._id;
-                    return (
-                      <Box key={productId}>
-                        <Card
-                          sx={{
-                            height: '100%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            borderLeft: product.new ? '4px solid' : 'none',
-                            borderLeftColor: product.new ? 'primary.main' : 'transparent',
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                            position: 'relative',
-                            overflow: 'hidden',
-                            '&:hover': {
-                              boxShadow: 6,
-                              transform: 'translateY(-4px)',
-                            },
-                            '&::before': product.new ? {
-                              content: '""',
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              height: '3px',
-                              background: 'linear-gradient(90deg, #3F51B5, #2196F3)',
-                            } : {},
-                          }}
-                        >
-                          <Box sx={{ p: { xs: 1.5, sm: 2 }, pb: 0, position: 'relative' }}>
-                            {product.new && (
-                              <Chip
-                                label="NEW"
-                                size="small"
-                                sx={{
-                                  position: 'absolute',
-                                  top: { xs: 8, sm: 12 },
-                                  right: { xs: 8, sm: 12 },
-                                  zIndex: 2,
-                                  fontFamily: 'Poppins, sans-serif',
-                                  fontWeight: 800,
-                                  fontSize: { xs: '0.6rem', sm: '0.65rem' },
-                                  background: 'linear-gradient(135deg, #3F51B5 0%, #2196F3 100%)',
-                                  color: 'white',
-                                  letterSpacing: '0.8px',
-                                  textTransform: 'uppercase',
-                                  boxShadow: '0 3px 8px rgba(63, 81, 181, 0.4)',
-                                  border: '2px solid white',
-                                  animation: 'pulse 2s infinite',
-                                  '@keyframes pulse': {
-                                    '0%': { boxShadow: '0 3px 8px rgba(63, 81, 181, 0.4)' },
-                                    '50%': { boxShadow: '0 3px 12px rgba(63, 81, 181, 0.6)' },
-                                    '100%': { boxShadow: '0 3px 8px rgba(63, 81, 181, 0.4)' },
-                                  },
-                                }}
-                              />
-                            )}
-                            <Box
-                              sx={{
-                                width: '100%',
-                                height: { xs: 160, sm: 180, md: 200 },
-                                position: 'relative',
-                                mb: { xs: 1.5, sm: 2 },
-                                borderRadius: { xs: 1.5, sm: 2 },
-                                overflow: 'hidden',
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                bgcolor: 'action.hover',
-                              }}
-                            >
-                              <ImageCarousel
-                                product={product}
-                                handleImageClick={handleImageClick as any}
-                              />
-                            </Box>
-
-                            <Typography
-                              variant="h6"
-                              sx={{
-                                fontWeight: 600,
-                                mb: { xs: 1, sm: 1.5 },
-                                minHeight: { xs: 48, sm: 56 },
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                lineHeight: 1.3,
-                                fontSize: { xs: '0.875rem', sm: '1rem', md: '1.1rem' },
-                                color: product.new ? 'primary.dark' : 'text.primary',
-                              }}
-                            >
-                              {product.name}
-                            </Typography>
-
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 0.5, sm: 0.75 } }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                  Brand:
-                                </Typography>
-                                <Typography variant="body2" fontWeight={500}>
-                                  {product.brand}
-                                </Typography>
-                              </Box>
-
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                  Category:
-                                </Typography>
-                                <Typography variant="body2" fontWeight={500}>
-                                  {product.category || '-'}
-                                </Typography>
-                              </Box>
-
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                  Sub-Category:
-                                </Typography>
-                                <Typography variant="body2" fontWeight={500}>
-                                  {product.sub_category || '-'}
-                                </Typography>
-                              </Box>
-
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                  SKU:
-                                </Typography>
-                                <Typography variant="body2" fontWeight={500}>
-                                  {product.cf_sku_code || '-'}
-                                </Typography>
-                              </Box>
-
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                  MRP:
-                                </Typography>
-                                <Typography variant="body1" fontWeight={600}>
-                                  ₹{product.rate?.toLocaleString()}
-                                </Typography>
-                              </Box>
-
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                  GST:
-                                </Typography>
-                                <Typography variant="body2" fontWeight={500}>
-                                  {product.item_tax_preferences[product?.item_tax_preferences.length - 1].tax_percentage}%
-                                </Typography>
-                              </Box>
-
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                  UPC/EAN:
-                                </Typography>
-                                <Typography variant="body2" fontWeight={500}>
-                                  {product.upc_code || '-'}
-                                </Typography>
-                              </Box>
-                            </Box>
-                          </Box>
-                        </Card>
-                      </Box>
-                    );
-                  })}
-                </Box>
-              ) : (
-                <Box
-                  sx={{
-                    mt: 2,
-                    p: 4,
-                    width: '100%',
-                    borderRadius: 2,
-                    border: '1px dashed',
-                    borderColor: 'divider'
-                  }}
-                >
-                  <Typography variant="body1" align="center" color="text.secondary">
-                    {loading
-                      ? "Loading products..."
-                      : searchTerm
-                        ? `No products found with the name "${searchTerm}"`
-                        : "No products found."}
-                  </Typography>
-                </Box>
-              )}
-              {loadingMore && (
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    padding: 3,
-                  }}
-                >
-                  <CircularProgress color="primary" />
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    Loading more products...
-                  </Typography>
-                </Box>
-              )}
-              {!loadingMore && noMoreProducts[productsKey] && (
-                <Box mt={2}>
-                  <Typography variant="body2" color="textSecondary" align="center">
-                    No more products for{" "}
-                    {searchTerm
-                      ? searchTerm
-                      : groupByCategory
-                        ? activeCategory
-                        : activeBrand}{" "}
-                    {searchTerm ? "" : activeCategory}.
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-          )}
-        </Box>
         </Box>
         <Box
           sx={{
