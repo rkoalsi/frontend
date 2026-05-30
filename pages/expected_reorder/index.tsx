@@ -12,7 +12,10 @@ import {
   Chip,
   ToggleButton,
   ToggleButtonGroup,
+  Pagination,
 } from '@mui/material';
+
+const PAGE_SIZE = 20;
 import AddIcon from '@mui/icons-material/Add';
 import Header from '../../src/components/common/Header';
 import axios from 'axios';
@@ -152,6 +155,7 @@ function ExpectedReorder() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(''); // State for search query
   const [filterStatus, setFilterStatus] = useState('all'); // New state for filter status
+  const [page, setPage] = useState(1);
 
   const fetchExpectedReorder = async () => {
     try {
@@ -269,6 +273,7 @@ function ExpectedReorder() {
   ) => {
     if (newFilter !== null) {
       setFilterStatus(newFilter);
+      setPage(1);
     }
   };
 
@@ -412,23 +417,60 @@ function ExpectedReorder() {
               ? 'No Expected Reorders found.'
               : 'No Expected Reorders match your current filters.'}
           </Alert>
-        ) : (
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                sm: 'repeat(auto-fill, minmax(300px, 1fr))',
-                md: 'repeat(auto-fill, minmax(300px, 1fr))',
-              },
-              gap: 3,
-            }}
-          >
-            {filteredExpectedReorder.map((h: any) => (
-              <ShopHookCard key={h._id} hookData={h} onEdit={handleEditHook} />
-            ))}
-          </Box>
-        )}
+        ) : (() => {
+          const totalPages = Math.ceil(filteredExpectedReorder.length / PAGE_SIZE);
+          const paged = filteredExpectedReorder.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+          return (
+            <>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(auto-fill, minmax(300px, 1fr))',
+                    md: 'repeat(auto-fill, minmax(300px, 1fr))',
+                  },
+                  gap: 3,
+                }}
+              >
+                {paged.map((h: any) => (
+                  <ShopHookCard key={h._id} hookData={h} onEdit={handleEditHook} />
+                ))}
+              </Box>
+              {totalPages > 1 && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, pt: 2 }}>
+                  <Pagination
+                    count={totalPages}
+                    page={page}
+                    onChange={(_, val) => { setPage(val); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    color='primary'
+                    shape='rounded'
+                    siblingCount={1}
+                    boundaryCount={1}
+                  />
+                  <Box
+                    component='form'
+                    onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
+                      e.preventDefault();
+                      const input = (e.currentTarget.elements.namedItem('jumpPage') as HTMLInputElement).value;
+                      const num = parseInt(input, 10);
+                      if (num >= 1 && num <= totalPages) {
+                        setPage(num);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        (e.currentTarget.elements.namedItem('jumpPage') as HTMLInputElement).value = '';
+                      }
+                    }}
+                    sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                  >
+                    <Typography variant='body2' color='text.secondary'>Go to page</Typography>
+                    <TextField name='jumpPage' size='small' type='number' slotProps={{ htmlInput: { min: 1, max: totalPages } }} sx={{ width: 72 }} />
+                    <Button type='submit' size='small' variant='outlined' sx={{ borderRadius: 2 }}>Go</Button>
+                  </Box>
+                </Box>
+              )}
+            </>
+          );
+        })()}
         <ExpectedReorderDialog
           open={open}
           setOpen={setOpen}

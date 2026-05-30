@@ -37,6 +37,7 @@ import axiosInstance from '../src/util/axios';
 import { format } from 'date-fns';
 import AuthContext from '../src/components/Auth';
 import { useRouter } from 'next/router';
+import Header from '../src/components/common/Header';
 
 interface Comment {
   _id: string;
@@ -139,6 +140,7 @@ const CustomerRequests = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [totalCount, setTotalCount] = useState(0);
+  const [skipPage, setSkipPage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Reply dialog states
@@ -442,11 +444,22 @@ const CustomerRequests = () => {
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
+    setSkipPage('');
   };
 
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
+    setSkipPage('');
+  };
+
+  const totalPagesCount = Math.ceil(totalCount / rowsPerPage);
+
+  const handleSkipPage = () => {
+    const requestedPage = parseInt(skipPage, 10);
+    if (isNaN(requestedPage) || requestedPage < 1) return;
+    setPage(requestedPage - 1);
+    setSkipPage('');
   };
 
   const getStatusChip = (status: string) => {
@@ -486,16 +499,13 @@ const CustomerRequests = () => {
   return (
     <Box
       sx={{
-        p: 3,
+        p: { xs: 2, sm: 3 },
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #5A7CA4, #2B4864, #172335)',
       }}
     >
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" sx={{ mb: 1, fontWeight: 600, color: '#ffffff' }}>
-          My Customer Requests
-        </Typography>
-        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 2 }}>
+      <Header title='Customer Requests' showBackButton backUrl='/' />
+      <Box sx={{ mb: 3, mt: 1 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           View the status of your customer creation requests below
         </Typography>
 
@@ -506,33 +516,14 @@ const CustomerRequests = () => {
           placeholder="Search by shop name, customer name, created by, tier/category, or status..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          size="small"
           slotProps={{
             input: {
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+                  <SearchIcon />
                 </InputAdornment>
               ),
-            },
-          }}
-          sx={{
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: 1,
-            '& .MuiOutlinedInput-root': {
-              color: '#ffffff',
-              '& fieldset': {
-                borderColor: 'rgba(255, 255, 255, 0.3)',
-              },
-              '&:hover fieldset': {
-                borderColor: 'rgba(255, 255, 255, 0.5)',
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: 'rgba(255, 255, 255, 0.7)',
-              },
-            },
-            '& .MuiOutlinedInput-input::placeholder': {
-              color: 'rgba(255, 255, 255, 0.5)',
-              opacity: 1,
             },
           }}
         />
@@ -621,7 +612,6 @@ const CustomerRequests = () => {
             elevation={3}
             sx={{
               mt: 2,
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
               borderRadius: 2,
             }}
           >
@@ -659,6 +649,23 @@ const CustomerRequests = () => {
               }}
             />
           </Paper>
+          {/* Jump to page — mobile */}
+          {totalPagesCount > 1 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, justifyContent: 'center' }}>
+              <Typography variant='body2' color='text.secondary'>Go to page</Typography>
+              <TextField
+                size='small'
+                type='number'
+                value={skipPage}
+                onChange={(e) => setSkipPage(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSkipPage(); }}
+                slotProps={{ htmlInput: { min: 1, max: totalPagesCount } }}
+                sx={{ width: 72 }}
+              />
+              <Button size='small' variant='outlined' onClick={handleSkipPage} sx={{ borderRadius: 2 }}>Go</Button>
+              <Typography variant='body2' color='text.secondary'>of {totalPagesCount}</Typography>
+            </Box>
+          )}
         </>
       ) : (
         /* Desktop Table View */
@@ -738,6 +745,23 @@ const CustomerRequests = () => {
               },
             }}
           />
+          {/* Jump to page — desktop */}
+          {totalPagesCount > 1 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, pb: 1 }}>
+              <Typography variant='body2' color='text.secondary'>Go to page</Typography>
+              <TextField
+                size='small'
+                type='number'
+                value={skipPage}
+                onChange={(e) => setSkipPage(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSkipPage(); }}
+                slotProps={{ htmlInput: { min: 1, max: totalPagesCount } }}
+                sx={{ width: 72 }}
+              />
+              <Button size='small' variant='outlined' onClick={handleSkipPage} sx={{ borderRadius: 2 }}>Go</Button>
+              <Typography variant='body2' color='text.secondary'>of {totalPagesCount}</Typography>
+            </Box>
+          )}
         </TableContainer>
       )}
 

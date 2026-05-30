@@ -1,5 +1,5 @@
 // pages/admin/daily_visits.tsx
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Typography,
   Box,
@@ -14,14 +14,15 @@ import {
   Button,
   TablePagination,
   TextField,
-  Grid,
   Drawer,
-  LinearProgress,
   Chip,
   IconButton,
   Divider,
   Autocomplete,
+  Avatar,
+  Tooltip,
 } from '@mui/material';
+import Header from '../../src/components/common/Header';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import ReplyIcon from '@mui/icons-material/Reply';
@@ -44,7 +45,7 @@ const DailyVisits = () => {
   // State for daily visits data and pagination
   const [dailyVisits, setDailyVisits] = useState<any[]>([]);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPagesCount, setTotalPagesCount] = useState(0);
   const [skipPage, setSkipPage] = useState('');
@@ -71,6 +72,9 @@ const DailyVisits = () => {
   const [visitComment, setVisitComment] = useState('');
   const [shopComments, setShopComments] = useState<{ [key: string]: string }>({});
   const [commentLoading, setCommentLoading] = useState(false);
+
+  // Ref to scroll to latest comment after adding
+  const latestCommentRef = useRef<HTMLDivElement | null>(null);
 
   // Edit/Reply dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -126,7 +130,6 @@ const DailyVisits = () => {
       });
       // Expected response: { daily_visits, total_count, total_pages }
       const { daily_visits, total_count, total_pages } = response.data;
-      console.log(daily_visits);
       setDailyVisits(daily_visits);
       setTotalCount(total_count);
       setTotalPagesCount(total_pages);
@@ -246,6 +249,10 @@ const DailyVisits = () => {
         );
         if (updatedVisit) {
           setSelectedVisit(updatedVisit);
+          // Scroll to the newly added comment
+          setTimeout(() => {
+            latestCommentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }, 100);
         }
       }
     } catch (error) {
@@ -466,30 +473,36 @@ const DailyVisits = () => {
 
   return (
     <Box sx={{ padding: { xs: 2, sm: 3 } }}>
-      <Paper
-        elevation={3}
-        sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4 }}
-      >
-        <Box display='flex' flexDirection={{ xs: 'column', sm: 'row' }} justifyContent='space-between' alignItems={{ xs: 'flex-start', sm: 'center' }} gap={{ xs: 2, sm: 0 }}>
-          <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-            All Daily Visits
-          </Typography>
-          <Button onClick={handleDownload}>Download Daily Visits XLSX</Button>
+      <Header title='Daily Visits' showBackButton />
+
+      <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, mt: 2 }}>
+        {/* Header row */}
+        <Box
+          display='flex'
+          flexDirection={{ xs: 'column', sm: 'row' }}
+          justifyContent='space-between'
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          gap={2}
+          mb={3}
+        >
+          <Box>
+            <Typography variant='h5' fontWeight='bold'>
+              All Daily Visits
+            </Typography>
+            <Typography variant='body2' color='text.secondary'>
+              {totalCount > 0 ? `${totalCount} total records` : 'No visits found'}
+            </Typography>
+          </Box>
+          <Button variant='outlined' onClick={handleDownload} size='small'>
+            Download XLSX
+          </Button>
         </Box>
-        <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
-          View all daily visits from sales people below.
-        </Typography>
 
         {/* Filter Section */}
         <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <Box
-            sx={{
-              mb: 3,
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 2,
-              alignItems: 'center',
-            }}
+          <Paper
+            variant='outlined'
+            sx={{ p: 2, mb: 3, borderRadius: 2, display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}
           >
             <DatePicker
               label='Start Date'
@@ -511,195 +524,306 @@ const DailyVisits = () => {
               value={salespersonFilter}
               onChange={(_event, newValue) => setSalespersonFilter(newValue)}
               renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label='Salesperson'
-                  size='small'
-                  sx={{ minWidth: 200 }}
-                />
+                <TextField {...params} label='Salesperson' size='small' />
               )}
               clearOnEscape
               sx={{ minWidth: 200 }}
             />
-            <Button
-              variant='contained'
-              color='primary'
-              onClick={handleApplyDateFilter}
-              disabled={!startDate && !endDate && !salespersonFilter}
-            >
-              Apply Filter
-            </Button>
-            <Button
-              variant='outlined'
-              color='secondary'
-              onClick={handleClearDateFilter}
-              disabled={!startDate && !endDate && !salespersonFilter}
-            >
-              Clear Filter
-            </Button>
-          </Box>
+            <Box display='flex' gap={1}>
+              <Button
+                variant='contained'
+                color='primary'
+                onClick={handleApplyDateFilter}
+                disabled={!startDate && !endDate && !salespersonFilter}
+                size='small'
+              >
+                Apply
+              </Button>
+              <Button
+                variant='outlined'
+                color='secondary'
+                onClick={handleClearDateFilter}
+                disabled={!startDate && !endDate && !salespersonFilter}
+                size='small'
+              >
+                Clear
+              </Button>
+            </Box>
+          </Paper>
         </LocalizationProvider>
 
         {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+            <CircularProgress />
+          </Box>
+        ) : dailyVisits.length > 0 ? (
+          <>
+            <TableContainer component={Paper} variant='outlined' sx={{ borderRadius: 2 }}>
+              <Table size='small'>
+                <TableHead>
+                  <TableRow sx={{ '& th': { fontWeight: 700, bgcolor: 'action.hover' } }}>
+                    <TableCell>Salesperson</TableCell>
+                    <TableCell>Selfie</TableCell>
+                    <TableCell>Date</TableCell>
+                    <TableCell align='center'>Shops</TableCell>
+                    <TableCell align='center'>Updates</TableCell>
+                    <TableCell align='center'>Comments</TableCell>
+                    <TableCell align='right'>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {dailyVisits.map((visit) => {
+                    const pendingComments = (visit.admin_comments || []).filter(
+                      (c: any) => !c.reply
+                    ).length;
+                    const totalComments = (visit.admin_comments || []).length;
+                    const salespersonName =
+                      visit.created_by?.name || visit.created_by || 'N/A';
+                    const initials = salespersonName
+                      .split(' ')
+                      .map((w: string) => w[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase();
+
+                    return (
+                      <TableRow
+                        key={visit._id}
+                        hover
+                        sx={{ cursor: 'pointer' }}
+                        onClick={() => handleOpenDetails(visit)}
+                      >
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Avatar sx={{ width: 32, height: 32, fontSize: 13 }}>
+                              {initials}
+                            </Avatar>
+                            <Typography variant='body2'>{salespersonName}</Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          {visit.selfie ? (
+                            <Box
+                              component='img'
+                              onClick={(e: any) => {
+                                e.stopPropagation();
+                                handleImageClick(visit.selfie);
+                              }}
+                              src={visit.selfie}
+                              alt='Selfie'
+                              sx={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 1,
+                                objectFit: 'cover',
+                                cursor: 'zoom-in',
+                                '&:hover': { opacity: 0.85 },
+                              }}
+                            />
+                          ) : (
+                            <Typography variant='caption' color='text.disabled'>
+                              —
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant='body2'>
+                            {new Date(visit.created_at).toLocaleDateString()}
+                          </Typography>
+                          <Typography variant='caption' color='text.secondary'>
+                            {new Date(visit.created_at).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align='center'>
+                          <Chip
+                            label={visit.shops?.length || 0}
+                            size='small'
+                            color='primary'
+                            variant='outlined'
+                          />
+                        </TableCell>
+                        <TableCell align='center'>
+                          <Chip
+                            label={visit.updates?.length || 0}
+                            size='small'
+                            color={visit.updates?.length > 0 ? 'success' : 'default'}
+                            variant='outlined'
+                          />
+                        </TableCell>
+                        <TableCell align='center'>
+                          {totalComments > 0 ? (
+                            <Tooltip
+                              title={
+                                pendingComments > 0
+                                  ? `${pendingComments} awaiting reply`
+                                  : 'All replied'
+                              }
+                            >
+                              <Chip
+                                label={totalComments}
+                                size='small'
+                                color={pendingComments > 0 ? 'warning' : 'default'}
+                                variant={pendingComments > 0 ? 'filled' : 'outlined'}
+                              />
+                            </Tooltip>
+                          ) : (
+                            <Typography variant='caption' color='text.disabled'>
+                              —
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell align='right'>
+                          <Button
+                            variant='outlined'
+                            size='small'
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenDetails(visit);
+                            }}
+                          >
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            {/* Pagination row */}
+            <Box
+              display='flex'
+              flexDirection={{ xs: 'column', sm: 'row' }}
+              alignItems={{ xs: 'flex-start', sm: 'center' }}
+              justifyContent='space-between'
+              mt={2}
+              gap={1}
+            >
+              <TablePagination
+                rowsPerPageOptions={[10]}
+                component='div'
+                count={totalCount}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                labelDisplayedRows={({ from, to, count }) =>
+                  `${from}–${to} of ${count} (Page ${page + 1} of ${totalPagesCount})`
+                }
+              />
+              <Box display='flex' alignItems='center' gap={1}>
+                <Typography variant='body2' color='text.secondary'>
+                  Jump to:
+                </Typography>
+                <TextField
+                  type='number'
+                  variant='outlined'
+                  size='small'
+                  sx={{ width: 80 }}
+                  value={skipPage !== '' ? skipPage : page + 1}
+                  onChange={(e) =>
+                    parseInt(e.target.value) <= totalPagesCount
+                      ? setSkipPage(e.target.value)
+                      : toast.error('Invalid page number')
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSkipPage();
+                  }}
+                  inputProps={{ min: 1, max: totalPagesCount }}
+                />
+                <Button variant='contained' size='small' onClick={handleSkipPage}>
+                  Go
+                </Button>
+              </Box>
+            </Box>
+          </>
+        ) : (
           <Box
             sx={{
               display: 'flex',
-              justifyContent: 'center',
+              flexDirection: 'column',
               alignItems: 'center',
-              minHeight: '200px',
+              justifyContent: 'center',
+              py: 8,
+              gap: 1,
             }}
           >
-            <CircularProgress />
+            <Typography variant='h6' color='text.secondary'>
+              No daily visits found
+            </Typography>
+            <Typography variant='body2' color='text.disabled'>
+              Try adjusting your filters
+            </Typography>
           </Box>
-        ) : (
-          <>
-            {dailyVisits.length > 0 ? (
-              <>
-                <TableContainer component={Paper}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Created By</TableCell>
-                        <TableCell>Selfie</TableCell>
-                        <TableCell>Created At</TableCell>
-                        <TableCell>Updated At</TableCell>
-                        <TableCell>Updates</TableCell>
-                        <TableCell>Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {dailyVisits.map((visit) => (
-                        <TableRow key={visit._id}>
-                          <TableCell>
-                            {visit.created_by && visit.created_by.name
-                              ? visit.created_by.name
-                              : visit.created_by || 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                            {visit.selfie ? (
-                              <img
-                                onClick={() => handleImageClick(visit.selfie)}
-                                src={visit.selfie}
-                                alt='Selfie'
-                                style={{
-                                  width: '50px',
-                                  height: '50px',
-                                  borderRadius: '4px',
-                                }}
-                              />
-                            ) : (
-                              'No Selfie'
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {new Date(visit.created_at).toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            {new Date(visit.updated_at).toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            {visit.updates ? visit.updates.length : 0}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant='outlined'
-                              onClick={() => handleOpenDetails(visit)}
-                            >
-                              View Details
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-                <Box
-                  display='flex'
-                  flexDirection='row'
-                  alignItems='end'
-                  justifyContent='space-between'
-                  mt={2}
-                >
-                  <Box display='flex' alignItems='center' gap='8px'>
-                    <TablePagination
-                      rowsPerPageOptions={[25, 50, 100, 200]}
-                      component='div'
-                      count={totalCount}
-                      rowsPerPage={rowsPerPage}
-                      page={page}
-                      onPageChange={handleChangePage}
-                      onRowsPerPageChange={handleChangeRowsPerPage}
-                    />
-                    <Box ml={2} display='flex' alignItems='center'>
-                      <TextField
-                        label='Go to page'
-                        type='number'
-                        variant='outlined'
-                        size='small'
-                        sx={{ width: 100, mr: 1 }}
-                        value={skipPage !== '' ? skipPage : page + 1}
-                        onChange={(e) =>
-                          parseInt(e.target.value) <= totalPagesCount
-                            ? setSkipPage(e.target.value)
-                            : toast.error('Invalid Page Number')
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleSkipPage();
-                          }
-                        }}
-                      />
-                      <Button variant='contained' onClick={handleSkipPage}>
-                        Go
-                      </Button>
-                    </Box>
-                  </Box>
-                  <Typography variant='subtitle1'>
-                    Total Pages: {totalPagesCount}
-                  </Typography>
-                </Box>
-              </>
-            ) : (
-              <Box display='flex' justifyContent='center' alignItems='center'>
-                <Typography variant='h5' fontWeight='bold'>
-                  No Daily Visits
-                </Typography>
-              </Box>
-            )}
-          </>
         )}
       </Paper>
 
       <Drawer anchor='right' open={drawerOpen} onClose={handleCloseDrawer}>
-        <Box sx={{ width: { xs: 200, lg: 400, xl: 500 }, p: 3 }}>
+        <Box
+          sx={{
+            width: { xs: '95vw', sm: 480, md: 560 },
+            maxWidth: '100vw',
+            p: 3,
+            overflowX: 'hidden',
+          }}
+        >
           {selectedVisit && (
             <>
-              <Typography variant='h5' gutterBottom>
-                Daily Visit Details
-              </Typography>
-              <Typography variant='subtitle1' gutterBottom>
-                <strong>Created By:</strong>{' '}
-                {selectedVisit.created_by && selectedVisit.created_by.name
-                  ? selectedVisit.created_by.name
-                  : selectedVisit.created_by || 'N/A'}
-              </Typography>
-              <Typography variant='subtitle1' gutterBottom>
-                <strong>Created At:</strong>{' '}
-                {new Date(selectedVisit.created_at).toLocaleString()}
-              </Typography>
-              <Typography variant='subtitle1' gutterBottom>
-                <strong>Updated At:</strong>{' '}
-                {new Date(selectedVisit.updated_at).toLocaleString()}
-              </Typography>
-              {selectedVisit.selfie && (
-                <Box sx={{ my: 2 }}>
-                  <img
-                    onClick={() => handleImageClick(selectedVisit.selfie)}
-                    src={selectedVisit.selfie}
-                    alt='Selfie'
-                    style={{ width: '100%', borderRadius: '8px' }}
-                  />
+              {/* Drawer header */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Typography variant='h6' fontWeight='bold'>
+                  Visit Details
+                </Typography>
+                <Button size='small' variant='outlined' onClick={handleCloseDrawer}>
+                  Close
+                </Button>
+              </Box>
+
+              {/* Meta info */}
+              <Paper variant='outlined' sx={{ p: 2, borderRadius: 2, mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                  <Avatar sx={{ width: 36, height: 36, fontSize: 14 }}>
+                    {(selectedVisit.created_by?.name || selectedVisit.created_by || 'N/A')
+                      .split(' ')
+                      .map((w: string) => w[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </Avatar>
+                  <Box>
+                    <Typography variant='subtitle2' fontWeight='bold'>
+                      {selectedVisit.created_by?.name || selectedVisit.created_by || 'N/A'}
+                    </Typography>
+                    <Typography variant='caption' color='text.secondary'>
+                      {new Date(selectedVisit.created_at).toLocaleString()}
+                    </Typography>
+                  </Box>
                 </Box>
+                {selectedVisit.updated_at !== selectedVisit.created_at && (
+                  <Typography variant='caption' color='text.secondary'>
+                    Updated: {new Date(selectedVisit.updated_at).toLocaleString()}
+                  </Typography>
+                )}
+              </Paper>
+
+              {selectedVisit.selfie && (
+                <Box
+                  component='img'
+                  onClick={() => handleImageClick(selectedVisit.selfie)}
+                  src={selectedVisit.selfie}
+                  alt='Selfie'
+                  sx={{
+                    width: '100%',
+                    borderRadius: 2,
+                    mb: 2,
+                    cursor: 'zoom-in',
+                    '&:hover': { opacity: 0.9 },
+                  }}
+                />
               )}
               {/* Admin Comments for Daily Visit */}
               <Box sx={{ mt: 3 }}>
@@ -712,8 +836,12 @@ const DailyVisits = () => {
                   <Box sx={{ mb: 2 }}>
                     {selectedVisit.admin_comments
                       .filter((c: any) => !c.shop_id)
-                      .map((comment: any) => (
-                        <Paper key={comment._id} sx={{ p: 1.5, my: 1, bgcolor: 'action.hover' }}>
+                      .map((comment: any, idx: number, arr: any[]) => (
+                        <Paper
+                          key={comment._id}
+                          ref={idx === arr.length - 1 ? latestCommentRef : undefined}
+                          sx={{ p: 1.5, my: 1, bgcolor: 'action.hover' }}
+                        >
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <Box sx={{ flex: 1 }}>
                               <Typography variant='body2' sx={{ fontWeight: 500 }}>
@@ -817,7 +945,7 @@ const DailyVisits = () => {
                 <Typography variant='h6'>Shops:</Typography>
                 {selectedVisit.shops && selectedVisit.shops.length > 0 ? (
                   selectedVisit.shops.map((shop: any, index: number) => {
-                    const shopKey = shop.id || `shop-${index}`;
+                    const shopKey = shop._id || shop.id || `shop-${index}`;
                     return (
                     <Paper key={shopKey} sx={{ p: 2, my: 1 }}>
                       <Typography
@@ -1015,18 +1143,32 @@ const DailyVisits = () => {
                         {new Date(update.created_at).toLocaleString()}
                       </Typography>
                       {update.images && update.images.length > 0 && (
-                        <Grid container spacing={2} sx={{ mt: 1 }}>
+                        <Box
+                          sx={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                            gap: 1,
+                            mt: 1,
+                          }}
+                        >
                           {update.images.map((img: any, idx: number) => (
-                            <Box key={idx}>
-                              <img
-                                onClick={() => handleImageClick(img.url)}
-                                src={img.url}
-                                alt={`Update Image ${idx + 1}`}
-                                style={{ width: '100%', borderRadius: '8px' }}
-                              />
-                            </Box>
+                            <Box
+                              key={idx}
+                              component='img'
+                              onClick={() => handleImageClick(img.url)}
+                              src={img.url}
+                              alt={`Update Image ${idx + 1}`}
+                              sx={{
+                                width: '100%',
+                                aspectRatio: '4/3',
+                                objectFit: 'cover',
+                                borderRadius: 1,
+                                cursor: 'zoom-in',
+                                '&:hover': { opacity: 0.85 },
+                              }}
+                            />
                           ))}
-                        </Grid>
+                        </Box>
                       )}
                       {update.shop_hooks && (
                         <Box sx={{ mt: 2, mb: 2 }}>
@@ -1094,8 +1236,8 @@ const DailyVisits = () => {
                   <Typography variant='body2'>No updates available.</Typography>
                 )}
               </Box>
-              <Box sx={{ mt: 3 }}>
-                <Button variant='contained' onClick={handleCloseDrawer}>
+              <Box sx={{ mt: 3, pb: 2 }}>
+                <Button variant='outlined' fullWidth onClick={handleCloseDrawer}>
                   Close
                 </Button>
               </Box>

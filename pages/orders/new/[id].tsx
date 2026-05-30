@@ -31,6 +31,12 @@ import {
   Chip,
   Tooltip,
   Slide,
+  Divider,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
 } from '@mui/material';
 import { useTheme, styled } from '@mui/material/styles';
 import CustomerSearchBar from '../../../src/components/OrderForm/CustomerSearchBar';
@@ -45,6 +51,7 @@ import {
   ShoppingCart,
   ArrowForward,
   CheckCircle,
+  Percent,
 } from '@mui/icons-material';
 import useDebounce from '../../../src/util/useDebounce';
 import AuthContext from '../../../src/components/Auth';
@@ -133,6 +140,11 @@ const NewOrder: React.FC = () => {
   const { user }: any = useContext(AuthContext);
   const isAdmin = user?.role.includes('admin');
   const isCustomerUser = user?.role === 'customer';
+  const canViewMargins =
+    !isCustomerUser &&
+    !isShared &&
+    !!user?.role &&
+    ['admin', 'sales_admin', 'sales_person'].some((r) => (user.role as string).includes(r));
   const userCustomerId = user?.customer_id; // contact_id linked to this user
   // States
   const [customer, setCustomer] = useState<any>(null);
@@ -152,6 +164,28 @@ const NewOrder: React.FC = () => {
   );
   const [linkCopied, setLinkCopied] = useState<boolean>(false);
   const [specialMargins, setSpecialMargins] = useState<{ [key: string]: string }>({});
+  const [specialMarginsList, setSpecialMarginsList] = useState<any[]>([]);
+  const [marginDialogOpen, setMarginDialogOpen] = useState(false);
+
+  // Group special margins by brand; derive brand margin (mode) and flag exceptions
+  const specialMarginsByBrand = useMemo(() => {
+    const grouped: Record<string, { brandMargin: string; exceptions: any[] }> = {};
+    const byBrand: Record<string, any[]> = {};
+    for (const item of specialMarginsList) {
+      const brand = item.brand || 'Unknown';
+      if (!byBrand[brand]) byBrand[brand] = [];
+      byBrand[brand].push(item);
+    }
+    for (const [brand, products] of Object.entries(byBrand)) {
+      // Mode: pick the most frequent margin in this brand group
+      const freq: Record<string, number> = {};
+      for (const p of products) freq[p.margin] = (freq[p.margin] || 0) + 1;
+      const brandMargin = Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0];
+      const exceptions = products.filter((p) => p.margin !== brandMargin);
+      grouped[brand] = { brandMargin, exceptions };
+    }
+    return grouped;
+  }, [specialMarginsList]);
   const [addressDetails, setAddressDetails] = useState<Record<string, any>>({});
 
   // Submit confirmation dialog (for shared/customer users)
@@ -174,11 +208,13 @@ const NewOrder: React.FC = () => {
           api.get(`/customer_address_details/${customer._id}`, { signal }),
         ]);
 
-        const marginMap = (marginsRes.data.products || []).reduce((acc: any, item: any) => {
+        const products = marginsRes.data.products || [];
+        const marginMap = products.reduce((acc: any, item: any) => {
           acc[item.product_id] = item.margin;
           return acc;
         }, {});
         setSpecialMargins(marginMap);
+        setSpecialMarginsList(products);
 
         const detailMap = (addressRes.data.address_details || []).reduce(
           (acc: Record<string, any>, item: any) => {
@@ -958,6 +994,22 @@ const NewOrder: React.FC = () => {
                     </NavButton>
                   </Tooltip>
                 )}
+
+                {/* View Margins — sales/admin roles only */}
+                {canViewMargins && customer && (
+                  <Tooltip title='View customer margins'>
+                    <NavButton
+                      size='small'
+                      variant='outlined'
+                      color='secondary'
+                      startIcon={<Percent sx={{ fontSize: 16 }} />}
+                      onClick={() => setMarginDialogOpen(true)}
+                      sx={{ fontSize: '0.75rem', px: 1.5, py: 0.5 }}
+                    >
+                      Margins
+                    </NavButton>
+                  </Tooltip>
+                )}
               </Box>
             </Box>
           </Box>
@@ -1391,6 +1443,153 @@ const NewOrder: React.FC = () => {
           </NavButton>
         </DialogActions>
       </Dialog>
+
+      {/* ── Margins dialog (sales/admin roles only) ── */}
+      {canViewMargins && (
+        <Dialog
+          open={marginDialogOpen}
+          onClose={() => setMarginDialogOpen(false)}
+          maxWidth='sm'
+          fullWidth
+          fullScreen={isMobile}
+          PaperProps={{ sx: { borderRadius: isMobile ? 0 : 3 } }}
+        >
+          <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+            Customer Margins
+            {customer && (
+              <Typography variant='body2' color='text.secondary' sx={{ fontWeight: 400, mt: 0.25 }}>
+                {customer.company_name || customer.contact_name}
+              </Typography>
+            )}
+          </DialogTitle>
+
+          <DialogContent>
+            {/* Overall margin */}
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                p: 2,
+                borderRadius: 2,
+                bgcolor: 'action.hover',
+                border: `1px solid ${theme.palette.divider}`,
+                mb: 2,
+              }}
+            >
+              <Box>
+                <Typography variant='caption' color='text.secondary' fontWeight={600}>
+                  DEFAULT MARGIN
+                </Typography>
+                <Typography variant='body1' fontWeight={700}>
+                  {customer?.cf_margin || '40%'}
+                </Typography>
+              </Box>
+              <Typography variant='caption' color='text.secondary' sx={{ maxWidth: 160, textAlign: 'right' }}>
+                Applied to all products without a special margin
+              </Typography>
+            </Box>
+
+            {/* Special margins — grouped by brand */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <Typography variant='subtitle2' fontWeight={700}>
+                Special Margins by Brand
+              </Typography>
+              {Object.keys(specialMarginsByBrand).length > 0 && (
+                <Chip
+                  size='small'
+                  label={`${Object.keys(specialMarginsByBrand).length} brand${Object.keys(specialMarginsByBrand).length !== 1 ? 's' : ''}`}
+                  sx={{ height: 20, fontSize: '0.7rem' }}
+                />
+              )}
+            </Box>
+
+            {specialMarginsList.length === 0 ? (
+              <Typography variant='body2' color='text.secondary' sx={{ py: 2, textAlign: 'center' }}>
+                No special margins set for this customer.
+              </Typography>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {Object.entries(specialMarginsByBrand).map(([brand, { brandMargin, exceptions }]) => (
+                  <Box
+                    key={brand}
+                    sx={{
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderRadius: 2,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {/* Brand header row */}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        px: 2,
+                        py: 1.25,
+                        bgcolor: 'action.hover',
+                      }}
+                    >
+                      <Typography variant='body2' fontWeight={700}>
+                        {brand}
+                      </Typography>
+                      <Chip
+                        size='small'
+                        label={brandMargin}
+                        color='primary'
+                        sx={{ fontSize: '0.75rem', height: 22, fontWeight: 700 }}
+                      />
+                    </Box>
+
+                    {/* Exceptions: products with a margin different from the brand margin */}
+                    {exceptions.length > 0 && (
+                      <>
+                        <Divider />
+                        <Table size='small'>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ fontSize: '0.72rem', color: 'text.secondary', fontWeight: 600, py: 0.75 }}>
+                                Product (different margin)
+                              </TableCell>
+                              <TableCell align='right' sx={{ fontSize: '0.72rem', color: 'text.secondary', fontWeight: 600, py: 0.75 }}>
+                                Margin
+                              </TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {exceptions.map((item: any) => (
+                              <TableRow key={item.product_id} hover>
+                                <TableCell sx={{ fontSize: '0.8rem', wordBreak: 'break-word' }}>
+                                  {item.name}
+                                </TableCell>
+                                <TableCell align='right'>
+                                  <Chip
+                                    size='small'
+                                    label={item.margin}
+                                    color='warning'
+                                    variant='outlined'
+                                    sx={{ fontSize: '0.75rem', height: 22, fontWeight: 700 }}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </>
+                    )}
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </DialogContent>
+
+          <DialogActions sx={{ px: 3, pb: 2.5 }}>
+            <NavButton variant='contained' color='primary' onClick={() => setMarginDialogOpen(false)}>
+              Close
+            </NavButton>
+          </DialogActions>
+        </Dialog>
+      )}
 
       {/* ── Snackbars ── */}
       <Snackbar
