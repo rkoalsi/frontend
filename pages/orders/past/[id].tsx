@@ -3,48 +3,62 @@ import {
   Box,
   Typography,
   Paper,
-  styled,
   Divider,
   Button,
   Skeleton,
-  List,
-  ListItem,
-  ListItemText,
+  Chip,
   IconButton,
+  Tooltip,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { AddToPhotos, ContentCopy, Download, Edit } from '@mui/icons-material';
-import Link from 'next/link';
 import AuthContext from '../../../src/components/Auth';
 import { toast } from 'react-toastify';
+import Header from '../../../src/components/common/Header';
+
+const STATUS_COLOR: Record<string, 'warning' | 'info' | 'success' | 'error' | 'default'> = {
+  draft: 'warning',
+  sent: 'info',
+  accepted: 'success',
+  invoiced: 'success',
+  declined: 'error',
+};
+
+const AddressBlock = ({ label, addr }: { label: string; addr: any }) => {
+  if (!addr) return null;
+  const lines = [addr.attention, addr.address, addr.city, addr.state, addr.zip].filter(Boolean);
+  return (
+    <Box>
+      <Typography variant='overline' fontWeight={700} color='text.secondary' sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>
+        {label}
+      </Typography>
+      <Typography variant='body1' color='text.primary' sx={{ whiteSpace: 'pre-line', lineHeight: 1.75, mt: 0.25 }}>
+        {lines.join('\n')}
+      </Typography>
+    </Box>
+  );
+};
 
 const OrderDetails = () => {
   const [orderData, setOrderData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
   const router = useRouter();
   const { id } = router.query;
   const { user }: any = useContext(AuthContext);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  /**
-   * Fetch order details from the API
-   */
-  const StyledPaper = styled(Paper)(({ theme }) => ({
-    padding: theme.spacing(3),
-    borderRadius: 16,
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    boxShadow: '0px 4px 20px rgba(0,0,0,0.25)',
-  }));
+
   const fetchOrderDetails = async () => {
     try {
       setLoading(true);
       const response = await axios.get(`${process.env.api_url}/orders/${id}`);
       setOrderData(response.data);
-      console.log(response.data);
     } catch (err) {
       setError('Failed to load order details. Please try again.');
       console.error(err);
@@ -53,39 +67,41 @@ const OrderDetails = () => {
     }
   };
 
+  const fetchInvoices = async () => {
+    try {
+      setInvoicesLoading(true);
+      const resp = await axios.get(`${process.env.api_url}/orders/${id}/invoices`);
+      setInvoices(resp.data || []);
+    } catch (err) {
+      console.error('Failed to fetch invoices', err);
+    } finally {
+      setInvoicesLoading(false);
+    }
+  };
+
   const handleCopyEstimate = () => {
     if (orderData?.estimate_number) {
       navigator.clipboard.writeText(orderData.estimate_number);
+      toast.success('Copied to clipboard');
     }
   };
+
   const handleDownloadEstimate = async (order: any) => {
     try {
       const resp = await axios.get(
         `${process.env.api_url}/orders/download_pdf/${order._id}`,
-        {
-          responseType: 'blob', // Receive the response as binary data
-        }
+        { responseType: 'blob' }
       );
-
-      // Check if the blob is an actual PDF or an error message
       if (resp.data.type !== 'application/pdf') {
-        // Convert to text to read the error response
         toast.error('Draft Estimate Not Created');
         return;
       }
-
-      // Extract filename from headers or set default
       const contentDisposition = resp.headers['content-disposition'];
       let fileName = `${order.estimate_number}.pdf`;
-
       if (contentDisposition) {
         const match = contentDisposition.match(/filename="(.+)"/);
-        if (match && match[1]) {
-          fileName = match[1];
-        }
+        if (match?.[1]) fileName = match[1];
       }
-
-      // Create and trigger download
       const blob = new Blob([resp.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -96,281 +112,455 @@ const OrderDetails = () => {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (error: any) {
-      console.error('Error downloading PDF:', error);
       toast.error(error.message || 'Failed to download PDF');
     }
   };
+
+  const handleDownloadInvoice = async (invoice: any) => {
+    try {
+      const resp = await axios.get(
+        `${process.env.api_url}/invoices/download_pdf/zoho/${invoice.zoho_invoice_id}`,
+        { responseType: 'blob' }
+      );
+      const blob = new Blob([resp.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${invoice.invoice_number}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to download invoice PDF');
+    }
+  };
+
   const handleDuplicateOrder = async () => {
     try {
-      const resp = await axios.post(
-        `${process.env.api_url}/orders/duplicate_order`,
-        {
-          order_id: id,
-        }
-      );
+      const resp = await axios.post(`${process.env.api_url}/orders/duplicate_order`, {
+        order_id: id,
+      });
       router.push(`/orders/new/${resp.data}`);
     } catch (error) {
-      console.error('Error creating new order:', error);
+      console.error('Error duplicating order:', error);
+      toast.error('Failed to duplicate order');
     }
   };
 
   useEffect(() => {
-    if (id) {
-      fetchOrderDetails();
-    }
+    if (id) fetchOrderDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  /**
-   * Handle Loading State
-   */
+  useEffect(() => {
+    if (id && orderData?.status?.toLowerCase() === 'invoiced') {
+      fetchInvoices();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, orderData?.status]);
+
   if (loading) {
     return (
-      <Box
-        sx={{
-          padding: isMobile ? 0 : 3,
-          maxWidth: isMobile ? '100%' : '600px',
-          margin: '0 auto',
-        }}
-      >
-        <Skeleton variant='rectangular' height={40} sx={{ mb: 2 }} />
-        <Skeleton variant='rectangular' height={200} sx={{ mb: 2 }} />
-        <Skeleton variant='rectangular' height={40} />
+      <Box sx={{ maxWidth: 800, mx: 'auto', px: { xs: 2, sm: 3 }, py: 3 }}>
+        <Skeleton variant='rectangular' height={48} sx={{ mb: 2, borderRadius: 1 }} />
+        <Skeleton variant='rectangular' height={220} sx={{ mb: 2, borderRadius: 2 }} />
+        <Skeleton variant='rectangular' height={180} sx={{ borderRadius: 2 }} />
       </Box>
     );
   }
 
-  /**
-   * Handle Error State
-   */
   if (error || !orderData) {
     return (
-      <Box sx={{ padding: 3, textAlign: 'center' }}>
-        <Typography variant='h6' color='error'>
+      <Box sx={{ px: 3, py: 6, textAlign: 'center' }}>
+        <Typography variant='h6' color='error' gutterBottom>
           {error || 'No order details available.'}
         </Typography>
-        <Button
-          variant='contained'
-          color='primary'
-          sx={{ mt: 2 }}
-          onClick={() => router.push('/orders/past')}
-        >
+        <Button variant='contained' color='primary' onClick={() => router.push('/orders/past')}>
           Back to Orders
         </Button>
       </Box>
     );
   }
 
-  /**
-   * Main UI for Order Details
-   */
-  if (!orderData) {
-    return (
-      <Box sx={{ padding: 3 }}>
-        <Skeleton variant='rectangular' height={40} sx={{ mb: 2 }} />
-        <Skeleton variant='rectangular' height={200} sx={{ mb: 2 }} />
-        <Skeleton variant='rectangular' height={40} />
-      </Box>
-    );
-  }
+  const statusKey = orderData.status?.toLowerCase() ?? '';
+  const statusColor = STATUS_COLOR[statusKey] ?? 'default';
+  const isEditable = !['declined', 'accepted', 'invoiced'].includes(statusKey);
+  const title = orderData.estimate_created
+    ? orderData.estimate_number
+    : `Order #${orderData._id.slice(-6)}`;
 
   return (
     <Box
       sx={{
-        padding: isMobile ? 0 : 3,
-        maxWidth: isMobile ? '100%' : '600px',
-        margin: isMobile ? '16px 0 0 0' : '0 auto',
+        maxWidth: { xs: '100%', sm: 720, md: 860 },
+        mx: 'auto',
+        px: { xs: 2, sm: 3, md: 4 },
+        py: { xs: 2, sm: 3 },
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
       }}
     >
-      <StyledPaper>
-        {/* Order Header */}
-        <Box display={'flex'} flexDirection={'column'}>
-          <Box
-            display={'flex'}
-            flexDirection={'column'}
-            alignItems={'flex-start'}
-            justifyContent={'space-between'}
-          >
-            <Typography variant='h5' fontWeight='bold' gutterBottom>
-              {orderData?.estimate_created
-                ? ` ${orderData?.estimate_number}`
-                : `Order ${orderData._id.slice(-6)}`}
-              {orderData?.estimate_created && (
-                <IconButton size='small' onClick={handleCopyEstimate}>
-                  <ContentCopy fontSize='small' />
-                </IconButton>
-              )}
-            </Typography>
-          </Box>
-          <Box
-            display={'flex'}
-            alignItems={'flex-end'}
-            justifyContent={'flex-end'}
-          >
-            <IconButton onClick={handleDuplicateOrder}>
-              <AddToPhotos fontSize='medium' />
-            </IconButton>
-            <IconButton
-              disabled={['declined', 'accepted', 'invoiced'].includes(
-                orderData?.status?.toLowerCase()
-              )}
-              onClick={() => router.push(`/orders/new/${orderData._id || id}`)}
-            >
-              <Edit fontSize='medium' />
-            </IconButton>
+      <Header title='Order Details' showBackButton backUrl='/orders/past' />
 
-            {orderData?.estimate_created && (
-              <IconButton
+      {/* Main card */}
+      <Paper
+        elevation={0}
+        sx={{
+          borderRadius: 3,
+          border: '1px solid',
+          borderColor: 'divider',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Header strip */}
+        <Box
+          sx={{
+            px: { xs: 2, sm: 3 },
+            pt: { xs: 2, sm: 2.5 },
+            pb: { xs: 1.5, sm: 2 },
+            bgcolor: 'background.default',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          {/* Title row */}
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1, mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+              <Typography variant='h5' fontWeight={700} color='text.primary' sx={{ lineHeight: 1.2 }}>
+                {title}
+              </Typography>
+              {orderData.estimate_created && (
+                <Tooltip title='Copy estimate number'>
+                  <IconButton size='small' onClick={handleCopyEstimate}>
+                    <ContentCopy fontSize='small' />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          </Box>
+
+          {/* Chips */}
+          <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mb: 1.5 }}>
+            <Chip
+              label={statusKey.charAt(0).toUpperCase() + statusKey.slice(1)}
+              color={statusColor}
+              size='small'
+              sx={{ fontWeight: 700 }}
+            />
+            {orderData.estimate_created && (
+              <Chip label='Estimate Created' color='success' size='small' variant='outlined' />
+            )}
+            {orderData.spreadsheet_created && (
+              <Chip label='XLSX Created' color='primary' size='small' variant='outlined' />
+            )}
+          </Box>
+
+          {/* Action buttons — labeled on mobile, icon-only on desktop */}
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Button
+              size='small'
+              variant='outlined'
+              startIcon={<AddToPhotos fontSize='small' />}
+              onClick={handleDuplicateOrder}
+              sx={{ borderRadius: 2 }}
+            >
+              Duplicate Order
+            </Button>
+            <Button
+              size='small'
+              variant='outlined'
+              color='primary'
+              startIcon={<Edit fontSize='small' />}
+              disabled={!isEditable}
+              onClick={() => router.push(`/orders/new/${orderData._id || id}`)}
+              sx={{ borderRadius: 2 }}
+            >
+              Edit
+            </Button>
+            {orderData.estimate_created && (
+              <Button
                 size='small'
+                variant='outlined'
+                startIcon={<Download fontSize='small' />}
                 onClick={() => handleDownloadEstimate(orderData)}
+                sx={{ borderRadius: 2 }}
               >
-                <Download fontSize='medium' />
-              </IconButton>
+                Download PDF
+              </Button>
+            )}
+            {statusKey === 'invoiced' && invoices.map((inv: any) => (
+              <Button
+                key={inv._id}
+                size='small'
+                variant='outlined'
+                color='success'
+                startIcon={<Download fontSize='small' />}
+                onClick={() => handleDownloadInvoice(inv)}
+                sx={{ borderRadius: 2 }}
+              >
+                Download Invoice
+              </Button>
+            ))}
+          </Box>
+        </Box>
+
+        {/* Order info */}
+        <Box sx={{ px: { xs: 2, sm: 3 }, py: 2.5 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <Box>
+              <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>
+                Date
+              </Typography>
+              <Typography variant='body1' fontWeight={500}>
+                {orderData.created_at
+                  ? new Date(orderData.created_at).toLocaleDateString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  : 'N/A'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>
+                Customer
+              </Typography>
+              <Typography variant='body1' fontWeight={500}>{orderData.customer_name || 'N/A'}</Typography>
+            </Box>
+            <Box>
+              <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>
+                Amount
+              </Typography>
+              <Typography variant='body1' fontWeight={700} color='text.primary'>
+                ₹{(orderData.total_amount ?? 0).toLocaleString('en-IN')}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>
+                GST ({orderData.gst_type})
+              </Typography>
+              <Typography variant='body1' fontWeight={500}>
+                ₹{(orderData.total_gst ?? 0).toLocaleString('en-IN')}
+              </Typography>
+            </Box>
+            {orderData.estimate_created && (
+              <Box sx={{ gridColumn: 'span 2' }}>
+                <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>
+                  Estimate Number
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                  <Typography variant='body1' fontWeight={500}>{orderData.estimate_number || 'N/A'}</Typography>
+                  {orderData.estimate_url && (
+                    <Typography
+                      component='a'
+                      href={orderData.estimate_url}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      variant='body2'
+                      sx={{ color: 'primary.main', textDecoration: 'none' }}
+                    >
+                      View ↗
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            )}
+            {orderData.spreadsheet_created && (
+              <Box sx={{ gridColumn: 'span 2' }}>
+                <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>
+                  Spreadsheet
+                </Typography>
+                <Typography
+                  component='a'
+                  href={orderData.spreadsheet_url}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  variant='body1'
+                  sx={{ display: 'block', color: 'primary.main', textDecoration: 'none' }}
+                >
+                  Open Spreadsheet ↗
+                </Typography>
+              </Box>
+            )}
+            {statusKey === 'invoiced' && (invoicesLoading || invoices.length > 0) && (
+              <Box sx={{ gridColumn: 'span 2' }}>
+                <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>
+                  Invoices
+                </Typography>
+                {invoicesLoading ? (
+                  <Typography variant='body2' color='text.secondary'>Loading…</Typography>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.25 }}>
+                    {invoices.map((inv: any) => (
+                      <Box key={inv.zoho_invoice_id} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                        {inv.invoice_number && inv.invoice_number !== inv.zoho_invoice_id && (
+                          <Typography variant='body1' fontWeight={500}>{inv.invoice_number}</Typography>
+                        )}
+                        {inv.invoice_url && (
+                          <Typography
+                            component='a'
+                            href={inv.invoice_url}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            variant='body2'
+                            sx={{ color: 'primary.main', textDecoration: 'none' }}
+                          >
+                            View ↗
+                          </Typography>
+                        )}
+                        <Typography
+                          component='span'
+                          variant='body2'
+                          sx={{ color: 'success.main', cursor: 'pointer', textDecoration: 'underline' }}
+                          onClick={() => handleDownloadInvoice(inv)}
+                        >
+                          Download PDF
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Box>
             )}
           </Box>
         </Box>
-        <Divider sx={{ mb: 2 }} />
-        {/* Order Details */}
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          <strong>Date:</strong>{' '}
-          {orderData?.created_at
-            ? new Date(orderData.created_at).toLocaleDateString()
-            : 'N/A'}
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          <strong>Customer:</strong> {orderData?.customer_name || 'N/A'}
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          <strong>Status:</strong>{' '}
-          {orderData?.status.split('_').join(' ') || 'N/A'}
-        </Typography>
-        {orderData?.spreadsheet_created && (
-          <Typography variant='body1' sx={{ mb: 1 }}>
-            <strong>Spreadsheet URL:</strong> {'\t'}
-            <Typography
-              component='a'
-              href={orderData?.spreadsheet_url}
-              target='_blank'
-              rel='noopener noreferrer'
-              sx={{
-                textDecoration: 'none',
-                color: 'secondary.main',
-                cursor: 'pointer',
-              }}
-            >
-              Visit Spreadsheet
-            </Typography>
-          </Typography>
-        )}
-        {orderData?.estimate_created && (
-          <Typography variant='body1' sx={{ mb: 1 }}>
-            <strong>Estimate Number:</strong>{' '}
-            {orderData?.estimate_number || 'N/A'} {'\t\t\t\t\t'}(
-            <Typography
-              component='a'
-              href={orderData?.estimate_url}
-              target='_blank'
-              rel='noopener noreferrer'
-              sx={{
-                textDecoration: 'none',
-                color: 'secondary.main',
-                cursor: 'pointer',
-              }}
-            >
-              Visit Estimate Url
-            </Typography>
-            )
-          </Typography>
-        )}
-        <Typography variant='body1' sx={{ mb: 2 }}>
-          <strong>Amount:</strong> ₹{orderData?.total_amount || '0'} {'\t'}
-          <strong>({orderData?.gst_type} </strong>
-          of GST ₹{orderData?.total_gst || '0'})
-        </Typography>
-        <Divider sx={{ my: 2 }} />
-        <Typography variant='h5' sx={{ mb: 2 }}>
-          <strong>Shipping Address:</strong>
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          {orderData.shipping_address?.attention}
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          {orderData.shipping_address?.address}
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          {orderData.shipping_address?.city}
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          {orderData.shipping_address?.state}
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          {orderData.shipping_address?.zip}
-        </Typography>
-        <Divider sx={{ my: 2 }} />
-        <Typography variant='h5' sx={{ mb: 2 }}>
-          <strong>Billing Address:</strong>
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          {orderData.billing_address.attention}
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          {orderData.billing_address.address}
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          {orderData.billing_address.city}
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          {orderData.billing_address.state}
-        </Typography>
-        <Typography variant='body1' sx={{ mb: 1 }}>
-          {orderData.billing_address.zip}
-        </Typography>
-        <Divider sx={{ my: 2 }} />
-        {/* Product List */}
-        <Typography variant='h6' fontWeight='bold' gutterBottom>
-          Ordered Items
-        </Typography>
-        <List
-          sx={{
-            maxHeight: 'none',
-            overflowY: 'visible',
-          }}
-        >
-          {orderData.products?.map((item: any, index: number) => (
-            <ListItem key={index} sx={{ padding: '8px 0' }}>
-              <ListItemText
-                primary={
-                  <Typography variant='body1'>
-                    {item.name} (x{item.quantity})
-                  </Typography>
-                }
-                secondary={
-                  <Typography variant='body2' color='textSecondary'>
-                    Price: ₹{item.price}
-                  </Typography>
-                }
-              />
-            </ListItem>
-          ))}
-        </List>
 
-        {orderData.products?.length === 0 && (
-          <Typography variant='body2' color='textSecondary'>
-            No products found in this order.
-          </Typography>
-        )}
-        <Divider sx={{ my: 2 }} />
+        <Divider />
 
-        {/* Footer Navigation */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2 }}>
-          <Button
-            variant='contained'
-            color='primary'
-            onClick={() => router.push('/orders/past')}
-          >
-            Back to Orders
-          </Button>
+        {/* Addresses */}
+        <Box sx={{ px: { xs: 2, sm: 3 }, py: 2.5 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 3 }}>
+            <AddressBlock label='Shipping Address' addr={orderData.shipping_address} />
+            <AddressBlock label='Billing Address' addr={orderData.billing_address} />
+          </Box>
         </Box>
-      </StyledPaper>
+
+        <Divider />
+
+        {/* Products */}
+        <Box sx={{ px: { xs: 2, sm: 3 }, py: 2.5 }}>
+          <Typography variant='h6' fontWeight={700} gutterBottom>
+            Ordered Items
+          </Typography>
+          {orderData.products?.length === 0 ? (
+            <Typography variant='body1' color='text.secondary'>
+              No products found in this order.
+            </Typography>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {/* Column headers */}
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr auto' : '1fr auto auto',
+                  gap: 1,
+                  px: 1,
+                  py: 1,
+                  bgcolor: 'action.hover',
+                  borderRadius: 1,
+                  mb: 0.5,
+                }}
+              >
+                <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ fontSize: '0.7rem' }}>
+                  Item
+                </Typography>
+                {!isMobile && (
+                  <Typography
+                    variant='overline'
+                    color='text.secondary'
+                    fontWeight={700}
+                    sx={{ textAlign: 'right', minWidth: 80, fontSize: '0.7rem' }}
+                  >
+                    Unit Price
+                  </Typography>
+                )}
+                <Typography
+                  variant='overline'
+                  color='text.secondary'
+                  fontWeight={700}
+                  sx={{ textAlign: 'right', minWidth: 80, fontSize: '0.7rem' }}
+                >
+                  Subtotal
+                </Typography>
+              </Box>
+              {orderData.products?.map((item: any, index: number) => {
+                const subtotal = (item.price ?? 0) * (item.quantity ?? 1);
+                return (
+                  <Box
+                    key={index}
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? '1fr auto' : '1fr auto auto',
+                      gap: 1,
+                      px: 1,
+                      py: { xs: 1.5, sm: 1.25 },
+                      borderBottom: index < orderData.products.length - 1 ? '1px solid' : 'none',
+                      borderColor: 'divider',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Box>
+                      <Typography variant='body1' fontWeight={500} color='text.primary'>
+                        {item.name}
+                      </Typography>
+                      <Typography variant='body2' color='text.secondary'>
+                        Qty: {item.quantity}
+                        {isMobile && ` × ₹${(item.price ?? 0).toLocaleString('en-IN')}`}
+                      </Typography>
+                    </Box>
+                    {!isMobile && (
+                      <Typography
+                        variant='body1'
+                        color='text.secondary'
+                        sx={{ textAlign: 'right', minWidth: 80 }}
+                      >
+                        ₹{(item.price ?? 0).toLocaleString('en-IN')}
+                      </Typography>
+                    )}
+                    <Typography
+                      variant='body1'
+                      fontWeight={600}
+                      color='text.primary'
+                      sx={{ textAlign: 'right', minWidth: 80 }}
+                    >
+                      ₹{subtotal.toLocaleString('en-IN')}
+                    </Typography>
+                  </Box>
+                );
+              })}
+              {/* Total row */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 2,
+                  px: 1,
+                  pt: 1.5,
+                  mt: 0.5,
+                  borderTop: '2px solid',
+                  borderColor: 'divider',
+                }}
+              >
+                <Typography variant='subtitle2' color='text.secondary'>
+                  Total
+                </Typography>
+                <Typography variant='subtitle2' fontWeight={700} color='text.primary'>
+                  ₹{(orderData.total_amount ?? 0).toLocaleString('en-IN')}
+                </Typography>
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Paper>
+
+      {/* Back button */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', pb: 2 }}>
+        <Button variant='outlined' color='primary' onClick={() => router.push('/orders/past')}>
+          Back to Orders
+        </Button>
+      </Box>
     </Box>
   );
 };

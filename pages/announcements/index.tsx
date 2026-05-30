@@ -7,7 +7,12 @@ import {
   Paper,
   IconButton,
   Tooltip,
+  Pagination,
+  Button,
+  TextField,
 } from '@mui/material';
+
+const PAGE_SIZE = 10;
 import { Fragment, useEffect, useState, useRef } from 'react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -22,6 +27,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 function Announcements() {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
   const [audioStates, setAudioStates]: any = useState({});
   const audioRefs: any = useRef({});
   const theme: any = useTheme();
@@ -207,7 +213,10 @@ function Announcements() {
         <Typography align='center' variant='h6' color='text.secondary'>
           No Announcements available.
         </Typography>
-      ) : (
+      ) : (() => {
+        const totalPages = Math.ceil(announcements.length / PAGE_SIZE);
+        const paged: any[] = announcements.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+        return (
         <Box
           sx={{
             width: '100%',
@@ -217,7 +226,7 @@ function Announcements() {
             gap: 2,
           }}
         >
-          {announcements.map((announcement: any, index) => (
+          {paged.map((announcement: any, index) => (
             <Fragment key={announcement._id}>
               <Box
                 sx={{
@@ -459,8 +468,40 @@ function Announcements() {
               </Box>
             </Fragment>
           ))}
+          {totalPages > 1 && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, pt: 1 }}>
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={(_, val) => { setPage(val); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                color='primary'
+                shape='rounded'
+                siblingCount={1}
+                boundaryCount={1}
+              />
+              <Box
+                component='form'
+                onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
+                  e.preventDefault();
+                  const input = (e.currentTarget.elements.namedItem('jumpPage') as HTMLInputElement).value;
+                  const num = parseInt(input, 10);
+                  if (num >= 1 && num <= totalPages) {
+                    setPage(num);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    (e.currentTarget.elements.namedItem('jumpPage') as HTMLInputElement).value = '';
+                  }
+                }}
+                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              >
+                <Typography variant='body2' color='text.secondary'>Go to page</Typography>
+                <TextField name='jumpPage' size='small' type='number' slotProps={{ htmlInput: { min: 1, max: totalPages } }} sx={{ width: 72 }} />
+                <Button type='submit' size='small' variant='outlined' sx={{ borderRadius: 2 }}>Go</Button>
+              </Box>
+            </Box>
+          )}
         </Box>
-      )}
+        );
+      })()}
     </Box>
   );
 }

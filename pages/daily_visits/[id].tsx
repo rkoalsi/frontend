@@ -24,6 +24,7 @@ import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import AuthContext from '../../src/components/Auth';
+import Header from '../../src/components/common/Header';
 import DailyVisitHeader from '../../src/components/daily_visits/DailyVisitHeader';
 import ShopsSection from '../../src/components/daily_visits/ShopsSection';
 import SelfieCard from '../../src/components/daily_visits/SelfieCard';
@@ -40,6 +41,7 @@ const DailyVisitDetail = () => {
   const { user }: any = useContext(AuthContext);
   const [dailyVisit, setDailyVisit] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Dialog controls
@@ -271,7 +273,6 @@ const DailyVisitDetail = () => {
     setFormData((prev: any) => {
       const updatedEntries = prev.hookEntries.map((entry: any, i: any) => {
         if (i === index) {
-          console.log(entry);
           setIsEditing(true);
           setOpen(true);
           return { ...entry, editing: !entry.editing };
@@ -313,6 +314,8 @@ const DailyVisitDetail = () => {
   }, [id, fetchDailyVisit]);
 
   const handleDeleteUpdate = async (updateId: string) => {
+    if (!window.confirm('Delete this update?')) return;
+    setDeleteLoading(true);
     try {
       const formData = new FormData();
       formData.append('uploaded_by', user?._id);
@@ -326,6 +329,8 @@ const DailyVisitDetail = () => {
     } catch (error) {
       console.error(error);
       toast.error('Error deleting update');
+    } finally {
+      setDeleteLoading(false);
     }
   };
   const handleSubmit = async (e: any) => {
@@ -369,7 +374,6 @@ const DailyVisitDetail = () => {
     };
 
     try {
-      console.log(isEditing, editingHookId);
       if (isEditing && editingHookId) {
         await axios.put(
           `${process.env.api_url}/hooks/${editingHookId}`,
@@ -416,6 +420,7 @@ const DailyVisitDetail = () => {
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2 }, maxWidth: '1200px', mx: 'auto' }}>
+      <Header title='Daily Visit Details' showBackButton backUrl='/daily_visits' />
       <Card elevation={3}>
         <DailyVisitHeader createdAt={dailyVisit.created_at} />
         <CardContent>
@@ -434,6 +439,7 @@ const DailyVisitDetail = () => {
             onHookUpdate={handleOpenDialog}
             onClickImage={handleImageClick}
             updates={dailyVisit.updates}
+            deleteLoading={deleteLoading}
             onAddUpdate={() => {
               setUpdateData(null);
               setUpdateDialogOpen(true);
@@ -536,7 +542,7 @@ const DailyVisitDetail = () => {
               {/* Shop-level comments */}
               {dailyVisit.shops &&
                 dailyVisit.shops.map((shop: any, index: number) => {
-                  const shopKey = shop.id || `shop-${index}`;
+                  const shopKey = shop._id || shop.id || `shop-${index}`;
                   const shopComments = dailyVisit.admin_comments.filter(
                     (c: any) => c.shop_id === shopKey
                   );
