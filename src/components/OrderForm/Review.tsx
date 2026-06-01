@@ -492,11 +492,12 @@ const Review: React.FC<Props> = React.memo((props) => {
                   key={productId}
                   sx={{
                     display: 'flex',
-                    gap: { xs: 1.5, sm: 2 },
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    gap: { xs: 0, sm: 2 },
                     alignItems: 'flex-start',
-                    p: { xs: 1.5, sm: 2 },
                     borderRadius: 2,
                     border: `1px solid ${theme.palette.divider}`,
+                    overflow: 'hidden',
                     bgcolor: !isActive
                       ? isDark
                         ? 'rgba(255,255,255,0.02)'
@@ -511,15 +512,18 @@ const Review: React.FC<Props> = React.memo((props) => {
                     },
                   }}
                 >
-                  {/* Product image */}
+                  {/* Product image — full-width on mobile, sidebar on desktop */}
                   <Box
                     sx={{
-                      width: { xs: 76, sm: 96 },
-                      height: { xs: 76, sm: 96 },
+                      width: { xs: '100%', sm: 96 },
+                      height: { xs: 200, sm: 96 },
                       flexShrink: 0,
-                      borderRadius: 1.5,
+                      borderRadius: { xs: 0, sm: 1.5 },
                       overflow: 'hidden',
-                      border: `1px solid ${theme.palette.divider}`,
+                      border: { xs: 'none', sm: `1px solid ${theme.palette.divider}` },
+                      borderBottom: { xs: `1px solid ${theme.palette.divider}`, sm: 'none' },
+                      m: { xs: 0, sm: 2 },
+                      mb: { xs: 0, sm: 2 },
                     }}
                   >
                     <ImageCarousel
@@ -530,7 +534,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                   </Box>
 
                   {/* Details */}
-                  <Box flex={1} minWidth={0}>
+                  <Box flex={1} minWidth={0} p={{ xs: 1.5, sm: 0 }} pt={{ xs: 1.5, sm: 2 }} pr={{ sm: 2 }} pb={{ sm: 2 }}>
                     {/* Name + remove button */}
                     <Box
                       display='flex'
@@ -543,7 +547,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                         fontWeight={700}
                         color='text.primary'
                         sx={{
-                          fontSize: { xs: '0.82rem', sm: '0.9rem' },
+                          fontSize: { xs: '0.9rem', sm: '0.9rem' },
                           lineHeight: 1.35,
                           flex: 1,
                         }}
@@ -575,12 +579,12 @@ const Review: React.FC<Props> = React.memo((props) => {
                     </Box>
 
                     {/* Meta chips */}
-                    <Box display='flex' flexWrap='wrap' gap={0.5} mt={0.5} mb={1}>
+                    <Box display='flex' flexWrap='wrap' gap={0.5} mt={0.75} mb={1}>
                       {product.brand && (
                         <Chip
                           label={product.brand}
                           size='small'
-                          sx={{ height: 20, fontSize: '0.62rem', fontWeight: 600 }}
+                          sx={{ height: 22, fontSize: '0.68rem', fontWeight: 600 }}
                         />
                       )}
                       {product.cf_sku_code && (
@@ -588,7 +592,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                           label={product.cf_sku_code}
                           size='small'
                           variant='outlined'
-                          sx={{ height: 20, fontSize: '0.62rem' }}
+                          sx={{ height: 22, fontSize: '0.68rem' }}
                         />
                       )}
                       {product.sub_category && (
@@ -596,84 +600,61 @@ const Review: React.FC<Props> = React.memo((props) => {
                           label={product.sub_category}
                           size='small'
                           variant='outlined'
-                          sx={{ height: 20, fontSize: '0.62rem' }}
+                          sx={{ height: 22, fontSize: '0.68rem' }}
                         />
                       )}
                     </Box>
 
-                    {/* Price info + qty + total */}
+                    {/* Price info */}
                     <Box
                       display='flex'
-                      flexDirection={{ xs: 'column', sm: 'row' }}
-                      alignItems={{ xs: 'flex-start', sm: 'center' }}
-                      gap={{ xs: 0.75, sm: 2 }}
+                      flexWrap='wrap'
+                      gap={0.5}
+                      alignItems='center'
+                      mb={1}
                     >
-                      {/* Unit price / GST / margin */}
-                      <Box
-                        display='flex'
-                        flexDirection={{ xs: 'column', sm: 'row' }}
-                        flexWrap='wrap'
-                        gap={{ xs: 0.3, sm: 0.75 }}
-                        alignItems={{ xs: 'flex-start', sm: 'center' }}
-                      >
-                        <Typography variant='caption' color='text.secondary'>
-                          MRP ₹{sellingPrice.toLocaleString('en-IN')}/unit
-                        </Typography>
-                        <Typography
-                          variant='caption'
-                          color='text.disabled'
-                          sx={{ display: { xs: 'none', sm: 'inline' } }}
-                        >·</Typography>
-                        <Typography variant='caption' color='text.secondary'>
-                          GST {taxPct}%
-                        </Typography>
-                        {!isShared && (
-                          <>
-                            <Typography
-                              variant='caption'
-                              color='text.disabled'
-                              sx={{ display: { xs: 'none', sm: 'inline' } }}
-                            >·</Typography>
-                            <Typography variant='caption' color='text.secondary'>
-                              Margin {marginPercent}%
-                            </Typography>
-                          </>
-                        )}
-                      </Box>
+                      <Typography variant='caption' color='text.secondary'>
+                        MRP ₹{sellingPrice.toLocaleString('en-IN')}/unit
+                      </Typography>
+                      <Typography variant='caption' color='text.disabled'>·</Typography>
+                      <Typography variant='caption' color='text.secondary'>
+                        GST {taxPct}%
+                      </Typography>
+                      {!isShared && (
+                        <>
+                          <Typography variant='caption' color='text.disabled'>·</Typography>
+                          <Typography variant='caption' color='text.secondary'>
+                            Margin {marginPercent}%
+                          </Typography>
+                        </>
+                      )}
+                    </Box>
 
-                      {/* Qty + total */}
-                      <Box display='flex' alignItems='center' gap={1.5} flexWrap='wrap'>
-                        <Box
-                          sx={{
-                            transform: { xs: 'scale(0.82)', sm: 'none' },
-                            transformOrigin: 'left center',
-                          }}
-                        >
-                          <QuantitySelector
-                            quantity={product.quantity || 1}
-                            max={product.stock}
-                            onChange={(newQty) =>
-                              handleQuantityChange(productId, newQty)
-                            }
-                            disabled={!isActive || isOrderLocked}
-                          />
-                        </Box>
-                        <Typography
-                          variant='body2'
-                          fontWeight={700}
-                          color='primary.main'
-                          sx={{ whiteSpace: 'nowrap' }}
-                        >
-                          ₹{parseFloat(itemTotal).toLocaleString('en-IN')}
-                        </Typography>
-                      </Box>
+                    {/* Qty + total row */}
+                    <Box display='flex' alignItems='center' justifyContent='space-between' gap={1}>
+                      <QuantitySelector
+                        quantity={product.quantity || 1}
+                        max={product.stock}
+                        onChange={(newQty) =>
+                          handleQuantityChange(productId, newQty)
+                        }
+                        disabled={!isActive || isOrderLocked}
+                      />
+                      <Typography
+                        variant='body1'
+                        fontWeight={700}
+                        color='primary.main'
+                        sx={{ whiteSpace: 'nowrap', fontSize: { xs: '1rem', sm: '0.9rem' } }}
+                      >
+                        ₹{parseFloat(itemTotal).toLocaleString('en-IN')}
+                      </Typography>
                     </Box>
 
                     {product.quantity > product.stock && (
                       <Typography
                         variant='caption'
                         color='error.main'
-                        sx={{ display: 'block', mt: 0.5 }}
+                        sx={{ display: 'block', mt: 0.75 }}
                       >
                         ⚠ Exceeds stock ({product.stock} available)
                       </Typography>
