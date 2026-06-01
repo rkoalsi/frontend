@@ -52,6 +52,7 @@ import {
   ArrowForward,
   CheckCircle,
   Percent,
+  Close,
 } from '@mui/icons-material';
 import useDebounce from '../../../src/util/useDebounce';
 import AuthContext from '../../../src/components/Auth';
@@ -1454,13 +1455,20 @@ const NewOrder: React.FC = () => {
           fullScreen={isMobile}
           PaperProps={{ sx: { borderRadius: isMobile ? 0 : 3 } }}
         >
-          <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+          <DialogTitle sx={{ fontWeight: 700, pb: 1, pr: 6 }}>
             Customer Margins
             {customer && (
               <Typography variant='body2' color='text.secondary' sx={{ fontWeight: 400, mt: 0.25 }}>
                 {customer.company_name || customer.contact_name}
               </Typography>
             )}
+            <IconButton
+              onClick={() => setMarginDialogOpen(false)}
+              size='small'
+              sx={{ position: 'absolute', top: 12, right: 12 }}
+            >
+              <Close fontSize='small' />
+            </IconButton>
           </DialogTitle>
 
           <DialogContent>
