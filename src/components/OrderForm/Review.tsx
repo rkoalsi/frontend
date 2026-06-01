@@ -18,6 +18,7 @@ import {
   ArrowUpward,
   ArrowDownward,
   Close,
+  LocalOffer,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -493,37 +494,30 @@ const Review: React.FC<Props> = React.memo((props) => {
                   sx={{
                     display: 'flex',
                     flexDirection: { xs: 'column', sm: 'row' },
-                    gap: { xs: 0, sm: 2 },
-                    alignItems: 'flex-start',
-                    borderRadius: 2,
+                    borderRadius: 2.5,
                     border: `1px solid ${theme.palette.divider}`,
                     overflow: 'hidden',
-                    bgcolor: !isActive
-                      ? isDark
-                        ? 'rgba(255,255,255,0.02)'
-                        : 'rgba(0,0,0,0.02)'
-                      : 'transparent',
-                    opacity: !isActive ? 0.75 : 1,
-                    transition: 'box-shadow 0.2s ease',
+                    bgcolor: 'background.paper',
+                    opacity: !isActive ? 0.7 : 1,
+                    transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
                     '&:hover': {
                       boxShadow: isDark
-                        ? '0 2px 10px rgba(0,0,0,0.35)'
-                        : '0 2px 10px rgba(0,0,0,0.08)',
+                        ? '0 4px 24px rgba(0,0,0,0.45)'
+                        : '0 4px 24px rgba(0,0,0,0.1)',
+                      borderColor: `${primaryColor}50`,
                     },
                   }}
                 >
-                  {/* Product image — full-width on mobile, sidebar on desktop */}
+                  {/* ── Image with overlaid badges ── */}
                   <Box
                     sx={{
-                      width: { xs: '100%', sm: 96 },
-                      height: { xs: 200, sm: 96 },
+                      width: { xs: '100%', sm: 120 },
+                      height: { xs: 200, sm: 'auto' },
+                      minHeight: { sm: 120 },
                       flexShrink: 0,
-                      borderRadius: { xs: 0, sm: 1.5 },
-                      overflow: 'hidden',
-                      border: { xs: 'none', sm: `1px solid ${theme.palette.divider}` },
+                      position: 'relative',
+                      borderRight: { sm: `1px solid ${theme.palette.divider}` },
                       borderBottom: { xs: `1px solid ${theme.palette.divider}`, sm: 'none' },
-                      m: { xs: 0, sm: 2 },
-                      mb: { xs: 0, sm: 2 },
                     }}
                   >
                     <ImageCarousel
@@ -531,107 +525,221 @@ const Review: React.FC<Props> = React.memo((props) => {
                       handleImageClick={handleImageClick}
                       small
                     />
-                  </Box>
 
-                  {/* Details */}
-                  <Box flex={1} minWidth={0} p={{ xs: 1.5, sm: 0 }} pt={{ xs: 1.5, sm: 2 }} pr={{ sm: 2 }} pb={{ sm: 2 }}>
-                    {/* Name + remove button */}
+                    {/* Index badge */}
                     <Box
-                      display='flex'
-                      justifyContent='space-between'
-                      alignItems='flex-start'
-                      gap={1}
+                      sx={{
+                        position: 'absolute',
+                        top: 8,
+                        left: 8,
+                        width: 26,
+                        height: 26,
+                        borderRadius: '50%',
+                        bgcolor: isDark ? 'rgba(0,0,0,0.72)' : 'rgba(255,255,255,0.92)',
+                        backdropFilter: 'blur(6px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 1px 6px rgba(0,0,0,0.25)',
+                      }}
                     >
                       <Typography
-                        variant='subtitle2'
-                        fontWeight={700}
-                        color='text.primary'
                         sx={{
-                          fontSize: { xs: '0.9rem', sm: '0.9rem' },
-                          lineHeight: 1.35,
-                          flex: 1,
+                          fontSize: '0.65rem',
+                          fontWeight: 800,
+                          lineHeight: 1,
+                          color: 'text.primary',
                         }}
                       >
-                        <Typography
-                          component='span'
-                          variant='caption'
-                          color='text.disabled'
-                          fontWeight={600}
-                          sx={{ mr: 0.5 }}
-                        >
-                          {index + 1}.
-                        </Typography>
-                        {product.name}
+                        {index + 1}
                       </Typography>
+                    </Box>
+
+                    {/* Remove button — overlaid on image on mobile */}
+                    {!isShared && (
                       <Tooltip title='Remove product'>
-                        <span>
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: 6,
+                            right: 6,
+                            display: 'block',
+                          }}
+                        >
                           <IconButton
                             size='small'
-                            color='error'
                             disabled={isOrderLocked}
                             onClick={() => handleRemoveProduct(productId)}
-                            sx={{ flexShrink: 0, mt: -0.5, mr: -0.5 }}
+                            sx={{
+                              width: 28,
+                              height: 28,
+                              bgcolor: isDark
+                                ? 'rgba(0,0,0,0.65)'
+                                : 'rgba(255,255,255,0.88)',
+                              backdropFilter: 'blur(6px)',
+                              color: 'error.main',
+                              boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                              '&:hover': {
+                                bgcolor: 'error.main',
+                                color: 'white',
+                              },
+                              display: { xs: 'flex', sm: 'none' },
+                            }}
                           >
-                            <Close sx={{ fontSize: { xs: 16, sm: 18 } }} />
+                            <Close sx={{ fontSize: 14 }} />
                           </IconButton>
                         </span>
                       </Tooltip>
-                    </Box>
+                    )}
+                  </Box>
 
-                    {/* Meta chips */}
-                    <Box display='flex' flexWrap='wrap' gap={0.5} mt={0.75} mb={1}>
-                      {product.brand && (
-                        <Chip
-                          label={product.brand}
-                          size='small'
-                          sx={{ height: 22, fontSize: '0.68rem', fontWeight: 600 }}
-                        />
-                      )}
-                      {product.cf_sku_code && (
-                        <Chip
-                          label={product.cf_sku_code}
-                          size='small'
-                          variant='outlined'
-                          sx={{ height: 22, fontSize: '0.68rem' }}
-                        />
-                      )}
-                      {product.sub_category && (
-                        <Chip
-                          label={product.sub_category}
-                          size='small'
-                          variant='outlined'
-                          sx={{ height: 22, fontSize: '0.68rem' }}
-                        />
-                      )}
-                    </Box>
-
-                    {/* Price info */}
-                    <Box
-                      display='flex'
-                      flexWrap='wrap'
-                      gap={0.5}
-                      alignItems='center'
-                      mb={1}
-                    >
-                      <Typography variant='caption' color='text.secondary'>
-                        MRP ₹{sellingPrice.toLocaleString('en-IN')}/unit
-                      </Typography>
-                      <Typography variant='caption' color='text.disabled'>·</Typography>
-                      <Typography variant='caption' color='text.secondary'>
-                        GST {taxPct}%
-                      </Typography>
-                      {!isShared && (
-                        <>
-                          <Typography variant='caption' color='text.disabled'>·</Typography>
-                          <Typography variant='caption' color='text.secondary'>
-                            Margin {marginPercent}%
+                  {/* ── Content ── */}
+                  <Box
+                    flex={1}
+                    minWidth={0}
+                    display='flex'
+                    flexDirection='column'
+                  >
+                    {/* Top: chips + name + remove (desktop) */}
+                    <Box sx={{ px: { xs: 1.75, sm: 2 }, pt: { xs: 1.5, sm: 1.75 }, pb: 0 }}>
+                      <Box
+                        display='flex'
+                        justifyContent='space-between'
+                        alignItems='flex-start'
+                        gap={1}
+                      >
+                        <Box flex={1} minWidth={0}>
+                          {/* Taxonomy chips */}
+                          {(product.brand || product.cf_sku_code || product.sub_category) && (
+                            <Box display='flex' flexWrap='wrap' gap={0.5} mb={0.75}>
+                              {product.brand && (
+                                <Chip
+                                  label={product.brand}
+                                  size='small'
+                                  sx={{ height: 20, fontSize: '0.62rem', fontWeight: 700 }}
+                                />
+                              )}
+                              {product.cf_sku_code && (
+                                <Chip
+                                  label={product.cf_sku_code}
+                                  size='small'
+                                  variant='outlined'
+                                  sx={{ height: 20, fontSize: '0.62rem' }}
+                                />
+                              )}
+                              {product.sub_category && (
+                                <Chip
+                                  label={product.sub_category}
+                                  size='small'
+                                  variant='outlined'
+                                  sx={{ height: 20, fontSize: '0.62rem' }}
+                                />
+                              )}
+                            </Box>
+                          )}
+                          <Typography
+                            variant='subtitle2'
+                            fontWeight={700}
+                            color='text.primary'
+                            sx={{ fontSize: { xs: '0.92rem', sm: '0.9rem' }, lineHeight: 1.35 }}
+                          >
+                            {product.name}
                           </Typography>
-                        </>
-                      )}
+                        </Box>
+
+                        {/* Remove button — desktop only */}
+                        {!isShared && (
+                          <Tooltip title='Remove product'>
+                            <span>
+                              <IconButton
+                                size='small'
+                                color='error'
+                                disabled={isOrderLocked}
+                                onClick={() => handleRemoveProduct(productId)}
+                                sx={{
+                                  flexShrink: 0,
+                                  mt: -0.5,
+                                  mr: -0.5,
+                                  display: { xs: 'none', sm: 'flex' },
+                                }}
+                              >
+                                <Close sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        )}
+                      </Box>
                     </Box>
 
-                    {/* Qty + total row */}
-                    <Box display='flex' alignItems='center' justifyContent='space-between' gap={1}>
+                    {/* Price section */}
+                    <Box sx={{ px: { xs: 1.75, sm: 2 }, pt: 1.25, pb: 0.5 }}>
+                      {/* Selling price + discount badge */}
+                      <Box display='flex' alignItems='baseline' gap={1} flexWrap='wrap' mb={0.5}>
+                        <Box display='flex' alignItems='center' gap={0.75}>
+                          <LocalOffer
+                            sx={{ fontSize: 13, color: 'primary.main', mb: '-1px' }}
+                          />
+                          <Typography
+                            fontWeight={800}
+                            color='primary.main'
+                            sx={{ fontSize: { xs: '1.05rem', sm: '1rem' }, letterSpacing: '-0.01em' }}
+                          >
+                            ₹{sellingPrice.toLocaleString('en-IN')}
+                          </Typography>
+                          <Typography variant='caption' color='text.secondary' fontWeight={500}>
+                            / unit
+                          </Typography>
+                        </Box>
+                        {!isShared && (
+                          <Chip
+                            label={`${marginPercent}% off`}
+                            size='small'
+                            sx={{
+                              height: 20,
+                              fontSize: '0.62rem',
+                              fontWeight: 700,
+                              bgcolor: isDark
+                                ? 'rgba(76,175,80,0.18)'
+                                : 'rgba(76,175,80,0.12)',
+                              color: 'success.main',
+                            }}
+                          />
+                        )}
+                      </Box>
+
+                      {/* MRP strikethrough + GST */}
+                      <Box display='flex' flexWrap='wrap' alignItems='center' gap={0.75}>
+                        <Typography
+                          variant='caption'
+                          color='text.disabled'
+                          sx={{ textDecoration: 'line-through' }}
+                        >
+                          MRP ₹{product.rate?.toLocaleString('en-IN')}
+                        </Typography>
+                        <Typography variant='caption' color='text.disabled'>·</Typography>
+                        <Typography variant='caption' color='text.secondary'>
+                          GST {taxPct}%
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    <Box flex={1} />
+
+                    {/* ── Footer: qty + total ── */}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        px: { xs: 1.75, sm: 2 },
+                        py: { xs: 1.25, sm: 1.5 },
+                        mt: 1,
+                        borderTop: `1px solid ${theme.palette.divider}`,
+                        bgcolor: isDark
+                          ? 'rgba(255,255,255,0.025)'
+                          : 'rgba(0,0,0,0.018)',
+                      }}
+                    >
                       <QuantitySelector
                         quantity={product.quantity || 1}
                         max={product.stock}
@@ -640,21 +748,44 @@ const Review: React.FC<Props> = React.memo((props) => {
                         }
                         disabled={!isActive || isOrderLocked}
                       />
-                      <Typography
-                        variant='body1'
-                        fontWeight={700}
-                        color='primary.main'
-                        sx={{ whiteSpace: 'nowrap', fontSize: { xs: '1rem', sm: '0.9rem' } }}
-                      >
-                        ₹{parseFloat(itemTotal).toLocaleString('en-IN')}
-                      </Typography>
+
+                      <Box textAlign='right'>
+                        <Typography
+                          sx={{
+                            display: 'block',
+                            fontSize: '0.6rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.07em',
+                            color: 'text.disabled',
+                            mb: 0.25,
+                          }}
+                        >
+                          Total
+                        </Typography>
+                        <Typography
+                          fontWeight={800}
+                          color='primary.main'
+                          sx={{
+                            fontSize: { xs: '1.1rem', sm: '1rem' },
+                            letterSpacing: '-0.01em',
+                          }}
+                        >
+                          ₹{parseFloat(itemTotal).toLocaleString('en-IN')}
+                        </Typography>
+                      </Box>
                     </Box>
 
                     {product.quantity > product.stock && (
                       <Typography
                         variant='caption'
                         color='error.main'
-                        sx={{ display: 'block', mt: 0.75 }}
+                        sx={{
+                          display: 'block',
+                          px: { xs: 1.75, sm: 2 },
+                          pb: 1,
+                          mt: -0.5,
+                        }}
                       >
                         ⚠ Exceeds stock ({product.stock} available)
                       </Typography>
