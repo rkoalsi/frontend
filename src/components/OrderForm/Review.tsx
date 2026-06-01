@@ -712,7 +712,6 @@ const Review: React.FC<Props> = React.memo((props) => {
                         <Typography
                           variant='caption'
                           color='text.disabled'
-                          sx={{ textDecoration: 'line-through' }}
                         >
                           MRP ₹{product.rate?.toLocaleString('en-IN')}
                         </Typography>
