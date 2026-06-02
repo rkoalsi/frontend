@@ -192,6 +192,8 @@ const CustomerManagement: React.FC = () => {
     const [bulkCreating, setBulkCreating] = useState<boolean>(false);
     const [bulkResultOpen, setBulkResultOpen] = useState<boolean>(false);
     const [bulkResult, setBulkResult] = useState<BulkCreateResult | null>(null);
+    const [notFoundOptions, setNotFoundOptions] = useState<Customer[]>([]);
+    const [notFoundSearchLoading, setNotFoundSearchLoading] = useState<boolean>(false);
 
     // Debounced search effect
     useEffect(() => {
@@ -527,6 +529,40 @@ const CustomerManagement: React.FC = () => {
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
+    };
+
+    const searchNotFoundCustomers = async (search: string) => {
+        if (!search || search.length < 1) {
+            setNotFoundOptions([]);
+            return;
+        }
+        setNotFoundSearchLoading(true);
+        try {
+            const response = await axiosInstance.get(`/admin/users/search/customers?search=${encodeURIComponent(search)}`);
+            setNotFoundOptions(response.data.customers);
+        } catch {
+            // ignore
+        } finally {
+            setNotFoundSearchLoading(false);
+        }
+    };
+
+    const handleNotFoundCustomerSelect = (entryIdx: number, customer: Customer | null) => {
+        if (!customer || !bulkPreviewData) return;
+        const entry = bulkPreviewData.not_found[entryIdx];
+        const updatedEntry: BulkPreviewEntry = {
+            ...entry,
+            customer_id: customer.contact_id,
+            matched_customer_name: customer.display_name,
+        };
+        setBulkPreviewData(prev => {
+            if (!prev) return prev;
+            return {
+                found: [...prev.found, updatedEntry],
+                not_found: prev.not_found.filter((_, i) => i !== entryIdx),
+            };
+        });
+        setNotFoundOptions([]);
     };
 
     // Handle status toggle
@@ -1581,7 +1617,7 @@ const CustomerManagement: React.FC = () => {
                                 />
                                 <Chip
                                     icon={<ErrorOutline />}
-                                    label={`${bulkPreviewData.not_found.length} not found`}
+                                    label={`${bulkPreviewData.not_found.length} not matched — select manually`}
                                     color="error"
                                     variant="outlined"
                                     sx={{ fontWeight: 600 }}
@@ -1661,10 +1697,10 @@ const CustomerManagement: React.FC = () => {
                                         }}
                                     >
                                         <Typography variant="subtitle2" color="error.main" fontWeight={700}>
-                                            Not found — these rows will be skipped
+                                            Not found — select the correct customer to include, or these rows will be skipped
                                         </Typography>
                                     </Box>
-                                    <TableContainer sx={{ maxHeight: 200 }}>
+                                    <TableContainer sx={{ maxHeight: 280 }}>
                                         <Table size="small" stickyHeader>
                                             <TableHead>
                                                 <TableRow>
@@ -1673,6 +1709,7 @@ const CustomerManagement: React.FC = () => {
                                                     <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
                                                     <TableCell sx={{ fontWeight: 600 }}>Zoho Customer Name</TableCell>
                                                     <TableCell sx={{ fontWeight: 600 }}>Reason</TableCell>
+                                                    <TableCell sx={{ fontWeight: 600, minWidth: 240 }}>Select Customer</TableCell>
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
@@ -1690,6 +1727,33 @@ const CustomerManagement: React.FC = () => {
                                                             <Typography variant="caption" color="text.secondary">
                                                                 {entry.reason}
                                                             </Typography>
+                                                        </TableCell>
+                                                        <TableCell sx={{ minWidth: 240 }}>
+                                                            <Autocomplete
+                                                                size="small"
+                                                                options={notFoundOptions}
+                                                                getOptionLabel={(o) => o.display_name}
+                                                                loading={notFoundSearchLoading}
+                                                                onInputChange={(_, value) => searchNotFoundCustomers(value)}
+                                                                onChange={(_, value) => handleNotFoundCustomerSelect(idx, value)}
+                                                                renderInput={(params) => (
+                                                                    <TextField
+                                                                        {...params}
+                                                                        placeholder="Search & select..."
+                                                                        InputProps={{
+                                                                            ...params.InputProps,
+                                                                            endAdornment: (
+                                                                                <>
+                                                                                    {notFoundSearchLoading && <CircularProgress size={14} color="inherit" />}
+                                                                                    {params.InputProps.endAdornment}
+                                                                                </>
+                                                                            ),
+                                                                        }}
+                                                                    />
+                                                                )}
+                                                                isOptionEqualToValue={(o, v) => o.contact_id === v.contact_id}
+                                                                noOptionsText="Type to search active customers..."
+                                                            />
                                                         </TableCell>
                                                     </TableRow>
                                                 ))}
