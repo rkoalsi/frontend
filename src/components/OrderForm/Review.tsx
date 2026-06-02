@@ -728,10 +728,12 @@ const Review: React.FC<Props> = React.memo((props) => {
                     <Box
                       sx={{
                         display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        alignItems: { xs: 'stretch', sm: 'center' },
+                        justifyContent: { sm: 'space-between' },
                         px: { xs: 1.75, sm: 2 },
                         py: { xs: 1.25, sm: 1.5 },
+                        gap: { xs: 1, sm: 0 },
                         mt: 1,
                         borderTop: `1px solid ${theme.palette.divider}`,
                         bgcolor: isDark
@@ -748,16 +750,21 @@ const Review: React.FC<Props> = React.memo((props) => {
                         disabled={!isActive || isOrderLocked}
                       />
 
-                      <Box textAlign='right'>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: { xs: 'space-between', sm: 'flex-end' },
+                          gap: 1,
+                        }}
+                      >
                         <Typography
                           sx={{
-                            display: 'block',
                             fontSize: '0.6rem',
                             fontWeight: 700,
                             textTransform: 'uppercase',
                             letterSpacing: '0.07em',
                             color: 'text.disabled',
-                            mb: 0.25,
                           }}
                         >
                           Total
@@ -768,6 +775,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                           sx={{
                             fontSize: { xs: '1.1rem', sm: '1rem' },
                             letterSpacing: '-0.01em',
+                            whiteSpace: 'nowrap',
                           }}
                         >
                           ₹{parseFloat(itemTotal).toLocaleString('en-IN')}
