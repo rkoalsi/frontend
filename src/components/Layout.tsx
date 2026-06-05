@@ -23,6 +23,7 @@ import {
 } from '@mui/icons-material';
 import CustomButton from '../components/common/Button';
 import { useColorMode } from '../context/ColorModeContext';
+import NotificationBell from '../components/common/NotificationBell';
 
 const Layout = ({ children }: any) => {
   const { user = {}, loading, logout }: any = useContext(Auth);
@@ -225,6 +226,8 @@ const Layout = ({ children }: any) => {
                 {isDark ? <LightMode fontSize='small' /> : <DarkMode fontSize='small' />}
               </IconButton>
             </Tooltip>
+
+            {user && <NotificationBell />}
 
             {user && (
               <>

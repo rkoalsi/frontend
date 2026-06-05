@@ -61,6 +61,7 @@ import {
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
 import { useColorMode } from '../context/ColorModeContext';
+import NotificationBell from './common/NotificationBell';
 
 const iconMap: { [key: string]: React.ReactElement } = {
   Dashboard: <Dashboard />,
@@ -279,6 +280,8 @@ const AdminLayout = ({ children }: any) => {
                 {isDark ? <LightMode fontSize='small' /> : <DarkMode fontSize='small' />}
               </IconButton>
             </Tooltip>
+
+            {user && <NotificationBell />}
 
             {user && (
               <>
