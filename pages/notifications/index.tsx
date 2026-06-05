@@ -154,6 +154,7 @@ export default function NotificationsPage() {
     notifications,
     total,
     hasMore,
+    loading,
     loadMore,
     markRead,
     markAllRead,
@@ -165,8 +166,7 @@ export default function NotificationsPage() {
     if (n.link) router.push(n.link);
   };
 
-  const isLoading = notifications.length === 0 && total === 0;
-  const isEmpty = !isLoading && notifications.length === 0;
+  const isEmpty = !loading && notifications.length === 0;
   const groups = groupByDate(notifications);
 
   return (
@@ -197,7 +197,7 @@ export default function NotificationsPage() {
         </Box>
 
         {/* Loading skeleton */}
-        {isLoading && <LoadingSkeleton />}
+        {loading && <LoadingSkeleton />}
 
         {/* Empty state */}
         {isEmpty && (
