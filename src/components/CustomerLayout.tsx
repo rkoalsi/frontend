@@ -39,6 +39,7 @@ import {
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
 import { useColorMode } from '../context/ColorModeContext';
+import NotificationBell from './common/NotificationBell';
 
 const iconMap: { [key: string]: React.ReactElement } = {
   Dashboard: <Dashboard />,
@@ -271,6 +272,8 @@ const CustomerLayout = ({ children }: any) => {
                 {isDark ? <LightMode fontSize='small' /> : <DarkMode fontSize='small' />}
               </IconButton>
             </Tooltip>
+
+            {user && <NotificationBell />}
 
             <Divider orientation='vertical' flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)', mx: 0.5 }} />
             <Tooltip title='Logout' arrow>
