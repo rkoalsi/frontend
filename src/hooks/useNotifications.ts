@@ -19,6 +19,7 @@ export function useNotifications() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchUnreadCount = useCallback(async () => {
@@ -31,6 +32,7 @@ export function useNotifications() {
   }, []);
 
   const fetchNotifications = useCallback(async (pageNum = 0, replace = true) => {
+    if (replace) setLoading(true);
     try {
       const res = await axiosInstance.get(`/notifications`, {
         params: { page: pageNum, limit: 20 },
@@ -42,6 +44,8 @@ export function useNotifications() {
       setUnreadCount(items.filter((n: AppNotification) => !n.read).length);
     } catch {
       // ignore
+    } finally {
+      if (replace) setLoading(false);
     }
   }, []);
 
@@ -86,6 +90,7 @@ export function useNotifications() {
     unreadCount,
     total,
     hasMore,
+    loading,
     fetchNotifications,
     loadMore,
     markRead,
