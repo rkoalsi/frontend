@@ -11,6 +11,9 @@ import {
   CampaignOutlined,
   LocalShippingOutlined,
   NotificationsNoneOutlined,
+  CheckCircleOutlined,
+  ReceiptOutlined,
+  AddBoxOutlined,
 } from '@mui/icons-material';
 
 export const TYPE_LABELS: Record<string, string> = {
@@ -30,6 +33,10 @@ export const TYPE_LABELS: Record<string, string> = {
   new_announcement: 'Announcement',
   shipment_dispatched: 'Shipment',
   shipment_delivered: 'Shipment',
+  estimate_accepted: 'Estimate',
+  draft_sales_order: 'Sales Order',
+  draft_invoice: 'Invoice',
+  new_product: 'Product',
 };
 
 export const TYPE_CHIP_COLORS: Record<
@@ -52,6 +59,10 @@ export const TYPE_CHIP_COLORS: Record<
   new_announcement: 'warning',
   shipment_dispatched: 'primary',
   shipment_delivered: 'success',
+  estimate_accepted: 'success',
+  draft_sales_order: 'info',
+  draft_invoice: 'secondary',
+  new_product: 'primary',
 };
 
 export const TYPE_ACCENT_COLORS: Record<string, string> = {
@@ -71,6 +82,10 @@ export const TYPE_ACCENT_COLORS: Record<string, string> = {
   new_announcement: '#ffb74d',
   shipment_dispatched: '#7c6fcd',
   shipment_delivered: '#66bb6a',
+  estimate_accepted: '#66bb6a',
+  draft_sales_order: '#64b5f6',
+  draft_invoice: '#9a85c9',
+  new_product: '#7c6fcd',
 };
 
 const ICONS: Record<string, React.ReactElement> = {
@@ -90,6 +105,10 @@ const ICONS: Record<string, React.ReactElement> = {
   new_announcement: <CampaignOutlined fontSize='small' />,
   shipment_dispatched: <LocalShippingOutlined fontSize='small' />,
   shipment_delivered: <LocalShippingOutlined fontSize='small' />,
+  estimate_accepted: <CheckCircleOutlined fontSize='small' />,
+  draft_sales_order: <ReceiptOutlined fontSize='small' />,
+  draft_invoice: <ReceiptOutlined fontSize='small' />,
+  new_product: <AddBoxOutlined fontSize='small' />,
 };
 
 export function NotificationIcon({ type }: { type: string }) {
