@@ -137,6 +137,7 @@ interface Props {
   specialMargins: { [key: string]: string };
   setActiveStep: (step: number) => void;
   isShared: boolean;
+  isCustomerRole?: boolean;
   order: any;
   referenceNumber: any;
 }
@@ -154,6 +155,7 @@ const Review: React.FC<Props> = React.memo((props) => {
     specialMargins,
     setActiveStep,
     isShared,
+    isCustomerRole,
     order,
     referenceNumber,
   } = props;
@@ -290,7 +292,7 @@ const Review: React.FC<Props> = React.memo((props) => {
             ₹{totals.totalAmount.toLocaleString('en-IN')} total
           </Typography>
         </Box>
-        {!isShared && (
+        {isCustomerRole && !isShared && (
           <Button
             variant='contained'
             color='primary'
@@ -305,7 +307,7 @@ const Review: React.FC<Props> = React.memo((props) => {
               alignSelf: { xs: 'stretch', sm: 'auto' },
             }}
           >
-            {!order?.estimate_created ? 'Save as Draft to Create Estimate' : 'Download PDF'}
+            {!order?.estimate_created ? 'Submit Order to Create Estimate' : 'Download Estimate'}
           </Button>
         )}
       </Box>

@@ -681,6 +681,7 @@ const NewOrder: React.FC = () => {
               setActiveStep={setActiveStep}
               specialMargins={specialMargins}
               isShared={isShared}
+              isCustomerRole={isCustomerUser}
               order={order}
               referenceNumber={referenceNumber}
             />
@@ -811,7 +812,9 @@ const NewOrder: React.FC = () => {
 
   // Derived: whether the "Submit Order" / "Save As Draft" button is for a retailer
   const isRetailerFlow = isShared || isCustomerUser;
-  const saveDraftLabel = isRetailerFlow ? 'Submit Order' : 'Save As Draft';
+  const saveDraftLabel = isRetailerFlow
+    ? (order?.estimate_created ? 'Update Order' : 'Submit Order')
+    : 'Save As Draft';
   const saveDraftDisabled =
     // For shared-link visitors customer is null (unauthenticated) — don't block them
     (!customer && !isShared) ||
