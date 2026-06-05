@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import axios from 'axios';
+import axiosInstance from '../util/axios';
 
-const BASE = process.env.NEXT_PUBLIC_BASE_URL;
 const POLL_INTERVAL = 30_000; // 30 seconds
 
 export interface AppNotification {
@@ -24,7 +23,7 @@ export function useNotifications() {
 
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const res = await axios.get(`${BASE}/api/notifications/unread-count`);
+      const res = await axiosInstance.get(`/notifications/unread-count`);
       setUnreadCount(res.data.count ?? 0);
     } catch {
       // silently ignore — badge just stays stale
@@ -33,7 +32,7 @@ export function useNotifications() {
 
   const fetchNotifications = useCallback(async (pageNum = 0, replace = true) => {
     try {
-      const res = await axios.get(`${BASE}/api/notifications`, {
+      const res = await axiosInstance.get(`/notifications`, {
         params: { page: pageNum, limit: 20 },
       });
       const { notifications: items, total: tot } = res.data;
@@ -54,7 +53,7 @@ export function useNotifications() {
 
   const markRead = useCallback(async (id: string) => {
     try {
-      await axios.patch(`${BASE}/api/notifications/${id}/read`);
+      await axiosInstance.patch(`/notifications/${id}/read`);
       setNotifications(prev =>
         prev.map(n => (n._id === id ? { ...n, read: true } : n))
       );
@@ -66,7 +65,7 @@ export function useNotifications() {
 
   const markAllRead = useCallback(async () => {
     try {
-      await axios.patch(`${BASE}/api/notifications/read-all`);
+      await axiosInstance.patch(`/notifications/read-all`);
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch {
