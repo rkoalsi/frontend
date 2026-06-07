@@ -999,6 +999,38 @@ const DailyVisits = () => {
                         <strong>Reason: </strong> {shop.reason}
                       </Typography>
 
+                      {/* Google Maps Embed */}
+                      {(() => {
+                        const addressStr = shop.potential_customer
+                          ? shop.potential_customer_address
+                          : formatAddress(shop.address);
+                        if (!addressStr) return null;
+                        const mapsUrl = `https://maps.google.com/maps?q=${encodeURIComponent(addressStr)}&output=embed`;
+                        return (
+                          <Box sx={{ mt: 1.5 }}>
+                            <iframe
+                              title={`Map - ${addressStr}`}
+                              src={mapsUrl}
+                              width='100%'
+                              height='200'
+                              style={{ border: 0, borderRadius: 8 }}
+                              loading='lazy'
+                              referrerPolicy='no-referrer-when-downgrade'
+                            />
+                            <Button
+                              size='small'
+                              variant='text'
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressStr)}`}
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              sx={{ mt: 0.5, textTransform: 'none', fontSize: '0.75rem' }}
+                            >
+                              Open in Google Maps ↗
+                            </Button>
+                          </Box>
+                        );
+                      })()}
+
                       {/* Shop-level admin comments */}
                       <Box sx={{ mt: 2 }}>
                         <Typography variant='subtitle2' sx={{ fontWeight: 500, mb: 1 }}>

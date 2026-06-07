@@ -43,6 +43,9 @@ import {
   BrandingWatermark,
   Link,
   MiscellaneousServices,
+  TrendingUp,
+  TrendingDown,
+  TrendingFlat,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
@@ -691,6 +694,32 @@ const AdminDashboard = () => {
     </Box>
   );
 
+  const renderGrowthBadge = (growth?: number) => {
+    if (growth === undefined) return null;
+    if (growth > 0) return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+        <TrendingUp sx={{ fontSize: 14, color: 'success.main' }} />
+        <Typography variant='caption' sx={{ color: 'success.main', fontWeight: 600 }}>
+          +{growth}%
+        </Typography>
+      </Box>
+    );
+    if (growth < 0) return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+        <TrendingDown sx={{ fontSize: 14, color: 'error.main' }} />
+        <Typography variant='caption' sx={{ color: 'error.main', fontWeight: 600 }}>
+          {growth}%
+        </Typography>
+      </Box>
+    );
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+        <TrendingFlat sx={{ fontSize: 14, color: 'text.secondary' }} />
+        <Typography variant='caption' color='text.secondary'>0%</Typography>
+      </Box>
+    );
+  };
+
   // Render compact card for square grouping
   const renderCompactCard = (card: CardProps, idx: number) => (
     <Paper
@@ -736,16 +765,18 @@ const AdminDashboard = () => {
         </Box>
 
         {card.value !== undefined && (
-          <Typography
-            variant='h5'
-            sx={{
-              fontWeight: 700,
-              color: theme.palette.primary.main,
-              mb: 0.5,
-            }}
-          >
-            {card.value.toLocaleString()}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
+            <Typography
+              variant='h5'
+              sx={{
+                fontWeight: 700,
+                color: theme.palette.primary.main,
+              }}
+            >
+              {card.value.toLocaleString()}
+            </Typography>
+            {renderGrowthBadge(card.growth)}
+          </Box>
         )}
 
         {card.subStats && card.subStats[0] && (
@@ -816,16 +847,18 @@ const AdminDashboard = () => {
         </Box>
 
         {card.value !== undefined && (
-          <Typography
-            variant='h3'
-            sx={{
-              fontWeight: 700,
-              color: theme.palette.primary.main,
-              mb: 3,
-            }}
-          >
-            {card.value.toLocaleString()}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, mb: 3 }}>
+            <Typography
+              variant='h3'
+              sx={{
+                fontWeight: 700,
+                color: theme.palette.primary.main,
+              }}
+            >
+              {card.value.toLocaleString()}
+            </Typography>
+            {renderGrowthBadge(card.growth)}
+          </Box>
         )}
 
         {/* Sub Stats */}

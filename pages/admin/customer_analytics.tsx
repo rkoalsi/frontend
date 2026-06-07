@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
     Box,
     Paper,
@@ -27,6 +27,7 @@ import {
     Refresh,
     Analytics,
     BusinessCenter,
+    WorkspacePremium,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -379,6 +380,25 @@ const CustomerAnalytics = () => {
         toast.info('Data refreshed!');
     };
 
+    const tierStats = useMemo(() => {
+        const counts = { A: 0, B: 0, C: 0, untiered: 0 };
+        filteredCustomers.forEach(c => {
+            const t = c.tier?.toUpperCase();
+            if (t === 'A') counts.A++;
+            else if (t === 'B') counts.B++;
+            else if (t === 'C') counts.C++;
+            else counts.untiered++;
+        });
+        const total = filteredCustomers.length || 1;
+        return {
+            ...counts,
+            total: filteredCustomers.length,
+            aPercent: Math.round((counts.A / total) * 100),
+            bPercent: Math.round((counts.B / total) * 100),
+            cPercent: Math.round((counts.C / total) * 100),
+        };
+    }, [filteredCustomers]);
+
     const theme = useTheme();
     
     return (
@@ -502,6 +522,44 @@ const CustomerAnalytics = () => {
                         </Stack>
                     </Box>
                 </Box>
+
+                {/* Tier Distribution Bar */}
+                {!initialLoading && tierStats.total > 0 && (
+                    <Box sx={{ px: 3, pt: 2, pb: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                            <WorkspacePremium sx={{ fontSize: 18, color: theme.palette.primary.main }} />
+                            <Typography variant='subtitle2' fontWeight={600}>
+                                Tier Distribution ({tierStats.total} customers)
+                            </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+                            {[
+                                { tier: 'A', count: tierStats.A, pct: tierStats.aPercent, color: '#2e7d32', bg: '#e8f5e9' },
+                                { tier: 'B', count: tierStats.B, pct: tierStats.bPercent, color: '#1565c0', bg: '#e3f2fd' },
+                                { tier: 'C', count: tierStats.C, pct: tierStats.cPercent, color: '#e65100', bg: '#fff3e0' },
+                                { tier: '—', count: tierStats.untiered, pct: 100 - tierStats.aPercent - tierStats.bPercent - tierStats.cPercent, color: '#616161', bg: '#f5f5f5' },
+                            ].map(({ tier, count, pct, color, bg }) => (
+                                <Box key={tier} sx={{ flex: 1 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                            <Chip
+                                                label={`Tier ${tier}`}
+                                                size='small'
+                                                sx={{ backgroundColor: bg, color, fontWeight: 700, fontSize: '0.7rem', height: 20 }}
+                                            />
+                                        </Box>
+                                        <Typography variant='caption' fontWeight={600} sx={{ color }}>
+                                            {count} ({pct}%)
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ height: 8, borderRadius: 4, backgroundColor: theme.palette.divider, overflow: 'hidden' }}>
+                                        <Box sx={{ height: '100%', width: `${pct}%`, backgroundColor: color, borderRadius: 4, transition: 'width 0.5s ease' }} />
+                                    </Box>
+                                </Box>
+                            ))}
+                        </Box>
+                    </Box>
+                )}
 
                 {/* Customer Table or Loading */}
                 <Box sx={{ position: 'relative', minHeight: 400 }}>

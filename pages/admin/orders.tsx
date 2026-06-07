@@ -31,6 +31,7 @@ import {
   ListItemButton,
   ListItemText,
   useTheme,
+  Chip,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
@@ -102,6 +103,7 @@ const Orders = () => {
   const [searchEstimateNumber, setSearchEstimateNumber] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+  const [searchKey, setSearchKey] = useState(0);
 
   const [changeCreatorDialogOpen, setChangeCreatorDialogOpen] =
     useState<boolean>(false);
@@ -187,9 +189,8 @@ const Orders = () => {
     setOpenImagePopup(false);
   }, []);
   const applyFilters = () => {
-    setPage(0); // reset page
     setOpenFilterModal(false);
-    fetchOrders(); // fetch with new filters
+    triggerSearch();
   };
   // Fetch orders from the server
   const fetchOrders = async () => {
@@ -227,10 +228,11 @@ const Orders = () => {
     }
   };
 
-  // Re-fetch orders whenever page or rowsPerPage changes
+  // Re-fetch orders whenever page, rowsPerPage, or search is triggered
   useEffect(() => {
     fetchOrders();
-  }, [page, rowsPerPage, !orderLoading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, rowsPerPage, searchKey]);
 
   // MUI Pagination: next/previous
   const handleChangePage = (event: any, newPage: number) => {
@@ -311,19 +313,21 @@ const Orders = () => {
     setDrawerOpen(false);
     setSelectedOrder(null);
   };
-  const getColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'invoiced':
-        return 'green';
-      case 'declined':
-        return 'red';
-      case 'deleted':
-        return 'red';
-      case 'accepted':
-        return 'green';
-      default:
-        return 'inherit';
+  const getStatusChipColor = (status: string): 'default' | 'warning' | 'info' | 'success' | 'error' | 'primary' => {
+    switch (status?.toLowerCase()) {
+      case 'draft': return 'warning';
+      case 'sent': return 'info';
+      case 'accepted': return 'primary';
+      case 'invoiced': return 'success';
+      case 'declined': return 'error';
+      case 'deleted': return 'error';
+      default: return 'default';
     }
+  };
+
+  const triggerSearch = () => {
+    setPage(0);
+    setSearchKey(k => k + 1);
   };
   const handleDelete = async (order: any) => {
     setOrderLoading(true);
@@ -388,8 +392,15 @@ const Orders = () => {
               size='small'
               value={searchEstimateNumber}
               onChange={(e) => setSearchEstimateNumber(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && fetchOrders()}
+              onKeyDown={(e) => e.key === 'Enter' && triggerSearch()}
             />
+            <Button
+              variant='contained'
+              color='primary'
+              onClick={triggerSearch}
+            >
+              Search
+            </Button>
             <Button
               variant='contained'
               startIcon={<Download />}
@@ -460,8 +471,13 @@ const Orders = () => {
                               : order._id.slice(-6)}
                           </TableCell>
                           <TableCell>{order.customer_name}</TableCell>
-                          <TableCell style={{ color: getColor(order.status) }}>
-                            {capitalize(order.status)}
+                          <TableCell>
+                            <Chip
+                              label={capitalize(order.status)}
+                              color={getStatusChipColor(order.status)}
+                              size='small'
+                              sx={{ fontWeight: 600, textTransform: 'capitalize' }}
+                            />
                           </TableCell>
                           <TableCell>
                             {order.created_by_info?.name || 'Unknown'}
