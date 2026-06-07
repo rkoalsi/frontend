@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import {
     Typography,
     Box,
@@ -25,6 +25,8 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
+    ToggleButtonGroup,
+    ToggleButton,
 } from '@mui/material';
 import {
     Search,
@@ -36,6 +38,8 @@ import {
     CheckCircle,
     Cancel,
     Map,
+    GridView,
+    ViewList,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -88,6 +92,9 @@ const AttendanceViewing: React.FC = () => {
     // Statistics
     const [totalEmployees, setTotalEmployees] = useState<number>(0);
     const [totalRecords, setTotalRecords] = useState<number>(0);
+
+    // View mode
+    const [viewMode, setViewMode] = useState<'list' | 'heatmap'>('list');
 
     // Debounced search effect
     useEffect(() => {
@@ -204,6 +211,26 @@ const AttendanceViewing: React.FC = () => {
         }
     };
 
+    const heatmapData = useMemo(() => {
+        const allDates = new Set<string>();
+        attendanceData.forEach(emp => {
+            emp.attendance_records.forEach(rec => {
+                const d = (rec.date || '').split('T')[0];
+                if (d) allDates.add(d);
+            });
+        });
+        const sortedDates = Array.from(allDates).sort().slice(-21); // up to 21 most recent days
+        return {
+            dates: sortedDates,
+            rows: attendanceData.map(emp => ({
+                name: emp.employee.name,
+                days: sortedDates.map(date =>
+                    emp.attendance_records.some(rec => (rec.date || '').startsWith(date))
+                ),
+            })),
+        };
+    }, [attendanceData]);
+
     return (
         <Box sx={{ padding: { xs: 2, sm: 3 } }}>
             <Paper elevation={3} sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4 }}>
@@ -232,8 +259,9 @@ const AttendanceViewing: React.FC = () => {
                     View and manage employee attendance records with location tracking
                 </Typography>
 
-                {/* Search */}
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ mb: 3 }}>
+                {/* View Toggle + Search */}
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent='space-between' sx={{ mb: 3 }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ flex: 1 }}>
                     <TextField
                         label='Search by Employee Name'
                         variant='outlined'
@@ -266,11 +294,77 @@ const AttendanceViewing: React.FC = () => {
                         />
                     )}
                 </Stack>
+                    <ToggleButtonGroup
+                        value={viewMode}
+                        exclusive
+                        size='small'
+                        onChange={(_, v) => v && setViewMode(v)}
+                    >
+                        <ToggleButton value='list'><ViewList sx={{ mr: 0.5 }} fontSize='small' /> List</ToggleButton>
+                        <ToggleButton value='heatmap'><GridView sx={{ mr: 0.5 }} fontSize='small' /> Heatmap</ToggleButton>
+                    </ToggleButtonGroup>
+                </Stack>
 
                 {/* Content */}
                 {loading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
                         <CircularProgress />
+                    </Box>
+                ) : viewMode === 'heatmap' && heatmapData.dates.length > 0 ? (
+                    <Box sx={{ overflowX: 'auto' }}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: `180px repeat(${heatmapData.dates.length}, 36px)`, gap: '2px', minWidth: 'max-content' }}>
+                            {/* Header row */}
+                            <Box sx={{ p: 0.5 }} />
+                            {heatmapData.dates.map(date => {
+                                const d = new Date(date);
+                                return (
+                                    <Tooltip key={date} title={d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}>
+                                        <Box sx={{ textAlign: 'center', p: 0.25 }}>
+                                            <Typography variant='caption' sx={{ fontSize: '0.6rem', fontWeight: 600, color: 'text.secondary' }}>
+                                                {d.toLocaleDateString('en-IN', { weekday: 'short' }).slice(0, 2)}
+                                            </Typography>
+                                            <Typography variant='caption' sx={{ display: 'block', fontSize: '0.6rem', color: 'text.disabled' }}>
+                                                {d.getDate()}
+                                            </Typography>
+                                        </Box>
+                                    </Tooltip>
+                                );
+                            })}
+                            {/* Employee rows */}
+                            {heatmapData.rows.map(row => (
+                                <React.Fragment key={row.name}>
+                                    <Tooltip title={row.name}>
+                                        <Typography variant='body2' noWrap sx={{ alignSelf: 'center', pr: 1, fontWeight: 500, maxWidth: 180, fontSize: '0.8rem' }}>
+                                            {row.name}
+                                        </Typography>
+                                    </Tooltip>
+                                    {row.days.map((present, i) => (
+                                        <Box
+                                            key={i}
+                                            sx={{
+                                                width: 34,
+                                                height: 34,
+                                                borderRadius: 1,
+                                                backgroundColor: present ? '#2e7d32' : 'action.hover',
+                                                border: `1px solid`,
+                                                borderColor: present ? '#1b5e2060' : 'divider',
+                                                cursor: 'default',
+                                            }}
+                                        />
+                                    ))}
+                                </React.Fragment>
+                            ))}
+                        </Box>
+                        <Stack direction='row' spacing={2} sx={{ mt: 2 }} alignItems='center'>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                <Box sx={{ width: 16, height: 16, borderRadius: 0.5, backgroundColor: '#2e7d32' }} />
+                                <Typography variant='caption'>Present</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                <Box sx={{ width: 16, height: 16, borderRadius: 0.5, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }} />
+                                <Typography variant='caption'>Absent / No record</Typography>
+                            </Box>
+                        </Stack>
                     </Box>
                 ) : attendanceData.length > 0 ? (
                     attendanceData.map((employeeData) => (
@@ -381,6 +475,7 @@ const AttendanceViewing: React.FC = () => {
                         </Typography>
                     </Box>
                 )}
+
             </Paper>
 
             {/* Location Dialog */}

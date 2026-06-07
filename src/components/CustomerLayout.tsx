@@ -35,6 +35,7 @@ import {
   Payments,
   DarkMode,
   LightMode,
+  LocationOn,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -51,6 +52,7 @@ const iconMap: { [key: string]: React.ReactElement } = {
   CreditCard: <CreditCard />,
   LocalShipping: <LocalShipping />,
   Payments: <Payments />,
+  LocationOn: <LocationOn />,
 };
 
 const defaultCustomerMenuItems = [
@@ -59,6 +61,7 @@ const defaultCustomerMenuItems = [
   { text: 'My Account', icon: 'ManageAccounts', path: '/customer/account' },
   { text: 'Analytics', icon: 'Analytics', path: '/customer/analytics' },
   { text: 'Payments', icon: 'Payment', path: '/customer/payments' },
+  // { text: 'My Addresses', icon: 'LocationOn', path: '/customer/addresses' },
 ];
 
 const CustomerLayout = ({ children }: any) => {

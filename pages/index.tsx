@@ -43,7 +43,12 @@ import {
   Rocket,
   PersonAdd,
   Assignment,
+  TrendingUp,
+  TrendingDown,
+  TrendingFlat,
+  BarChart,
 } from '@mui/icons-material';
+import axiosInstance from '../src/util/axios';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomerCreationRequestForm from '../src/components/CustomerCreationRequestForm';
@@ -363,6 +368,25 @@ const Home = () => {
   const [cataloguesLoading, setCataloguesLoading] = useState(false);
 
   const isCustomer = user?.role === 'customer';
+  const isSalesPerson = user?.role === 'sales_person';
+
+  const [perfData, setPerfData] = useState<any>(null);
+
+  const fetchPerformance = useCallback(async () => {
+    if (!user?._id) return;
+    try {
+      const { data: res } = await axiosInstance.get('/orders/my-performance', {
+        params: { user_id: user._id },
+      });
+      setPerfData(res);
+    } catch {
+      // non-critical
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (isSalesPerson) fetchPerformance();
+  }, [isSalesPerson, fetchPerformance]);
 
   // Fetch catalogues for customer role
   const fetchCatalogues = useCallback(async () => {
@@ -587,6 +611,62 @@ const Home = () => {
               {isCustomer ? 'Browse catalogues and manage your orders.' : 'Manage orders, customers, and more — all in one place.'}
             </Typography>
           </Box>
+
+          {/* Performance Card — salesperson only */}
+          {isSalesPerson && perfData && (
+            <Box
+              mb={2.5}
+              sx={{
+                bgcolor: 'background.paper',
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 3,
+                px: 2.5,
+                py: 2,
+                boxShadow: 1,
+                cursor: 'pointer',
+                '&:hover': { borderColor: 'primary.main' },
+              }}
+              onClick={() => router.push('/orders/performance')}
+            >
+              <Box display='flex' alignItems='center' justifyContent='space-between' mb={1.5}>
+                <Box display='flex' alignItems='center' gap={1}>
+                  <BarChart sx={{ fontSize: 18, color: 'primary.main' }} />
+                  <Typography variant='caption' fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em', color: 'text.secondary', fontSize: '0.65rem' }}>
+                    My Performance · {perfData.period?.this_month_label}
+                  </Typography>
+                </Box>
+                <Typography variant='caption' color='primary.main' fontWeight={600} sx={{ fontSize: '0.72rem' }}>
+                  View details →
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+                {[
+                  { label: 'Orders', value: perfData.this_month?.total_count ?? 0, pct: perfData.count_change_pct },
+                  { label: 'Value', value: `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(perfData.this_month?.total_value ?? 0)}`, pct: perfData.value_change_pct },
+                ].map(({ label, value, pct }) => (
+                  <Box key={label} sx={{ bgcolor: 'action.hover', borderRadius: 2, p: 1.5 }}>
+                    <Typography variant='caption' color='text.secondary' fontWeight={600}>{label}</Typography>
+                    <Typography variant='h6' fontWeight={700} sx={{ lineHeight: 1.2, my: 0.25 }}>{value}</Typography>
+                    {pct !== null && pct !== undefined ? (
+                      <Box display='flex' alignItems='center' gap={0.5}>
+                        {pct > 0
+                          ? <TrendingUp sx={{ fontSize: 14, color: 'success.main' }} />
+                          : pct < 0
+                            ? <TrendingDown sx={{ fontSize: 14, color: 'error.main' }} />
+                            : <TrendingFlat sx={{ fontSize: 14, color: 'text.secondary' }} />}
+                        <Typography variant='caption' sx={{ color: pct > 0 ? 'success.main' : pct < 0 ? 'error.main' : 'text.secondary', fontWeight: 600, fontSize: '0.65rem' }}>
+                          {pct > 0 ? `+${pct}%` : `${pct}%`} vs last month
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Typography variant='caption' color='text.disabled' sx={{ fontSize: '0.65rem' }}>No prior data</Typography>
+                    )}
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
 
           {/* Menu Sections */}
           {filteredMenuSections.map((section) => (

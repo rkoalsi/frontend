@@ -53,6 +53,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CalendarToday,
+  OpenInNew,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../../src/util/axios';
@@ -72,6 +73,7 @@ interface Shipment {
   invoice_number?: string;
   carrier?: string;
   tracking_number?: string;
+  tracking_link?: string;
   shipping_address?: any;
   line_items?: any[];
   images?: any[];
@@ -224,6 +226,23 @@ const CustomerShipmentsPage = () => {
       currency: 'INR',
       maximumFractionDigits: 0,
     }).format(amount || 0);
+
+  const getCarrierTrackingUrl = (carrier?: string, trackingNumber?: string): string | null => {
+    if (!trackingNumber) return null;
+    const awb = encodeURIComponent(trackingNumber.trim());
+    const name = (carrier || '').toLowerCase();
+    if (name.includes('delhivery')) return `https://www.delhivery.com/track/package/${awb}`;
+    if (name.includes('bluedart') || name.includes('blue dart')) return `https://www.bluedart.com/web/guest/trackdartument?trackFor=0&trackNo=${awb}`;
+    if (name.includes('dtdc')) return `https://www.dtdc.in/tracking.asp?TrkType=awb&strCnno=${awb}`;
+    if (name.includes('fedex')) return `https://www.fedex.com/fedextrack/?trknbr=${awb}`;
+    if (name.includes('xpressbees')) return `https://www.xpressbees.com/shipment/tracking?awbNo=${awb}`;
+    if (name.includes('ecom express') || name.includes('ecomexpress')) return `https://ecomexpress.in/tracking/?awb_field=${awb}`;
+    if (name.includes('ekart')) return `https://ekartlogistics.com/shipment-tracking/${awb}`;
+    if (name.includes('india post') || name.includes('indiapost')) return `https://www.indiapost.gov.in/vas/pages/TrackConsignment.aspx`;
+    if (name.includes('shadowfax')) return `https://track.shadowfax.in/?awb=${awb}`;
+    // Fallback: Google search
+    return `https://www.google.com/search?q=${encodeURIComponent(`${carrier || 'courier'} tracking ${trackingNumber}`)}`;
+  };
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';
@@ -776,13 +795,28 @@ const CustomerShipmentsPage = () => {
                       <Typography variant='caption' color='text.secondary'>
                         Tracking #
                       </Typography>
-                      <Typography
-                        variant='body2'
-                        fontWeight={500}
-                        sx={{ wordBreak: 'break-all' }}
-                      >
-                        {detailShipment.tracking_number}
-                      </Typography>
+                      {(() => {
+                        const url = detailShipment.tracking_link || getCarrierTrackingUrl(detailShipment.carrier, detailShipment.tracking_number);
+                        return url ? (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                            <Typography variant='body2' fontWeight={500} sx={{ wordBreak: 'break-all' }}>
+                              {detailShipment.tracking_number}
+                            </Typography>
+                            <a
+                              href={url}
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              style={{ display: 'flex', alignItems: 'center', color: 'inherit' }}
+                            >
+                              <OpenInNew sx={{ fontSize: 14, color: 'primary.main' }} />
+                            </a>
+                          </Box>
+                        ) : (
+                          <Typography variant='body2' fontWeight={500} sx={{ wordBreak: 'break-all' }}>
+                            {detailShipment.tracking_number}
+                          </Typography>
+                        );
+                      })()}
                     </Box>
                   )}
 

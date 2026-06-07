@@ -214,9 +214,23 @@ const ShipmentDetail = () => {
             {shipment.tracking_number && (
               <Box sx={{ width: 'calc(50% - 6px)' }}>
                 <Typography variant='caption' color='text.secondary'>Tracking #</Typography>
-                <Typography variant='body2' fontWeight={500} sx={{ wordBreak: 'break-all' }}>
-                  {shipment.tracking_number}
-                </Typography>
+                {shipment.tracking_link ? (
+                  <Typography
+                    variant='body2'
+                    fontWeight={500}
+                    component='a'
+                    href={shipment.tracking_link}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    sx={{ wordBreak: 'break-all', color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                  >
+                    {shipment.tracking_number}
+                  </Typography>
+                ) : (
+                  <Typography variant='body2' fontWeight={500} sx={{ wordBreak: 'break-all' }}>
+                    {shipment.tracking_number}
+                  </Typography>
+                )}
               </Box>
             )}
 
