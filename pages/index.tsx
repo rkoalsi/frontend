@@ -368,7 +368,7 @@ const Home = () => {
   const [cataloguesLoading, setCataloguesLoading] = useState(false);
 
   const isCustomer = user?.role === 'customer';
-  const isSalesPerson = user?.role === 'sales_person';
+  const isSalesPerson = user?.role === 'sales_person' || user?.role === 'sales_admin';
 
   const [perfData, setPerfData] = useState<any>(null);
 
@@ -729,102 +729,151 @@ const Home = () => {
                   </span>
                 </Tooltip>
               </Box>
-                {cataloguesLoading ? (
-                  <Stack spacing={1.5}>
-                    {[1, 2, 3].map((i) => (
-                      <Paper
-                        key={i}
-                        sx={{
-                          p: 2,
-                          borderRadius: 4,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 2,
-                          background: alpha(theme.palette.primary.main, 0.2),
-                        }}
-                      >
-                        <Skeleton
-                          variant='rounded'
-                          width={48}
-                          height={48}
-                          sx={{ bgcolor: alpha('#fff', 0.1), borderRadius: 2.5 }}
-                        />
-                        <Box flex={1}>
-                          <Skeleton
-                            variant='text'
-                            width='60%'
-                            height={24}
-                            sx={{ bgcolor: alpha('#fff', 0.1) }}
-                          />
-                        </Box>
-                      </Paper>
-                    ))}
-                  </Stack>
-                ) : (
-                  <AnimatePresence mode='wait'>
-                    <motion.div
-                      variants={containerVariants}
-                      initial='hidden'
-                      animate='visible'
+              {cataloguesLoading ? (
+                <Stack spacing={1.5}>
+                  {[1, 2, 3].map((i) => (
+                    <Paper
+                      key={i}
+                      sx={{
+                        p: 2,
+                        borderRadius: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        background: alpha(theme.palette.primary.main, 0.2),
+                      }}
                     >
-                      <Stack spacing={1.5}>
-                        {/* All Products Catalogue */}
-                        <motion.div variants={itemVariants}>
-                          <CatalogueCard
-                            elevation={0}
-                            onClick={() => router.push('/catalogues/all_products')}
+                      <Skeleton
+                        variant='rounded'
+                        width={48}
+                        height={48}
+                        sx={{ bgcolor: alpha('#fff', 0.1), borderRadius: 2.5 }}
+                      />
+                      <Box flex={1}>
+                        <Skeleton
+                          variant='text'
+                          width='60%'
+                          height={24}
+                          sx={{ bgcolor: alpha('#fff', 0.1) }}
+                        />
+                      </Box>
+                    </Paper>
+                  ))}
+                </Stack>
+              ) : (
+                <AnimatePresence mode='wait'>
+                  <motion.div
+                    variants={containerVariants}
+                    initial='hidden'
+                    animate='visible'
+                  >
+                    <Stack spacing={1.5}>
+                      {/* All Products Catalogue */}
+                      <motion.div variants={itemVariants}>
+                        <CatalogueCard
+                          elevation={0}
+                          onClick={() => router.push('/catalogues/all_products')}
+                          sx={{
+                            '&::before': { opacity: 1, background: theme.palette.secondary.main },
+                            borderColor: alpha(theme.palette.secondary.main, 0.3),
+                            bgcolor: alpha(theme.palette.secondary.main, theme.palette.mode === 'dark' ? 0.08 : 0.04),
+                          }}
+                        >
+                          <CatalogueIconWrapper
                             sx={{
-                              '&::before': { opacity: 1, background: theme.palette.secondary.main },
-                              borderColor: alpha(theme.palette.secondary.main, 0.3),
-                              bgcolor: alpha(theme.palette.secondary.main, theme.palette.mode === 'dark' ? 0.08 : 0.04),
+                              background: alpha(theme.palette.secondary.main, 0.12),
+                              border: `1px solid ${alpha(theme.palette.secondary.main, 0.25)}`,
                             }}
                           >
-                            <CatalogueIconWrapper
+                            <NewReleases
                               sx={{
-                                background: alpha(theme.palette.secondary.main, 0.12),
-                                border: `1px solid ${alpha(theme.palette.secondary.main, 0.25)}`,
+                                fontSize: { xs: '20px', sm: '24px' },
+                                color: 'secondary.main',
                               }}
-                            >
-                              <NewReleases
+                            />
+                          </CatalogueIconWrapper>
+                          <Box flex={1} minWidth={0}>
+                            <Box display='flex' alignItems='center' gap={1}>
+                              <Typography
+                                variant='body1'
+                                fontWeight='700'
+                                color='text.primary'
+                                noWrap
+                              >
+                                All Products
+                              </Typography>
+                              <Chip
+                                label='Latest'
+                                size='small'
+                                color='secondary'
+                                variant='outlined'
+                                sx={{ fontWeight: 600, height: '20px', fontSize: '0.65rem', flexShrink: 0 }}
+                              />
+                            </Box>
+                            <Typography variant='caption' color='text.secondary' noWrap>
+                              Browse all products across brands
+                            </Typography>
+                          </Box>
+                          <Box display='flex' gap={0.5} onClick={(e) => e.stopPropagation()} flexShrink={0}>
+                            <Tooltip title='Copy link' arrow>
+                              <CatalogueActionButton
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const url = `${window.location.origin}/catalogues/all_products`;
+                                  navigator.clipboard
+                                    .writeText(url)
+                                    .then(() => toast.success('All Products link copied!'))
+                                    .catch(() => toast.error('Failed to copy link'));
+                                }}
+                                size='small'
+                              >
+                                <ContentCopy sx={{ fontSize: '16px' }} />
+                              </CatalogueActionButton>
+                            </Tooltip>
+                            <Tooltip title='Open catalogue' arrow>
+                              <CatalogueActionButton
+                                onClick={() => router.push('/catalogues/all_products')}
+                                size='small'
+                              >
+                                <OpenInNew sx={{ fontSize: '16px' }} />
+                              </CatalogueActionButton>
+                            </Tooltip>
+                          </Box>
+                        </CatalogueCard>
+                      </motion.div>
+
+                      {/* Brand Catalogues */}
+                      {catalogues.map((b: any, index: number) => (
+                        <motion.div key={b._id || index} variants={itemVariants}>
+                          <CatalogueCard
+                            elevation={0}
+                            onClick={() => handleOpenCatalogue(b.image_url, b.name)}
+                          >
+                            <CatalogueIconWrapper>
+                              <PictureAsPdf
                                 sx={{
-                                  fontSize: { xs: '20px', sm: '24px' },
-                                  color: 'secondary.main',
+                                  fontSize: { xs: '20px', sm: '22px' },
+                                  color: 'primary.main',
                                 }}
                               />
                             </CatalogueIconWrapper>
                             <Box flex={1} minWidth={0}>
-                              <Box display='flex' alignItems='center' gap={1}>
-                                <Typography
-                                  variant='body1'
-                                  fontWeight='700'
-                                  color='text.primary'
-                                  noWrap
-                                >
-                                  All Products
-                                </Typography>
-                                <Chip
-                                  label='Latest'
-                                  size='small'
-                                  color='secondary'
-                                  variant='outlined'
-                                  sx={{ fontWeight: 600, height: '20px', fontSize: '0.65rem', flexShrink: 0 }}
-                                />
-                              </Box>
+                              <Typography
+                                variant='body1'
+                                fontWeight='600'
+                                color='text.primary'
+                                noWrap
+                              >
+                                {b.name}
+                              </Typography>
                               <Typography variant='caption' color='text.secondary' noWrap>
-                                Browse all products across brands
+                                Tap to view PDF catalogue
                               </Typography>
                             </Box>
                             <Box display='flex' gap={0.5} onClick={(e) => e.stopPropagation()} flexShrink={0}>
                               <Tooltip title='Copy link' arrow>
                                 <CatalogueActionButton
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const url = `${window.location.origin}/catalogues/all_products`;
-                                    navigator.clipboard
-                                      .writeText(url)
-                                      .then(() => toast.success('All Products link copied!'))
-                                      .catch(() => toast.error('Failed to copy link'));
-                                  }}
+                                  onClick={(e) => handleCopyLink(e, b.image_url, b.name)}
                                   size='small'
                                 >
                                   <ContentCopy sx={{ fontSize: '16px' }} />
@@ -832,7 +881,7 @@ const Home = () => {
                               </Tooltip>
                               <Tooltip title='Open catalogue' arrow>
                                 <CatalogueActionButton
-                                  onClick={() => router.push('/catalogues/all_products')}
+                                  onClick={() => handleOpenCatalogue(b.image_url, b.name)}
                                   size='small'
                                 >
                                   <OpenInNew sx={{ fontSize: '16px' }} />
@@ -841,60 +890,11 @@ const Home = () => {
                             </Box>
                           </CatalogueCard>
                         </motion.div>
-
-                        {/* Brand Catalogues */}
-                        {catalogues.map((b: any, index: number) => (
-                          <motion.div key={b._id || index} variants={itemVariants}>
-                            <CatalogueCard
-                              elevation={0}
-                              onClick={() => handleOpenCatalogue(b.image_url, b.name)}
-                            >
-                              <CatalogueIconWrapper>
-                                <PictureAsPdf
-                                  sx={{
-                                    fontSize: { xs: '20px', sm: '22px' },
-                                    color: 'primary.main',
-                                  }}
-                                />
-                              </CatalogueIconWrapper>
-                              <Box flex={1} minWidth={0}>
-                                <Typography
-                                  variant='body1'
-                                  fontWeight='600'
-                                  color='text.primary'
-                                  noWrap
-                                >
-                                  {b.name}
-                                </Typography>
-                                <Typography variant='caption' color='text.secondary' noWrap>
-                                  Tap to view PDF catalogue
-                                </Typography>
-                              </Box>
-                              <Box display='flex' gap={0.5} onClick={(e) => e.stopPropagation()} flexShrink={0}>
-                                <Tooltip title='Copy link' arrow>
-                                  <CatalogueActionButton
-                                    onClick={(e) => handleCopyLink(e, b.image_url, b.name)}
-                                    size='small'
-                                  >
-                                    <ContentCopy sx={{ fontSize: '16px' }} />
-                                  </CatalogueActionButton>
-                                </Tooltip>
-                                <Tooltip title='Open catalogue' arrow>
-                                  <CatalogueActionButton
-                                    onClick={() => handleOpenCatalogue(b.image_url, b.name)}
-                                    size='small'
-                                  >
-                                    <OpenInNew sx={{ fontSize: '16px' }} />
-                                  </CatalogueActionButton>
-                                </Tooltip>
-                              </Box>
-                            </CatalogueCard>
-                          </motion.div>
-                        ))}
-                      </Stack>
-                    </motion.div>
-                  </AnimatePresence>
-                )}
+                      ))}
+                    </Stack>
+                  </motion.div>
+                </AnimatePresence>
+              )}
             </Box>
           )}
         </motion.div>
