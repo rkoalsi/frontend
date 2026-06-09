@@ -46,6 +46,7 @@ import {
   TrendingUp,
   TrendingDown,
   TrendingFlat,
+  ReceiptLong,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
@@ -602,6 +603,19 @@ const AdminDashboard = () => {
         },
       ],
       icon: <MiscellaneousServices color='primary' />,
+    },
+    {
+      label: 'Expense Estimates',
+      route: 'expense_estimates',
+      value: 0,
+      subStats: [
+        {
+          label: 'Manage Expense Estimates',
+          value: 0,
+          color: 'info',
+        },
+      ],
+      icon: <ReceiptLong color='primary' />,
     },
     {
       label: 'Customer Management',

@@ -57,6 +57,7 @@ import {
   Security,
   DarkMode,
   LightMode,
+  ReceiptLong,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -95,6 +96,7 @@ const iconMap: { [key: string]: React.ReactElement } = {
   ManageAccounts: <ManageAccounts />,
   Chat: <Chat />,
   Security: <Security />,
+  ReceiptLong: <ReceiptLong />,
 };
 
 const AdminLayout = ({ children }: any) => {
