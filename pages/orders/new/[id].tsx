@@ -815,6 +815,9 @@ const NewOrder: React.FC = () => {
   const saveDraftLabel = isRetailerFlow
     ? (order?.estimate_created ? 'Update Order' : 'Submit Order')
     : 'Save As Draft';
+  const hasStockExceeded = selectedProducts.some(
+    (p) => (p.quantity || 1) > (p.stock ?? Infinity)
+  );
   const saveDraftDisabled =
     // For shared-link visitors customer is null (unauthenticated) — don't block them
     (!customer && !isShared) ||
@@ -822,7 +825,9 @@ const NewOrder: React.FC = () => {
     !shippingAddress ||
     selectedProducts.length === 0 ||
     loading ||
-    (!isShared && !['deleted', 'draft', 'sent'].includes(order?.status?.toLowerCase()));
+    (!isShared && !['deleted', 'draft', 'sent'].includes(order?.status?.toLowerCase())) ||
+    // Block saving when any product exceeds available stock
+    hasStockExceeded;
 
   // Floating cart bar: show on Products step when items are selected
   const showCartBar = activeStep === 3 && selectedProducts.length > 0;
@@ -1258,21 +1263,28 @@ const NewOrder: React.FC = () => {
               >
                 {/* Save as Draft / Submit Order — last step only */}
                 {activeStep === steps.length - 1 && (
-                  <NavButton
-                    variant='contained'
-                    color='secondary'
-                    fullWidth={isMobile}
-                    onClick={() => {
-                      if (isRetailerFlow) {
-                        setSubmitDialogOpen(true);
-                      } else {
-                        handleEnd('draft');
-                      }
-                    }}
-                    disabled={saveDraftDisabled}
+                  <Tooltip
+                    title={hasStockExceeded ? 'One or more products exceed available stock' : ''}
+                    arrow
                   >
-                    {loading ? <CircularProgress size={22} color='inherit' /> : saveDraftLabel}
-                  </NavButton>
+                    <span>
+                      <NavButton
+                        variant='contained'
+                        color='secondary'
+                        fullWidth={isMobile}
+                        onClick={() => {
+                          if (isRetailerFlow) {
+                            setSubmitDialogOpen(true);
+                          } else {
+                            handleEnd('draft');
+                          }
+                        }}
+                        disabled={saveDraftDisabled}
+                      >
+                        {loading ? <CircularProgress size={22} color='inherit' /> : saveDraftLabel}
+                      </NavButton>
+                    </span>
+                  </Tooltip>
                 )}
 
                 {/* Decline — admin only, last step */}
