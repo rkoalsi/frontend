@@ -7,6 +7,8 @@ import { useState, useEffect, useContext } from 'react';
 import { toast } from 'react-toastify';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import axiosInstance from '../../util/axios';
 import AuthContext from '../Auth';
 
@@ -19,6 +21,7 @@ function emptyExpenseItem(index: number) {
   return {
     sl_no: index + 1, date: '', expense_type: 'Travel', description: '', location_route: '',
     amount: '', bill_status: 'No Bill', bill_no: '', tax_gst: '', daily_allowance: '', da_date: '', remarks: '',
+    bill_url: '',
   };
 }
 
@@ -95,6 +98,7 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
   const [potentialSearch, setPotentialSearch] = useState<{ [idx: number]: string }>({});
   const [createNewPotential, setCreateNewPotential] = useState<{ [idx: number]: boolean }>({});
   const [newPotentialName, setNewPotentialName] = useState<{ [idx: number]: string }>({});
+  const [newPotentialData, setNewPotentialData] = useState<{ [idx: number]: { address?: string; tier?: string } }>({});
 
   useEffect(() => {
     // Pre-fill planned counts from visit entries
@@ -112,13 +116,12 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
     } catch { /* silent */ }
   };
 
-  const fetchPotentialCustomers = async (query: string) => {
-    if (!query || query.length < 2) return;
+  const fetchPotentialCustomers = async (query?: string) => {
     try {
-      const { data } = await axiosInstance.get(`/potential_customers`, { params: { created_by: user?._id } });
-      const list = Array.isArray(data) ? data : [];
-      setPotentialOptions(list.filter((p: any) => p.name?.toLowerCase().includes(query.toLowerCase())));
-    } catch { /* silent */ }
+      const params = query && query.length >= 2 ? { search: query } : {};
+      const { data } = await axiosInstance.get(`/potential_customers`, { params });
+      setPotentialOptions(Array.isArray(data) ? data : []);
+    } catch (err) { console.error('potential customers fetch failed', err); }
   };
 
   // ── Trip Info validation ───────────────────────────────────────────────────
@@ -140,8 +143,44 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
   };
 
   // ── Expense items helpers ─────────────────────────────────────────────────
-  const updateItem = (idx: number, key: string, val: any) =>
-    setExpenseItems(prev => prev.map((it, i) => i === idx ? { ...it, [key]: val } : it));
+  const [daWarnings, setDaWarnings] = useState<{ [idx: number]: string }>({});
+  const [uploadingBill, setUploadingBill] = useState<{ [idx: number]: boolean }>({});
+
+  const handleBillUpload = async (idx: number, file: File | undefined) => {
+    if (!file) return;
+    setUploadingBill(p => ({ ...p, [idx]: true }));
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const { data } = await axiosInstance.post('/expense-estimates/upload-bill', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      updateItem(idx, 'bill_url', data.url);
+    } catch {
+      toast.error('Bill upload failed');
+    } finally {
+      setUploadingBill(p => ({ ...p, [idx]: false }));
+    }
+  };
+
+  const updateItem = (idx: number, key: string, val: any) => {
+    setExpenseItems(prev => {
+      const updated = prev.map((it, i) => i === idx ? { ...it, [key]: val } : it);
+      // DA duplicate check
+      if (key === 'daily_allowance' || key === 'da_date') {
+        const item = updated[idx];
+        const daDate = key === 'da_date' ? val : item.da_date;
+        const daAmt = key === 'daily_allowance' ? val : item.daily_allowance;
+        if (daDate && parseFloat(daAmt) > 0) {
+          const conflict = updated.some((it, i) => i !== idx && it.da_date === daDate && parseFloat(it.daily_allowance || '0') > 0);
+          setDaWarnings(w => ({ ...w, [idx]: conflict ? `DA already claimed for ${daDate}` : '' }));
+        } else {
+          setDaWarnings(w => ({ ...w, [idx]: '' }));
+        }
+      }
+      return updated;
+    });
+  };
 
   const addItem = () => setExpenseItems(prev => [...prev, emptyExpenseItem(prev.length)]);
   const removeItem = (idx: number) => setExpenseItems(prev => prev.filter((_, i) => i !== idx));
@@ -160,16 +199,21 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
 
   const handleCustomerSelect = (idx: number, customer: any) => {
     if (!customer) return;
-    updateVisit(idx, 'customer_id', customer._id);
+    // Use Zoho contact_id so invoice lookups work; fall back to MongoDB _id
+    updateVisit(idx, 'customer_id', customer.contact_id || customer._id);
     updateVisit(idx, 'customer_name', customer.contact_name || customer.customer_name || customer.name || '');
     updateVisit(idx, 'city', customer.billing_address?.city || '');
-    // Store addresses for later selection
     updateVisit(idx, '_addresses', customer.addresses || []);
     updateVisit(idx, '_billingAddress', customer.billing_address || {});
   };
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
+    const activeDaWarnings = Object.values(daWarnings).some(w => !!w);
+    if (activeDaWarnings) {
+      toast.error('Please resolve duplicate Daily Allowance entries before submitting.');
+      return;
+    }
     setSubmitting(true);
     try {
       // Create any new potential customers inline
@@ -177,7 +221,8 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
         if (v.customer_type === 'potential' && createNewPotential[idx] && newPotentialName[idx]) {
           const { data } = await axiosInstance.post('/potential_customers', {
             name: newPotentialName[idx],
-            city: v.city,
+            address: newPotentialData[idx]?.address || v.city || '',
+            tier: newPotentialData[idx]?.tier || 'B',
             created_by: user?._id,
             status: 'New',
           });
@@ -357,20 +402,36 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
                       sx={{ gridColumn: 'span 2' }}
                     />
                     {createNewPotential[idx] ? (
-                      <TextField label="New Customer Name" size="small"
-                        value={newPotentialName[idx] || ''}
-                        onChange={e => setNewPotentialName(p => ({ ...p, [idx]: e.target.value }))} />
+                      <>
+                        <TextField label="Customer Name" size="small" required
+                          value={newPotentialName[idx] || ''}
+                          onChange={e => setNewPotentialName(p => ({ ...p, [idx]: e.target.value }))} />
+                        <TextField label="Address" size="small"
+                          value={(newPotentialData[idx]?.address) || ''}
+                          onChange={e => setNewPotentialData(p => ({ ...p, [idx]: { ...p[idx], address: e.target.value } }))} />
+                        <FormControl size="small">
+                          <InputLabel>Tier</InputLabel>
+                          <Select label="Tier" value={(newPotentialData[idx]?.tier) || 'B'}
+                            onChange={e => setNewPotentialData(p => ({ ...p, [idx]: { ...p[idx], tier: e.target.value } }))}>
+                            <MenuItem value="A">A</MenuItem>
+                            <MenuItem value="B">B</MenuItem>
+                            <MenuItem value="C">C</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </>
                     ) : (
                       <Autocomplete
                         size="small"
                         options={potentialOptions}
                         getOptionLabel={(o: any) => o.name || ''}
+                        filterOptions={(x) => x}
+                        onOpen={() => fetchPotentialCustomers()}
                         onInputChange={(_, v) => { setPotentialSearch(p => ({ ...p, [idx]: v })); fetchPotentialCustomers(v); }}
                         onChange={(_, v) => {
                           if (v) {
                             updateVisit(idx, 'potential_customer_id', v._id);
                             updateVisit(idx, 'potential_customer_name', v.name);
-                            updateVisit(idx, 'city', v.city || '');
+                            updateVisit(idx, 'city', v.address || '');
                           }
                         }}
                         renderInput={params => <TextField {...params} label="Search Potential Customer" />}
@@ -440,11 +501,45 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
                   value={item.tax_gst} onChange={e => updateItem(idx, 'tax_gst', e.target.value)} />
                 <TextField label="Daily Allowance (₹)" type="number" size="small"
                   value={item.daily_allowance} onChange={e => updateItem(idx, 'daily_allowance', e.target.value)}
-                  helperText="DA = ₹1500/day" />
+                  error={!!daWarnings[idx]}
+                  helperText={daWarnings[idx] || "DA = ₹1500/day"} />
                 <TextField label="DA Date" type="date" InputLabelProps={{ shrink: true }} size="small"
-                  value={item.da_date} onChange={e => updateItem(idx, 'da_date', e.target.value)} />
+                  value={item.da_date} onChange={e => updateItem(idx, 'da_date', e.target.value)}
+                  error={!!daWarnings[idx]}
+                  helperText={daWarnings[idx] || ''} />
                 <TextField label="Remarks" size="small"
                   value={item.remarks} onChange={e => updateItem(idx, 'remarks', e.target.value)} />
+                {item.bill_status === 'Bill Attached' && (
+                  <Box sx={{ gridColumn: { sm: 'span 3' }, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {item.bill_url ? (
+                      <>
+                        <Chip
+                          label="Bill uploaded"
+                          color="success"
+                          size="small"
+                          icon={<OpenInNewIcon />}
+                          component="a"
+                          href={item.bill_url}
+                          target="_blank"
+                          clickable
+                        />
+                        <Button size="small" color="error" onClick={() => updateItem(idx, 'bill_url', '')}>Remove</Button>
+                      </>
+                    ) : (
+                      <Button
+                        component="label"
+                        size="small"
+                        variant="outlined"
+                        startIcon={uploadingBill[idx] ? <CircularProgress size={14} /> : <UploadFileIcon />}
+                        disabled={!!uploadingBill[idx]}
+                      >
+                        {uploadingBill[idx] ? 'Uploading…' : 'Upload Bill'}
+                        <input type="file" hidden accept="image/jpeg,image/png,image/jpg,application/pdf"
+                          onChange={e => handleBillUpload(idx, e.target.files?.[0])} />
+                      </Button>
+                    )}
+                  </Box>
+                )}
               </Box>
             </Box>
           ))}

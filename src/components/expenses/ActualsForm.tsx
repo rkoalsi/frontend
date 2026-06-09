@@ -1,11 +1,13 @@
 import {
   Box, Button, Typography, TextField, MenuItem, Select, FormControl, InputLabel,
-  Stack, IconButton, Divider, CircularProgress, Alert,
+  Stack, IconButton, Divider, CircularProgress, Alert, Chip,
 } from '@mui/material';
 import { useState } from 'react';
 import { toast } from 'react-toastify';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import axiosInstance from '../../util/axios';
 
 const EXPENSE_TYPES = ['Travel', 'Stay', 'Other'];
@@ -15,7 +17,7 @@ function emptyActualItem(index: number) {
   return {
     sl_no: index + 1, date: '', expense_type: 'Travel', description: '', location_route: '',
     amount: '', bill_status: 'No Bill', bill_no: '', tax_gst: '', daily_allowance: '',
-    da_date: '', remarks: '', approved_amount: '',
+    da_date: '', remarks: '', approved_amount: '', bill_url: '',
   };
 }
 
@@ -37,6 +39,24 @@ export default function ActualsForm({ estimate, onSuccess }: Props) {
 
   const updateItem = (idx: number, key: string, val: any) =>
     setActualItems(prev => prev.map((it, i) => i === idx ? { ...it, [key]: val } : it));
+
+  const [uploadingBill, setUploadingBill] = useState<{ [idx: number]: boolean }>({});
+  const handleBillUpload = async (idx: number, file: File | undefined) => {
+    if (!file) return;
+    setUploadingBill(p => ({ ...p, [idx]: true }));
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const { data } = await axiosInstance.post('/expense-estimates/upload-bill', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      updateItem(idx, 'bill_url', data.url);
+    } catch {
+      toast.error('Bill upload failed');
+    } finally {
+      setUploadingBill(p => ({ ...p, [idx]: false }));
+    }
+  };
 
   const addItem = () => setActualItems(prev => [...prev, emptyActualItem(prev.length)]);
   const removeItem = (idx: number) => setActualItems(prev => prev.filter((_, i) => i !== idx));
@@ -114,6 +134,37 @@ export default function ActualsForm({ estimate, onSuccess }: Props) {
                 value={item.da_date} onChange={e => updateItem(idx, 'da_date', e.target.value)} />
               <TextField label="Remarks" size="small"
                 value={item.remarks} onChange={e => updateItem(idx, 'remarks', e.target.value)} />
+              {item.bill_status === 'Bill Attached' && (
+                <Box sx={{ gridColumn: { sm: 'span 3' }, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {item.bill_url ? (
+                    <>
+                      <Chip
+                        label="Bill uploaded"
+                        color="success"
+                        size="small"
+                        icon={<OpenInNewIcon />}
+                        component="a"
+                        href={item.bill_url}
+                        target="_blank"
+                        clickable
+                      />
+                      <Button size="small" color="error" onClick={() => updateItem(idx, 'bill_url', '')}>Remove</Button>
+                    </>
+                  ) : (
+                    <Button
+                      component="label"
+                      size="small"
+                      variant="outlined"
+                      startIcon={uploadingBill[idx] ? <CircularProgress size={14} /> : <UploadFileIcon />}
+                      disabled={!!uploadingBill[idx]}
+                    >
+                      {uploadingBill[idx] ? 'Uploading…' : 'Upload Bill'}
+                      <input type="file" hidden accept="image/jpeg,image/png,image/jpg,application/pdf"
+                        onChange={e => handleBillUpload(idx, e.target.files?.[0])} />
+                    </Button>
+                  )}
+                </Box>
+              )}
             </Box>
           </Box>
         ))}
