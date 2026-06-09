@@ -35,7 +35,7 @@ function emptyVisit() {
   };
 }
 
-const STEPS = ['Trip Information', 'Planned Customer Visits', 'Estimated Expenses'];
+const STEPS = ['Trip Info', 'Customer Visits', 'Expenses'];
 
 interface Props {
   onSuccess: () => void;
@@ -257,7 +257,7 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <Box>
-      <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
+      <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 3 }}>
         {STEPS.map(label => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
       </Stepper>
 
@@ -454,7 +454,7 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
             Add Visit
           </Button>
           <Divider />
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, maxWidth: 400 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
             <TextField label="Planned Existing Visits" type="number" size="small"
               value={plannedExisting} onChange={e => setPlannedExisting(e.target.value)} />
             <TextField label="Planned New/Prospect Visits" type="number" size="small"
@@ -474,7 +474,7 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
                   <IconButton size="small" color="error" onClick={() => removeItem(idx)}><DeleteIcon fontSize="small" /></IconButton>
                 )}
               </Stack>
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, gap: 1.5 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 1.5 }}>
                 <TextField label="Date" type="date" InputLabelProps={{ shrink: true }} size="small"
                   value={item.date} onChange={e => updateItem(idx, 'date', e.target.value)} />
                 <FormControl size="small">
@@ -489,12 +489,14 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
                     {BILL_STATUSES.map(b => <MenuItem key={b} value={b}>{b}</MenuItem>)}
                   </Select>
                 </FormControl>
-                <TextField label="Description / Particulars" size="small"
-                  value={item.description} onChange={e => updateItem(idx, 'description', e.target.value)} />
-                <TextField label="Location / Route" size="small"
-                  value={item.location_route} onChange={e => updateItem(idx, 'location_route', e.target.value)} />
                 <TextField label="Bill No." size="small"
                   value={item.bill_no} onChange={e => updateItem(idx, 'bill_no', e.target.value)} />
+                <TextField label="Description / Particulars" size="small"
+                  sx={{ gridColumn: 'span 2' }}
+                  value={item.description} onChange={e => updateItem(idx, 'description', e.target.value)} />
+                <TextField label="Location / Route" size="small"
+                  sx={{ gridColumn: 'span 2' }}
+                  value={item.location_route} onChange={e => updateItem(idx, 'location_route', e.target.value)} />
                 <TextField label="Amount (₹)" type="number" size="small"
                   value={item.amount} onChange={e => updateItem(idx, 'amount', e.target.value)} />
                 <TextField label="Tax / GST (₹)" type="number" size="small"
@@ -508,9 +510,10 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
                   error={!!daWarnings[idx]}
                   helperText={daWarnings[idx] || ''} />
                 <TextField label="Remarks" size="small"
+                  sx={{ gridColumn: 'span 2' }}
                   value={item.remarks} onChange={e => updateItem(idx, 'remarks', e.target.value)} />
                 {item.bill_status === 'Bill Attached' && (
-                  <Box sx={{ gridColumn: { sm: 'span 3' }, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ gridColumn: { xs: 'span 2', md: 'span 3' }, display: 'flex', alignItems: 'center', gap: 1 }}>
                     {item.bill_url ? (
                       <>
                         <Chip
@@ -547,7 +550,7 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
             Add Expense Item
           </Button>
           <Divider />
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 1 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr 1fr' }, gap: 1 }}>
             {[['Travel', estimatedTravel], ['Stay', estimatedStay], ['DA', estimatedDA], ['Total', estimatedTotal]].map(([label, val]) => (
               <Box key={String(label)} sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
                 <Typography variant="caption" color="text.secondary">{label}</Typography>
@@ -563,12 +566,19 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
       )}
 
       {/* Navigation */}
-      <Stack direction="row" justifyContent="space-between" sx={{ mt: 3 }}>
-        <Button onClick={() => setActiveStep(s => s - 1)} disabled={activeStep === 0}>Back</Button>
+      <Stack direction="row" justifyContent="space-between" gap={1} sx={{ mt: 3 }}>
+        <Button
+          onClick={() => setActiveStep(s => s - 1)}
+          disabled={activeStep === 0}
+          sx={{ minHeight: 44, px: 3 }}
+        >
+          Back
+        </Button>
         {activeStep < STEPS.length - 1 ? (
-          <Button variant="contained" onClick={handleNext}>Next</Button>
+          <Button variant="contained" onClick={handleNext} sx={{ minHeight: 44, px: 4, flex: 1 }}>Next</Button>
         ) : (
           <Button variant="contained" color="success" onClick={handleSubmit} disabled={submitting}
+            sx={{ minHeight: 44, px: 3, flex: 1 }}
             startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined}>
             Submit Estimate
           </Button>

@@ -2,8 +2,10 @@ import { useContext, useEffect, useState } from 'react';
 import {
   Box, Button, Typography, CircularProgress, Stack, Card, CardContent,
   Chip, Dialog, DialogTitle, DialogContent, Tooltip, Alert, Divider,
+  IconButton, useTheme, useMediaQuery,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import Header from '../../src/components/common/Header';
 import AuthContext from '../../src/components/Auth';
@@ -23,6 +25,8 @@ const fmtMoney = (v: any) =>
 
 export default function ExpensesPage() {
   const { user } = useContext(AuthContext) as any;
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [estimates, setEstimates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -61,9 +65,13 @@ export default function ExpensesPage() {
     setActualsOpen(true);
   };
 
-  const openDetail = (est: any) => {
+  const openDetail = async (est: any) => {
     setSelectedEstimate(est);
     setDrawerOpen(true);
+    try {
+      const { data } = await axiosInstance.get(`/expense-estimates/${est._id}`);
+      setSelectedEstimate(data);
+    } catch { /* keep stale data if refresh fails */ }
   };
 
   return (
@@ -158,9 +166,12 @@ export default function ExpensesPage() {
       )}
 
       {/* New estimate dialog */}
-      <Dialog open={newFormOpen} onClose={() => setNewFormOpen(false)} fullWidth maxWidth="md" scroll="paper">
-        <DialogTitle>New Expense Estimate</DialogTitle>
-        <DialogContent dividers>
+      <Dialog open={newFormOpen} onClose={() => setNewFormOpen(false)} fullWidth maxWidth="md" fullScreen={isMobile} scroll="paper">
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pr: 1 }}>
+          New Expense Estimate
+          <IconButton onClick={() => setNewFormOpen(false)} size="small" edge="end"><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: { xs: 1.5, sm: 3 } }}>
           <EstimateForm
             userInfo={user}
             onSuccess={() => { setNewFormOpen(false); fetchData(); }}
@@ -169,9 +180,12 @@ export default function ExpensesPage() {
       </Dialog>
 
       {/* Actuals dialog */}
-      <Dialog open={actualsOpen} onClose={() => setActualsOpen(false)} fullWidth maxWidth="md" scroll="paper">
-        <DialogTitle>Submit Actual Expenses</DialogTitle>
-        <DialogContent dividers>
+      <Dialog open={actualsOpen} onClose={() => setActualsOpen(false)} fullWidth maxWidth="md" fullScreen={isMobile} scroll="paper">
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pr: 1 }}>
+          Submit Actual Expenses
+          <IconButton onClick={() => setActualsOpen(false)} size="small" edge="end"><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: { xs: 1.5, sm: 3 } }}>
           {actualsEstimate && (
             <ActualsForm
               estimate={actualsEstimate}
