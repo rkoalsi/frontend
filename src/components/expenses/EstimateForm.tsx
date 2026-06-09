@@ -40,30 +40,36 @@ const STEPS = ['Trip Info', 'Customer Visits', 'Expenses'];
 interface Props {
   onSuccess: () => void;
   userInfo: any;
+  existingEstimate?: any;
 }
 
-export default function EstimateForm({ onSuccess, userInfo }: Props) {
+export default function EstimateForm({ onSuccess, userInfo, existingEstimate }: Props) {
   const { user } = useContext(AuthContext) as any;
+  const isEdit = !!existingEstimate;
   const [activeStep, setActiveStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [employeeInfoLoading, setEmployeeInfoLoading] = useState(true);
+  const [employeeInfoLoading, setEmployeeInfoLoading] = useState(!isEdit);
 
   // Step 1 — read-only fields fetched from backend
   const [employeeInfo, setEmployeeInfo] = useState({
-    name: '', employee_id: '', designation: '', department: '',
+    name: existingEstimate?.created_by_name || '',
+    employee_id: existingEstimate?.employee_id || '',
+    designation: existingEstimate?.designation || '',
+    department: existingEstimate?.department || '',
   });
   const [tripInfo, setTripInfo] = useState({
-    travel_start_date: '',
-    travel_end_date: '',
-    purpose_of_trip: '',
-    locations_visited: '',
-    mode_of_travel: 'Train',
-    reporting_manager: '',
-    current_location: '',
+    travel_start_date: existingEstimate?.travel_start_date || '',
+    travel_end_date: existingEstimate?.travel_end_date || '',
+    purpose_of_trip: existingEstimate?.purpose_of_trip || '',
+    locations_visited: existingEstimate?.locations_visited || '',
+    mode_of_travel: existingEstimate?.mode_of_travel || 'Train',
+    reporting_manager: existingEstimate?.reporting_manager || '',
+    current_location: existingEstimate?.current_location || '',
   });
   const [dateError, setDateError] = useState('');
 
   useEffect(() => {
+    if (isEdit) return;
     axiosInstance.get('/expense-estimates/employee-info')
       .then(({ data }) => {
         setEmployeeInfo({
@@ -83,19 +89,33 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
   }, []);
 
   // Step 2
-  const [expenseItems, setExpenseItems] = useState([emptyExpenseItem(0)]);
-  const [advanceRequested, setAdvanceRequested] = useState('');
+  const [expenseItems, setExpenseItems] = useState(
+    existingEstimate?.expense_items?.length ? existingEstimate.expense_items : [emptyExpenseItem(0)]
+  );
+  const [advanceRequested, setAdvanceRequested] = useState(String(existingEstimate?.advance_requested || ''));
 
   // Step 3
-  const [customerVisits, setCustomerVisits] = useState([emptyVisit()]);
+  const [customerVisits, setCustomerVisits] = useState(
+    existingEstimate?.customer_visits?.length ? existingEstimate.customer_visits : [emptyVisit()]
+  );
   const [plannedExisting, setPlannedExisting] = useState('');
   const [plannedNew, setPlannedNew] = useState('');
 
   // Customer search helpers
   const [customerOptions, setCustomerOptions] = useState<any[]>([]);
   const [potentialOptions, setPotentialOptions] = useState<any[]>([]);
-  const [customerSearch, setCustomerSearch] = useState<{ [idx: number]: string }>({});
-  const [potentialSearch, setPotentialSearch] = useState<{ [idx: number]: string }>({});
+  const [customerSearch, setCustomerSearch] = useState<{ [idx: number]: string }>(() => {
+    if (!existingEstimate?.customer_visits) return {};
+    return Object.fromEntries(
+      existingEstimate.customer_visits.map((v: any, i: number) => [i, v.customer_name || ''])
+    );
+  });
+  const [potentialSearch, setPotentialSearch] = useState<{ [idx: number]: string }>(() => {
+    if (!existingEstimate?.customer_visits) return {};
+    return Object.fromEntries(
+      existingEstimate.customer_visits.map((v: any, i: number) => [i, v.potential_customer_name || ''])
+    );
+  });
   const [createNewPotential, setCreateNewPotential] = useState<{ [idx: number]: boolean }>({});
   const [newPotentialName, setNewPotentialName] = useState<{ [idx: number]: string }>({});
   const [newPotentialData, setNewPotentialData] = useState<{ [idx: number]: { address?: string; tier?: string } }>({});
@@ -129,12 +149,14 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
     if (!tripInfo.travel_start_date || !tripInfo.travel_end_date) {
       toast.error('Travel dates are required'); return false;
     }
-    const start = new Date(tripInfo.travel_start_date + 'T00:00:00');
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const daysAhead = Math.floor((start.getTime() - today.getTime()) / 86400000);
-    if (daysAhead < 10) {
-      setDateError('Estimate must be submitted at least 10 days before travel start date.');
-      return false;
+    if (!isEdit) {
+      const start = new Date(tripInfo.travel_start_date + 'T00:00:00');
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const daysAhead = Math.floor((start.getTime() - today.getTime()) / 86400000);
+      if (daysAhead < 10) {
+        setDateError('Estimate must be submitted at least 10 days before travel start date.');
+        return false;
+      }
     }
     setDateError('');
     if (!tripInfo.purpose_of_trip) { toast.error('Purpose of trip is required'); return false; }
@@ -231,7 +253,7 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
         return v;
       }));
 
-      await axiosInstance.post('/expense-estimates', {
+      const payload = {
         ...employeeInfo,
         ...tripInfo,
         expense_items: expenseItems,
@@ -239,8 +261,14 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
         customer_visits: processedVisits,
         planned_existing_visits: parseInt(plannedExisting) || 0,
         planned_new_visits: parseInt(plannedNew) || 0,
-      });
-      toast.success('Expense estimate submitted!');
+      };
+      if (isEdit) {
+        await axiosInstance.put(`/expense-estimates/${existingEstimate._id}`, payload);
+        toast.success('Expense estimate updated!');
+      } else {
+        await axiosInstance.post('/expense-estimates', payload);
+        toast.success('Expense estimate submitted!');
+      }
       onSuccess();
     } catch (e: any) {
       toast.error(e?.response?.data?.detail || 'Submission failed');
@@ -580,7 +608,7 @@ export default function EstimateForm({ onSuccess, userInfo }: Props) {
           <Button variant="contained" color="success" onClick={handleSubmit} disabled={submitting}
             sx={{ minHeight: 44, px: 3, flex: 1 }}
             startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined}>
-            Submit Estimate
+            {isEdit ? 'Save Changes' : 'Submit Estimate'}
           </Button>
         )}
       </Stack>
