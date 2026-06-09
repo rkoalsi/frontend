@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
+import EditIcon from '@mui/icons-material/Edit';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import Header from '../../src/components/common/Header';
 import AuthContext from '../../src/components/Auth';
@@ -33,6 +34,8 @@ export default function ExpensesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [activeEstimate, setActiveEstimate] = useState<any>(null);
   const [newFormOpen, setNewFormOpen] = useState(false);
+  const [editFormOpen, setEditFormOpen] = useState(false);
+  const [editEstimate, setEditEstimate] = useState<any>(null);
   const [actualsOpen, setActualsOpen] = useState(false);
   const [actualsEstimate, setActualsEstimate] = useState<any>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -140,6 +143,15 @@ export default function ExpensesPage() {
                     </Typography>
                   </Box>
                 </Stack>
+                {est.status === 'Pending Review' && (
+                  <Box sx={{ mt: 1.5 }} onClick={e => e.stopPropagation()}>
+                    <Divider sx={{ mb: 1.5 }} />
+                    <Button variant="outlined" size="small" startIcon={<EditIcon />}
+                      onClick={() => { setEditEstimate(est); setEditFormOpen(true); }}>
+                      Edit Estimate
+                    </Button>
+                  </Box>
+                )}
                 {est.status === 'Draft' && (
                   <Box sx={{ mt: 1.5 }} onClick={e => e.stopPropagation()}>
                     <Divider sx={{ mb: 1.5 }} />
@@ -176,6 +188,23 @@ export default function ExpensesPage() {
             userInfo={user}
             onSuccess={() => { setNewFormOpen(false); fetchData(); }}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit estimate dialog */}
+      <Dialog open={editFormOpen} onClose={() => setEditFormOpen(false)} fullWidth maxWidth="md" fullScreen={isMobile} scroll="paper">
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pr: 1 }}>
+          Edit Expense Estimate
+          <IconButton onClick={() => setEditFormOpen(false)} size="small" edge="end"><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: { xs: 1.5, sm: 3 } }}>
+          {editEstimate && (
+            <EstimateForm
+              userInfo={user}
+              existingEstimate={editEstimate}
+              onSuccess={() => { setEditFormOpen(false); fetchData(); }}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
