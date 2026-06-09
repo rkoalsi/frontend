@@ -47,6 +47,7 @@ import {
   TrendingDown,
   TrendingFlat,
   BarChart,
+  ReceiptLong,
 } from '@mui/icons-material';
 import axiosInstance from '../src/util/axios';
 import axios from 'axios';
@@ -271,6 +272,12 @@ const menuSections = [
         text: 'Greythr Login',
         color: '#10b981',
         action: 'check_in',
+      },
+      {
+        icon: <ReceiptLong />,
+        text: 'Expense Estimates',
+        color: '#f97316',
+        action: 'expenses',
       },
     ],
   },
@@ -509,6 +516,9 @@ const Home = () => {
         break;
       case 'dailyVisits':
         router.push('/daily_visits');
+        break;
+      case 'expenses':
+        router.push('/expenses');
         break;
       case 'hooks':
         router.push('/hooks');
