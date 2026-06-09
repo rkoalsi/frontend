@@ -3,6 +3,7 @@ import {
   Box, Typography, Stack, Button, CircularProgress, TextField,
   Table, TableHead, TableRow, TableCell, TableBody, TablePagination,
   FormControl, InputLabel, Select, MenuItem, Autocomplete,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import Header from '../../src/components/common/Header';
 import AuthContext from '../../src/components/Auth';
@@ -11,6 +12,7 @@ import { toast } from 'react-toastify';
 import StatusChip from '../../src/components/expenses/statusChip';
 import EstimateDetailDrawer from '../../src/components/expenses/EstimateDetailDrawer';
 import DownloadIcon from '@mui/icons-material/Download';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const ALL_STATUSES = ['Pending Review', 'Pending Second Review', 'Pending Payment', 'Draft', 'Submitted', 'Completed', 'Rejected'];
 const PAGE_SIZE = 20;
@@ -33,6 +35,8 @@ export default function AdminExpenseEstimates() {
   const [salespersonFilter, setSalespersonFilter] = useState<any>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedEstimate, setSelectedEstimate] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchSalespeople = async () => {
     try {
@@ -63,6 +67,21 @@ export default function AdminExpenseEstimates() {
   useEffect(() => { fetchData(0); setPage(0); }, [statusFilter, salespersonFilter, startDate, endDate]);
   useEffect(() => { fetchData(page); }, [page]);
 
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await axiosInstance.delete(`/admin/expense-estimates/${deleteTarget._id}`);
+      toast.success('Estimate deleted');
+      setDeleteTarget(null);
+      fetchData(page);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Delete failed');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleDownload = async (est: any, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -78,9 +97,13 @@ export default function AdminExpenseEstimates() {
     }
   };
 
-  const openDetail = (est: any) => {
+  const openDetail = async (est: any) => {
     setSelectedEstimate(est);
     setDrawerOpen(true);
+    try {
+      const { data } = await axiosInstance.get(`/admin/expense-estimates/${est._id}`);
+      setSelectedEstimate(data);
+    } catch { /* keep stale data if refresh fails */ }
   };
 
   return (
@@ -152,14 +175,25 @@ export default function AdminExpenseEstimates() {
                   <TableCell><StatusChip status={est.status} /></TableCell>
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>{fmt(est.created_at)}</TableCell>
                   <TableCell onClick={e => e.stopPropagation()}>
-                    <Button
-                      size="small"
-                      startIcon={<DownloadIcon />}
-                      onClick={e => handleDownload(est, e)}
-                      variant="outlined"
-                    >
-                      Report
-                    </Button>
+                    <Stack direction="row" gap={0.5}>
+                      <Button
+                        size="small"
+                        startIcon={<DownloadIcon />}
+                        onClick={e => handleDownload(est, e)}
+                        variant="outlined"
+                      >
+                        Report
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        startIcon={<DeleteIcon />}
+                        onClick={e => { e.stopPropagation(); setDeleteTarget(est); }}
+                        variant="outlined"
+                      >
+                        Delete
+                      </Button>
+                    </Stack>
                   </TableCell>
                 </TableRow>
               ))}
@@ -184,6 +218,22 @@ export default function AdminExpenseEstimates() {
         isAdmin={true}
         adminEmail={user?.email}
       />
+
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete Expense Estimate?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            This will permanently delete the expense estimate for <strong>{deleteTarget?.created_by_name}</strong> (trip on {deleteTarget?.travel_start_date?.slice(0, 10) ?? '—'}). This cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={handleDelete} disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={14} color="inherit" /> : <DeleteIcon />}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

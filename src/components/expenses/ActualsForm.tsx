@@ -103,7 +103,7 @@ export default function ActualsForm({ estimate, onSuccess }: Props) {
                 <IconButton size="small" color="error" onClick={() => removeItem(idx)}><DeleteIcon fontSize="small" /></IconButton>
               )}
             </Stack>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, gap: 1.5 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 1.5 }}>
               <TextField label="Date" type="date" InputLabelProps={{ shrink: true }} size="small"
                 value={item.date} onChange={e => updateItem(idx, 'date', e.target.value)} />
               <FormControl size="small">
@@ -118,12 +118,14 @@ export default function ActualsForm({ estimate, onSuccess }: Props) {
                   {BILL_STATUSES.map(b => <MenuItem key={b} value={b}>{b}</MenuItem>)}
                 </Select>
               </FormControl>
-              <TextField label="Description" size="small"
-                value={item.description} onChange={e => updateItem(idx, 'description', e.target.value)} />
-              <TextField label="Location / Route" size="small"
-                value={item.location_route} onChange={e => updateItem(idx, 'location_route', e.target.value)} />
               <TextField label="Bill No." size="small"
                 value={item.bill_no} onChange={e => updateItem(idx, 'bill_no', e.target.value)} />
+              <TextField label="Description" size="small"
+                sx={{ gridColumn: 'span 2' }}
+                value={item.description} onChange={e => updateItem(idx, 'description', e.target.value)} />
+              <TextField label="Location / Route" size="small"
+                sx={{ gridColumn: 'span 2' }}
+                value={item.location_route} onChange={e => updateItem(idx, 'location_route', e.target.value)} />
               <TextField label="Amount (₹)" type="number" size="small"
                 value={item.amount} onChange={e => updateItem(idx, 'amount', e.target.value)} />
               <TextField label="Tax / GST (₹)" type="number" size="small"
@@ -133,9 +135,10 @@ export default function ActualsForm({ estimate, onSuccess }: Props) {
               <TextField label="DA Date" type="date" InputLabelProps={{ shrink: true }} size="small"
                 value={item.da_date} onChange={e => updateItem(idx, 'da_date', e.target.value)} />
               <TextField label="Remarks" size="small"
+                sx={{ gridColumn: 'span 2' }}
                 value={item.remarks} onChange={e => updateItem(idx, 'remarks', e.target.value)} />
               {item.bill_status === 'Bill Attached' && (
-                <Box sx={{ gridColumn: { sm: 'span 3' }, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ gridColumn: { xs: 'span 2', md: 'span 3' }, display: 'flex', alignItems: 'center', gap: 1 }}>
                   {item.bill_url ? (
                     <>
                       <Chip
@@ -174,7 +177,7 @@ export default function ActualsForm({ estimate, onSuccess }: Props) {
       </Stack>
 
       <Divider sx={{ my: 2 }} />
-      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 1, mb: 3 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr 1fr' }, gap: 1, mb: 3 }}>
         {[['Travel', actualTravel], ['Stay', actualStay], ['DA', actualDA], ['Total', actualTotal]].map(([label, val]) => (
           <Box key={String(label)} sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
             <Typography variant="caption" color="text.secondary">{label}</Typography>
@@ -184,7 +187,7 @@ export default function ActualsForm({ estimate, onSuccess }: Props) {
       </Box>
 
       <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>Visit Actuals</Typography>
-      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2, maxWidth: 400 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
         <TextField label="Actual Existing Visits" type="number" size="small"
           value={actualExisting} onChange={e => setActualExisting(e.target.value)} />
         <TextField label="Actual New/Prospect Visits" type="number" size="small"
@@ -216,6 +219,7 @@ export default function ActualsForm({ estimate, onSuccess }: Props) {
 
       <Stack direction="row" justifyContent="flex-end" sx={{ mt: 3 }}>
         <Button variant="contained" color="success" onClick={handleSubmit} disabled={submitting}
+          sx={{ minHeight: 44, px: 3 }}
           startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined}>
           Submit Actual Expenses
         </Button>
