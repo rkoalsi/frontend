@@ -171,7 +171,11 @@ export default function EstimateDetailDrawer({ open, estimate, onClose, onRefres
                 <TableCell sx={{ fontSize: 11 }}>{item.description}</TableCell>
                 <TableCell sx={{ fontSize: 11 }}>{item.location_route}</TableCell>
                 <TableCell sx={{ fontSize: 11 }}>{fmtMoney(item.amount)}</TableCell>
-                <TableCell sx={{ fontSize: 11 }}>{item.bill_status || '—'}</TableCell>
+                <TableCell sx={{ fontSize: 11 }}>
+                  {item.bill_url
+                    ? <a href={item.bill_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11 }}>View Bill</a>
+                    : item.bill_status || '—'}
+                </TableCell>
                 <TableCell sx={{ fontSize: 11 }}>{fmtMoney(item.tax_gst)}</TableCell>
                 <TableCell sx={{ fontSize: 11 }}>{fmtMoney((parseFloat(item.amount || 0) + parseFloat(item.tax_gst || 0)))}</TableCell>
                 <TableCell sx={{ fontSize: 11 }}>{fmtMoney(item.daily_allowance)}</TableCell>
