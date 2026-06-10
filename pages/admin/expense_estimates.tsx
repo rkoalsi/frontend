@@ -3,8 +3,9 @@ import {
   Box, Typography, Stack, Button, CircularProgress, TextField,
   Table, TableHead, TableRow, TableCell, TableBody, TablePagination,
   FormControl, InputLabel, Select, MenuItem, Autocomplete,
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  Dialog, DialogTitle, DialogContent, DialogActions, Tooltip,
 } from '@mui/material';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import Header from '../../src/components/common/Header';
 import AuthContext from '../../src/components/Auth';
 import axiosInstance from '../../src/util/axios';
@@ -15,6 +16,15 @@ import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 const ALL_STATUSES = ['Pending Review', 'Pending Second Review', 'Pending Payment', 'Draft', 'Submitted', 'Completed', 'Rejected'];
+
+function getComments(est: any): { label: string; text: string }[] {
+  const out = [];
+  if (est.rahul_remarks) out.push({ label: 'Rahul', text: est.rahul_remarks });
+  if (est.amit_remarks) out.push({ label: 'Amit', text: est.amit_remarks });
+  if (est.yogesh_remarks) out.push({ label: 'Yogesh', text: est.yogesh_remarks });
+  if (est.rejection_reason) out.push({ label: 'Rejected', text: est.rejection_reason });
+  return out;
+}
 const PAGE_SIZE = 20;
 
 const fmt = (d: string | null | undefined) =>
@@ -172,7 +182,19 @@ export default function AdminExpenseEstimates() {
                   </TableCell>
                   <TableCell>{fmtMoney(est.estimated_total)}</TableCell>
                   <TableCell>{fmtMoney(est.advance_requested)}</TableCell>
-                  <TableCell><StatusChip status={est.status} /></TableCell>
+                  <TableCell>
+                    <StatusChip status={est.status} />
+                    {getComments(est).map(c => (
+                      <Tooltip key={c.label} title={c.text} arrow placement="right">
+                        <Stack direction="row" gap={0.5} alignItems="center" sx={{ mt: 0.5, cursor: 'default' }}>
+                          <ChatBubbleOutlineIcon sx={{ fontSize: 12, color: 'text.disabled' }} />
+                          <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 140 }}>
+                            <strong>{c.label}:</strong> {c.text}
+                          </Typography>
+                        </Stack>
+                      </Tooltip>
+                    ))}
+                  </TableCell>
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>{fmt(est.created_at)}</TableCell>
                   <TableCell onClick={e => e.stopPropagation()}>
                     <Stack direction="row" gap={0.5}>
