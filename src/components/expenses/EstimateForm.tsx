@@ -277,8 +277,46 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate }: 
     }
   };
 
+  // ── Customer visits validation ─────────────────────────────────────────────
+  const validateCustomerVisits = () => {
+    for (let i = 0; i < customerVisits.length; i++) {
+      const v = customerVisits[i];
+      const n = i + 1;
+      if (v.customer_type === 'existing') {
+        if (!v.customer_id) {
+          toast.error(`Visit #${n}: please select a customer`);
+          return false;
+        }
+      } else {
+        // potential
+        const isCreatingNew = !!createNewPotential[i];
+        if (isCreatingNew) {
+          if (!newPotentialName[i]?.trim()) {
+            toast.error(`Visit #${n}: customer name is required`);
+            return false;
+          }
+          if (!(newPotentialData[i]?.address)?.trim()) {
+            toast.error(`Visit #${n}: address is required for a new potential customer`);
+            return false;
+          }
+        } else {
+          if (!v.potential_customer_id) {
+            toast.error(`Visit #${n}: please select or create a potential customer`);
+            return false;
+          }
+        }
+      }
+      if (!v.city?.trim()) {
+        toast.error(`Visit #${n}: city is required`);
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleNext = () => {
     if (activeStep === 0 && !validateTripInfo()) return;
+    if (activeStep === 1 && !validateCustomerVisits()) return;
     setActiveStep(s => s + 1);
   };
 
@@ -434,9 +472,12 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate }: 
                         <TextField label="Customer Name" size="small" required
                           value={newPotentialName[idx] || ''}
                           onChange={e => setNewPotentialName(p => ({ ...p, [idx]: e.target.value }))} />
-                        <TextField label="Address" size="small"
+                        <TextField label="Address / City" size="small"
                           value={(newPotentialData[idx]?.address) || ''}
-                          onChange={e => setNewPotentialData(p => ({ ...p, [idx]: { ...p[idx], address: e.target.value } }))} />
+                          onChange={e => {
+                            setNewPotentialData(p => ({ ...p, [idx]: { ...p[idx], address: e.target.value } }));
+                            updateVisit(idx, 'city', e.target.value);
+                          }} />
                         <FormControl size="small">
                           <InputLabel>Tier</InputLabel>
                           <Select label="Tier" value={(newPotentialData[idx]?.tier) || 'B'}
