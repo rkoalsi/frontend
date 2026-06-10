@@ -53,7 +53,7 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate }: 
   // Step 1 — read-only fields fetched from backend
   const [employeeInfo, setEmployeeInfo] = useState({
     name: existingEstimate?.created_by_name || '',
-    employee_id: existingEstimate?.employee_id || '',
+    employee_number: existingEstimate?.employee_number || '',
     designation: existingEstimate?.designation || '',
     department: existingEstimate?.department || '',
   });
@@ -74,7 +74,7 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate }: 
       .then(({ data }) => {
         setEmployeeInfo({
           name: data.name || '',
-          employee_id: data.employee_id || '',
+          employee_number: data.employee_number || '',
           designation: data.designation || '',
           department: data.department || '',
         });
@@ -337,7 +337,7 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate }: 
               <Typography variant="subtitle2" color="text.secondary">Employee Details (read-only)</Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
                 <TextField label="Employee Name" value={employeeInfo.name} size="small" InputProps={{ readOnly: true }} />
-                <TextField label="Employee ID" value={employeeInfo.employee_id} size="small" InputProps={{ readOnly: true }} />
+                <TextField label="Employee ID" value={employeeInfo.employee_number} size="small" InputProps={{ readOnly: true }} />
                 <TextField label="Designation" value={employeeInfo.designation} size="small" InputProps={{ readOnly: true }} />
                 <TextField label="Department" value={employeeInfo.department} size="small" InputProps={{ readOnly: true }} />
                 <TextField
