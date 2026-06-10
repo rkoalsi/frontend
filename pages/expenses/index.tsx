@@ -19,6 +19,15 @@ import StatusChip from '../../src/components/expenses/statusChip';
 
 const PAGE_SIZE = 10;
 
+function getComments(est: any): { label: string; text: string }[] {
+  const out = [];
+  if (est.rahul_remarks) out.push({ label: 'Rahul', text: est.rahul_remarks });
+  if (est.amit_remarks) out.push({ label: 'Amit', text: est.amit_remarks });
+  if (est.yogesh_remarks) out.push({ label: 'Yogesh', text: est.yogesh_remarks });
+  if (est.rejection_reason) out.push({ label: 'Rejected', text: est.rejection_reason });
+  return out;
+}
+
 const fmt = (d: string | null | undefined) =>
   d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 const fmtMoney = (v: any) =>
@@ -131,9 +140,13 @@ export default function ExpensesPage() {
                       {fmt(est.travel_start_date)} → {fmt(est.travel_end_date)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">{est.locations_visited}</Typography>
-                    {est.rejection_reason && (
-                      <Typography variant="caption" color="error">Rejected: {est.rejection_reason}</Typography>
-                    )}
+                    {getComments(est).map(c => (
+                      <Stack key={c.label} direction="row" gap={0.5} alignItems="flex-start" sx={{ mt: 0.25 }}>
+                        <Typography variant="caption" color={c.label === 'Rejected' ? 'error' : 'text.secondary'}>
+                          <strong>{c.label}:</strong> {c.text}
+                        </Typography>
+                      </Stack>
+                    ))}
                   </Box>
                   <Box sx={{ textAlign: { sm: 'right' } }}>
                     <Typography variant="body2" color="text.secondary">Estimated Total</Typography>
