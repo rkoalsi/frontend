@@ -12,6 +12,7 @@ import {
   useTheme,
   Tooltip,
   Chip,
+  Badge,
 } from "@mui/material";
 import {
   ViewModule,
@@ -32,6 +33,7 @@ interface CatalogueToolbarProps {
   onViewDensityChange: (density: ViewDensity) => void;
   onToggleFilters?: () => void;
   showFilterButton?: boolean;
+  activeFilterCount?: number;
 }
 
 const CatalogueToolbar: React.FC<CatalogueToolbarProps> = ({
@@ -42,6 +44,7 @@ const CatalogueToolbar: React.FC<CatalogueToolbarProps> = ({
   onViewDensityChange,
   onToggleFilters,
   showFilterButton = false,
+  activeFilterCount = 0,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -74,19 +77,26 @@ const CatalogueToolbar: React.FC<CatalogueToolbarProps> = ({
       {/* Left — count + filter toggle */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
         {showFilterButton && onToggleFilters && (
-          <IconButton
-            onClick={onToggleFilters}
+          <Badge
+            badgeContent={activeFilterCount}
             color="primary"
-            size="small"
-            sx={{
-              display: { xs: 'flex', md: 'none' },
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 1.5,
-            }}
+            overlap="circular"
+            sx={{ display: { xs: 'inline-flex', md: 'none' } }}
           >
-            <FilterList fontSize="small" />
-          </IconButton>
+            <IconButton
+              onClick={onToggleFilters}
+              color="primary"
+              size="small"
+              aria-label="open filters"
+              sx={{
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1.5,
+              }}
+            >
+              <FilterList fontSize="small" />
+            </IconButton>
+          </Badge>
         )}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.82rem' }}>

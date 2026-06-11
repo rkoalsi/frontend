@@ -122,6 +122,8 @@ function ImageCarousel(props: Props) {
           src={mediaItems[currentImageIndex].url}
           alt={`${product.name} - Image ${currentImageIndex + 1}`}
           loading="lazy"
+          decoding="async"
+          draggable={false}
           sx={{
             width: '100%',
             height: '100%',
@@ -141,6 +143,7 @@ function ImageCarousel(props: Props) {
           component='video'
           src={mediaItems[currentImageIndex]?.url}
           controls
+          preload='metadata'
           sx={{
             width: '100%',
             height: '100%',

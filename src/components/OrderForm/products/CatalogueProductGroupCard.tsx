@@ -194,6 +194,15 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
         {/* Image Section with Overlay */}
         <Box
           onClick={() => onQuickView(currentVariant, products)}
+          role="button"
+          tabIndex={0}
+          aria-label={`Quick view ${currentVariant.name}`}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onQuickView(currentVariant, products);
+            }
+          }}
           sx={{
             position: "relative",
             bgcolor: 'background.paper',
@@ -201,6 +210,11 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
             width: '100%',
             overflow: 'hidden',
             cursor: 'pointer',
+            '&:focus-visible': {
+              outline: '2px solid',
+              outlineColor: 'primary.main',
+              outlineOffset: '-2px',
+            },
           }}
         >
           {/* Badge & Variants Count */}

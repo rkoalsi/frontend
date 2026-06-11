@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Box,
   Divider,
@@ -9,6 +9,10 @@ import {
   Button,
   IconButton,
   Tooltip,
+  CircularProgress,
+  Fade,
+  useScrollTrigger,
+  Alert,
 } from '@mui/material';
 import {
   Edit,
@@ -16,7 +20,6 @@ import {
   LocationOn,
   ShoppingCart,
   ArrowUpward,
-  ArrowDownward,
   Close,
   LocalOffer,
 } from '@mui/icons-material';
@@ -24,7 +27,7 @@ import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import QuantitySelector from './QuantitySelector';
 import { toast } from 'react-toastify';
-import axios from 'axios';
+import axiosInstance from '../../util/axios';
 import ImagePopupDialog from '../common/ImagePopUp';
 import ImageCarousel from './products/ImageCarousel';
 
@@ -169,14 +172,15 @@ const Review: React.FC<Props> = React.memo((props) => {
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc]: any = useState([]);
   const [popupImageIndex, setPopupImageIndex] = useState(0);
-  const pageTopRef = useRef<HTMLDivElement>(null);
-  const pageBottomRef = useRef<HTMLDivElement>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const showScrollTop = useScrollTrigger({ disableHysteresis: true, threshold: 600 });
 
   // ── PDF Download ────────────────────────────────────────────────
   const downloadAsPDF = async () => {
+    setPdfLoading(true);
     try {
-      const resp = await axios.get(
-        `${process.env.api_url}/orders/download_pdf/${order._id}`,
+      const resp = await axiosInstance.get(
+        `/orders/download_pdf/${order._id}`,
         { responseType: 'blob' }
       );
       if (resp.data.type !== 'application/pdf') {
@@ -201,28 +205,32 @@ const Review: React.FC<Props> = React.memo((props) => {
     } catch (error: any) {
       console.error('Error downloading PDF:', error);
       toast.error(error.message || 'Failed to download PDF');
+    } finally {
+      setPdfLoading(false);
     }
   };
 
   // ── Handlers ───────────────────────────────────────────────────
   const handleQuantityChange = useCallback(
     (id: string, newQuantity: number) => {
-      setSelectedProducts(
-        products.map((p) =>
+      setSelectedProducts((prev: any[]) =>
+        prev.map((p) =>
           p._id === id
-            ? { ...p, quantity: Math.max(1, Math.min(newQuantity, p.stock)) }
+            ? // stock can be missing on legacy products — without the fallback
+              // Math.min(qty, undefined) yields NaN and corrupts the totals
+              { ...p, quantity: Math.max(1, Math.min(newQuantity, p.stock ?? Infinity)) }
             : p
         )
       );
     },
-    [products, setSelectedProducts]
+    [setSelectedProducts]
   );
 
   const handleRemoveProduct = useCallback(
     (id: string) => {
-      setSelectedProducts(products.filter((p) => p._id !== id));
+      setSelectedProducts((prev: any[]) => prev.filter((p) => p._id !== id));
     },
-    [products, setSelectedProducts]
+    [setSelectedProducts]
   );
 
   const handleImageClick = useCallback((srcList: any, index: number) => {
@@ -240,13 +248,13 @@ const Review: React.FC<Props> = React.memo((props) => {
   const calculatePrices = useCallback(
     (product: any) => {
       const productId = product._id;
-      const marginPercent = specialMargins[productId]
-        ? parseInt(specialMargins[productId].replace('%', ''))
-        : parseInt(customer?.cf_margin?.replace('%', '') || '40');
+      let marginPercent = specialMargins[productId]
+        ? parseInt(specialMargins[productId].replace('%', ''), 10)
+        : parseInt(customer?.cf_margin?.replace('%', '') || '40', 10);
+      if (Number.isNaN(marginPercent)) marginPercent = 40; // malformed margin string
       const margin = marginPercent / 100;
-      const sellingPrice = parseFloat(
-        (product.rate - product.rate * margin).toFixed(2)
-      );
+      const rate = parseFloat(product.rate) || 0;
+      const sellingPrice = parseFloat((rate - rate * margin).toFixed(2));
       const quantity = product.quantity || 1;
       const itemTotal = (quantity * sellingPrice).toFixed(2);
       return { sellingPrice, itemTotal, marginPercent };
@@ -258,17 +266,53 @@ const Review: React.FC<Props> = React.memo((props) => {
   // so customer can be null. The component already uses optional chaining throughout
   // so it renders gracefully with null customer — only block non-shared flows.
   if (!customer && !isShared) {
-    return <Typography>This is content for Review</Typography>;
+    return (
+      <Box
+        sx={{
+          py: 6,
+          px: 3,
+          textAlign: 'center',
+          borderRadius: 3,
+          border: `2px dashed ${theme.palette.divider}`,
+        }}
+      >
+        <Person sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
+        <Typography variant='h6' color='text.secondary' mb={0.5}>
+          No customer selected
+        </Typography>
+        <Typography variant='body2' color='text.disabled' mb={2}>
+          Select a customer before reviewing the order.
+        </Typography>
+        <Button
+          variant='outlined'
+          onClick={() => setActiveStep(0)}
+          sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 24 }}
+        >
+          Select Customer
+        </Button>
+      </Box>
+    );
   }
 
   const isOrderLocked =
     order?.status?.toLowerCase()?.includes('accepted') ||
     order?.status?.toLowerCase()?.includes('declined');
 
+  // Aggregate everything blocking submission so it's visible as a banner
+  // (the disabled submit button's tooltip is easy to miss on touch devices)
+  const reviewIssues: string[] = [];
+  if (!isShared) {
+    if (!billingAddress) reviewIssues.push('No billing address selected');
+    if (!shippingAddress) reviewIssues.push('No shipping address selected');
+  }
+  products.forEach((p) => {
+    if ((p.quantity || 1) > (p.stock ?? Infinity)) {
+      reviewIssues.push(`${p.name} exceeds available stock (${p.stock} available)`);
+    }
+  });
+
   return (
     <Box sx={{ p: { xs: 0, sm: 1 }, width: '100%', position: 'relative' }}>
-      <div ref={pageTopRef} />
-
       {/* ── Header ── */}
       <Box
         display='flex'
@@ -292,12 +336,13 @@ const Review: React.FC<Props> = React.memo((props) => {
             ₹{totals.totalAmount.toLocaleString('en-IN')} total
           </Typography>
         </Box>
-        {isCustomerRole && !isShared && (
+        {!isShared && (
           <Button
             variant='contained'
             color='primary'
             onClick={downloadAsPDF}
-            disabled={!order?.estimate_created}
+            disabled={!order?.estimate_created || pdfLoading}
+            startIcon={pdfLoading ? <CircularProgress size={16} color='inherit' /> : undefined}
             sx={{
               textTransform: 'none',
               fontWeight: 700,
@@ -307,10 +352,60 @@ const Review: React.FC<Props> = React.memo((props) => {
               alignSelf: { xs: 'stretch', sm: 'auto' },
             }}
           >
-            {!order?.estimate_created ? 'Submit Order to Create Estimate' : 'Download Estimate'}
+            {!order?.estimate_created
+              ? 'Submit Order to Create Estimate'
+              : pdfLoading
+                ? 'Preparing PDF…'
+                : 'Download Estimate'}
           </Button>
         )}
       </Box>
+
+      {/* ── Submission blockers ── */}
+      {reviewIssues.length > 0 && (
+        <Alert severity='warning' sx={{ mb: 2, borderRadius: 2 }}>
+          <Typography variant='body2' fontWeight={700} mb={0.5}>
+            Resolve before submitting:
+          </Typography>
+          <Box component='ul' sx={{ m: 0, pl: 2.5 }}>
+            {reviewIssues.map((issue) => (
+              <Typography key={issue} component='li' variant='body2'>
+                {issue}
+              </Typography>
+            ))}
+          </Box>
+        </Alert>
+      )}
+
+      {/* ── Compact summary (mobile only — grand total above the fold) ── */}
+      {products.length > 0 && (
+        <Paper
+          elevation={0}
+          sx={{
+            display: { xs: 'flex', sm: 'none' },
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            p: 1.5,
+            mb: 2,
+            borderRadius: 2,
+            border: `1.5px solid ${primaryColor}30`,
+            bgcolor: isDark ? `${primaryColor}10` : `${primaryColor}06`,
+          }}
+        >
+          <Box>
+            <Typography variant='caption' color='text.secondary' display='block'>
+              {products.length} item{products.length !== 1 ? 's' : ''} · GST ₹
+              {totals.totalGST.toFixed(2)}
+            </Typography>
+            <Typography variant='caption' color='text.disabled'>
+              Grand Total
+            </Typography>
+          </Box>
+          <Typography fontWeight={800} color='primary.main' sx={{ fontSize: '1.25rem' }}>
+            ₹{totals.totalAmount.toLocaleString('en-IN')}
+          </Typography>
+        </Paper>
+      )}
 
       {/* ── Customer Information ── */}
       <Paper
@@ -745,7 +840,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                     >
                       <QuantitySelector
                         quantity={product.quantity || 1}
-                        max={product.stock}
+                        max={product.stock ?? Infinity}
                         onChange={(newQty) =>
                           handleQuantityChange(productId, newQty)
                         }
@@ -837,7 +932,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                 variant='caption'
                 color='text.disabled'
               >
-                ({customer?.cf_in_ex || 'Exclusive'})
+                ({customer?.cf_in_ex || order?.gst_type || 'Exclusive'})
               </Typography>
             </Typography>
             <Typography variant='body2' fontWeight={600} color='text.primary'>
@@ -861,8 +956,6 @@ const Review: React.FC<Props> = React.memo((props) => {
         </Paper>
       )}
 
-      <div ref={pageBottomRef} />
-
       <ImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}
@@ -871,67 +964,41 @@ const Review: React.FC<Props> = React.memo((props) => {
         setIndex={(newIndex: number) => setPopupImageIndex(newIndex)}
       />
 
-      {/* ── Scroll navigation ── */}
-      <Box
-        sx={{
-          position: 'fixed',
-          bottom: { xs: theme.spacing(14), sm: theme.spacing(10), md: theme.spacing(5) },
-          right: { xs: theme.spacing(1.5), sm: theme.spacing(2.5), md: theme.spacing(2) },
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 1,
-          zIndex: 1000,
-        }}
-      >
-        <IconButton
-          onClick={() =>
-            pageTopRef.current?.scrollIntoView({ behavior: 'smooth' })
-          }
-          size={isMobile ? 'medium' : 'large'}
+      {/* ── Back to top — appears only after scrolling down ── */}
+      <Fade in={showScrollTop}>
+        <Box
           sx={{
-            bgcolor: isDark
-              ? 'rgba(124,111,205,0.85)'
-              : 'rgba(42,74,107,0.85)',
-            color: 'white',
-            width: { xs: 40, sm: 48 },
-            height: { xs: 40, sm: 48 },
-            boxShadow: 4,
-            backdropFilter: 'blur(8px)',
-            '&:hover': {
-              bgcolor: 'primary.main',
-              boxShadow: 6,
-              transform: 'scale(1.08)',
-            },
-            transition: 'all 0.2s ease',
+            position: 'fixed',
+            bottom: { xs: theme.spacing(14), sm: theme.spacing(10), md: theme.spacing(5) },
+            right: { xs: theme.spacing(1.5), sm: theme.spacing(2.5), md: theme.spacing(2) },
+            zIndex: 1000,
           }}
         >
-          <ArrowUpward fontSize='small' />
-        </IconButton>
-        <IconButton
-          onClick={() =>
-            pageBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-          }
-          size={isMobile ? 'medium' : 'large'}
-          sx={{
-            bgcolor: isDark
-              ? 'rgba(124,111,205,0.85)'
-              : 'rgba(42,74,107,0.85)',
-            color: 'white',
-            width: { xs: 40, sm: 48 },
-            height: { xs: 40, sm: 48 },
-            boxShadow: 4,
-            backdropFilter: 'blur(8px)',
-            '&:hover': {
-              bgcolor: 'primary.main',
-              boxShadow: 6,
-              transform: 'scale(1.08)',
-            },
-            transition: 'all 0.2s ease',
-          }}
-        >
-          <ArrowDownward fontSize='small' />
-        </IconButton>
-      </Box>
+          <IconButton
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            aria-label='scroll back to top'
+            size={isMobile ? 'medium' : 'large'}
+            sx={{
+              bgcolor: isDark
+                ? 'rgba(124,111,205,0.85)'
+                : 'rgba(42,74,107,0.85)',
+              color: 'white',
+              width: { xs: 40, sm: 48 },
+              height: { xs: 40, sm: 48 },
+              boxShadow: 4,
+              backdropFilter: 'blur(8px)',
+              '&:hover': {
+                bgcolor: 'primary.main',
+                boxShadow: 6,
+                transform: 'scale(1.08)',
+              },
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <ArrowUpward fontSize='small' />
+          </IconButton>
+        </Box>
+      </Fade>
     </Box>
   );
 });
