@@ -296,9 +296,18 @@ const NewOrder: React.FC = () => {
         const taxPercentage = product?.item_tax_preferences?.[0]?.tax_percentage || 0;
         const rate = parseFloat(product.rate.toString()) || 0;
         const quantity = parseInt(product.quantity?.toString() || '1', 10) || 1;
-        const margin = specialMargins[product._id]
-          ? parseInt(specialMargins[product._id].replace('%', ''), 10) / 100
-          : parseInt(customer?.cf_margin?.replace('%', '') || '40', 10) / 100;
+        // Margin precedence: live special margin → live customer margin →
+        // customer margin embedded on the order (what shared-link visitors
+        // rely on) → margin stored on the order line when added → 40% default.
+        const marginStr =
+          specialMargins[product._id] ||
+          customer?.cf_margin ||
+          order?.customer_margin ||
+          product.margin ||
+          '40%';
+        let marginPct = parseInt(String(marginStr).replace('%', ''), 10);
+        if (Number.isNaN(marginPct)) marginPct = 40;
+        const margin = marginPct / 100;
         const sellingPrice = rate - rate * margin;
         let gstAmount = 0;
         let total = 0;
@@ -445,6 +454,18 @@ const NewOrder: React.FC = () => {
       if (orderData.billing_address) setBillingAddress(orderData.billing_address);
       if (orderData.shipping_address) setShippingAddress(orderData.shipping_address);
       if (orderData.spreadsheet_created) setLink(orderData.spreadsheet_url);
+
+      // Seed special margins from the order itself — this is what shared-link
+      // visitors price with; authenticated users get the same data refreshed
+      // by the customer effect once the customer loads.
+      if (
+        orderData.special_margins &&
+        Object.keys(orderData.special_margins).length > 0
+      ) {
+        setSpecialMargins((prev) =>
+          Object.keys(prev).length > 0 ? prev : orderData.special_margins
+        );
+      }
 
       if (batchRes && orderData.products && orderData.products.length > 0) {
         const productMap: Record<string, any> = batchRes.data.products || {};

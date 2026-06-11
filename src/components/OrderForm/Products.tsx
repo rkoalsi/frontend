@@ -592,11 +592,18 @@ const Products: React.FC<ProductsProps> = ({
         marginPercent = parseInt(specialMargins[product._id].replace("%", ""));
       } else if (customer?.cf_margin) {
         marginPercent = parseInt(customer.cf_margin.replace("%", ""));
+      } else if (order?.customer_margin) {
+        // Customer margin embedded on the order by the backend — used by
+        // unauthenticated shared-link visitors (no customer object)
+        marginPercent = parseInt(String(order.customer_margin).replace("%", ""));
+      } else if ((product as any).margin) {
+        // Margin stored on the order line when added — last-resort fallback
+        marginPercent = parseInt(String((product as any).margin).replace("%", ""));
       }
       const margin = isNaN(marginPercent) ? 0.4 : marginPercent / 100;
       return parseFloat((product.rate - product.rate * margin).toFixed(2));
     },
-    [specialMargins, customer?.cf_margin]
+    [specialMargins, customer?.cf_margin, order?.customer_margin]
   );
 
   // ------------------ API Calls ------------------
@@ -1032,7 +1039,7 @@ const Products: React.FC<ProductsProps> = ({
             ...product,
             margin: specialMargins[productId]
               ? specialMargins[productId]
-              : customer?.cf_margin || "40%",
+              : customer?.cf_margin || order?.customer_margin || "40%",
             quantity,
             added_by: isShared ? "customer" : user?.role || 'sales_person',
           },
@@ -1062,6 +1069,7 @@ const Products: React.FC<ProductsProps> = ({
       temporaryQuantities,
       specialMargins,
       customer,
+      order?.customer_margin,
       debouncedSuccess,
       debouncedWarn,
     ]

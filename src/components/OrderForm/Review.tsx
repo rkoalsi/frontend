@@ -248,9 +248,16 @@ const Review: React.FC<Props> = React.memo((props) => {
   const calculatePrices = useCallback(
     (product: any) => {
       const productId = product._id;
-      let marginPercent = specialMargins[productId]
-        ? parseInt(specialMargins[productId].replace('%', ''), 10)
-        : parseInt(customer?.cf_margin?.replace('%', '') || '40', 10);
+      // Same precedence as the page totals: live margins first, then the
+      // customer margin embedded on the order (shared links), then the margin
+      // stored on the order line
+      const marginStr =
+        specialMargins[productId] ||
+        customer?.cf_margin ||
+        order?.customer_margin ||
+        product.margin ||
+        '40%';
+      let marginPercent = parseInt(String(marginStr).replace('%', ''), 10);
       if (Number.isNaN(marginPercent)) marginPercent = 40; // malformed margin string
       const margin = marginPercent / 100;
       const rate = parseFloat(product.rate) || 0;
