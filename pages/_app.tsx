@@ -11,6 +11,7 @@ import { AuthProvider } from '../src/components/Auth';
 import Layout from '../src/components/Layout';
 import AdminLayout from '../src/components/AdminLayout';
 import CustomerLayout from '../src/components/CustomerLayout';
+import ErrorBoundary from '../src/components/ErrorBoundary';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import 'react-quill/dist/quill.snow.css';
@@ -167,7 +168,9 @@ export default function MyApp(props: AppProps) {
             <ThemeWrapper>
               <ToastContainer position='top-left' autoClose={1000} />
               <LayoutComponent>
-                <Component {...pageProps} />
+                <ErrorBoundary key={router.pathname}>
+                  <Component {...pageProps} />
+                </ErrorBoundary>
               </LayoutComponent>
             </ThemeWrapper>
           </AuthProvider>

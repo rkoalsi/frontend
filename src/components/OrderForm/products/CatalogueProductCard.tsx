@@ -48,6 +48,14 @@ const CatalogueProductCard: React.FC<CatalogueProductCardProps> = memo(
     return (
       <Card
         onClick={() => !isOutOfStock && onQuickView(product)}
+        role={isOutOfStock ? undefined : 'button'}
+        tabIndex={isOutOfStock ? undefined : 0}
+        onKeyDown={(e) => {
+          if (!isOutOfStock && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            onQuickView(product);
+          }
+        }}
         sx={{
           display: "flex",
           flexDirection: "column",
@@ -62,6 +70,11 @@ const CatalogueProductCard: React.FC<CatalogueProductCardProps> = memo(
           position: 'relative',
           cursor: isOutOfStock ? 'default' : 'pointer',
           opacity: isOutOfStock ? 0.72 : 1,
+          '&:focus-visible': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+            outlineOffset: '2px',
+          },
           '&:hover': isOutOfStock ? {} : {
             boxShadow: 8,
             transform: 'translateY(-6px)',

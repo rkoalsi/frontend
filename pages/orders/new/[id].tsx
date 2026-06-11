@@ -89,12 +89,35 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Helper to update order data
-const updateOrderData = async (id: string, data: any) => {
+// Helper to update order data. Returns true on success so callers can avoid
+// advancing the wizard when a save silently failed. `silent` suppresses the
+// failure toast for background auto-saves.
+const updateOrderData = async (
+  id: string,
+  data: any,
+  options: { silent?: boolean } = {}
+): Promise<boolean> => {
   try {
     await api.put(`/orders/${id}`, data);
+    return true;
   } catch (error) {
     console.error('Error updating order:', error);
+    if (!options.silent) {
+      toast.error('Failed to save order changes. Please check your connection and try again.');
+    }
+    return false;
+  }
+};
+
+// Clipboard write with feedback on failure (clipboard API needs HTTPS / permission)
+const copyToClipboard = async (text: string): Promise<boolean> => {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (error) {
+    console.error('Clipboard write failed:', error);
+    toast.error('Could not copy to clipboard.');
+    return false;
   }
 };
 
@@ -139,7 +162,7 @@ const NewOrder: React.FC = () => {
   const { id, shared } = router.query;
   const isShared = shared === 'true';
   const { user }: any = useContext(AuthContext);
-  const isAdmin = user?.role.includes('admin');
+  const isAdmin = user?.role?.includes('admin');
   const isCustomerUser = user?.role === 'customer';
   const canViewMargins =
     !isCustomerUser &&
@@ -160,9 +183,7 @@ const NewOrder: React.FC = () => {
   const [open, setOpen] = useState<boolean>(false);
   const [error, setError] = useState<any>(null);
   const [sort, setSort] = useState<string>('default');
-  const [link, setLink] = useState(
-    order?.spreadsheet_created ? order?.spreadsheet_url : ''
-  );
+  const [link, setLink] = useState(''); // populated by getOrder once the order loads
   const [linkCopied, setLinkCopied] = useState<boolean>(false);
   const [specialMargins, setSpecialMargins] = useState<{ [key: string]: string }>({});
   const [specialMarginsList, setSpecialMarginsList] = useState<any[]>([]);
@@ -191,6 +212,27 @@ const NewOrder: React.FC = () => {
 
   // Submit confirmation dialog (for shared/customer users)
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+
+  // Auto-save indicator — wraps updateOrderData so the UI can show
+  // "Saving… / All changes saved / Save failed" near the stepper.
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const saveStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveOrder = useCallback(
+    async (data: any, options: { silent?: boolean } = {}) => {
+      if (saveStatusTimer.current) clearTimeout(saveStatusTimer.current);
+      setSaveStatus('saving');
+      const ok = await updateOrderData(id as string, data, options);
+      setSaveStatus(ok ? 'saved' : 'error');
+      if (ok) {
+        saveStatusTimer.current = setTimeout(() => setSaveStatus('idle'), 2500);
+      }
+      return ok;
+    },
+    [id]
+  );
+  useEffect(() => () => {
+    if (saveStatusTimer.current) clearTimeout(saveStatusTimer.current);
+  }, []);
 
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
@@ -298,27 +340,33 @@ const NewOrder: React.FC = () => {
       prev.totalAmount === debTotals.totalAmount &&
       prevSig === quantitySig
     ) return;
-    updateOrderData(id as string, {
-      products: debProducts,
-      total_gst: parseFloat(debTotals.totalGST.toFixed(2)),
-      total_amount: parseFloat(debTotals.totalAmount.toFixed(2)),
-    });
+    saveOrder(
+      {
+        products: debProducts,
+        total_gst: parseFloat(debTotals.totalGST.toFixed(2)),
+        total_amount: parseFloat(debTotals.totalAmount.toFixed(2)),
+      },
+      { silent: true } // background auto-save — don't toast on every retry
+    );
     lastUpdateDataRef.current = {
       length: debProducts.length,
       totalAmount: debTotals.totalAmount,
       quantitySig,
     };
-  }, [debouncedData, id]);
+  }, [debouncedData, saveOrder]);
 
   // ------------------ Update Addresses ---------------------
   useEffect(() => {
     if (billingAddress || shippingAddress) {
-      updateOrderData(id as string, {
-        billing_address: billingAddress,
-        shipping_address: shippingAddress,
-      });
+      saveOrder(
+        {
+          billing_address: billingAddress,
+          shipping_address: shippingAddress,
+        },
+        { silent: true }
+      );
     }
-  }, [billingAddress, shippingAddress, id]);
+  }, [billingAddress, shippingAddress, saveOrder]);
 
   // ------------------ Validate and Collect Data per Step ---------------------
   const validateAndCollectData = useCallback(
@@ -447,13 +495,13 @@ const NewOrder: React.FC = () => {
               const defaultAddress = customerData.addresses[0];
               setBillingAddress(defaultAddress);
               setShippingAddress(defaultAddress);
-              await updateOrderData(id as string, {
+              await saveOrder({
                 customer_id: customerData._id,
                 billing_address: defaultAddress,
                 shipping_address: defaultAddress,
               });
             } else {
-              await updateOrderData(id as string, { customer_id: customerData._id });
+              await saveOrder({ customer_id: customerData._id });
             }
             setActiveStep(1);
           }
@@ -463,7 +511,7 @@ const NewOrder: React.FC = () => {
       }
     };
     fetchCustomerForUser();
-  }, [isCustomerUser, userCustomerId, user, customer, id]);
+  }, [isCustomerUser, userCustomerId, user, customer, id, saveOrder]);
 
   useEffect(() => {
     if (isCustomerUser && !isShared && activeStep === 0) setActiveStep(1);
@@ -485,20 +533,22 @@ const NewOrder: React.FC = () => {
       setOpen(true);
       return;
     }
-    await updateOrderData(id as string, body);
+    const saved = await saveOrder(body);
+    if (!saved) return; // don't advance when the save failed
     setActiveStep((prev) => Math.min(prev + 1, STEP_HELP.length - 1));
-  }, [activeStep, id, validateAndCollectData]);
+  }, [activeStep, saveOrder, validateAndCollectData]);
 
   const handleEnd = useCallback(
     async (status = 'draft', notify_sp = false) => {
       setLoading(true);
+      let finalised = false;
       try {
         const resp = await api.post('/orders/finalise', { order_id: id, status });
         if (resp.status === 200) {
+          finalised = resp.data.status === 'success';
           await getOrder();
-          toast[resp.data.status === 'success' ? 'success' : 'error'](resp.data.message);
+          toast[finalised ? 'success' : 'error'](resp.data.message);
         }
-        if (notify_sp) await api.post('/orders/notify', { order_id: id });
       } catch (error: any) {
         console.error(error);
         const errorMessage =
@@ -509,11 +559,20 @@ const NewOrder: React.FC = () => {
       } finally {
         setLoading(false);
       }
+      // Notify separately — a notification failure must not read as a failed order
+      if (finalised && notify_sp) {
+        try {
+          await api.post('/orders/notify', { order_id: id });
+        } catch (error) {
+          console.error('Error notifying sales person:', error);
+          toast.warn('Order submitted, but the sales person notification could not be sent.');
+        }
+      }
     },
     [id, getOrder]
   );
 
-  const generateSharedLink = useCallback(() => {
+  const generateSharedLink = useCallback(async () => {
     const baseURL = window.location.origin;
     const params = new URLSearchParams();
     params.set('shared', 'true');
@@ -528,8 +587,7 @@ const NewOrder: React.FC = () => {
       if (currentCategory) params.set('category', currentCategory);
     }
     const link = `${baseURL}/orders/new/${id}?${params.toString()}`;
-    navigator.clipboard.writeText(link);
-    setLinkCopied(true);
+    if (await copyToClipboard(link)) setLinkCopied(true);
   }, [id]);
 
   const handleStepClick = useCallback(
@@ -556,20 +614,22 @@ const NewOrder: React.FC = () => {
         setActiveStep(index);
         return;
       }
-      const { message, body } = validateAndCollectData(activeStep);
-      if (message) {
-        toast.error(message);
-        return;
+      // Validate every step between the current one and the target so a
+      // forward jump (e.g. Customer → Review) can't skip required data.
+      let mergedBody: any = {};
+      for (let step = activeStep; step < index; step++) {
+        const { message, body } = validateAndCollectData(step);
+        if (message) {
+          toast.error(message);
+          if (step !== activeStep) setActiveStep(step); // land on the first incomplete step
+          return;
+        }
+        mergedBody = { ...mergedBody, ...body };
       }
-      try {
-        await updateOrderData(id as string, body);
-        setActiveStep(index);
-      } catch (error) {
-        console.error('Error updating order:', error);
-        toast.error('Failed to update order. Please try again.');
-      }
+      const saved = await saveOrder(mergedBody);
+      if (saved) setActiveStep(index);
     },
-    [activeStep, isShared, selectedProducts, validateAndCollectData, id, isCustomerUser]
+    [activeStep, isShared, selectedProducts, validateAndCollectData, saveOrder, isCustomerUser]
   );
 
   const handleClose = useCallback((reason: any) => {
@@ -603,7 +663,7 @@ const NewOrder: React.FC = () => {
                   const defaultAddress = value.addresses[0];
                   setBillingAddress(defaultAddress);
                   setShippingAddress(defaultAddress);
-                  await updateOrderData(id as string, {
+                  await saveOrder({
                     customer_id: value._id,
                     billing_address: defaultAddress,
                     shipping_address: defaultAddress,
@@ -611,7 +671,7 @@ const NewOrder: React.FC = () => {
                 } else {
                   setBillingAddress(null);
                   setShippingAddress(null);
-                  await updateOrderData(id as string, { customer_id: value?._id });
+                  await saveOrder({ customer_id: value?._id });
                 }
               }}
               value={customer}
@@ -638,21 +698,54 @@ const NewOrder: React.FC = () => {
             />
           );
           break;
-        case 2:
+        case 2: {
+          const sameAsBilling =
+            !!billingAddress &&
+            !!shippingAddress &&
+            (billingAddress.address_id && shippingAddress.address_id
+              ? billingAddress.address_id === shippingAddress.address_id
+              : JSON.stringify(billingAddress) === JSON.stringify(shippingAddress));
           component = isShared ? null : (
-            <Address
-              type='Shipping'
-              id={id as string}
-              address={shippingAddress}
-              setAddress={setShippingAddress}
-              selectedAddress={shippingAddress}
-              customer={customer}
-              setLoading={setLoading}
-              addressDetails={addressDetails}
-              addNewAddress={false}
-            />
+            <Box>
+              {billingAddress && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                  {sameAsBilling ? (
+                    <Chip
+                      icon={<CheckCircle sx={{ fontSize: 16 }} />}
+                      label='Same as billing address'
+                      color='success'
+                      variant='outlined'
+                      size='small'
+                      sx={{ fontWeight: 600 }}
+                    />
+                  ) : (
+                    <Button
+                      size='small'
+                      variant='outlined'
+                      startIcon={<ContentCopy sx={{ fontSize: 16 }} />}
+                      onClick={() => setShippingAddress(billingAddress)}
+                      sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 24 }}
+                    >
+                      Use billing address
+                    </Button>
+                  )}
+                </Box>
+              )}
+              <Address
+                type='Shipping'
+                id={id as string}
+                address={shippingAddress}
+                setAddress={setShippingAddress}
+                selectedAddress={shippingAddress}
+                customer={customer}
+                setLoading={setLoading}
+                addressDetails={addressDetails}
+                addNewAddress={false}
+              />
+            </Box>
           );
           break;
+        }
         case 3:
           component = (
             <Products
@@ -703,16 +796,32 @@ const NewOrder: React.FC = () => {
     id,
     referenceNumber,
     addressDetails,
+    saveOrder,
   ]);
 
-  const handleCopyEstimate = () => {
-    if (order?.estimate_number) navigator.clipboard.writeText(order.estimate_number);
+  // Per-step context shown under the stepper labels once a step has data
+  const addressCaption = (addr: any) =>
+    addr ? [addr.city, addr.state].filter(Boolean).join(', ') || addr.address || '' : '';
+  const stepCaptions: string[] = [
+    customer ? customer.company_name || customer.contact_name || '' : '',
+    addressCaption(billingAddress),
+    addressCaption(shippingAddress),
+    selectedProducts.length
+      ? `${selectedProducts.length} item${selectedProducts.length !== 1 ? 's' : ''} · ₹${totals.totalAmount.toLocaleString('en-IN')}`
+      : '',
+    '',
+  ];
+
+  const handleCopyEstimate = async () => {
+    if (order?.estimate_number && (await copyToClipboard(order.estimate_number))) {
+      toast.success('Estimate number copied');
+    }
   };
 
   const updateCart = async () => {
     setLoading(true);
     try {
-      await axios.get(`${process.env.api_url}/orders/update_cart`, {
+      await api.get('/orders/update_cart', {
         params: { order_id: order._id },
       });
       await getOrder();
@@ -728,10 +837,9 @@ const NewOrder: React.FC = () => {
   const handleDownload = async () => {
     setLoading(true);
     try {
-      const { data = {} } = await axios.get(
-        `${process.env.api_url}/orders/download_order_form`,
-        { params: { customer_id: customer._id, order_id: order._id, sort } }
-      );
+      const { data = {} } = await api.get('/orders/download_order_form', {
+        params: { customer_id: customer._id, order_id: order._id, sort },
+      });
       const { google_sheet_url = '', cart_products_added = 0 } = data;
       setLink(google_sheet_url);
       if (cart_products_added > 0) {
@@ -752,13 +860,10 @@ const NewOrder: React.FC = () => {
   const handleDownloadXlsx = async () => {
     setXlsxLoading(true);
     try {
-      const response = await axios.get(
-        `${process.env.api_url}/orders/download_order_xlsx`,
-        {
-          params: { customer_id: customer._id, order_id: order._id, sort },
-          responseType: 'arraybuffer',
-        }
-      );
+      const response = await api.get('/orders/download_order_xlsx', {
+        params: { customer_id: customer._id, order_id: order._id, sort },
+        responseType: 'arraybuffer',
+      });
       const blob = new Blob([response.data], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
@@ -781,11 +886,10 @@ const NewOrder: React.FC = () => {
   const handleRecreateSheet = async () => {
     setLoading(true);
     try {
-      await axios.delete(`${process.env.api_url}/orders/clear_sheet/${order._id}`);
-      const { data = {} } = await axios.get(
-        `${process.env.api_url}/orders/download_order_form`,
-        { params: { customer_id: customer._id, order_id: order._id, sort } }
-      );
+      await api.delete(`/orders/clear_sheet/${order._id}`);
+      const { data = {} } = await api.get('/orders/download_order_form', {
+        params: { customer_id: customer._id, order_id: order._id, sort },
+      });
       const { google_sheet_url = '' } = data;
       setLink(google_sheet_url);
       await getOrder();
@@ -818,19 +922,27 @@ const NewOrder: React.FC = () => {
   const hasStockExceeded = selectedProducts.some(
     (p) => (p.quantity || 1) > (p.stock ?? Infinity)
   );
-  const saveDraftDisabled =
-    // For shared-link visitors customer is null (unauthenticated) — don't block them
-    (!customer && !isShared) ||
-    !billingAddress ||
-    !shippingAddress ||
-    selectedProducts.length === 0 ||
-    loading ||
-    (!isShared && !['deleted', 'draft', 'sent'].includes(order?.status?.toLowerCase())) ||
-    // Block saving when any product exceeds available stock
-    hasStockExceeded;
+  // Collect every reason the submit button is blocked so the tooltip can say
+  // exactly what's missing instead of leaving a silently disabled button.
+  const saveDraftBlockers: string[] = [];
+  // For shared-link visitors customer is null (unauthenticated) — don't block them
+  if (!customer && !isShared) saveDraftBlockers.push('No customer selected');
+  if (!billingAddress) saveDraftBlockers.push('No billing address selected');
+  if (!shippingAddress) saveDraftBlockers.push('No shipping address selected');
+  if (selectedProducts.length === 0) saveDraftBlockers.push('No products added');
+  if (!isShared && order?.status && !['deleted', 'draft', 'sent'].includes(order.status.toLowerCase())) {
+    saveDraftBlockers.push(`Order is already ${order.status.toLowerCase()}`);
+  }
+  if (hasStockExceeded) saveDraftBlockers.push('One or more products exceed available stock');
+  const saveDraftDisabled = saveDraftBlockers.length > 0 || loading;
 
   // Floating cart bar: show on Products step when items are selected
   const showCartBar = activeStep === 3 && selectedProducts.length > 0;
+
+  // On phones the inline nav buttons sit below a long step card, so for the
+  // Customer/Billing/Shipping steps show a fixed Previous/Next bar instead.
+  // Products (cart bar) and Review (multiple action buttons) keep inline nav.
+  const showMobileNavBar = isMobile && activeStep < 3;
 
   return (
     <Box
@@ -842,8 +954,12 @@ const NewOrder: React.FC = () => {
         gap: { xs: 1.5, sm: 2, md: 3 },
         width: '100%',
         maxWidth: '100%',
-        // Extra bottom padding when cart bar is visible so content isn't hidden behind it
-        paddingBottom: showCartBar ? { xs: '80px', sm: '88px', md: '96px', lg: '96px' } : undefined,
+        // Extra bottom padding when a fixed bottom bar (cart or nav) is visible
+        paddingBottom: showCartBar
+          ? { xs: '80px', sm: '88px', md: '96px', lg: '96px' }
+          : showMobileNavBar
+            ? '80px'
+            : undefined,
       }}
     >
       {/* ── Back navigation (not shown on shared/customer links) ── */}
@@ -1114,6 +1230,40 @@ const NewOrder: React.FC = () => {
           }}
         >
           <CardContent sx={{ padding: { xs: 1.5, sm: 2.5, md: 3.5 }, overflow: 'visible' }}>
+            {/* Auto-save status */}
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                minHeight: 18,
+                mb: 0.5,
+                gap: 0.5,
+              }}
+            >
+              {saveStatus === 'saving' && (
+                <>
+                  <CircularProgress size={11} thickness={5} />
+                  <Typography variant='caption' color='text.secondary' sx={{ fontSize: '0.68rem' }}>
+                    Saving…
+                  </Typography>
+                </>
+              )}
+              {saveStatus === 'saved' && (
+                <>
+                  <CheckCircle sx={{ fontSize: 13, color: 'success.main' }} />
+                  <Typography variant='caption' sx={{ fontSize: '0.68rem', color: 'success.main' }}>
+                    All changes saved
+                  </Typography>
+                </>
+              )}
+              {saveStatus === 'error' && (
+                <Typography variant='caption' sx={{ fontSize: '0.68rem', color: 'error.main', fontWeight: 600 }}>
+                  Save failed — changes will retry on your next edit
+                </Typography>
+              )}
+            </Box>
+
             {/* Stepper */}
             <Stepper
               activeStep={activeStep}
@@ -1175,6 +1325,26 @@ const NewOrder: React.FC = () => {
                         cursor: isDisabledForCustomer ? 'default' : 'pointer',
                         opacity: isDisabledForCustomer ? 0.7 : 1,
                       }}
+                      optional={
+                        stepCaptions[index] ? (
+                          <Typography
+                            variant='caption'
+                            sx={{
+                              display: { xs: 'none', sm: 'block' },
+                              color: 'text.secondary',
+                              fontSize: '0.65rem',
+                              textAlign: 'center',
+                              maxWidth: 120,
+                              mx: 'auto',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {stepCaptions[index]}
+                          </Typography>
+                        ) : undefined
+                      }
                     >
                       {isDisabledForCustomer ? customerStep0Label : displayName}
                     </StepLabel>
@@ -1218,10 +1388,10 @@ const NewOrder: React.FC = () => {
               </Suspense>
             </Box>
 
-            {/* Navigation buttons */}
+            {/* Navigation buttons (hidden on phones for steps 0-2 — fixed bar instead) */}
             <Box
               sx={{
-                display: 'flex',
+                display: showMobileNavBar ? { xs: 'none', sm: 'flex' } : 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
                 justifyContent: isMobile ? 'center' : 'space-between',
                 alignItems: isMobile ? 'stretch' : 'center',
@@ -1264,7 +1434,7 @@ const NewOrder: React.FC = () => {
                 {/* Save as Draft / Submit Order — last step only */}
                 {activeStep === steps.length - 1 && (
                   <Tooltip
-                    title={hasStockExceeded ? 'One or more products exceed available stock' : ''}
+                    title={saveDraftBlockers.length > 0 ? saveDraftBlockers.join(' · ') : ''}
                     arrow
                   >
                     <span>
@@ -1342,6 +1512,47 @@ const NewOrder: React.FC = () => {
           </CardContent>
         </Card>
       </Box>
+
+      {/* ── Fixed mobile nav bar (Customer/Billing/Shipping steps) ── */}
+      <Slide direction='up' in={showMobileNavBar} mountOnEnter unmountOnExit>
+        <Paper
+          elevation={8}
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1200,
+            px: 2,
+            py: 1.5,
+            display: 'flex',
+            gap: 1.5,
+            borderTop: `2px solid ${theme.palette.primary.main}40`,
+            background: isDark ? 'rgba(18,18,28,0.96)' : 'rgba(255,255,255,0.97)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          <NavButton
+            variant='outlined'
+            color='secondary'
+            sx={{ flex: 1 }}
+            onClick={() =>
+              activeStep === 0 ? router.push('/') : handleStepClick(activeStep - 1)
+            }
+          >
+            {activeStep === 0 ? 'Cancel' : 'Previous'}
+          </NavButton>
+          <NavButton
+            variant='contained'
+            color='primary'
+            endIcon={<ArrowForward sx={{ fontSize: 18 }} />}
+            sx={{ flex: 1 }}
+            onClick={handleNext}
+          >
+            Next
+          </NavButton>
+        </Paper>
+      </Slide>
 
       {/* ── Floating cart bar (Products step only) ── */}
       <Slide direction='up' in={showCartBar} mountOnEnter unmountOnExit>
