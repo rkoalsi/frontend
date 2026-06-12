@@ -4,8 +4,15 @@ import {
   Table, TableHead, TableRow, TableCell, TableBody, TablePagination,
   FormControl, InputLabel, Select, MenuItem, Autocomplete,
   Dialog, DialogTitle, DialogContent, DialogActions, Tooltip,
+  IconButton, Divider, Chip,
 } from '@mui/material';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import CloseIcon from '@mui/icons-material/Close';
 import Header from '../../src/components/common/Header';
 import AuthContext from '../../src/components/Auth';
 import axiosInstance from '../../src/util/axios';
@@ -13,7 +20,17 @@ import { toast } from 'react-toastify';
 import StatusChip from '../../src/components/expenses/statusChip';
 import EstimateDetailDrawer from '../../src/components/expenses/EstimateDetailDrawer';
 import DownloadIcon from '@mui/icons-material/Download';
-import DeleteIcon from '@mui/icons-material/Delete';
+
+const EXPENSE_TYPES = ['Travel', 'Stay', 'Other'];
+const BILL_STATUSES = ['Bill Attached', 'No Bill'];
+
+function emptyExpenseItem(index: number) {
+  return {
+    sl_no: index + 1, date: '', expense_type: 'Travel', description: '', location_route: '',
+    amount: '', bill_status: 'No Bill', bill_no: '', tax_gst: '', daily_allowance: '', remarks: '',
+    bill_url: '',
+  };
+}
 
 const ALL_STATUSES = ['Pending Review', 'Pending Second Review', 'Pending Payment', 'Draft', 'Submitted', 'Completed', 'Rejected'];
 
@@ -47,6 +64,11 @@ export default function AdminExpenseEstimates() {
   const [selectedEstimate, setSelectedEstimate] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editExpensesOpen, setEditExpensesOpen] = useState(false);
+  const [editExpensesEstimate, setEditExpensesEstimate] = useState<any>(null);
+  const [editExpenseItems, setEditExpenseItems] = useState<any[]>([]);
+  const [savingExpenses, setSavingExpenses] = useState(false);
+  const [uploadingBill, setUploadingBill] = useState<{ [idx: number]: boolean }>({});
 
   const fetchSalespeople = async () => {
     try {
@@ -104,6 +126,49 @@ export default function AdminExpenseEstimates() {
       URL.revokeObjectURL(url);
     } catch {
       toast.error('Download failed');
+    }
+  };
+
+  const openEditExpenses = (est: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditExpensesEstimate(est);
+    setEditExpenseItems(est.expense_items?.length ? [...est.expense_items] : [emptyExpenseItem(0)]);
+    setEditExpensesOpen(true);
+  };
+
+  const updateExpenseItem = (idx: number, key: string, val: any) =>
+    setEditExpenseItems(prev => prev.map((it, i) => i === idx ? { ...it, [key]: val } : it));
+
+  const handleBillUpload = async (idx: number, file: File | undefined) => {
+    if (!file) return;
+    setUploadingBill(p => ({ ...p, [idx]: true }));
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const { data } = await axiosInstance.post('/expense-estimates/upload-bill', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      updateExpenseItem(idx, 'bill_url', data.url);
+    } catch {
+      toast.error('Bill upload failed');
+    } finally {
+      setUploadingBill(p => ({ ...p, [idx]: false }));
+    }
+  };
+
+  const handleSaveExpenses = async () => {
+    setSavingExpenses(true);
+    try {
+      await axiosInstance.put(`/admin/expense-estimates/${editExpensesEstimate._id}`, {
+        expense_items: editExpenseItems,
+      });
+      toast.success('Expense items updated');
+      setEditExpensesOpen(false);
+      fetchData(page);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Save failed');
+    } finally {
+      setSavingExpenses(false);
     }
   };
 
@@ -197,7 +262,7 @@ export default function AdminExpenseEstimates() {
                   </TableCell>
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>{fmt(est.created_at)}</TableCell>
                   <TableCell onClick={e => e.stopPropagation()}>
-                    <Stack direction="row" gap={0.5}>
+                    <Stack direction="row" gap={0.5} flexWrap="wrap">
                       <Button
                         size="small"
                         startIcon={<DownloadIcon />}
@@ -206,6 +271,17 @@ export default function AdminExpenseEstimates() {
                       >
                         Report
                       </Button>
+                      {est.status === 'Pending Payment' && (
+                        <Button
+                          size="small"
+                          startIcon={<EditIcon />}
+                          onClick={e => openEditExpenses(est, e)}
+                          variant="outlined"
+                          color="warning"
+                        >
+                          Edit Expenses
+                        </Button>
+                      )}
                       <Button
                         size="small"
                         color="error"
@@ -240,6 +316,93 @@ export default function AdminExpenseEstimates() {
         isAdmin={true}
         adminEmail={user?.email}
       />
+
+      {/* Yogesh expense items edit dialog */}
+      <Dialog open={editExpensesOpen} onClose={() => setEditExpensesOpen(false)} fullWidth maxWidth="md" scroll="paper">
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pr: 1 }}>
+          Edit Expense Items — {editExpensesEstimate?.created_by_name}
+          <IconButton onClick={() => setEditExpensesOpen(false)} size="small" edge="end"><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack gap={2}>
+            {editExpenseItems.map((item: any, idx: number) => (
+              <Box key={idx} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 2 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                  <Typography variant="subtitle2">Item #{idx + 1}</Typography>
+                  {editExpenseItems.length > 1 && (
+                    <IconButton size="small" color="error"
+                      onClick={() => setEditExpenseItems(prev => prev.filter((_, i) => i !== idx))}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </Stack>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 1.5 }}>
+                  <TextField label="Date" type="date" InputLabelProps={{ shrink: true }} size="small"
+                    value={item.date} onChange={e => updateExpenseItem(idx, 'date', e.target.value)} />
+                  <FormControl size="small">
+                    <InputLabel>Expense Type</InputLabel>
+                    <Select label="Expense Type" value={item.expense_type}
+                      onChange={e => updateExpenseItem(idx, 'expense_type', e.target.value)}>
+                      {EXPENSE_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                  <FormControl size="small">
+                    <InputLabel>Bill Status</InputLabel>
+                    <Select label="Bill Status" value={item.bill_status}
+                      onChange={e => updateExpenseItem(idx, 'bill_status', e.target.value)}>
+                      {BILL_STATUSES.map(b => <MenuItem key={b} value={b}>{b}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                  <TextField label="Bill No." size="small"
+                    value={item.bill_no} onChange={e => updateExpenseItem(idx, 'bill_no', e.target.value)} />
+                  <TextField label="Description" size="small" sx={{ gridColumn: 'span 2' }}
+                    value={item.description} onChange={e => updateExpenseItem(idx, 'description', e.target.value)} />
+                  <TextField label="Location / Route" size="small" sx={{ gridColumn: 'span 2' }}
+                    value={item.location_route} onChange={e => updateExpenseItem(idx, 'location_route', e.target.value)} />
+                  <TextField label="Amount (₹)" type="number" size="small"
+                    value={item.amount} onChange={e => updateExpenseItem(idx, 'amount', e.target.value)} />
+                  <TextField label="Tax / GST (₹)" type="number" size="small"
+                    value={item.tax_gst} onChange={e => updateExpenseItem(idx, 'tax_gst', e.target.value)} />
+                  <TextField label="Daily Allowance (₹)" type="number" size="small"
+                    value={item.daily_allowance} onChange={e => updateExpenseItem(idx, 'daily_allowance', e.target.value)} />
+                  <TextField label="Remarks" size="small" sx={{ gridColumn: 'span 2' }}
+                    value={item.remarks} onChange={e => updateExpenseItem(idx, 'remarks', e.target.value)} />
+                  {item.bill_status === 'Bill Attached' && (
+                    <Box sx={{ gridColumn: { xs: 'span 2', md: 'span 3' }, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {item.bill_url ? (
+                        <>
+                          <Chip label="Bill uploaded" color="success" size="small" icon={<OpenInNewIcon />}
+                            component="a" href={item.bill_url} target="_blank" clickable />
+                          <Button size="small" color="error" onClick={() => updateExpenseItem(idx, 'bill_url', '')}>Remove</Button>
+                        </>
+                      ) : (
+                        <Button component="label" size="small" variant="outlined"
+                          startIcon={uploadingBill[idx] ? <CircularProgress size={14} /> : <UploadFileIcon />}
+                          disabled={!!uploadingBill[idx]}>
+                          {uploadingBill[idx] ? 'Uploading…' : 'Upload Bill'}
+                          <input type="file" hidden accept="image/jpeg,image/png,image/jpg,application/pdf"
+                            onChange={e => handleBillUpload(idx, e.target.files?.[0])} />
+                        </Button>
+                      )}
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+            ))}
+            <Button startIcon={<AddIcon />} variant="outlined" size="small" sx={{ alignSelf: 'flex-start' }}
+              onClick={() => setEditExpenseItems(prev => [...prev, emptyExpenseItem(prev.length)])}>
+              Add Item
+            </Button>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditExpensesOpen(false)} disabled={savingExpenses}>Cancel</Button>
+          <Button variant="contained" onClick={handleSaveExpenses} disabled={savingExpenses}
+            startIcon={savingExpenses ? <CircularProgress size={14} color="inherit" /> : undefined}>
+            Save Expenses
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
         <DialogTitle>Delete Expense Estimate?</DialogTitle>

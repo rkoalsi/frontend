@@ -1,6 +1,6 @@
 import {
   Box, Button, Typography, TextField, MenuItem, Select, FormControl, InputLabel,
-  Stack, IconButton, Divider, CircularProgress, Alert, Chip,
+  Stack, IconButton, Divider, CircularProgress, Alert, Chip, Tooltip,
 } from '@mui/material';
 import { useState } from 'react';
 import { toast } from 'react-toastify';
@@ -8,6 +8,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import SyncIcon from '@mui/icons-material/Sync';
 import axiosInstance from '../../util/axios';
 
 const EXPENSE_TYPES = ['Travel', 'Stay', 'Other'];
@@ -17,7 +18,7 @@ function emptyActualItem(index: number) {
   return {
     sl_no: index + 1, date: '', expense_type: 'Travel', description: '', location_route: '',
     amount: '', bill_status: 'No Bill', bill_no: '', tax_gst: '', daily_allowance: '',
-    da_date: '', remarks: '', approved_amount: '', bill_url: '',
+    remarks: '', approved_amount: '', bill_url: '',
   };
 }
 
@@ -63,6 +64,21 @@ export default function ActualsForm({ estimate, onSuccess }: Props) {
 
   const updateVisit = (idx: number, key: string, val: any) =>
     setCustomerVisits(prev => prev.map((v, i) => i === idx ? { ...v, [key]: val } : v));
+
+  const [syncing, setSyncing] = useState(false);
+  const handleSyncDailyVisits = async () => {
+    setSyncing(true);
+    try {
+      const { data } = await axiosInstance.post(`/expense-estimates/${estimate._id}/sync-daily-visits`);
+      setCustomerVisits(data.customer_visits || []);
+      const count = data.synced_count ?? 0;
+      toast.success(count > 0 ? `Synced outcomes for ${count} visit${count !== 1 ? 's' : ''} from Daily Visits` : 'No matching daily visits found for this trip');
+    } catch {
+      toast.error('Failed to sync from Daily Visits');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const actualTravel = actualItems.filter(i => i.expense_type === 'Travel').reduce((s, i) => s + parseFloat(i.amount || '0'), 0);
   const actualStay = actualItems.filter(i => i.expense_type === 'Stay').reduce((s, i) => s + parseFloat(i.amount || '0'), 0);
@@ -132,8 +148,6 @@ export default function ActualsForm({ estimate, onSuccess }: Props) {
                 value={item.tax_gst} onChange={e => updateItem(idx, 'tax_gst', e.target.value)} />
               <TextField label="Daily Allowance (₹)" type="number" size="small"
                 value={item.daily_allowance} onChange={e => updateItem(idx, 'daily_allowance', e.target.value)} />
-              <TextField label="DA Date" type="date" InputLabelProps={{ shrink: true }} size="small"
-                value={item.da_date} onChange={e => updateItem(idx, 'da_date', e.target.value)} />
               <TextField label="Remarks" size="small"
                 sx={{ gridColumn: 'span 2' }}
                 value={item.remarks} onChange={e => updateItem(idx, 'remarks', e.target.value)} />
@@ -196,7 +210,20 @@ export default function ActualsForm({ estimate, onSuccess }: Props) {
 
       {customerVisits.length > 0 && (
         <Stack gap={2}>
-          <Typography variant="subtitle2">Update Visit Outcomes</Typography>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="subtitle2">Update Visit Outcomes</Typography>
+            <Tooltip title="Pull outcome, follow-up date, and order value from your Daily Visits entries for this trip">
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={syncing ? <CircularProgress size={14} /> : <SyncIcon />}
+                onClick={handleSyncDailyVisits}
+                disabled={syncing}
+              >
+                {syncing ? 'Syncing…' : 'Sync from Daily Visits'}
+              </Button>
+            </Tooltip>
+          </Stack>
           {customerVisits.map((v, idx) => (
             <Box key={idx} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 2 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>

@@ -8,6 +8,7 @@ import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import Header from '../../src/components/common/Header';
 import AuthContext from '../../src/components/Auth';
 import axiosInstance from '../../src/util/axios';
@@ -45,22 +46,26 @@ export default function ExpensesPage() {
   const [newFormOpen, setNewFormOpen] = useState(false);
   const [editFormOpen, setEditFormOpen] = useState(false);
   const [editEstimate, setEditEstimate] = useState<any>(null);
+  const [editVisitsOnly, setEditVisitsOnly] = useState(false);
   const [actualsOpen, setActualsOpen] = useState(false);
   const [actualsEstimate, setActualsEstimate] = useState<any>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedEstimate, setSelectedEstimate] = useState<any>(null);
+  const [lastTripSummary, setLastTripSummary] = useState<any>(null);
 
   const fetchData = async () => {
     if (!user?._id) return;
     setLoading(true);
     try {
-      const [listRes, activeRes] = await Promise.all([
+      const [listRes, activeRes, summaryRes] = await Promise.all([
         axiosInstance.get('/expense-estimates', { params: { page, limit: PAGE_SIZE } }),
         axiosInstance.get('/expense-estimates/active'),
+        axiosInstance.get('/expense-estimates/last-trip-summary').catch(() => ({ data: null })),
       ]);
       setEstimates(listRes.data.estimates || []);
       setTotalPages(listRes.data.total_pages || 1);
       setActiveEstimate(activeRes.data);
+      setLastTripSummary(summaryRes.data);
     } catch {
       toast.error('Failed to load expenses');
     } finally {
@@ -116,6 +121,46 @@ export default function ExpensesPage() {
         </Alert>
       )}
 
+      {lastTripSummary?.has_last_trip && (
+        <Card sx={{ mb: 3, bgcolor: 'action.hover' }}>
+          <CardContent>
+            <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 1 }}>
+              <PeopleOutlineIcon fontSize="small" color="primary" />
+              <Typography variant="subtitle2" fontWeight={700}>Last Trip — Potential Customer Summary</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {fmt(lastTripSummary.trip_start)} → {fmt(lastTripSummary.trip_end)}
+                {lastTripSummary.locations ? ` · ${lastTripSummary.locations}` : ''}
+              </Typography>
+            </Stack>
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5 }}>
+              {[
+                ['Potential Customers Visited', lastTripSummary.potential_customers_visited],
+                ['Onboarded', lastTripSummary.onboarded_count],
+                ['Orders Received', lastTripSummary.orders_received_count],
+              ].map(([label, val]) => (
+                <Box key={String(label)} sx={{ p: 1.5, bgcolor: 'background.paper', borderRadius: 1, textAlign: 'center' }}>
+                  <Typography variant="h6" fontWeight={700}>{val}</Typography>
+                  <Typography variant="caption" color="text.secondary">{label}</Typography>
+                </Box>
+              ))}
+            </Box>
+            {lastTripSummary.onboarded_names?.length > 0 && (
+              <Stack direction="row" gap={0.5} flexWrap="wrap" sx={{ mt: 1 }}>
+                <Typography variant="caption" color="text.secondary">Onboarded:</Typography>
+                {lastTripSummary.onboarded_names.map((n: string) => (
+                  <Chip key={n} label={n} size="small" color="success" variant="outlined" />
+                ))}
+              </Stack>
+            )}
+            {lastTripSummary.orders_received_count > 0 && (
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                Orders total: ₹{Number(lastTripSummary.orders_received_total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </Typography>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
           <CircularProgress />
@@ -160,8 +205,17 @@ export default function ExpensesPage() {
                   <Box sx={{ mt: 1.5 }} onClick={e => e.stopPropagation()}>
                     <Divider sx={{ mb: 1.5 }} />
                     <Button variant="outlined" size="small" startIcon={<EditIcon />}
-                      onClick={() => { setEditEstimate(est); setEditFormOpen(true); }}>
+                      onClick={() => { setEditEstimate(est); setEditVisitsOnly(false); setEditFormOpen(true); }}>
                       Edit Estimate
+                    </Button>
+                  </Box>
+                )}
+                {(est.status === 'Pending Second Review' || est.status === 'Pending Payment') && (
+                  <Box sx={{ mt: 1.5 }} onClick={e => e.stopPropagation()}>
+                    <Divider sx={{ mb: 1.5 }} />
+                    <Button variant="outlined" size="small" startIcon={<EditIcon />}
+                      onClick={() => { setEditEstimate(est); setEditVisitsOnly(true); setEditFormOpen(true); }}>
+                      Edit Visit Details
                     </Button>
                   </Box>
                 )}
@@ -207,7 +261,7 @@ export default function ExpensesPage() {
       {/* Edit estimate dialog */}
       <Dialog open={editFormOpen} onClose={() => setEditFormOpen(false)} fullWidth maxWidth="md" fullScreen={isMobile} scroll="paper">
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pr: 1 }}>
-          Edit Expense Estimate
+          {editVisitsOnly ? 'Edit Visit Details' : 'Edit Expense Estimate'}
           <IconButton onClick={() => setEditFormOpen(false)} size="small" edge="end"><CloseIcon /></IconButton>
         </DialogTitle>
         <DialogContent dividers sx={{ p: { xs: 1.5, sm: 3 } }}>
@@ -215,6 +269,7 @@ export default function ExpensesPage() {
             <EstimateForm
               userInfo={user}
               existingEstimate={editEstimate}
+              visitsOnly={editVisitsOnly}
               onSuccess={() => { setEditFormOpen(false); fetchData(); }}
             />
           )}
