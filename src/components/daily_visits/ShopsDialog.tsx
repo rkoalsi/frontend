@@ -369,9 +369,9 @@ const ShopsDialog = ({
       toast.success(response.data.message || 'Shops updated successfully');
       refreshDailyVisit();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Error updating shops');
+      toast.error(error?.response?.data?.detail || 'Error updating shops');
     } finally {
       setShopsSubmitting(false);
     }
