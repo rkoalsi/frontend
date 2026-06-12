@@ -15,12 +15,12 @@ import AuthContext from '../Auth';
 const EXPENSE_TYPES = ['Travel', 'Stay', 'Other'];
 const TRAVEL_MODES = ['Train', 'Flight', 'Road', 'Train + Road', 'Flight + Road', 'Multiple'];
 const BILL_STATUSES = ['Bill Attached', 'No Bill'];
-const CUSTOMER_STATUSES = ['Existing Customer', 'New / Prospect Customer'];
+const CUSTOMER_STATUSES = ['Existing Customer', 'New / Prospect Customer', 'Existing - New Branch'];
 
 function emptyExpenseItem(index: number) {
   return {
     sl_no: index + 1, date: '', expense_type: 'Travel', description: '', location_route: '',
-    amount: '', bill_status: 'No Bill', bill_no: '', tax_gst: '', daily_allowance: '', da_date: '', remarks: '',
+    amount: '', bill_status: 'No Bill', bill_no: '', tax_gst: '', daily_allowance: '', remarks: '',
     bill_url: '',
   };
 }
@@ -41,12 +41,14 @@ interface Props {
   onSuccess: () => void;
   userInfo: any;
   existingEstimate?: any;
+  visitsOnly?: boolean;
 }
 
-export default function EstimateForm({ onSuccess, userInfo, existingEstimate }: Props) {
+export default function EstimateForm({ onSuccess, userInfo, existingEstimate, visitsOnly }: Props) {
   const { user } = useContext(AuthContext) as any;
   const isEdit = !!existingEstimate;
-  const [activeStep, setActiveStep] = useState(0);
+  // visitsOnly mode: skip directly to customer visits step (step index 1)
+  const [activeStep, setActiveStep] = useState(visitsOnly ? 1 : 0);
   const [submitting, setSubmitting] = useState(false);
   const [employeeInfoLoading, setEmployeeInfoLoading] = useState(!isEdit);
 
@@ -165,7 +167,6 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate }: 
   };
 
   // ── Expense items helpers ─────────────────────────────────────────────────
-  const [daWarnings, setDaWarnings] = useState<{ [idx: number]: string }>({});
   const [uploadingBill, setUploadingBill] = useState<{ [idx: number]: boolean }>({});
 
   const handleBillUpload = async (idx: number, file: File | undefined) => {
@@ -186,22 +187,7 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate }: 
   };
 
   const updateItem = (idx: number, key: string, val: any) => {
-    setExpenseItems(prev => {
-      const updated = prev.map((it, i) => i === idx ? { ...it, [key]: val } : it);
-      // DA duplicate check
-      if (key === 'daily_allowance' || key === 'da_date') {
-        const item = updated[idx];
-        const daDate = key === 'da_date' ? val : item.da_date;
-        const daAmt = key === 'daily_allowance' ? val : item.daily_allowance;
-        if (daDate && parseFloat(daAmt) > 0) {
-          const conflict = updated.some((it, i) => i !== idx && it.da_date === daDate && parseFloat(it.daily_allowance || '0') > 0);
-          setDaWarnings(w => ({ ...w, [idx]: conflict ? `DA already claimed for ${daDate}` : '' }));
-        } else {
-          setDaWarnings(w => ({ ...w, [idx]: '' }));
-        }
-      }
-      return updated;
-    });
+    setExpenseItems(prev => prev.map((it, i) => i === idx ? { ...it, [key]: val } : it));
   };
 
   const addItem = () => setExpenseItems(prev => [...prev, emptyExpenseItem(prev.length)]);
@@ -231,11 +217,6 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate }: 
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    const activeDaWarnings = Object.values(daWarnings).some(w => !!w);
-    if (activeDaWarnings) {
-      toast.error('Please resolve duplicate Daily Allowance entries before submitting.');
-      return;
-    }
     setSubmitting(true);
     try {
       // Create any new potential customers inline
@@ -253,7 +234,7 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate }: 
         return v;
       }));
 
-      const payload = {
+      const fullPayload = {
         ...employeeInfo,
         ...tripInfo,
         expense_items: expenseItems,
@@ -262,9 +243,15 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate }: 
         planned_existing_visits: parseInt(plannedExisting) || 0,
         planned_new_visits: parseInt(plannedNew) || 0,
       };
+      const visitsPayload = {
+        customer_visits: processedVisits,
+        planned_existing_visits: parseInt(plannedExisting) || 0,
+        planned_new_visits: parseInt(plannedNew) || 0,
+      };
+      const payload = visitsOnly ? visitsPayload : fullPayload;
       if (isEdit) {
         await axiosInstance.put(`/expense-estimates/${existingEstimate._id}`, payload);
-        toast.success('Expense estimate updated!');
+        toast.success('Visit details updated!');
       } else {
         await axiosInstance.post('/expense-estimates', payload);
         toast.success('Expense estimate submitted!');
@@ -323,9 +310,11 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate }: 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <Box>
-      <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 3 }}>
-        {STEPS.map(label => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
-      </Stepper>
+      {!visitsOnly && (
+        <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 3 }}>
+          {STEPS.map(label => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
+        </Stepper>
+      )}
 
       {/* Step 1 – Trip Info */}
       {activeStep === 0 && (
@@ -572,12 +561,7 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate }: 
                   value={item.tax_gst} onChange={e => updateItem(idx, 'tax_gst', e.target.value)} />
                 <TextField label="Daily Allowance (₹)" type="number" size="small"
                   value={item.daily_allowance} onChange={e => updateItem(idx, 'daily_allowance', e.target.value)}
-                  error={!!daWarnings[idx]}
-                  helperText={daWarnings[idx] || "DA = ₹1500/day"} />
-                <TextField label="DA Date" type="date" InputLabelProps={{ shrink: true }} size="small"
-                  value={item.da_date} onChange={e => updateItem(idx, 'da_date', e.target.value)}
-                  error={!!daWarnings[idx]}
-                  helperText={daWarnings[idx] || ''} />
+                  helperText="DA = ₹1500/day" />
                 <TextField label="Remarks" size="small"
                   sx={{ gridColumn: 'span 2' }}
                   value={item.remarks} onChange={e => updateItem(idx, 'remarks', e.target.value)} />
@@ -635,24 +619,34 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate }: 
       )}
 
       {/* Navigation */}
-      <Stack direction="row" justifyContent="space-between" gap={1} sx={{ mt: 3 }}>
-        <Button
-          onClick={() => setActiveStep(s => s - 1)}
-          disabled={activeStep === 0}
-          sx={{ minHeight: 44, px: 3 }}
-        >
-          Back
-        </Button>
-        {activeStep < STEPS.length - 1 ? (
-          <Button variant="contained" onClick={handleNext} sx={{ minHeight: 44, px: 4, flex: 1 }}>Next</Button>
-        ) : (
+      {visitsOnly ? (
+        <Stack direction="row" justifyContent="flex-end" sx={{ mt: 3 }}>
           <Button variant="contained" color="success" onClick={handleSubmit} disabled={submitting}
-            sx={{ minHeight: 44, px: 3, flex: 1 }}
+            sx={{ minHeight: 44, px: 3 }}
             startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined}>
-            {isEdit ? 'Save Changes' : 'Submit Estimate'}
+            Save Visit Details
           </Button>
-        )}
-      </Stack>
+        </Stack>
+      ) : (
+        <Stack direction="row" justifyContent="space-between" gap={1} sx={{ mt: 3 }}>
+          <Button
+            onClick={() => setActiveStep(s => s - 1)}
+            disabled={activeStep === 0}
+            sx={{ minHeight: 44, px: 3 }}
+          >
+            Back
+          </Button>
+          {activeStep < STEPS.length - 1 ? (
+            <Button variant="contained" onClick={handleNext} sx={{ minHeight: 44, px: 4, flex: 1 }}>Next</Button>
+          ) : (
+            <Button variant="contained" color="success" onClick={handleSubmit} disabled={submitting}
+              sx={{ minHeight: 44, px: 3, flex: 1 }}
+              startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined}>
+              {isEdit ? 'Save Changes' : 'Submit Estimate'}
+            </Button>
+          )}
+        </Stack>
+      )}
     </Box>
   );
 }
