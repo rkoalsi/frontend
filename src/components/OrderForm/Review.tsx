@@ -301,9 +301,9 @@ const Review: React.FC<Props> = React.memo((props) => {
     );
   }
 
-  const isOrderLocked =
-    order?.status?.toLowerCase()?.includes('accepted') ||
-    order?.status?.toLowerCase()?.includes('declined');
+  const isOrderLocked = ['accepted', 'declined', 'invoiced'].includes(
+    order?.status?.toLowerCase()
+  );
 
   // Aggregate everything blocking submission so it's visible as a banner
   // (the disabled submit button's tooltip is easy to miss on touch devices)
@@ -367,6 +367,13 @@ const Review: React.FC<Props> = React.memo((props) => {
           </Button>
         )}
       </Box>
+
+      {/* ── Locked-order banner ── */}
+      {isOrderLocked && (
+        <Alert severity="warning" sx={{ mb: 2, borderRadius: 2, fontWeight: 500 }}>
+          This order is <strong>{order.status.toLowerCase()}</strong> and cannot be modified.
+        </Alert>
+      )}
 
       {/* ── Submission blockers ── */}
       {reviewIssues.length > 0 && (

@@ -128,9 +128,9 @@ const MemoizedDesktopProductCard = memo(({
   const sellingPrice = getSellingPrice(product);
   const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
   const isQuantityExceedingStock = quantity > product.stock;
-  const isDisabled =
-    order?.status?.toLowerCase().includes("accepted") ||
-    order?.status?.toLowerCase().includes("declined");
+  const isDisabled = ['accepted', 'declined', 'invoiced'].includes(
+    order?.status?.toLowerCase()
+  );
 
   return (
     <Box key={productId}>
@@ -1481,6 +1481,13 @@ const Products: React.FC<ProductsProps> = ({
     >
       {/* Reference for top of page */}
       <div ref={pageTopRef} />
+
+      {/* Locked-order banner */}
+      {['accepted', 'declined', 'invoiced'].includes(order?.status?.toLowerCase()) && (
+        <Alert severity="warning" sx={{ borderRadius: 2, fontWeight: 500 }}>
+          Products cannot be added to an order that is <strong>{order.status.toLowerCase()}</strong>.
+        </Alert>
+      )}
 
       {/* Products Section */}
       <Box sx={{ flex: 3 }}>
