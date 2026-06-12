@@ -262,28 +262,30 @@ const PaymentDue = () => {
                             expandIcon={<ExpandMore />}
                             sx={{
                               px: 2,
-                              py: 1,
+                              py: isMobile ? 1.5 : 1,
                               '& .MuiAccordionSummary-content': {
-                                alignItems: 'center',
-                                gap: 2,
+                                alignItems: isMobile ? 'flex-start' : 'center',
+                                gap: isMobile ? 1 : 2,
                                 flexWrap: 'wrap',
+                                flexDirection: isMobile ? 'column' : 'row',
                               },
                             }}
                           >
-                            <Person
-                              fontSize='small'
-                              sx={{ color: theme.palette.text.secondary, flexShrink: 0 }}
-                            />
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: isMobile ? '100%' : 'auto' }}>
+                              <Person
+                                fontSize='small'
+                                sx={{ color: theme.palette.text.secondary, flexShrink: 0 }}
+                              />
+                              <Typography
+                                variant='subtitle1'
+                                fontWeight={600}
+                                sx={{ flex: 1, minWidth: 120, color: theme.palette.text.primary }}
+                              >
+                                {customerName}
+                              </Typography>
+                            </Box>
 
-                            <Typography
-                              variant='subtitle1'
-                              fontWeight={600}
-                              sx={{ flex: 1, minWidth: 120, color: theme.palette.text.primary }}
-                            >
-                              {customerName}
-                            </Typography>
-
-                            <Stack direction='row' spacing={1} alignItems='center' flexWrap='wrap'>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
                               <Chip
                                 size='small'
                                 label={`${custInvoices.length} invoice${custInvoices.length > 1 ? 's' : ''}`}
@@ -313,12 +315,12 @@ const PaymentDue = () => {
                                   sx={{ fontSize: '0.72rem' }}
                                 />
                               )}
-                            </Stack>
+                            </Box>
                           </AccordionSummary>
 
-                          <AccordionDetails sx={{ px: 2, pt: 0, pb: 2 }}>
-                            <Divider sx={{ mb: 1.5 }} />
-                            <Stack spacing={1}>
+                          <AccordionDetails sx={{ px: 2, pt: 0, pb: 2.5 }}>
+                            <Divider sx={{ mb: 2 }} />
+                            <Stack spacing={1.5}>
                               {custInvoices
                                 .sort(
                                   (a: any, b: any) =>
@@ -338,6 +340,12 @@ const PaymentDue = () => {
                                   const { images = [] }: any = invoice_notes;
                                   const days = parseInt(overdue_by_days) || 0;
                                   const aging = agingLabel(days);
+                                  const accentColor =
+                                    days > 60
+                                      ? theme.palette.error.main
+                                      : days > 30
+                                      ? theme.palette.warning.main
+                                      : theme.palette.divider;
 
                                   return (
                                     <Box
@@ -347,25 +355,32 @@ const PaymentDue = () => {
                                       }
                                       sx={{
                                         display: 'flex',
-                                        alignItems: 'center',
+                                        alignItems: isMobile ? 'flex-start' : 'center',
                                         justifyContent: 'space-between',
-                                        flexWrap: 'wrap',
-                                        gap: 1,
-                                        px: 1.5,
-                                        py: 1,
-                                        borderRadius: '8px',
+                                        flexDirection: isMobile ? 'column' : 'row',
+                                        gap: 2,
+                                        pl: isMobile ? 2.5 : 2,
+                                        pr: 2,
+                                        py: 1.5,
+                                        borderRadius: '10px',
+                                        borderLeft: `4px solid ${accentColor}`,
+                                        background: theme.palette.action.hover,
                                         cursor: 'pointer',
-                                        transition: 'background 0.2s',
+                                        transition: 'background 0.2s, box-shadow 0.2s',
                                         '&:hover': {
-                                          background: theme.palette.action.hover,
+                                          background: theme.palette.mode === 'dark'
+                                            ? 'rgba(255,255,255,0.08)'
+                                            : 'rgba(0,0,0,0.06)',
+                                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                                         },
                                       }}
                                     >
-                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                                      {/* Left: invoice number + due date */}
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 0 }}>
                                         <Typography
                                           variant='body2'
-                                          fontWeight={600}
-                                          sx={{ color: theme.palette.text.primary }}
+                                          fontWeight={700}
+                                          sx={{ color: theme.palette.text.primary, letterSpacing: 0.2 }}
                                         >
                                           {invoice_number}
                                         </Typography>
@@ -374,7 +389,16 @@ const PaymentDue = () => {
                                         </Typography>
                                       </Box>
 
-                                      <Stack direction='row' spacing={1} alignItems='center'>
+                                      {/* Right: chips + balance */}
+                                      <Box
+                                        sx={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          flexWrap: 'wrap',
+                                          gap: 1,
+                                          justifyContent: isMobile ? 'flex-start' : 'flex-end',
+                                        }}
+                                      >
                                         {days > 0 && (
                                           <Chip
                                             size='small'
@@ -391,10 +415,15 @@ const PaymentDue = () => {
                                             sx={{ fontSize: '0.7rem' }}
                                           />
                                         )}
-                                        <Box sx={{ textAlign: 'right' }}>
+                                        <Box
+                                          sx={{
+                                            textAlign: isMobile ? 'left' : 'right',
+                                            pl: isMobile ? 0 : 1,
+                                          }}
+                                        >
                                           <Typography
                                             variant='body2'
-                                            fontWeight={600}
+                                            fontWeight={700}
                                             sx={{ color: theme.palette.text.primary }}
                                           >
                                             ₹{parseFloat(balance || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
@@ -403,7 +432,7 @@ const PaymentDue = () => {
                                             of ₹{parseFloat(total || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                                           </Typography>
                                         </Box>
-                                      </Stack>
+                                      </Box>
                                     </Box>
                                   );
                                 })}
