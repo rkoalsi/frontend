@@ -10,8 +10,6 @@ import {
   IconButton,
   Tooltip,
   CircularProgress,
-  Fade,
-  useScrollTrigger,
   Alert,
 } from '@mui/material';
 import {
@@ -20,6 +18,7 @@ import {
   LocationOn,
   ShoppingCart,
   ArrowUpward,
+  ArrowDownward,
   Close,
   LocalOffer,
 } from '@mui/icons-material';
@@ -173,7 +172,15 @@ const Review: React.FC<Props> = React.memo((props) => {
   const [popupImageSrc, setPopupImageSrc]: any = useState([]);
   const [popupImageIndex, setPopupImageIndex] = useState(0);
   const [pdfLoading, setPdfLoading] = useState(false);
-  const showScrollTop = useScrollTrigger({ disableHysteresis: true, threshold: 600 });
+  const [isScrollButtonDisabled, setIsScrollButtonDisabled] = useState(false);
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+  }, []);
 
   // ── PDF Download ────────────────────────────────────────────────
   const downloadAsPDF = async () => {
@@ -978,41 +985,79 @@ const Review: React.FC<Props> = React.memo((props) => {
         setIndex={(newIndex: number) => setPopupImageIndex(newIndex)}
       />
 
-      {/* ── Back to top — appears only after scrolling down ── */}
-      <Fade in={showScrollTop}>
-        <Box
+      {/* ── Scroll buttons — fixed bottom-right ── */}
+      <Box
+        sx={{
+          position: 'fixed',
+          bottom: { xs: theme.spacing(14), sm: theme.spacing(10), md: theme.spacing(5) },
+          right: { xs: theme.spacing(1), sm: theme.spacing(3), md: theme.spacing(2) },
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1.5,
+          zIndex: 1000,
+          pointerEvents: 'none',
+        }}
+      >
+        <IconButton
+          color='primary'
+          onClick={scrollToTop}
+          disabled={isScrollButtonDisabled}
           sx={{
-            position: 'fixed',
-            bottom: { xs: theme.spacing(14), sm: theme.spacing(10), md: theme.spacing(5) },
-            right: { xs: theme.spacing(1.5), sm: theme.spacing(2.5), md: theme.spacing(2) },
-            zIndex: 1000,
+            backgroundColor: 'primary.main',
+            color: 'white',
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 },
+            boxShadow: 6,
+            '&:disabled': {
+              backgroundColor: 'action.disabledBackground',
+              color: 'action.disabled',
+              opacity: 0.5,
+            },
+            '&:hover:not(:disabled)': {
+              backgroundColor: 'primary.dark',
+              boxShadow: 8,
+              transform: isMobile ? 'none' : 'scale3d(1.1, 1.1, 1) translate3d(0, -2px, 0)',
+            },
+            '&:active:not(:disabled)': {
+              transform: isMobile ? 'none' : 'scale3d(0.95, 0.95, 1)',
+            },
+            transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease',
+            pointerEvents: 'auto',
           }}
         >
-          <IconButton
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            aria-label='scroll back to top'
-            size={isMobile ? 'medium' : 'large'}
-            sx={{
-              bgcolor: isDark
-                ? 'rgba(124,111,205,0.85)'
-                : 'rgba(42,74,107,0.85)',
-              color: 'white',
-              width: { xs: 40, sm: 48 },
-              height: { xs: 40, sm: 48 },
-              boxShadow: 4,
-              backdropFilter: 'blur(8px)',
-              '&:hover': {
-                bgcolor: 'primary.main',
-                boxShadow: 6,
-                transform: 'scale(1.08)',
-              },
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <ArrowUpward fontSize='small' />
-          </IconButton>
-        </Box>
-      </Fade>
+          <ArrowUpward fontSize={isMobile ? 'medium' : 'large'} />
+        </IconButton>
+
+        <IconButton
+          color='primary'
+          onClick={scrollToBottom}
+          disabled={isScrollButtonDisabled}
+          sx={{
+            backgroundColor: 'primary.main',
+            color: 'white',
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 },
+            boxShadow: 6,
+            '&:disabled': {
+              backgroundColor: 'action.disabledBackground',
+              color: 'action.disabled',
+              opacity: 0.5,
+            },
+            '&:hover:not(:disabled)': {
+              backgroundColor: 'primary.dark',
+              boxShadow: 8,
+              transform: isMobile ? 'none' : 'scale3d(1.1, 1.1, 1) translate3d(0, 2px, 0)',
+            },
+            '&:active:not(:disabled)': {
+              transform: isMobile ? 'none' : 'scale3d(0.95, 0.95, 1)',
+            },
+            transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease',
+            pointerEvents: 'auto',
+          }}
+        >
+          <ArrowDownward fontSize={isMobile ? 'medium' : 'large'} />
+        </IconButton>
+      </Box>
     </Box>
   );
 });
