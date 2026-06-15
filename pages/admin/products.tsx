@@ -472,6 +472,74 @@ const handleImageUpload = async (files: File[] | File) => {
     }
   };
 
+  const handleVideoUpload = async (files: File[] | File) => {
+    const filesArray = Array.isArray(files) ? files : [files];
+    if (!selectedProduct || filesArray.length === 0) return;
+    setUpdating(true);
+    try {
+      for (const file of filesArray) {
+        const formData = new FormData();
+        formData.append('product_id', selectedProduct._id);
+        formData.append('file', file);
+        const response = await axiosInstance.post('/admin/upload-video', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        const updatedVideos = response.data.videos;
+        setSelectedProduct((prev: any) => prev ? { ...prev, videos: updatedVideos } : prev);
+        setProducts(prev => prev.map(p => p._id === selectedProduct._id ? { ...p, videos: updatedVideos } as any : p));
+      }
+      toast.success('Video(s) uploaded successfully.');
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to upload video.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleVideoReorder = async (reorderedVideos: string[]) => {
+    if (!selectedProduct) return;
+    setUpdating(true);
+    const formData = new FormData();
+    formData.append('product_id', selectedProduct._id);
+    formData.append('videos', JSON.stringify(reorderedVideos));
+    try {
+      const response = await axiosInstance.post('/admin/reorder-videos', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setSelectedProduct((prev: any) => prev ? { ...prev, videos: response.data.videos } : prev);
+      setProducts(prev => prev.map(p => p._id === selectedProduct._id ? { ...p, videos: response.data.videos } as any : p));
+      toast.success('Videos reordered successfully!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to reorder videos.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleVideoDelete = async (indexToDelete: number) => {
+    if (!selectedProduct?.videos) return;
+    const videoUrl = selectedProduct.videos[indexToDelete];
+    if (!videoUrl) return;
+    if (!window.confirm('Delete this video? This cannot be undone.')) return;
+    setUpdating(true);
+    const formData = new FormData();
+    formData.append('product_id', selectedProduct._id);
+    formData.append('video_url', videoUrl);
+    try {
+      const response = await axiosInstance.delete('/admin/delete-video', {
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setSelectedProduct((prev: any) => prev ? { ...prev, videos: response.data.videos } : prev);
+      setProducts(prev => prev.map(p => p._id === selectedProduct._id ? { ...p, videos: response.data.videos } as any : p));
+      toast.success('Video deleted!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to delete video.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleEditableFieldChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -766,9 +834,12 @@ const handleImageUpload = async (files: File[] | File) => {
         handleToggleActive={handleToggleActive}
         handleImageClick={handleImageClick}
         handleImageUpload={handleImageUpload}
-        handleImageReorder={handleImageReorder} // NEW PROP
-        handleImageDelete={handleImageDelete} // NEW PROP
-        handleMakePrimary={handleMakePrimary} // NEW PROP
+        handleImageReorder={handleImageReorder}
+        handleImageDelete={handleImageDelete}
+        handleMakePrimary={handleMakePrimary}
+        handleVideoUpload={handleVideoUpload}
+        handleVideoReorder={handleVideoReorder}
+        handleVideoDelete={handleVideoDelete}
       />
 
       <ImagePopupDialog
