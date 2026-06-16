@@ -48,6 +48,7 @@ import {
   TrendingFlat,
   BarChart,
   ReceiptLong,
+  Receipt,
 } from '@mui/icons-material';
 import axiosInstance from '../src/util/axios';
 import axios from 'axios';
@@ -278,6 +279,12 @@ const menuSections = [
         text: 'Expense Estimates',
         color: '#f97316',
         action: 'expenses',
+      },
+      {
+        icon: <Receipt />,
+        text: 'Cheques',
+        color: '#7c3aed',
+        action: 'cheques',
       },
     ],
   },
@@ -519,6 +526,9 @@ const Home = () => {
         break;
       case 'expenses':
         router.push('/expenses');
+        break;
+      case 'cheques':
+        router.push('/cheques');
         break;
       case 'hooks':
         router.push('/hooks');
