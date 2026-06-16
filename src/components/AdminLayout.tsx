@@ -97,6 +97,7 @@ const iconMap: { [key: string]: React.ReactElement } = {
   Chat: <Chat />,
   Security: <Security />,
   ReceiptLong: <ReceiptLong />,
+  Receipt: <OrdersIcon />,
 };
 
 const AdminLayout = ({ children }: any) => {
