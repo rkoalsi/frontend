@@ -150,7 +150,6 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate, vi
     if (!tripInfo.travel_start_date || !tripInfo.travel_end_date) {
       toast.error('Travel dates are required'); return false;
     }
-    setDateError('');
     if (!tripInfo.purpose_of_trip) { toast.error('Purpose of trip is required'); return false; }
     if (!tripInfo.locations_visited) { toast.error('Locations visited is required'); return false; }
     return true;
