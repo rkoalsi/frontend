@@ -68,7 +68,6 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate, vi
     reporting_manager: existingEstimate?.reporting_manager || '',
     current_location: existingEstimate?.current_location || '',
   });
-  const [dateError, setDateError] = useState('');
 
   useEffect(() => {
     if (isEdit) return;
@@ -150,15 +149,6 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate, vi
   const validateTripInfo = () => {
     if (!tripInfo.travel_start_date || !tripInfo.travel_end_date) {
       toast.error('Travel dates are required'); return false;
-    }
-    if (!isEdit) {
-      const start = new Date(tripInfo.travel_start_date + 'T00:00:00');
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      const daysAhead = Math.floor((start.getTime() - today.getTime()) / 86400000);
-      if (daysAhead < 10) {
-        setDateError('Estimate must be submitted at least 10 days before travel start date.');
-        return false;
-      }
     }
     setDateError('');
     if (!tripInfo.purpose_of_trip) { toast.error('Purpose of trip is required'); return false; }
@@ -353,8 +343,8 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate, vi
                 <TextField
                   label="Travel Start Date" type="date" InputLabelProps={{ shrink: true }}
                   value={tripInfo.travel_start_date}
-                  onChange={e => { setTripInfo(p => ({ ...p, travel_start_date: e.target.value })); setDateError(''); }}
-                  size="small" error={!!dateError}
+                  onChange={e => setTripInfo(p => ({ ...p, travel_start_date: e.target.value }))}
+                  size="small"
                 />
                 <TextField
                   label="Travel End Date" type="date" InputLabelProps={{ shrink: true }}
@@ -363,7 +353,7 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate, vi
                   size="small"
                 />
               </Box>
-              {dateError && <Alert severity="error">{dateError}</Alert>}
+
               <TextField
                 label="Purpose of Trip"
                 value={tripInfo.purpose_of_trip}
