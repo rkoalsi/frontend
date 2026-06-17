@@ -110,7 +110,9 @@ function VisitCard({ visit }: { visit: any }) {
         <Typography variant="body2" fontWeight={600}>
           {visit.customer_name || visit.potential_customer_name || '—'}
         </Typography>
-        <Chip label={visit.customer_status || '—'} size="small" />
+        {visit.customer_type === 'existing' || (!visit.customer_type && visit.customer_status)
+          ? <Chip label={visit.customer_status || '—'} size="small" />
+          : <Chip label="New / Potential" size="small" color="info" />}
       </Stack>
       <Stack direction="row" gap={2} sx={{ mb: 0.5 }}>
         <Typography variant="caption" color="text.secondary">{visit.city || '—'}</Typography>
@@ -336,7 +338,30 @@ export default function EstimateDetailDrawer({ open, estimate, onClose, onRefres
           {/* Section 2A — Customer Visit Log */}
           {estimate.customer_visits?.length > 0 && (
             <>
-              <SectionTitle>Section 2A — Customer Visit Log</SectionTitle>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 2, mb: 1 }}>
+                <Typography variant="subtitle1" fontWeight={700} color="primary.main">
+                  Section 2A — Customer Visit Log
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    const stops = estimate.customer_visits
+                      .map((v: any) => v.address_label || v.city)
+                      .filter(Boolean)
+                      .map((s: string) => encodeURIComponent(s));
+                    if (stops.length === 0) return;
+                    const origin = estimate.current_location
+                      ? encodeURIComponent(estimate.current_location)
+                      : stops[0];
+                    const allStops = estimate.current_location ? stops : stops.slice(1);
+                    const url = `https://www.google.com/maps/dir/${origin}/${allStops.join('/')}`;
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  Plan Route
+                </Button>
+              </Stack>
               {estimate.customer_visits.map((v: any, i: number) => (
                 <VisitCard key={i} visit={v} />
               ))}
