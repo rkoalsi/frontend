@@ -390,7 +390,12 @@ export default function EstimateForm({ onSuccess, userInfo, existingEstimate, vi
                 <FormControl size="small">
                   <InputLabel>Customer Type</InputLabel>
                   <Select label="Customer Type" value={visit.customer_type}
-                    onChange={e => updateVisit(idx, 'customer_type', e.target.value)}>
+                    onChange={e => {
+                      updateVisit(idx, 'customer_type', e.target.value);
+                      if (e.target.value === 'potential') {
+                        updateVisit(idx, 'customer_status', '');
+                      }
+                    }}>
                     <MenuItem value="existing">Existing Customer</MenuItem>
                     <MenuItem value="potential">New / Potential Customer</MenuItem>
                   </Select>
