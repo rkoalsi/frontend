@@ -33,6 +33,7 @@ axiosInstance.interceptors.response.use(
       '/login',
       '/forgot_password',
       '/reset_password',
+      '/catalogues',
       '/catalogues/all_products',
       '/orders/new/',   // prefix-match covers all /orders/new/[id] variants
     ];
