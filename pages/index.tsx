@@ -49,6 +49,7 @@ import {
   BarChart,
   ReceiptLong,
   Receipt,
+  Key,
 } from '@mui/icons-material';
 import axiosInstance from '../src/util/axios';
 import axios from 'axios';
@@ -330,6 +331,12 @@ const menuSections = [
         action: 'create_customer',
       },
       {
+        icon: <Key />,
+        text: 'Customer Logins',
+        color: '#6366f1',
+        action: 'customer_logins',
+      },
+      {
         icon: <LineAxis />,
         text: 'Customer Analytics',
         color: '#64748b',
@@ -585,6 +592,9 @@ const Home = () => {
         break;
       case 'customer_analytics':
         router.push('/customer_analytics');
+        break;
+      case 'customer_logins':
+        router.push('/customer_logins');
         break;
       case 'check_in':
         router.push('/check_in');
