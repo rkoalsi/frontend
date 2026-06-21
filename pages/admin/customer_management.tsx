@@ -184,6 +184,12 @@ const CustomerManagement: React.FC = () => {
     // Password state
     const [newPassword, setNewPassword] = useState<string>('');
 
+    // Share credentials state
+    const [shareCredOpen, setShareCredOpen] = useState<boolean>(false);
+    const [userToShare, setUserToShare] = useState<User | null>(null);
+    const [sharePwd, setSharePwd] = useState<string>('');
+    const [sharingPwd, setSharingPwd] = useState<boolean>(false);
+
     // Bulk upload state
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [bulkUploading, setBulkUploading] = useState<boolean>(false);
@@ -453,6 +459,33 @@ const CustomerManagement: React.FC = () => {
             console.error('Error generating password:', error);
             toast.error('Error generating password.');
         }
+    };
+
+    const handleShareCredClick = (userItem: User) => {
+        setUserToShare(userItem);
+        setSharePwd('');
+        setShareCredOpen(true);
+    };
+
+    const handleGenerateSharePwd = async () => {
+        setSharingPwd(true);
+        try {
+            const response = await axiosInstance.get('/admin/users/generate-password');
+            setSharePwd(response.data.password);
+        } catch {
+            toast.error('Error generating password.');
+        } finally {
+            setSharingPwd(false);
+        }
+    };
+
+    const handleCopyShareCred = () => {
+        if (!userToShare || !sharePwd) return;
+        const text = `Link: https://orderform.pupscribe.in/login\nEmail: ${userToShare.email}\nPassword: ${sharePwd}`;
+        navigator.clipboard.writeText(text).then(
+            () => toast.success('Credentials copied!'),
+            () => toast.error('Failed to copy.')
+        );
     };
 
     const handleDownloadTemplate = async () => {
@@ -982,6 +1015,18 @@ const CustomerManagement: React.FC = () => {
                                                                 }}
                                                             >
                                                                 <LockReset fontSize="small" color="warning" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                        <Tooltip title="Share Credentials">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => handleShareCredClick(userItem)}
+                                                                sx={{
+                                                                    bgcolor: alpha(theme.palette.success.main, 0.1),
+                                                                    '&:hover': { bgcolor: alpha(theme.palette.success.main, 0.2) },
+                                                                }}
+                                                            >
+                                                                <ContentCopy fontSize="small" color="success" />
                                                             </IconButton>
                                                         </Tooltip>
                                                         <Tooltip title="Delete">
@@ -1578,6 +1623,91 @@ const CustomerManagement: React.FC = () => {
                         startIcon={<LockReset />}
                     >
                         Reset Password
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Share Credentials Dialog */}
+            <Dialog
+                open={shareCredOpen}
+                onClose={() => setShareCredOpen(false)}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle>
+                    <Box display="flex" alignItems="center" gap={2}>
+                        <Avatar sx={{ bgcolor: 'success.main' }}>
+                            <ContentCopy />
+                        </Avatar>
+                        <Box>
+                            <Typography variant="h6">Share Login Credentials</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                {userToShare?.name}
+                            </Typography>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    <TextField
+                        fullWidth
+                        label="Email"
+                        value={userToShare?.email ?? ''}
+                        slotProps={{ input: { readOnly: true } }}
+                        sx={{ mt: 2, mb: 2 }}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <Email color="action" />
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                    <TextField
+                        fullWidth
+                        label="Password"
+                        type="text"
+                        value={sharePwd}
+                        onChange={(e) => setSharePwd(e.target.value)}
+                        placeholder="Type or generate a password"
+                        helperText="Enter a password to include in the copied credentials"
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <Key color="action" />
+                                </InputAdornment>
+                            ),
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <Tooltip title="Generate Password">
+                                        <span>
+                                            <IconButton onClick={handleGenerateSharePwd} disabled={sharingPwd} color="primary">
+                                                {sharingPwd ? <CircularProgress size={20} /> : <Refresh />}
+                                            </IconButton>
+                                        </span>
+                                    </Tooltip>
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                    {sharePwd && (
+                        <Alert severity="info" sx={{ mt: 2 }}>
+                            <Typography variant="body2" fontFamily="monospace" whiteSpace="pre-line">
+                                {`Link: https://orderform.pupscribe.in/login\nEmail: ${userToShare?.email}\nPassword: ${sharePwd}`}
+                            </Typography>
+                        </Alert>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setShareCredOpen(false)}>Cancel</Button>
+                    <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<ContentCopy />}
+                        onClick={handleCopyShareCred}
+                        disabled={!sharePwd}
+                    >
+                        Copy Credentials
                     </Button>
                 </DialogActions>
             </Dialog>

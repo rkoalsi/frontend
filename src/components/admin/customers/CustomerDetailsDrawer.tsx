@@ -31,8 +31,9 @@ import {
   DialogActions,
   CircularProgress,
   Tooltip,
+  InputAdornment,
 } from '@mui/material';
-import { Delete, ExpandMore, Refresh } from '@mui/icons-material';
+import { Delete, ExpandMore, Refresh, Info } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../../util/axios';
 import capitalize from '../../../util/capitalize';
@@ -74,6 +75,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   const [deleteAddressConfirm, setDeleteAddressConfirm] = useState<string | null>(null);
   const [billedAddresses, setBilledAddresses] = useState<Record<string, boolean>>({});
   const [inAnalyticsAddresses, setInAnalyticsAddresses] = useState<Record<string, boolean>>({});
+  const [investmentInputs, setInvestmentInputs] = useState<Record<string, string>>({});
   const [refreshTick, setRefreshTick] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -132,6 +134,13 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
           {}
         );
         setAddressDetails(map);
+        const inputs: Record<string, string> = {};
+        Object.values(map).forEach((detail: any) => {
+          if (detail?.investment != null) {
+            inputs[detail.address_id] = String(detail.investment);
+          }
+        });
+        setInvestmentInputs(inputs);
       })
       .catch(() => {});
     axiosInstance
@@ -176,20 +185,43 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
     }
   };
 
-  const handleAddressStatusChange = async (addressId: string, newStatus: string) => {
-    try {
-      const res = await axiosInstance.put(
-        `/customer_address_details/${customer._id}/${addressId}`,
-        { status: newStatus }
-      );
-      setAddressDetails((prev) => ({
-        ...prev,
-        [addressId]: res.data.address_detail,
-      }));
-      toast.success('Address status updated');
-    } catch {
-      toast.error('Failed to update address status');
-    }
+  const handleAddressStatusChange = (addressId: string, newStatus: string) => {
+    const prevDetail = addressDetails[addressId];
+    setAddressDetails((prev) => ({
+      ...prev,
+      [addressId]: { ...(prev[addressId] || {}), status: newStatus },
+    }));
+    axiosInstance
+      .put(`/customer_address_details/${customer._id}/${addressId}`, { status: newStatus })
+      .then((res) => {
+        setAddressDetails((prev) => ({ ...prev, [addressId]: res.data.address_detail }));
+      })
+      .catch(() => {
+        setAddressDetails((prev) => ({ ...prev, [addressId]: prevDetail }));
+        toast.error('Failed to update address status');
+      });
+  };
+
+  const handleInvestmentBlur = (addressId: string) => {
+    const raw = investmentInputs[addressId] ?? '';
+    const value = raw === '' ? null : Number(raw);
+    if (raw !== '' && isNaN(value as number)) return;
+    const prevDetail = addressDetails[addressId];
+    const prevInput = investmentInputs[addressId] ?? '';
+    setAddressDetails((prev) => ({
+      ...prev,
+      [addressId]: { ...(prev[addressId] || {}), investment: value },
+    }));
+    axiosInstance
+      .put(`/customer_address_details/${customer._id}/${addressId}`, { investment: value })
+      .then((res) => {
+        setAddressDetails((prev) => ({ ...prev, [addressId]: res.data.address_detail }));
+      })
+      .catch(() => {
+        setAddressDetails((prev) => ({ ...prev, [addressId]: prevDetail }));
+        setInvestmentInputs((prev) => ({ ...prev, [addressId]: prevInput }));
+        toast.error('Failed to update investment');
+      });
   };
 
   const handleDeleteAddress = async (addressId: string) => {
@@ -376,6 +408,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
           <Typography>
             <strong>Whatsapp Group:</strong> {customer.cf_whatsapp_group || '-'}
           </Typography>
+
           <Box sx={{ mt: 2 }}>
             <FormControl fullWidth sx={{ mt: 2 }}>
               <InputLabel id='status-filter-label'>Tier</InputLabel>
@@ -506,21 +539,48 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                           <Delete />
                         </IconButton>
                       </Box>
-                      <FormControl size='small' sx={{ mt: 1, minWidth: 160 }}>
-                        <InputLabel>Status</InputLabel>
-                        <Select
-                          label='Status'
-                          value={addressDetails[a.address_id]?.status || ''}
-                          onChange={(e) =>
-                            handleAddressStatusChange(a.address_id, e.target.value)
-                          }
-                        >
-                          <MenuItem value=''>— None —</MenuItem>
-                          <MenuItem value='open'>Open</MenuItem>
-                          <MenuItem value='closed'>Closed</MenuItem>
-                          <MenuItem value='warehouse'>Warehouse</MenuItem>
-                        </Select>
-                      </FormControl>
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                        <FormControl size='small' sx={{ minWidth: 160 }}>
+                          <InputLabel>Status</InputLabel>
+                          <Select
+                            label='Status'
+                            value={addressDetails[a.address_id]?.status || ''}
+                            onChange={(e) =>
+                              handleAddressStatusChange(a.address_id, e.target.value)
+                            }
+                          >
+                            <MenuItem value=''>— None —</MenuItem>
+                            <MenuItem value='open'>Open</MenuItem>
+                            <MenuItem value='closed'>Closed</MenuItem>
+                            <MenuItem value='warehouse'>Warehouse</MenuItem>
+                          </Select>
+                        </FormControl>
+                        <Tooltip title="Amount for racks or other investments in shop" placement="top-start">
+                          <TextField
+                            size='small'
+                            label={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                Investment <Info sx={{ fontSize: 14 }} />
+                              </Box>
+                            }
+                            type='number'
+                            value={investmentInputs[a.address_id] ?? ''}
+                            onChange={(e) =>
+                              setInvestmentInputs((prev) => ({
+                                ...prev,
+                                [a.address_id]: e.target.value,
+                              }))
+                            }
+                            onBlur={() => handleInvestmentBlur(a.address_id)}
+                            sx={{ minWidth: 160 }}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position='start'>₹</InputAdornment>
+                              ),
+                            }}
+                          />
+                        </Tooltip>
+                      </Box>
                     </ListItem>
                   ))}
                 </List>
