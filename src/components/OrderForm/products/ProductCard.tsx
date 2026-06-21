@@ -53,10 +53,11 @@ interface ProductCardProps {
   orderStatus?: string;
   getSellingPrice: any;
   handleImageClick: any;
-  handleQuantityChange: (id: string, newQuantity: number) => void;
+  handleQuantityChange: (id: string, newQuantity: number, isPreOrder?: boolean) => void;
   handleAddOrRemove: (product: SearchResult) => void;
   index: number;
   isShared: boolean;
+  isPreOrderTab?: boolean;
 }
 
 const ProductCard: React.FC<ProductCardProps> = memo(
@@ -73,17 +74,24 @@ const ProductCard: React.FC<ProductCardProps> = memo(
     handleAddOrRemove,
     index,
     isShared = false,
+    isPreOrderTab = false,
   }) => {
     const productId = product._id;
     const packStep = getPackStep(product.name);
     const selectedProduct: any = selectedProducts.find(
       (p) => p._id === productId
     );
-    const quantity =
-      selectedProduct?.quantity || temporaryQuantities[productId] || "";
+    const isSplitProd = product.pre_order === true && (product.stock ?? 0) > 0;
+    const isPreOrderCart = isPreOrderTab && isSplitProd;
+    const quantity = isPreOrderCart
+      ? (selectedProduct?.pre_order_quantity || "")
+      : (selectedProduct?.quantity || temporaryQuantities[productId] || "");
+    const isInCart = isPreOrderCart
+      ? (selectedProduct?.pre_order_quantity ?? 0) > 0
+      : !!selectedProduct;
     const sellingPrice = getSellingPrice(product);
     const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
-    const isQuantityExceedingStock = !product.pre_order && quantity > product.stock;
+    const isQuantityExceedingStock = !isPreOrderCart && (product.stock ?? 0) > 0 && quantity > product.stock;
     const isDisabled =
       orderStatus?.toLowerCase().includes("accepted") ||
       orderStatus?.toLowerCase().includes("declined");
@@ -101,11 +109,11 @@ const ProductCard: React.FC<ProductCardProps> = memo(
           height: '100%',
           minHeight: '100%',
           borderRadius: 3,
-          boxShadow: selectedProduct ? 4 : 2,
+          boxShadow: isInCart ? 4 : 2,
           overflow: "visible",
           backgroundColor: "background.paper",
-          border: selectedProduct ? '2px solid' : '1px solid',
-          borderColor: selectedProduct ? 'primary.main' : 'divider',
+          border: isInCart ? '2px solid' : '1px solid',
+          borderColor: isInCart ? 'primary.main' : 'divider',
           transition: isMobile || isTablet ? 'none' : 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
           contain: 'layout style paint',
           '&:hover': {
@@ -354,40 +362,57 @@ const ProductCard: React.FC<ProductCardProps> = memo(
 
                 {/* Stock - Hidden when isShared */}
                 {!isShared && (
-                  <Box sx={{ textAlign: 'right' }}>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        fontSize: '0.65rem',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.3px',
-                        display: 'block',
-                        mb: 0.5,
-                      }}
-                    >
-                      {product.pre_order ? 'Upcoming' : 'Stock'}
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'end', gap: 0.5, justifyContent: 'flex-end' }}>
-                      <Typography
-                        variant="body1"
-                        sx={{
-                          fontWeight: 700,
-                          fontSize: '0.95rem',
-                          fontFamily: 'system-ui',
-                          color: product.pre_order
-                            ? 'warning.main'
-                            : product.stock > 10 ? 'success.main' : product.stock > 0 ? 'error.main' : 'primary',
-                          letterSpacing: '-0.3px',
-                        }}
-                      >
-                        {product.pre_order
-                          ? (product.upcoming_stock ?? '—')
-                          : product.stock.toLocaleString('en-IN')}
+                  isSplitProd && !isPreOrderTab ? (
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', display: 'block', mb: 0.5 }}>
+                        Stock
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 700, fontSize: '0.95rem', fontFamily: 'system-ui', color: product.stock > 10 ? 'success.main' : 'error.main', letterSpacing: '-0.3px' }}>
+                        {product.stock.toLocaleString('en-IN')}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', display: 'block', mb: 0.5, mt: 0.5 }}>
+                        Upcoming
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 700, fontSize: '0.95rem', fontFamily: 'system-ui', color: 'warning.main', letterSpacing: '-0.3px' }}>
+                        {product.upcoming_stock ?? '—'}
                       </Typography>
                     </Box>
-                  </Box>
+                  ) : (
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.3px',
+                          display: 'block',
+                          mb: 0.5,
+                        }}
+                      >
+                        {(isPreOrderTab || (product.pre_order && !product.stock)) ? 'Upcoming' : 'Stock'}
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'end', gap: 0.5, justifyContent: 'flex-end' }}>
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            fontWeight: 700,
+                            fontSize: '0.95rem',
+                            fontFamily: 'system-ui',
+                            color: (isPreOrderTab || (product.pre_order && !product.stock))
+                              ? 'warning.main'
+                              : product.stock > 10 ? 'success.main' : product.stock > 0 ? 'error.main' : 'primary',
+                            letterSpacing: '-0.3px',
+                          }}
+                        >
+                          {(isPreOrderTab || (product.pre_order && !product.stock))
+                            ? (product.upcoming_stock ?? '—')
+                            : product.stock.toLocaleString('en-IN')}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )
                 )}
 
                 {/* Selling Price - Hidden when isShared */}
@@ -463,7 +488,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 </Box>
               </Box>
 
-              {selectedProduct && (
+              {isInCart && (
                 <Box
                   sx={{
                     p: 1.5,
@@ -529,10 +554,10 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               </Typography>
               <QuantitySelector
                 quantity={quantity}
-                max={product.pre_order ? Infinity : product.stock}
+                max={isPreOrderCart ? (product.upcoming_stock ?? Infinity) : (product.pre_order && !product.stock ? (product.upcoming_stock ?? Infinity) : product.stock)}
                 step={packStep}
                 onChange={(newQuantity) =>
-                  handleQuantityChange(productId, newQuantity)
+                  handleQuantityChange(productId, newQuantity, isPreOrderCart)
                 }
                 disabled={isDisabled}
               />
@@ -553,13 +578,13 @@ const ProductCard: React.FC<ProductCardProps> = memo(
             </Box>
 
             {/* Action Button */}
-            <Tooltip title={selectedProduct ? "Remove from cart" : "Add to cart"}>
+            <Tooltip title={isInCart ? (isPreOrderCart ? "Remove pre-order" : "Remove from cart") : (isPreOrderCart ? "Add as pre-order" : "Add to cart")}>
               <span>
                 <Button
                   variant="contained"
-                  color={selectedProduct ? "error" : "primary"}
+                  color={isInCart ? "error" : "primary"}
                   startIcon={
-                    selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />
+                    isInCart ? <RemoveShoppingCart /> : <AddShoppingCart />
                   }
                   onClick={() => handleAddOrRemove(product)}
                   disabled={isDisabled}
@@ -583,7 +608,9 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                     },
                   }}
                 >
-                  {selectedProduct ? "Remove from Cart" : "Add to Cart"}
+                  {isInCart
+                    ? (isPreOrderCart ? "Remove Pre-Order" : "Remove from Cart")
+                    : (isPreOrderCart ? "Add as Pre-Order" : "Add to Cart")}
                 </Button>
               </span>
             </Tooltip>
