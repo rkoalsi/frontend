@@ -1108,7 +1108,7 @@ const Products: React.FC<ProductsProps> = ({
           debouncedWarn(`${product.name} pre-order is already in the cart.`);
           return;
         }
-        const qty = packStep;
+        const qty = temporaryQuantities[`${productId}-pre`] || packStep;
         startTransition(() => {
           if (existing) {
             setSelectedProducts(selectedProducts.map((p) =>
@@ -1125,6 +1125,11 @@ const Products: React.FC<ProductsProps> = ({
             }]);
             setOptions((prev) => Array.isArray(prev) ? prev.filter((o) => o._id !== productId) : []);
           }
+          setTemporaryQuantities((prev) => {
+            const next = { ...prev };
+            delete next[`${productId}-pre`];
+            return next;
+          });
         });
         requestAnimationFrame(() => {
           debouncedSuccess(`Added ${product.name} (x${qty}) as pre-order to cart.`);
@@ -1211,16 +1216,20 @@ const Products: React.FC<ProductsProps> = ({
   const handleQuantityChange = useCallback(
     (id: string, newQuantity: number, isPreOrder = false) => {
       if (isPreOrder) {
-        // Update pre_order_quantity for the pre-order portion of a split product
-        startTransition(() => {
-          setSelectedProducts((prev) => prev.map((p) => {
-            if (p._id !== id) return p;
-            const minQty = getPackStep(p.name);
-            const sanitized = Math.max(minQty, Math.min(newQuantity, p.upcoming_stock ?? Infinity));
-            debouncedSuccess(`Updated ${p.name} pre-order to quantity ${sanitized}`);
-            return { ...p, pre_order_quantity: sanitized };
-          }));
-        });
+        const productInCart = selectedProducts.find((p) => p._id === id);
+        if (productInCart) {
+          startTransition(() => {
+            setSelectedProducts((prev) => prev.map((p) => {
+              if (p._id !== id) return p;
+              const minQty = getPackStep(p.name);
+              const sanitized = Math.max(minQty, Math.min(newQuantity, p.upcoming_stock ?? Infinity));
+              debouncedSuccess(`Updated ${p.name} pre-order to quantity ${sanitized}`);
+              return { ...p, pre_order_quantity: sanitized };
+            }));
+          });
+        } else {
+          setTemporaryQuantities((prev) => ({ ...prev, [`${id}-pre`]: newQuantity }));
+        }
         return;
       }
 
@@ -1239,63 +1248,10 @@ const Products: React.FC<ProductsProps> = ({
         });
         debouncedSuccess(`Updated ${productInCart.name} to quantity ${sanitized}`);
       } else {
-        const key = searchTerm.trim() !== ""
-          ? "search"
-          : groupByCategory
-            ? `all-${activeCategory}`
-            : `${activeBrand}-${activeCategory}`;
-
-        const data = productsByBrandCategory[key];
-        let product;
-
-        if (data && (data as any).items !== undefined) {
-          const items = (data as any).items || [];
-          for (const item of items) {
-            if (item.type === 'product' && item.product._id === id) {
-              product = item.product;
-              break;
-            } else if (item.type === 'group') {
-              const foundInGroup = item.products?.find((p: any) => p._id === id);
-              if (foundInGroup) {
-                product = foundInGroup;
-                break;
-              }
-            }
-          }
-        } else if (Array.isArray(data)) {
-          product = data.find((p) => p._id === id);
-        }
-
-        if (product) {
-          const sanitized = Math.max(getPackStep(product.name), (product.pre_order && !product.stock) ? Math.min(newQuantity, product.upcoming_stock ?? Infinity) : Math.min(newQuantity, product.stock));
-          const isShared = new URLSearchParams(window.location.search).has("shared");
-          const updated = [
-            ...selectedProducts,
-            {
-              ...product,
-              margin: specialMargins[id] || customer?.cf_margin || "40%",
-              quantity: sanitized,
-              added_by: isShared ? "customer" : "sales_person",
-            },
-          ];
-          startTransition(() => {
-            setSelectedProducts(updated);
-          });
-          debouncedSuccess(`Added ${product.name} (x${sanitized}) to cart.`);
-        }
+        setTemporaryQuantities((prev) => ({ ...prev, [id]: newQuantity }));
       }
     },
-    [
-      selectedProducts,
-      productsByBrandCategory,
-      searchTerm,
-      activeBrand,
-      activeCategory,
-      groupByCategory,
-      specialMargins,
-      customer,
-      debouncedSuccess,
-    ]
+    [selectedProducts, debouncedSuccess]
   );
 
   const handleClearCart = useCallback(async () => {
