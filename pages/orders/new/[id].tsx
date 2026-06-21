@@ -238,7 +238,7 @@ const NewOrder: React.FC = () => {
 
   // Group special margins by brand; derive brand margin (mode) and flag exceptions
   const specialMarginsByBrand = useMemo(() => {
-    const grouped: Record<string, { brandMargin: string; allProducts: any[] }> = {};
+    const grouped: Record<string, { brandMargin: string; allProducts: any[]; exceptions: any[] }> = {};
     const byBrand: Record<string, any[]> = {};
     for (const item of specialMarginsList) {
       const brand = item.brand || 'Unknown';
@@ -250,7 +250,8 @@ const NewOrder: React.FC = () => {
       const freq: Record<string, number> = {};
       for (const p of products) freq[p.margin] = (freq[p.margin] || 0) + 1;
       const brandMargin = Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0];
-      grouped[brand] = { brandMargin, allProducts: products };
+      const exceptions = products.filter((p) => p.margin !== brandMargin);
+      grouped[brand] = { brandMargin, allProducts: products, exceptions };
     }
     return grouped;
   }, [specialMarginsList]);
@@ -344,7 +345,10 @@ const NewOrder: React.FC = () => {
       (acc: { totalGST: number; totalAmount: number }, product) => {
         const taxPercentage = product?.item_tax_preferences?.[0]?.tax_percentage || 0;
         const rate = parseFloat(product.rate.toString()) || 0;
-        const quantity = parseInt(product.quantity?.toString() || '1', 10) || 1;
+        const isSplitP = product.pre_order === true && (product.stock ?? 0) > 0;
+        const baseQty = parseInt(product.quantity?.toString() || '0', 10) || 0;
+        const preQty = isSplitP ? (parseInt(product.pre_order_quantity?.toString() || '0', 10) || 0) : 0;
+        const quantity = isSplitP ? (baseQty + preQty) : (baseQty || 1);
         // Margin precedence: live special margin → live customer margin →
         // customer margin embedded on the order (what shared-link visitors
         // rely on) → margin stored on the order line when added → 40% default.
@@ -392,7 +396,7 @@ const NewOrder: React.FC = () => {
     // Skip the very first debounce tick if the cart is empty (order hasn't loaded yet).
     // Once prev is set we allow saving an empty cart so removals are persisted.
     if (!prev && !debProducts.length && !debTotals.totalAmount) return;
-    const quantitySig = debProducts.map((p: any) => `${p._id}:${p.quantity}`).join(',');
+    const quantitySig = debProducts.map((p: any) => `${p._id}:${p.quantity}:${p.pre_order_quantity ?? 0}`).join(',');
     const prevSig = prev?.quantitySig;
     if (
       prev &&
@@ -745,18 +749,25 @@ const NewOrder: React.FC = () => {
     }
   }, [order, isShared, router]);
 
+  // Count cart "rows": split products with both quantities set contribute 2 rows
+  const cartRowCount = selectedProducts.reduce((n: number, p: any) => {
+    const isSplit = p.pre_order === true && (p.stock ?? 0) > 0;
+    if (isSplit) return n + ((p.quantity ?? 0) > 0 ? 1 : 0) + ((p.pre_order_quantity ?? 0) > 0 ? 1 : 0);
+    return n + 1;
+  }, 0);
+
   // Per-step context shown under the stepper labels once a step has data
   const stepCaptions = useMemo<string[]>(
     () => [
       customer ? customer.company_name || customer.contact_name || '' : '',
       addressCaption(billingAddress),
       addressCaption(shippingAddress),
-      selectedProducts.length
-        ? `${selectedProducts.length} item${selectedProducts.length !== 1 ? 's' : ''} · ₹${totals.totalAmount.toLocaleString('en-IN')}`
+      cartRowCount
+        ? `${cartRowCount} item${cartRowCount !== 1 ? 's' : ''} · ₹${totals.totalAmount.toLocaleString('en-IN')}`
         : '',
       '',
     ],
-    [customer, billingAddress, shippingAddress, selectedProducts.length, totals.totalAmount]
+    [customer, billingAddress, shippingAddress, cartRowCount, totals.totalAmount]
   );
 
   const handleCopyEstimate = async () => {
@@ -869,6 +880,8 @@ const NewOrder: React.FC = () => {
   const hasStockExceeded = selectedProducts.some(
     (p) => !p.pre_order && (p.quantity || 1) > (p.stock ?? Infinity)
   );
+  const _hasStockItems = selectedProducts.some((p: any) => !p.pre_order || ((p.stock ?? 0) > 0 && (p.quantity ?? 0) > 0));
+  const _hasPreOrderItems = selectedProducts.some((p: any) => p.pre_order && ((p.stock ?? 0) > 0 ? (p.pre_order_quantity ?? 0) > 0 : (p.quantity ?? 0) > 0));
   // Collect every reason the submit button is blocked so the tooltip can say
   // exactly what's missing instead of leaving a silently disabled button.
   // For dual-estimate orders, only block when BOTH estimates are finalised.
@@ -1570,8 +1583,8 @@ const NewOrder: React.FC = () => {
                           if (isRetailerFlow) {
                             setSubmitDialogOpen(true);
                           } else {
-                            const hasStock = selectedProducts.some((p) => !p.pre_order);
-                            const hasPreOrder = selectedProducts.some((p) => p.pre_order);
+                            const hasStock = selectedProducts.some((p) => !p.pre_order || ((p.stock ?? 0) > 0 && (p.quantity ?? 0) > 0));
+                            const hasPreOrder = selectedProducts.some((p) => p.pre_order && ((p.stock ?? 0) > 0 ? (p.pre_order_quantity ?? 0) > 0 : (p.quantity ?? 0) > 0));
                             if (hasStock && hasPreOrder) {
                               setPendingAction('draft');
                               setEstimateTypes({ stock: !order?.estimate_created, pre_order: !order?.pre_order_estimate_created });
@@ -1596,8 +1609,8 @@ const NewOrder: React.FC = () => {
                     color='error'
                     fullWidth={isMobile}
                     onClick={() => {
-                      const hasStock = selectedProducts.some((p) => !p.pre_order);
-                      const hasPreOrder = selectedProducts.some((p) => p.pre_order);
+                      const hasStock = selectedProducts.some((p) => !p.pre_order || ((p.stock ?? 0) > 0 && (p.quantity ?? 0) > 0));
+                      const hasPreOrder = selectedProducts.some((p) => p.pre_order && ((p.stock ?? 0) > 0 ? (p.pre_order_quantity ?? 0) > 0 : (p.quantity ?? 0) > 0));
                       if (hasStock && hasPreOrder) {
                         setPendingAction('declined');
                         setEstimateTypes({ stock: !order?.estimate_created, pre_order: !order?.pre_order_estimate_created });
@@ -1627,8 +1640,8 @@ const NewOrder: React.FC = () => {
                     color='primary'
                     fullWidth={isMobile}
                     onClick={() => {
-                      const hasStock = selectedProducts.some((p) => !p.pre_order);
-                      const hasPreOrder = selectedProducts.some((p) => p.pre_order);
+                      const hasStock = selectedProducts.some((p) => !p.pre_order || ((p.stock ?? 0) > 0 && (p.quantity ?? 0) > 0));
+                      const hasPreOrder = selectedProducts.some((p) => p.pre_order && ((p.stock ?? 0) > 0 ? (p.pre_order_quantity ?? 0) > 0 : (p.quantity ?? 0) > 0));
                       if (hasStock && hasPreOrder) {
                         setPendingAction('accepted');
                         setEstimateTypes({ stock: !order?.estimate_created, pre_order: !order?.pre_order_estimate_created });
@@ -1744,7 +1757,7 @@ const NewOrder: React.FC = () => {
                 color='text.secondary'
                 sx={{ fontSize: { xs: '0.65rem', sm: '0.72rem' } }}
               >
-                {selectedProducts.length} item{selectedProducts.length !== 1 ? 's' : ''} selected
+                {cartRowCount} item{cartRowCount !== 1 ? 's' : ''} selected
               </Typography>
             </Box>
           </Box>
@@ -1783,19 +1796,17 @@ const NewOrder: React.FC = () => {
               control={
                 <Checkbox
                   checked={
-                    (selectedProducts.some((p) => !p.pre_order) ? estimateTypes.stock : true) &&
-                    (selectedProducts.some((p) => p.pre_order) ? estimateTypes.pre_order : true)
+                    (_hasStockItems ? estimateTypes.stock : true) &&
+                    (_hasPreOrderItems ? estimateTypes.pre_order : true)
                   }
                   indeterminate={
-                    selectedProducts.some((p) => !p.pre_order) &&
-                    selectedProducts.some((p) => p.pre_order) &&
-                    estimateTypes.stock !== estimateTypes.pre_order
+                    _hasStockItems && _hasPreOrderItems && estimateTypes.stock !== estimateTypes.pre_order
                   }
                   onChange={(e) => {
                     const val = e.target.checked;
                     setEstimateTypes({
-                      stock: selectedProducts.some((p) => !p.pre_order) ? val : estimateTypes.stock,
-                      pre_order: selectedProducts.some((p) => p.pre_order) ? val : estimateTypes.pre_order,
+                      stock: _hasStockItems ? val : estimateTypes.stock,
+                      pre_order: _hasPreOrderItems ? val : estimateTypes.pre_order,
                     });
                   }}
                 />
@@ -1808,7 +1819,7 @@ const NewOrder: React.FC = () => {
                 <Checkbox
                   checked={estimateTypes.stock}
                   onChange={(e) => setEstimateTypes((prev) => ({ ...prev, stock: e.target.checked }))}
-                  disabled={!selectedProducts.some((p) => !p.pre_order)}
+                  disabled={!_hasStockItems}
                 />
               }
               label={
@@ -1820,7 +1831,7 @@ const NewOrder: React.FC = () => {
                     )}
                   </Typography>
                   <Typography variant='caption' color='text.secondary'>
-                    {selectedProducts.filter((p) => !p.pre_order).length} item{selectedProducts.filter((p) => !p.pre_order).length !== 1 ? 's' : ''}
+                    {selectedProducts.filter((p: any) => !p.pre_order || ((p.stock ?? 0) > 0 && (p.quantity ?? 0) > 0)).length} item{selectedProducts.filter((p: any) => !p.pre_order || ((p.stock ?? 0) > 0 && (p.quantity ?? 0) > 0)).length !== 1 ? 's' : ''}
                     {order?.estimate_created ? ' · will update existing estimate' : ' · will create new estimate'}
                   </Typography>
                 </Box>
@@ -1832,7 +1843,7 @@ const NewOrder: React.FC = () => {
                 <Checkbox
                   checked={estimateTypes.pre_order}
                   onChange={(e) => setEstimateTypes((prev) => ({ ...prev, pre_order: e.target.checked }))}
-                  disabled={!selectedProducts.some((p) => p.pre_order)}
+                  disabled={!_hasPreOrderItems}
                 />
               }
               label={
@@ -1844,7 +1855,7 @@ const NewOrder: React.FC = () => {
                     )}
                   </Typography>
                   <Typography variant='caption' color='text.secondary'>
-                    {selectedProducts.filter((p) => p.pre_order).length} item{selectedProducts.filter((p) => p.pre_order).length !== 1 ? 's' : ''}
+                    {selectedProducts.filter((p: any) => p.pre_order && ((p.stock ?? 0) > 0 ? (p.pre_order_quantity ?? 0) > 0 : (p.quantity ?? 0) > 0)).length} item{selectedProducts.filter((p: any) => p.pre_order && ((p.stock ?? 0) > 0 ? (p.pre_order_quantity ?? 0) > 0 : (p.quantity ?? 0) > 0)).length !== 1 ? 's' : ''}
                     {order?.pre_order_estimate_created ? ' · will update existing estimate' : ' · will create new estimate'}
                   </Typography>
                 </Box>
@@ -2013,7 +2024,7 @@ const NewOrder: React.FC = () => {
               </Typography>
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                {Object.entries(specialMarginsByBrand).map(([brand, { brandMargin, allProducts }]) => (
+                {Object.entries(specialMarginsByBrand).map(([brand, { brandMargin, exceptions }]) => (
                   <Box
                     key={brand}
                     sx={{
@@ -2044,15 +2055,15 @@ const NewOrder: React.FC = () => {
                       />
                     </Box>
 
-                    {/* All individual product margins for this brand */}
-                    {allProducts.length > 0 && (
+                    {/* Products with a margin different from the brand margin */}
+                    {exceptions.length > 0 && (
                       <>
                         <Divider />
                         <Table size='small'>
                           <TableHead>
                             <TableRow>
                               <TableCell sx={{ fontSize: '0.72rem', color: 'text.secondary', fontWeight: 600, py: 0.75 }}>
-                                Product
+                                Product (different margin)
                               </TableCell>
                               <TableCell align='right' sx={{ fontSize: '0.72rem', color: 'text.secondary', fontWeight: 600, py: 0.75 }}>
                                 Margin
@@ -2060,25 +2071,22 @@ const NewOrder: React.FC = () => {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {allProducts.map((item: any) => {
-                              const isException = item.margin !== brandMargin;
-                              return (
-                                <TableRow key={item.product_id} hover>
-                                  <TableCell sx={{ fontSize: '0.8rem', wordBreak: 'break-word' }}>
-                                    {item.name}
-                                  </TableCell>
-                                  <TableCell align='right'>
-                                    <Chip
-                                      size='small'
-                                      label={item.margin}
-                                      color={isException ? 'warning' : 'default'}
-                                      variant={isException ? 'outlined' : 'filled'}
-                                      sx={{ fontSize: '0.75rem', height: 22, fontWeight: 700 }}
-                                    />
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
+                            {exceptions.map((item: any) => (
+                              <TableRow key={item.product_id} hover>
+                                <TableCell sx={{ fontSize: '0.8rem', wordBreak: 'break-word' }}>
+                                  {item.name}
+                                </TableCell>
+                                <TableCell align='right'>
+                                  <Chip
+                                    size='small'
+                                    label={item.margin}
+                                    color='warning'
+                                    variant='outlined'
+                                    sx={{ fontSize: '0.75rem', height: 22, fontWeight: 700 }}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            ))}
                           </TableBody>
                         </Table>
                       </>

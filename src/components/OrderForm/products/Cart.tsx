@@ -34,8 +34,8 @@ interface CartDrawerProps {
   selectedProducts: any[];
   getSellingPrice: any;
   handleImageClick: any;
-  handleQuantityChange: (id: string, newQuantity: number) => void;
-  handleRemoveProduct: (id: string) => void;
+  handleQuantityChange: (id: string, newQuantity: number, isPreOrder?: boolean) => void;
+  handleRemoveProduct: (id: string, isPreOrder?: boolean) => void;
   totals: { totalGST: number; totalAmount: number };
   onCheckout: () => void;
   orderStatus?: string;
@@ -255,8 +255,20 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
           }}
         >
           <Stack spacing={2.5} sx={{ width: '100%', maxWidth: '100%' }}>
-            {selectedProducts.map((product) => {
+            {selectedProducts.flatMap((product) => {
+              const isSplit = product.pre_order === true && (product.stock ?? 0) > 0;
+              const rows: any[] = [];
+              if (!isSplit || (product.quantity ?? 0) > 0) {
+                rows.push({ ...product, _cartKey: product._id, _cartIsPreOrder: false, _cartQty: product.quantity });
+              }
+              if (isSplit && (product.pre_order_quantity ?? 0) > 0) {
+                rows.push({ ...product, _cartKey: product._id + '-pre', _cartIsPreOrder: true, _cartQty: product.pre_order_quantity, quantity: product.pre_order_quantity });
+              }
+              return rows;
+            }).map((product) => {
               const productId = product._id;
+              const cartKey = product._cartKey;
+              const isPreOrderRow = product._cartIsPreOrder;
               const sellingPrice = getSellingPrice(product);
               const itemTotal = parseFloat(
                 (sellingPrice * product.quantity).toFixed(2)
@@ -264,7 +276,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
 
               return (
                 <Paper
-                  key={productId}
+                  key={cartKey}
                   elevation={0}
                   sx={{
                     p: { xs: 2, sm: 2.5 },
@@ -366,26 +378,30 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                             gap: 1,
                           }}
                         >
-                          <Typography
-                            variant='subtitle1'
-                            sx={{
-                              fontWeight: 700,
-                              lineHeight: 1.3,
-                              color: 'text.primary',
-                              flex: 1,
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                              fontSize: { xs: '0.95rem', sm: '1rem' },
-                            }}
-                          >
-                            {product.name}
-                          </Typography>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography
+                              variant='subtitle1'
+                              sx={{
+                                fontWeight: 700,
+                                lineHeight: 1.3,
+                                color: 'text.primary',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                fontSize: { xs: '0.95rem', sm: '1rem' },
+                              }}
+                            >
+                              {product.name}
+                            </Typography>
+                            {isPreOrderRow && (
+                              <Chip label='Pre-Order' size='small' color='warning' variant='outlined' sx={{ mt: 0.5, fontSize: '0.65rem', height: 20 }} />
+                            )}
+                          </Box>
 
                           <IconButton
                             size='small'
-                            onClick={() => handleRemoveProduct(productId)}
+                            onClick={() => handleRemoveProduct(productId, isPreOrderRow)}
                             aria-label={`Remove ${product.name} from cart`}
                             sx={{
                               p: 0.75,
@@ -450,10 +466,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                             </Typography>
                             <QuantitySelector
                               quantity={product.quantity}
-                              max={product.pre_order ? Infinity : product.stock}
+                              max={isPreOrderRow ? (product.upcoming_stock ?? Infinity) : (product.pre_order && !product.stock ? (product.upcoming_stock ?? Infinity) : product.stock)}
                               step={getPackStep(product.name)}
                               onChange={(newQuantity) =>
-                                handleQuantityChange(productId, newQuantity)
+                                handleQuantityChange(productId, newQuantity, isPreOrderRow)
                               }
                               disabled={isDisabled}
                             />
