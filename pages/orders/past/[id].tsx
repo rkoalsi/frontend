@@ -86,18 +86,20 @@ const OrderDetails = () => {
     }
   };
 
-  const handleDownloadEstimate = async (order: any) => {
+  const handleDownloadEstimate = async (order: any, type: 'stock' | 'pre_order' = 'stock') => {
     try {
-      const resp = await axios.get(
-        `${process.env.api_url}/orders/download_pdf/${order._id}`,
-        { responseType: 'blob' }
-      );
+      const apiUrl = type === 'pre_order'
+        ? `${process.env.api_url}/orders/download_pdf/${order._id}?type=pre_order`
+        : `${process.env.api_url}/orders/download_pdf/${order._id}`;
+      const resp = await axios.get(apiUrl, { responseType: 'blob' });
       if (resp.data.type !== 'application/pdf') {
-        toast.error('Draft Estimate Not Created');
+        toast.error('Estimate Not Created');
         return;
       }
       const contentDisposition = resp.headers['content-disposition'];
-      let fileName = `${order.estimate_number}.pdf`;
+      let fileName = type === 'pre_order'
+        ? `${order.pre_order_estimate_number}.pdf`
+        : `${order.estimate_number}.pdf`;
       if (contentDisposition) {
         const match = contentDisposition.match(/filename="(.+)"/);
         if (match?.[1]) fileName = match[1];
@@ -284,10 +286,22 @@ const OrderDetails = () => {
                 size='small'
                 variant='outlined'
                 startIcon={<Download fontSize='small' />}
-                onClick={() => handleDownloadEstimate(orderData)}
+                onClick={() => handleDownloadEstimate(orderData, 'stock')}
                 sx={{ borderRadius: 2 }}
               >
                 Download PDF
+              </Button>
+            )}
+            {orderData.pre_order_estimate_created && (
+              <Button
+                size='small'
+                variant='outlined'
+                color='warning'
+                startIcon={<Download fontSize='small' />}
+                onClick={() => handleDownloadEstimate(orderData, 'pre_order')}
+                sx={{ borderRadius: 2 }}
+              >
+                Download Pre-Order PDF
               </Button>
             )}
             {statusKey === 'invoiced' && invoices.map((inv: any) => (
@@ -360,6 +374,28 @@ const OrderDetails = () => {
                       rel='noopener noreferrer'
                       variant='body2'
                       sx={{ color: 'primary.main', textDecoration: 'none' }}
+                    >
+                      View ↗
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            )}
+            {orderData.pre_order_estimate_created && (
+              <Box sx={{ gridColumn: 'span 2' }}>
+                <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>
+                  Pre-Order Estimate Number
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                  <Typography variant='body1' fontWeight={500}>{orderData.pre_order_estimate_number || 'N/A'}</Typography>
+                  {orderData.pre_order_estimate_url && (
+                    <Typography
+                      component='a'
+                      href={orderData.pre_order_estimate_url}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      variant='body2'
+                      sx={{ color: 'warning.main', textDecoration: 'none' }}
                     >
                       View ↗
                     </Typography>

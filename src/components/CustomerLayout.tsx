@@ -176,6 +176,7 @@ const CustomerLayout = ({ children }: any) => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <IconButton
               edge='start'
+              data-tour='sidebar-toggle'
               onClick={() => setSidebarOpen(!isSidebarOpen)}
               sx={{
                 color: 'rgba(255,255,255,0.7)',

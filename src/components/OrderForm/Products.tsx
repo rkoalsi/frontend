@@ -62,6 +62,7 @@ import {
   AddShoppingCart,
   RemoveShoppingCart,
   Search as SearchIcon,
+  ShoppingCartCheckout as ShoppingCartCheckoutIcon,
 } from "@mui/icons-material";
 import debounce from "lodash.debounce";
 import { toast } from "react-toastify";
@@ -90,6 +91,7 @@ interface SearchResult {
   rate: number;
   stock: number;
   new?: boolean;
+  pre_order?: boolean;
   item_tax_preferences: any;
 }
 
@@ -127,7 +129,7 @@ const MemoizedDesktopProductCard = memo(({
   const quantity: any = selectedProduct?.quantity || temporaryQuantities[productId] || "";
   const sellingPrice = getSellingPrice(product);
   const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
-  const isQuantityExceedingStock = quantity > product.stock;
+  const isQuantityExceedingStock = !product.pre_order && quantity > product.stock;
   const isDisabled = ['accepted', 'declined', 'invoiced'].includes(
     order?.status?.toLowerCase()
   );
@@ -150,6 +152,26 @@ const MemoizedDesktopProductCard = memo(({
         }}
       >
         <Box sx={{ p: 2, position: 'relative' }}>
+          {product.pre_order && (
+            <Chip
+              label="Pre Order"
+              size="small"
+              sx={{
+                position: 'absolute',
+                top: 8,
+                left: 8,
+                zIndex: 1,
+                fontFamily: 'Poppins, sans-serif',
+                fontWeight: 700,
+                fontSize: '0.75rem',
+                backgroundColor: 'warning.main',
+                color: 'white',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              }}
+            />
+          )}
           {product.new && (
             <Chip
               label="New Arrivals"
@@ -317,7 +339,7 @@ const MemoizedDesktopProductCard = memo(({
           <Box sx={{ mb: 2 }}>
             <QuantitySelector
               quantity={quantity}
-              max={product.stock}
+              max={product.pre_order ? Infinity : product.stock}
               step={packStep}
               onChange={(newQuantity: number) => handleQuantityChange(productId, newQuantity)}
               disabled={isDisabled}
@@ -461,7 +483,7 @@ const Products: React.FC<ProductsProps> = ({
   const [productCounts, setProductCounts] = useState<{
     [brand: string]: { [category: string]: number };
   }>({});
-  const [brandList, setBrandList] = useState<{ brand: string; url: string }[]>(
+  const [brandList, setBrandList] = useState<{ brand: string; url: string | null }[]>(
     []
   );
   const [groupByCategory, setGroupByCategory] = useState<boolean>(false);
@@ -623,10 +645,11 @@ const Products: React.FC<ProductsProps> = ({
         setLoadingMore(true);
         const sortToUse = sortOverride || sortOrder;
 
-        // Handle "New Arrivals" brand specially - don't pass brand or category parameter, but pass new_only=true
-        const brandParam = brand === "New Arrivals" ? undefined : brand;
-        const categoryParam = brand === "New Arrivals" || category === "All Products" ? undefined : category;
+        // Handle "New Arrivals" and "Pre Orders" brands specially
+        const brandParam = (brand === "New Arrivals" || brand === "Pre Orders") ? undefined : brand;
+        const categoryParam = (brand === "New Arrivals" || brand === "Pre Orders" || category === "All Products") ? undefined : category;
         const newOnly = brand === "New Arrivals" ? true : undefined;
+        const preOrder = brand === "Pre Orders" ? true : undefined;
 
         const response = await axios.get(`${process.env.api_url}/products`, {
           params: {
@@ -641,8 +664,8 @@ const Products: React.FC<ProductsProps> = ({
               sortToUse === "catalogue" ? cataloguePage : undefined,
             // Pass group_by_name flag from the frontend state
             group_by_name: groupByProductName,
-            // Pass new_only flag for "New Arrivals" brand
             new_only: newOnly,
+            pre_order: preOrder,
           },
           signal: controller.signal,
         });
@@ -705,15 +728,17 @@ const Products: React.FC<ProductsProps> = ({
     try {
       setLoadingOutOfStock(true);
 
-      // Handle "New Arrivals" brand specially - don't pass brand parameter
-      const brandParam = activeBrand === "New Arrivals" ? undefined : activeBrand;
-      const categoryParam = (activeBrand === "New Arrivals" || activeCategory === "All Products") ? undefined : activeCategory;
+      // Handle "New Arrivals" and "Pre Orders" brands specially - don't pass brand parameter
+      const brandParam = (activeBrand === "New Arrivals" || activeBrand === "Pre Orders") ? undefined : activeBrand;
+      const categoryParam = (activeBrand === "New Arrivals" || activeBrand === "Pre Orders" || activeCategory === "All Products") ? undefined : activeCategory;
+      const preOrder = activeBrand === "Pre Orders" ? true : undefined;
 
       const response = await axios.get(`${process.env.api_url}/products/out-of-stock`, {
         params: {
           brand: brandParam,
           category: categoryParam,
           group_by_name: true,
+          pre_order: preOrder,
         },
       });
 
@@ -766,15 +791,19 @@ const Products: React.FC<ProductsProps> = ({
       const response = await axios.get(
         `${process.env.api_url}/products/brands`
       );
-      const allBrands: { brand: string; url: string }[] =
+      const allBrands: { brand: string; url: string | null }[] =
         response.data.brands || [];
 
-      // Add "New Arrivals" as the first brand with a professional badge
+      // Add "New Arrivals" and "Pre Orders" as the first two brands
       const newArrivalsBrand = {
         brand: "New Arrivals",
         url: "https://assets.pupscribe.in/brands/new-arrivals.svg"
       };
-      const brandsWithNewArrivals = [newArrivalsBrand, ...allBrands];
+      const preOrdersBrand = {
+        brand: "Pre Orders",
+        url: null
+      };
+      const brandsWithNewArrivals = [newArrivalsBrand, preOrdersBrand, ...allBrands];
 
       setBrandList(brandsWithNewArrivals);
       if (!activeBrand && brandsWithNewArrivals[0]) {
@@ -827,8 +856,8 @@ const Products: React.FC<ProductsProps> = ({
   const fetchCategories = useCallback(
     async (brand: string) => {
       try {
-        // Handle "New Arrivals" brand specially
-        if (brand === "New Arrivals") {
+        // Handle "New Arrivals" and "Pre Orders" brands specially — no category sub-navigation
+        if (brand === "New Arrivals" || brand === "Pre Orders") {
           const categories = ["All Products"];
           setCategoriesByBrand((prev) => ({
             ...prev,
@@ -838,7 +867,6 @@ const Products: React.FC<ProductsProps> = ({
           const defaultCategory = categories[0];
           if (!activeCategory && defaultCategory) {
             setActiveCategory(defaultCategory);
-            // Immediately trigger the API call for the new category
             setTimeout(() => {
               resetPaginationAndFetch(brand, defaultCategory);
             }, 0);
@@ -1101,7 +1129,7 @@ const Products: React.FC<ProductsProps> = ({
         const minQty = getPackStep(productInCart.name);
         const sanitized = Math.max(
           minQty,
-          Math.min(newQuantity, productInCart.stock)
+          productInCart.pre_order ? newQuantity : Math.min(newQuantity, productInCart.stock)
         );
         const updated = selectedProducts.map((p) =>
           p._id === id ? { ...p, quantity: sanitized } : p
@@ -1147,7 +1175,7 @@ const Products: React.FC<ProductsProps> = ({
         }
 
         if (product) {
-          const sanitized = Math.max(getPackStep(product.name), Math.min(newQuantity, product.stock));
+          const sanitized = Math.max(getPackStep(product.name), product.pre_order ? newQuantity : Math.min(newQuantity, product.stock));
           const isShared = new URLSearchParams(window.location.search).has(
             "shared"
           );
@@ -1448,6 +1476,13 @@ const Products: React.FC<ProductsProps> = ({
   }, [groupByProductName, itemsData, displayedProducts]);
 
 
+  const filteredBrandList = useMemo(() => {
+    const preOrderCount = productCounts["Pre Orders"]
+      ? Object.values(productCounts["Pre Orders"]).reduce((a, b) => a + b, 0)
+      : 0;
+    return brandList.filter((b) => b.brand !== "Pre Orders" || preOrderCount > 0);
+  }, [brandList, productCounts]);
+
   const allCategoryCounts = useMemo(() => {
     const counts: { [category: string]: number } = {};
     Object.values(productCounts).forEach((brandCounts) => {
@@ -1697,7 +1732,7 @@ const Products: React.FC<ProductsProps> = ({
                       );
                     }}
                   >
-                    {brandList.map((b: any) => {
+                    {filteredBrandList.map((b: any) => {
                       const brandCount = productCounts[b.brand]
                         ? Object.values(productCounts[b.brand]).reduce(
                           (a, b) => a + b,
@@ -1712,7 +1747,23 @@ const Products: React.FC<ProductsProps> = ({
                             gap={1.5}
                             width="100%"
                           >
-                            {(b.image || b.url) && (
+                            {b.brand === "Pre Orders" ? (
+                              <Box
+                                sx={{
+                                  width: 56,
+                                  height: 56,
+                                  borderRadius: '6px',
+                                  backgroundColor: '#ffffff',
+                                  border: '1px solid rgba(0,0,0,0.1)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <ShoppingCartCheckoutIcon sx={{ fontSize: 30, color: '#d97706' }} />
+                              </Box>
+                            ) : (b.image || b.url) && (
                               <Box
                                 sx={{
                                   width: 56,
@@ -1793,7 +1844,7 @@ const Products: React.FC<ProductsProps> = ({
                       },
                     }}
                   >
-                    {brandList.map((b: any) => {
+                    {filteredBrandList.map((b: any) => {
                       // Calculate brand count for all brands including "New Arrivals"
                       const brandCount = productCounts[b.brand]
                         ? Object.values(productCounts[b.brand]).reduce(
@@ -1812,7 +1863,25 @@ const Products: React.FC<ProductsProps> = ({
                               alignItems="center"
                               gap={1}
                             >
-                              {(b.image || b.url) && (
+                              {b.brand === "Pre Orders" ? (
+                                <Box
+                                  className="brand-image"
+                                  sx={{
+                                    width: 80,
+                                    height: 80,
+                                    borderRadius: '8px',
+                                    backgroundColor: '#ffffff',
+                                    border: '2px solid transparent',
+                                    transition: 'all 0.2s ease-in-out',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <ShoppingCartCheckoutIcon sx={{ fontSize: 40, color: '#d97706' }} />
+                                </Box>
+                              ) : (b.image || b.url) && (
                                 <Box
                                   className="brand-image"
                                   sx={{
@@ -2337,8 +2406,8 @@ const Products: React.FC<ProductsProps> = ({
               </Box>
             )}
 
-            {/* Out of Stock Products Section - exclude from New Arrivals */}
-            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && (
+            {/* Out of Stock Products Section - exclude from New Arrivals and Pre Orders */}
+            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && activeBrand !== "Pre Orders" && (
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
                   Out of Stock Products
@@ -2830,8 +2899,8 @@ const Products: React.FC<ProductsProps> = ({
               </Box>
             )}
 
-            {/* Out of Stock Products Section - exclude from New Arrivals */}
-            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && (
+            {/* Out of Stock Products Section - exclude from New Arrivals and Pre Orders */}
+            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && activeBrand !== "Pre Orders" && (
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
                   Out of Stock Products

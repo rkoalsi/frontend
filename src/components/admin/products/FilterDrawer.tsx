@@ -22,6 +22,8 @@ const FilterDrawerComponent = ({
   setFilterStock,
   filterNewArrivals,
   setFilterNewArrivals,
+  filterPreOrder,
+  setFilterPreOrder,
   missingInfoProducts,
   setMissingInfoProducts,
   filterBrand,
@@ -84,7 +86,7 @@ const FilterDrawerComponent = ({
         />
       </RadioGroup>
 
-      {/* New Arrivals and Missing Info */}
+      {/* New Arrivals, Pre Orders, and Missing Info */}
       <FormControlLabel
         control={
           <Checkbox
@@ -96,6 +98,18 @@ const FilterDrawerComponent = ({
           />
         }
         label='New Arrivals Only'
+      />
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={filterPreOrder}
+            onChange={(e) => {
+              setFilterPreOrder(e.target.checked);
+              setFilterStatus('');
+            }}
+          />
+        }
+        label='Pre Orders Only'
       />
       <FormControlLabel
         control={
@@ -220,6 +234,11 @@ const FilterDrawerComponent = ({
           value='catalogue'
           control={<Radio />}
           label='Catalogue Order'
+        />
+        <FormControlLabel
+          value='latest'
+          control={<Radio />}
+          label='Latest First'
         />
       </RadioGroup>
 

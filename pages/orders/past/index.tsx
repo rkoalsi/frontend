@@ -34,6 +34,8 @@ type OrderType = {
   _id: string;
   estimate_created?: boolean;
   estimate_number?: string;
+  pre_order_estimate_created?: boolean;
+  pre_order_estimate_number?: string;
   customer_name: string;
   created_at: string;
   status: string;
@@ -305,6 +307,16 @@ const PastOrders = () => {
                         {order.estimate_created && (
                           <Chip label='Estimate' color='success' size='small' variant='outlined' onClick={(e) => e.stopPropagation()} />
                         )}
+                        {order.pre_order_estimate_created && (
+                          <Chip
+                            label={order.pre_order_estimate_number || 'Pre-Order'}
+                            size='small'
+                            color='warning'
+                            variant='outlined'
+                            sx={{ fontSize: '0.7rem' }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        )}
                         {order.spreadsheet_created && (
                           <Chip label='XLSX' color='primary' size='small' variant='outlined' onClick={(e) => e.stopPropagation()} />
                         )}
@@ -357,6 +369,15 @@ const PastOrders = () => {
                       />
                       {order.estimate_created && (
                         <Chip label='Estimate' color='success' size='small' variant='outlined' />
+                      )}
+                      {order.pre_order_estimate_created && (
+                        <Chip
+                          label={order.pre_order_estimate_number || 'Pre-Order'}
+                          size='small'
+                          color='warning'
+                          variant='outlined'
+                          sx={{ fontSize: '0.7rem' }}
+                        />
                       )}
                       {order.spreadsheet_created && (
                         <Chip label='XLSX' color='primary' size='small' variant='outlined' />
