@@ -132,12 +132,13 @@ const MemoizedDesktopProductCard = memo(({
   const selectedProduct: any = selectedProducts.find((p: any) => p._id === productId);
   const splitProdDesktop = product.pre_order === true && (product.stock ?? 0) > 0;
   const isPreOrderCartDesktop = isPreOrderTab && splitProdDesktop;
+  const showAsPreOrderLabelDesktop = isPreOrderTab && product.pre_order === true;
   const quantity: any = isPreOrderCartDesktop
     ? (selectedProduct?.pre_order_quantity || "")
     : (selectedProduct?.quantity || temporaryQuantities[productId] || "");
   const isInCartDesktop = isPreOrderCartDesktop
     ? (selectedProduct?.pre_order_quantity ?? 0) > 0
-    : !!selectedProduct;
+    : !!selectedProduct && (selectedProduct?.quantity ?? 0) > 0;
   const sellingPrice = getSellingPrice(product);
   const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
   const isQuantityExceedingStock = !isPreOrderCartDesktop && (product.stock ?? 0) > 0 && quantity > product.stock;
@@ -432,23 +433,24 @@ const MemoizedDesktopProductCard = memo(({
             }}
           >
             {isInCartDesktop
-              ? (isPreOrderCartDesktop ? "Remove Pre-Order" : "Remove from Cart")
-              : (isPreOrderCartDesktop ? "Add as Pre-Order" : "Add to Cart")}
+              ? (showAsPreOrderLabelDesktop ? "Remove Pre-Order" : "Remove from Cart")
+              : (showAsPreOrderLabelDesktop ? "Add as Pre-Order" : "Add to Cart")}
           </Button>
         </Box>
       </Card>
     </Box>
   );
 }, (prevProps, nextProps) => {
-  // Custom comparison function for better memoization
-  return (
-    prevProps.product._id === nextProps.product._id &&
-    prevProps.selectedProducts.some((p: any) => p._id === prevProps.product._id) ===
-    nextProps.selectedProducts.some((p: any) => p._id === nextProps.product._id) &&
-    prevProps.temporaryQuantities[prevProps.product._id] === nextProps.temporaryQuantities[nextProps.product._id] &&
-    prevProps.specialMargins[prevProps.product._id] === nextProps.specialMargins[nextProps.product._id] &&
-    prevProps.order?.status === nextProps.order?.status
-  );
+  if (prevProps.product._id !== nextProps.product._id) return false;
+  if (prevProps.isPreOrderTab !== nextProps.isPreOrderTab) return false;
+  if (prevProps.order?.status !== nextProps.order?.status) return false;
+  if (prevProps.temporaryQuantities[prevProps.product._id] !== nextProps.temporaryQuantities[nextProps.product._id]) return false;
+  if (prevProps.specialMargins[prevProps.product._id] !== nextProps.specialMargins[nextProps.product._id]) return false;
+  const prevSel = prevProps.selectedProducts.find((p: any) => p._id === prevProps.product._id);
+  const nextSel = nextProps.selectedProducts.find((p: any) => p._id === nextProps.product._id);
+  if ((prevSel?.quantity ?? 0) !== (nextSel?.quantity ?? 0)) return false;
+  if ((prevSel?.pre_order_quantity ?? 0) !== (nextSel?.pre_order_quantity ?? 0)) return false;
+  return true;
 });
 
 const Products: React.FC<ProductsProps> = ({
@@ -2391,6 +2393,7 @@ const Products: React.FC<ProductsProps> = ({
                         }}
                         index={index}
                         isShared={isShared}
+                        isPreOrderTab={activeBrand === "Pre Orders" && !searchTerm.trim()}
                       />
                     );
                   } else {
@@ -2922,6 +2925,7 @@ const Products: React.FC<ProductsProps> = ({
                         }}
                         index={index}
                         isShared={isShared}
+                        isPreOrderTab={activeBrand === "Pre Orders" && !searchTerm.trim()}
                       />
                     );
                   } else {

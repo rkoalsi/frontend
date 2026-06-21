@@ -59,10 +59,11 @@ interface ProductGroupCardProps {
   orderStatus?: string;
   getSellingPrice: any;
   handleImageClick: any;
-  handleQuantityChange: (id: string, newQuantity: number) => void;
+  handleQuantityChange: (id: string, newQuantity: number, isPreOrder?: boolean) => void;
   handleAddOrRemove: (product: SearchResult) => void;
   index: number;
   isShared: boolean;
+  isPreOrderTab?: boolean;
   isOutOfStock?: boolean;
   handleNotifyMe?: (productId: string, productName: string) => void;
   outOfStockQuantities?: Record<string, number>;
@@ -85,6 +86,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
     handleAddOrRemove,
     index,
     isShared = false,
+    isPreOrderTab = false,
     isOutOfStock = false,
     handleNotifyMe,
     outOfStockQuantities = {},
@@ -114,11 +116,17 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
     const selectedProduct: any = selectedProducts.find(
       (p) => p._id === productId
     );
-    const quantity =
-      selectedProduct?.quantity || temporaryQuantities[productId] || "";
+    const isSplitVariant = currentVariant.pre_order === true && (currentVariant.stock ?? 0) > 0;
+    const isPreOrderCartGroup = isPreOrderTab && isSplitVariant;
+    const quantity = isPreOrderCartGroup
+      ? (selectedProduct?.pre_order_quantity || "")
+      : (selectedProduct?.quantity || temporaryQuantities[productId] || "");
+    const isInCartGroup = isPreOrderCartGroup
+      ? (selectedProduct?.pre_order_quantity ?? 0) > 0
+      : !!selectedProduct && (selectedProduct?.quantity ?? 0) > 0;
     const sellingPrice = getSellingPrice(currentVariant);
-    const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
-    const isQuantityExceedingStock = !currentVariant.pre_order && quantity > currentVariant.stock;
+    const itemTotal = parseFloat((sellingPrice * (quantity || 0)).toFixed(2));
+    const isQuantityExceedingStock = !isPreOrderCartGroup && !currentVariant.pre_order && quantity > currentVariant.stock;
 
     // Memoize expensive variant size extraction so it only reruns when products change
     const sortedVariants = useMemo(() => {
@@ -760,10 +768,12 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                 </Typography>
                 <QuantitySelector
                   quantity={quantity}
-                  max={currentVariant.pre_order ? Infinity : currentVariant.stock}
+                  max={isPreOrderCartGroup
+                    ? (currentVariant.upcoming_stock ?? Infinity)
+                    : (currentVariant.pre_order && !currentVariant.stock ? (currentVariant.upcoming_stock ?? Infinity) : currentVariant.stock)}
                   step={packStep}
                   onChange={(newQuantity) =>
-                    handleQuantityChange(productId, newQuantity)
+                    handleQuantityChange(productId, newQuantity, isPreOrderCartGroup)
                   }
                   disabled={isDisabled}
                 />
@@ -784,13 +794,13 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
               </Box>
 
               {/* Action Button */}
-              <Tooltip title={selectedProduct ? "Remove from cart" : "Add to cart"}>
+              <Tooltip title={isInCartGroup ? (isPreOrderCartGroup ? "Remove pre-order" : "Remove from cart") : (isPreOrderCartGroup ? "Add as pre-order" : "Add to cart")}>
                 <span>
                   <Button
                     variant="contained"
-                    color={selectedProduct ? "error" : "primary"}
+                    color={isInCartGroup ? "error" : "primary"}
                     startIcon={
-                      selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />
+                      isInCartGroup ? <RemoveShoppingCart /> : <AddShoppingCart />
                     }
                     onClick={() => handleAddOrRemove(currentVariant)}
                     disabled={isDisabled}
@@ -815,7 +825,9 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                       },
                     }}
                   >
-                    {selectedProduct ? "Remove from Cart" : "Add to Cart"}
+                    {isInCartGroup
+                      ? ((isPreOrderCartGroup || (isPreOrderTab && currentVariant.pre_order)) ? "Remove Pre-Order" : "Remove from Cart")
+                      : ((isPreOrderCartGroup || (isPreOrderTab && currentVariant.pre_order)) ? "Add as Pre-Order" : "Add to Cart")}
                   </Button>
                 </span>
               </Tooltip>
