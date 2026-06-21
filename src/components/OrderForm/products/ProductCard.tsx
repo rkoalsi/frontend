@@ -32,6 +32,8 @@ interface SearchResult {
   cf_sku_code?: string;
   rate: number;
   stock: number;
+  pre_order?: boolean;
+  upcoming_stock?: number;
   new?: boolean;
   item_tax_preferences: any;
   upc_code?: string;
@@ -81,7 +83,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
       selectedProduct?.quantity || temporaryQuantities[productId] || "";
     const sellingPrice = getSellingPrice(product);
     const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
-    const isQuantityExceedingStock = quantity > product.stock;
+    const isQuantityExceedingStock = !product.pre_order && quantity > product.stock;
     const isDisabled =
       orderStatus?.toLowerCase().includes("accepted") ||
       orderStatus?.toLowerCase().includes("declined");
@@ -122,7 +124,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               width: '100%',
             }}
           >
-            {product.new && (
+            {product.new && !product.pre_order && (
               <Badge
                 badgeContent="New"
                 color="secondary"
@@ -365,7 +367,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                         mb: 0.5,
                       }}
                     >
-                      Stock
+                      {product.pre_order ? 'Upcoming' : 'Stock'}
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'end', gap: 0.5, justifyContent: 'flex-end' }}>
                       <Typography
@@ -374,11 +376,15 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                           fontWeight: 700,
                           fontSize: '0.95rem',
                           fontFamily: 'system-ui',
-                          color: product.stock > 10 ? 'success.main' : product.stock > 0 ? 'error.main' : 'primary',
+                          color: product.pre_order
+                            ? 'warning.main'
+                            : product.stock > 10 ? 'success.main' : product.stock > 0 ? 'error.main' : 'primary',
                           letterSpacing: '-0.3px',
                         }}
                       >
-                        {product.stock.toLocaleString('en-IN')}
+                        {product.pre_order
+                          ? (product.upcoming_stock ?? '—')
+                          : product.stock.toLocaleString('en-IN')}
                       </Typography>
                     </Box>
                   </Box>
@@ -523,7 +529,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               </Typography>
               <QuantitySelector
                 quantity={quantity}
-                max={product.stock}
+                max={product.pre_order ? Infinity : product.stock}
                 step={packStep}
                 onChange={(newQuantity) =>
                   handleQuantityChange(productId, newQuantity)

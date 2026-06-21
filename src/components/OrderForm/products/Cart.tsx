@@ -450,7 +450,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                             </Typography>
                             <QuantitySelector
                               quantity={product.quantity}
-                              max={product.stock}
+                              max={product.pre_order ? Infinity : product.stock}
                               step={getPackStep(product.name)}
                               onChange={(newQuantity) =>
                                 handleQuantityChange(productId, newQuantity)

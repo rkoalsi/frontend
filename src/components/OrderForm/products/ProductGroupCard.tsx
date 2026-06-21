@@ -36,6 +36,8 @@ interface SearchResult {
   cf_sku_code?: string;
   rate: number;
   stock: number;
+  pre_order?: boolean;
+  upcoming_stock?: number;
   new?: boolean;
   item_tax_preferences: any;
   upc_code?: string;
@@ -116,7 +118,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
       selectedProduct?.quantity || temporaryQuantities[productId] || "";
     const sellingPrice = getSellingPrice(currentVariant);
     const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
-    const isQuantityExceedingStock = quantity > currentVariant.stock;
+    const isQuantityExceedingStock = !currentVariant.pre_order && quantity > currentVariant.stock;
 
     // Memoize expensive variant size extraction so it only reruns when products change
     const sortedVariants = useMemo(() => {
@@ -758,7 +760,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                 </Typography>
                 <QuantitySelector
                   quantity={quantity}
-                  max={currentVariant.stock}
+                  max={currentVariant.pre_order ? Infinity : currentVariant.stock}
                   step={packStep}
                   onChange={(newQuantity) =>
                     handleQuantityChange(productId, newQuantity)

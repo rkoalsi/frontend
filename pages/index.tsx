@@ -55,6 +55,37 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomerCreationRequestForm from '../src/components/CustomerCreationRequestForm';
 import { toast } from 'react-toastify';
+import CustomerTour, { TourStep } from '../src/components/common/CustomerTour';
+
+const CUSTOMER_TOUR_STEPS: TourStep[] = [
+  {
+    target: null,
+    title: 'Welcome to Pupscribe!',
+    content: "You're all set! Let us quickly show you around so you know where everything is.",
+  },
+  {
+    target: 'home-greeting',
+    title: 'Your Home Page',
+    content: "This is your home page. You'll see a personalised greeting here each time you log in.",
+  },
+  {
+    target: 'home-new-order',
+    title: 'Place a New Order',
+    content: 'Tap here to browse our product catalogue and submit a new order for review.',
+  },
+  {
+    target: 'home-orders-section',
+    mobileTarget: 'home-orders-header',
+    title: 'Quick Links',
+    content: 'These cards give you quick access to your past orders, shipments, and your customer account dashboard.',
+  },
+  {
+    target: 'home-catalogues',
+    mobileTarget: 'home-catalogues-header',
+    title: 'Brand Catalogues',
+    content: 'Browse and open catalogues for all our brands right from here. Tap the copy icon to share a link.',
+  },
+];
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -220,6 +251,7 @@ const menuSections = [
         text: 'Create New Order',
         color: '#3b82f6',
         action: 'newOrder',
+        tourId: 'home-new-order',
       },
       {
         icon: <NewReleases />,
@@ -588,6 +620,7 @@ const Home = () => {
         >
           {/* Header */}
           <Box
+            data-tour='home-greeting'
             mb={3.5}
             sx={{
               bgcolor: 'background.paper',
@@ -689,9 +722,15 @@ const Home = () => {
           )}
 
           {/* Menu Sections */}
-          {filteredMenuSections.map((section) => (
-            <Box key={section.title} sx={{ mb: 2.5 }}>
-              <SectionTitle>{section.title}</SectionTitle>
+          {filteredMenuSections.map((section, sectionIndex) => (
+            <Box
+              key={section.title}
+              sx={{ mb: 2.5 }}
+              {...(sectionIndex === 0 ? { 'data-tour': 'home-orders-section' } : {})}
+            >
+              <SectionTitle {...(sectionIndex === 0 ? { 'data-tour': 'home-orders-header' } : {})}>
+                {section.title}
+              </SectionTitle>
               <Grid container spacing={1.5}>
                 {section.items.map((item, index) => (
                   <Grid size={{ xs: 6, sm: 4 }} key={index}>
@@ -700,6 +739,7 @@ const Home = () => {
                       whileTap={{ scale: 0.95 }}
                     >
                       <ActionCard
+                        {...((item as any).tourId ? { 'data-tour': (item as any).tourId } : {})}
                         onClick={() => handleNavigation(item.action)}
                         sx={{
                           '& .MuiSvgIcon-root': {
@@ -728,8 +768,8 @@ const Home = () => {
 
           {/* Catalogues List for Customer Role */}
           {isCustomer && (
-            <Box sx={{ mb: 3 }}>
-              <Box display='flex' alignItems='center' justifyContent='space-between' mb={1.5} px={0.5}>
+            <Box data-tour='home-catalogues' sx={{ mb: 3 }}>
+              <Box data-tour='home-catalogues-header' display='flex' alignItems='center' justifyContent='space-between' mb={1.5} px={0.5}>
                 <SectionTitle sx={{ mb: 0 }}>
                   Brand Catalogues
                 </SectionTitle>
@@ -925,6 +965,14 @@ const Home = () => {
         open={showCustomerRequestForm}
         onClose={() => setShowCustomerRequestForm(false)}
       />
+
+      {isCustomer && (
+        <CustomerTour
+          tourKey='home'
+          tourSeen={user?.tour_seen?.home === true}
+          steps={CUSTOMER_TOUR_STEPS}
+        />
+      )}
     </Box>
   );
 };

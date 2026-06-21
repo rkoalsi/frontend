@@ -41,6 +41,32 @@ import axiosInstance from '../../src/util/axios';
 import { format } from 'date-fns';
 import axios from 'axios';
 import { trackActivity } from '../../src/util/trackActivity';
+import CustomerTour, { TourStep } from '../../src/components/common/CustomerTour';
+
+const DASHBOARD_TOUR_STEPS: TourStep[] = [
+  {
+    target: null,
+    title: 'Welcome to Your Dashboard',
+    content: "This is your home base — track orders, invoices, payments, and more all in one place. Let us show you around.",
+  },
+  {
+    target: 'quick-access',
+    mobileTarget: 'dashboard-quick-access-header',
+    title: 'Quick Access',
+    content: "These cards are your shortcuts. Place a new order, view past estimates, download your account statement, track shipments, and more — all in one tap.",
+  },
+  {
+    target: 'new-order',
+    title: 'Place a New Order',
+    content: "Tap here to start a new order. You'll be taken through a simple step-by-step form to set your addresses, pick products, and submit.",
+  },
+  {
+    target: 'recent-activity',
+    mobileTarget: 'dashboard-recent-activity-header',
+    title: 'Recent Activity',
+    content: "Your latest orders, invoices, and credit notes appear here. Tap any order to open it, or use the tabs to switch between categories.",
+  },
+];
 
 interface CustomerStats {
   total_orders: number;
@@ -300,6 +326,7 @@ const CustomerDashboard = () => {
       color: '#38a169',
       onClick: handleNewOrder,
       show: true,
+      tourId: 'new-order',
     },
     {
       title: 'My Orders',
@@ -361,6 +388,7 @@ const CustomerDashboard = () => {
   ].filter((c) => c.show);
 
   return (
+  <>
     <Container maxWidth='lg' sx={{ py: { xs: 1.5, md: 4 }, px: { xs: 0, sm: 2, md: 3 } }}>
       <Paper
         elevation={0}
@@ -428,7 +456,9 @@ const CustomerDashboard = () => {
           ) : (
             <>
               {/* Action Cards */}
+              <Box data-tour='quick-access'>
               <Typography
+                data-tour='dashboard-quick-access-header'
                 variant='subtitle1'
                 fontWeight={600}
                 sx={{ mb: 2, color: theme.palette.text.primary, fontSize: { xs: '0.9rem', sm: '1rem' } }}
@@ -441,6 +471,7 @@ const CustomerDashboard = () => {
                   <Grid key={index} size={{ xs: 6, sm: 4, md: 3 }}>
                     <Card
                       elevation={0}
+                      {...((card as any).tourId ? { 'data-tour': (card as any).tourId } : {})}
                       onClick={card.disabled ? undefined : card.onClick}
                       sx={{
                         height: '100%',
@@ -494,9 +525,12 @@ const CustomerDashboard = () => {
                   </Grid>
                 ))}
               </Grid>
+              </Box>
 
               {/* Recent Activity Tabs */}
+              <Box data-tour='recent-activity'>
               <Typography
+                data-tour='dashboard-recent-activity-header'
                 variant='subtitle1'
                 fontWeight={600}
                 sx={{ mb: 2, color: theme.palette.text.primary, fontSize: { xs: '0.9rem', sm: '1rem' } }}
@@ -788,11 +822,20 @@ const CustomerDashboard = () => {
                   </>
                 )}
               </Paper>
+              </Box>
             </>
           )}
         </Box>
       </Paper>
     </Container>
+    {user && (
+      <CustomerTour
+        tourKey='dashboard'
+        tourSeen={user?.tour_seen?.dashboard === true}
+        steps={DASHBOARD_TOUR_STEPS}
+      />
+    )}
+  </>
   );
 };
 
