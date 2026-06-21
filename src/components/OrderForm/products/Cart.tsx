@@ -133,7 +133,11 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
             </Typography>
             {selectedProducts.length > 0 && (
               <Chip
-                label={selectedProducts.length}
+                label={selectedProducts.reduce((n: number, p: any) => {
+                  const isSplit = p.pre_order === true && (p.stock ?? 0) > 0;
+                  if (isSplit) return n + ((p.quantity ?? 0) > 0 ? 1 : 0) + ((p.pre_order_quantity ?? 0) > 0 ? 1 : 0);
+                  return n + 1;
+                }, 0)}
                 color='primary'
                 size='small'
                 sx={{
@@ -394,7 +398,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                             >
                               {product.name}
                             </Typography>
-                            {isPreOrderRow && (
+                            {(isPreOrderRow || (product.pre_order === true && (product.stock ?? 0) === 0)) && (
                               <Chip label='Pre-Order' size='small' color='warning' variant='outlined' sx={{ mt: 0.5, fontSize: '0.65rem', height: 20 }} />
                             )}
                           </Box>

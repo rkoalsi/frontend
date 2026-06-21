@@ -83,12 +83,14 @@ const ProductCard: React.FC<ProductCardProps> = memo(
     );
     const isSplitProd = product.pre_order === true && (product.stock ?? 0) > 0;
     const isPreOrderCart = isPreOrderTab && isSplitProd;
+    // All pre-order products on the Pre Orders tab show pre-order labels
+    const showAsPreOrderLabel = isPreOrderTab && product.pre_order === true;
     const quantity = isPreOrderCart
       ? (selectedProduct?.pre_order_quantity || "")
       : (selectedProduct?.quantity || temporaryQuantities[productId] || "");
     const isInCart = isPreOrderCart
       ? (selectedProduct?.pre_order_quantity ?? 0) > 0
-      : !!selectedProduct;
+      : !!selectedProduct && (selectedProduct?.quantity ?? 0) > 0;
     const sellingPrice = getSellingPrice(product);
     const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
     const isQuantityExceedingStock = !isPreOrderCart && (product.stock ?? 0) > 0 && quantity > product.stock;
@@ -609,8 +611,8 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                   }}
                 >
                   {isInCart
-                    ? (isPreOrderCart ? "Remove Pre-Order" : "Remove from Cart")
-                    : (isPreOrderCart ? "Add as Pre-Order" : "Add to Cart")}
+                    ? (showAsPreOrderLabel ? "Remove Pre-Order" : "Remove from Cart")
+                    : (showAsPreOrderLabel ? "Add as Pre-Order" : "Add to Cart")}
                 </Button>
               </span>
             </Tooltip>
