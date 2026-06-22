@@ -542,9 +542,20 @@ const OrderDetails = () => {
                     }}
                   >
                     <Box>
-                      <Typography variant='body1' fontWeight={500} color='text.primary'>
-                        {item.name}
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                        <Typography variant='body1' fontWeight={500} color='text.primary'>
+                          {item.name}
+                        </Typography>
+                        {item.pre_order && (
+                          <Chip
+                            label='Pre-Order'
+                            color='warning'
+                            size='small'
+                            variant='outlined'
+                            sx={{ fontWeight: 600, height: 20, fontSize: '0.65rem' }}
+                          />
+                        )}
+                      </Box>
                       <Typography variant='body2' color='text.secondary'>
                         Qty: {item.quantity}
                         {isMobile && ` × ₹${(item.price ?? 0).toLocaleString('en-IN')}`}
