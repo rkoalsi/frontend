@@ -786,8 +786,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                           {index + 1}
                         </Typography>
                       </Box>
-                      {!isShared && (
-                        <Tooltip title='Remove product'>
+                      <Tooltip title='Remove product'>
                           <span style={{ position: 'absolute', top: 6, right: 6, display: 'block' }}>
                             <IconButton
                               size='small' disabled={isOrderLocked}
@@ -805,7 +804,6 @@ const Review: React.FC<Props> = React.memo((props) => {
                             </IconButton>
                           </span>
                         </Tooltip>
-                      )}
                     </Box>
 
                     {/* ── Content ── */}
@@ -824,8 +822,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                               {product.name}
                             </Typography>
                           </Box>
-                          {!isShared && (
-                            <Tooltip title='Remove product'>
+                          <Tooltip title='Remove product'>
                               <span>
                                 <IconButton size='small' color='error' disabled={isOrderLocked} onClick={() => handleRemoveProduct(productId)}
                                   sx={{ flexShrink: 0, mt: -0.5, mr: -0.5, display: { xs: 'none', sm: 'flex' } }}>
@@ -833,7 +830,6 @@ const Review: React.FC<Props> = React.memo((props) => {
                                 </IconButton>
                               </span>
                             </Tooltip>
-                          )}
                         </Box>
                       </Box>
                       <Box sx={{ px: { xs: 1.75, sm: 2 }, pt: 1.25, pb: 0.5 }}>
@@ -979,8 +975,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                         {index + 1}
                       </Typography>
                     </Box>
-                    {!isShared && (
-                      <Tooltip title='Remove product'>
+                    <Tooltip title='Remove product'>
                         <span style={{ position: 'absolute', top: 6, right: 6, display: 'block' }}>
                           <IconButton
                             size='small' disabled={isOrderLocked}
@@ -998,7 +993,6 @@ const Review: React.FC<Props> = React.memo((props) => {
                           </IconButton>
                         </span>
                       </Tooltip>
-                    )}
                   </Box>
 
                   {/* ── Content ── */}
@@ -1017,8 +1011,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                             {product.name}
                           </Typography>
                         </Box>
-                        {!isShared && (
-                          <Tooltip title='Remove product'>
+                        <Tooltip title='Remove product'>
                             <span>
                               <IconButton size='small' color='error' disabled={isOrderLocked} onClick={() => handleRemoveProduct(productId)}
                                 sx={{ flexShrink: 0, mt: -0.5, mr: -0.5, display: { xs: 'none', sm: 'flex' } }}>
@@ -1026,7 +1019,6 @@ const Review: React.FC<Props> = React.memo((props) => {
                               </IconButton>
                             </span>
                           </Tooltip>
-                        )}
                       </Box>
                     </Box>
                     <Box sx={{ px: { xs: 1.75, sm: 2 }, pt: 1.25, pb: 0.5 }}>
