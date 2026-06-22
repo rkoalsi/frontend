@@ -392,7 +392,7 @@ const Review: React.FC<Props> = React.memo((props) => {
     return p.pre_order ? [p] : [];
   });
   products.forEach((p) => {
-    if ((p.quantity || 1) > (p.stock ?? Infinity) && !((p.pre_order === true) && !(p.stock ?? 0))) {
+    if ((p.quantity || 1) > (p.stock ?? Infinity) && !((p.pre_order === true) && (p.stock ?? 0) <= 0)) {
       reviewIssues.push(`${p.name} exceeds available stock (${p.stock} available)`);
     }
   });
