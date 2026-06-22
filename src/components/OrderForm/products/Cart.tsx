@@ -398,7 +398,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                             >
                               {product.name}
                             </Typography>
-                            {(isPreOrderRow || (product.pre_order === true && (product.stock ?? 0) === 0)) && (
+                            {(isPreOrderRow || (product.pre_order === true && (product.stock ?? 0) <= 0)) && (
                               <Chip label='Pre-Order' size='small' color='warning' variant='outlined' sx={{ mt: 0.5, fontSize: '0.65rem', height: 20 }} />
                             )}
                           </Box>
@@ -470,7 +470,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                             </Typography>
                             <QuantitySelector
                               quantity={product.quantity}
-                              max={isPreOrderRow ? (product.upcoming_stock ?? Infinity) : (product.pre_order && !product.stock ? (product.upcoming_stock ?? Infinity) : product.stock)}
+                              max={isPreOrderRow ? (product.upcoming_stock || Infinity) : (product.pre_order && (product.stock ?? 0) <= 0 ? (product.upcoming_stock || Infinity) : product.stock)}
                               step={getPackStep(product.name)}
                               onChange={(newQuantity) =>
                                 handleQuantityChange(productId, newQuantity, isPreOrderRow)
