@@ -234,7 +234,7 @@ const Review: React.FC<Props> = React.memo((props) => {
       setSelectedProducts((prev: any[]) =>
         prev.map((p) =>
           p._id === id
-            ? { ...p, quantity: Math.max(1, (p.pre_order && !p.stock) ? Math.min(newQuantity, p.upcoming_stock ?? Infinity) : Math.min(newQuantity, p.stock ?? Infinity)) }
+            ? { ...p, quantity: Math.max(1, (p.pre_order && (p.stock ?? 0) <= 0) ? Math.min(newQuantity, p.upcoming_stock || Infinity) : Math.min(newQuantity, p.stock ?? Infinity)) }
             : p
         )
       );
@@ -247,7 +247,7 @@ const Review: React.FC<Props> = React.memo((props) => {
       setSelectedProducts((prev: any[]) =>
         prev.map((p) =>
           p._id === id
-            ? { ...p, pre_order_quantity: Math.max(1, Math.min(newQuantity, p.upcoming_stock ?? Infinity)) }
+            ? { ...p, pre_order_quantity: Math.max(1, Math.min(newQuantity, p.upcoming_stock || Infinity)) }
             : p
         )
       );
@@ -1043,7 +1043,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                     </Box>
                     <Box flex={1} />
                     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: { sm: 'space-between' }, px: { xs: 1.75, sm: 2 }, py: { xs: 1.25, sm: 1.5 }, gap: { xs: 1, sm: 0 }, mt: 1, borderTop: `1px solid ${theme.palette.divider}`, bgcolor: isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.018)' }}>
-                      <QuantitySelector quantity={product.quantity || 1} max={product.upcoming_stock ?? Infinity} onChange={(newQty) => product._isPreOrderRow ? handlePreOrderQuantityChange(productId, newQty) : handleQuantityChange(productId, newQty)} disabled={!isActive || isOrderLocked} />
+                      <QuantitySelector quantity={product.quantity || 1} max={product.upcoming_stock || Infinity} onChange={(newQty) => product._isPreOrderRow ? handlePreOrderQuantityChange(productId, newQty) : handleQuantityChange(productId, newQty)} disabled={!isActive || isOrderLocked} />
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'space-between', sm: 'flex-end' }, gap: 1 }}>
                         <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'text.disabled' }}>Total</Typography>
                         <Typography fontWeight={800} color='primary.main' sx={{ fontSize: { xs: '1.1rem', sm: '1rem' }, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
