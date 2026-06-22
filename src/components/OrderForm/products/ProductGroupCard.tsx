@@ -119,7 +119,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
     const isSplitVariant = currentVariant.pre_order === true && (currentVariant.stock ?? 0) > 0;
     const isPreOrderCartGroup = isPreOrderTab && isSplitVariant;
     const quantity = isPreOrderCartGroup
-      ? (selectedProduct?.pre_order_quantity || "")
+      ? (selectedProduct?.pre_order_quantity || temporaryQuantities[`${productId}-pre`] || "")
       : (selectedProduct?.quantity || temporaryQuantities[productId] || "");
     const isInCartGroup = isPreOrderCartGroup
       ? (selectedProduct?.pre_order_quantity ?? 0) > 0
@@ -769,8 +769,8 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                 <QuantitySelector
                   quantity={quantity}
                   max={isPreOrderCartGroup
-                    ? (currentVariant.upcoming_stock ?? Infinity)
-                    : (currentVariant.pre_order && !currentVariant.stock ? (currentVariant.upcoming_stock ?? Infinity) : currentVariant.stock)}
+                    ? (currentVariant.upcoming_stock || Infinity)
+                    : (currentVariant.pre_order && (currentVariant.stock ?? 0) <= 0 ? (currentVariant.upcoming_stock || Infinity) : currentVariant.stock)}
                   step={packStep}
                   onChange={(newQuantity) =>
                     handleQuantityChange(productId, newQuantity, isPreOrderCartGroup)
