@@ -1982,30 +1982,51 @@ const NewOrder: React.FC = () => {
           </DialogTitle>
 
           <DialogContent>
-            {/* Overall margin */}
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                p: 2,
-                borderRadius: 2,
-                bgcolor: 'action.hover',
-                border: `1px solid ${theme.palette.divider}`,
-                mb: 2,
-              }}
-            >
-              <Box>
+            {/* Overall margin + GST treatment */}
+            <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
+              <Box
+                sx={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: 'action.hover',
+                  border: `1px solid ${theme.palette.divider}`,
+                }}
+              >
                 <Typography variant='caption' color='text.secondary' fontWeight={600}>
                   DEFAULT MARGIN
                 </Typography>
                 <Typography variant='body1' fontWeight={700}>
                   {customer?.cf_margin || '40%'}
                 </Typography>
+                <Typography variant='caption' color='text.secondary' sx={{ mt: 0.5 }}>
+                  Applied to products without a special margin
+                </Typography>
               </Box>
-              <Typography variant='caption' color='text.secondary' sx={{ maxWidth: 160, textAlign: 'right' }}>
-                Applied to all products without a special margin
-              </Typography>
+
+              <Box
+                sx={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: 'action.hover',
+                  border: `1px solid ${theme.palette.divider}`,
+                }}
+              >
+                <Typography variant='caption' color='text.secondary' fontWeight={600}>
+                  GST TREATMENT
+                </Typography>
+                <Typography variant='body1' fontWeight={700}>
+                  {customer?.cf_in_ex || 'Exclusive'}
+                </Typography>
+                <Typography variant='caption' color='text.secondary' sx={{ mt: 0.5 }}>
+                  How GST is applied to selling price
+                </Typography>
+              </Box>
             </Box>
 
             {/* Special margins — grouped by brand */}

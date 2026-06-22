@@ -134,7 +134,7 @@ const MemoizedDesktopProductCard = memo(({
   const isPreOrderCartDesktop = isPreOrderTab && splitProdDesktop;
   const showAsPreOrderLabelDesktop = isPreOrderTab && product.pre_order === true;
   const quantity: any = isPreOrderCartDesktop
-    ? (selectedProduct?.pre_order_quantity || "")
+    ? (selectedProduct?.pre_order_quantity || temporaryQuantities[`${productId}-pre`] || "")
     : (selectedProduct?.quantity || temporaryQuantities[productId] || "");
   const isInCartDesktop = isPreOrderCartDesktop
     ? (selectedProduct?.pre_order_quantity ?? 0) > 0
@@ -378,7 +378,7 @@ const MemoizedDesktopProductCard = memo(({
           <Box sx={{ mb: 2 }}>
             <QuantitySelector
               quantity={quantity}
-              max={isPreOrderCartDesktop ? (product.upcoming_stock ?? Infinity) : (product.pre_order && !product.stock ? (product.upcoming_stock ?? Infinity) : product.stock)}
+              max={isPreOrderCartDesktop ? (product.upcoming_stock || Infinity) : (product.pre_order && (product.stock ?? 0) <= 0 ? (product.upcoming_stock || Infinity) : product.stock)}
               step={packStep}
               onChange={(newQuantity: number) => handleQuantityChange(productId, newQuantity, isPreOrderCartDesktop)}
               disabled={isDisabled}
@@ -445,6 +445,7 @@ const MemoizedDesktopProductCard = memo(({
   if (prevProps.isPreOrderTab !== nextProps.isPreOrderTab) return false;
   if (prevProps.order?.status !== nextProps.order?.status) return false;
   if (prevProps.temporaryQuantities[prevProps.product._id] !== nextProps.temporaryQuantities[nextProps.product._id]) return false;
+  if (prevProps.temporaryQuantities[`${prevProps.product._id}-pre`] !== nextProps.temporaryQuantities[`${nextProps.product._id}-pre`]) return false;
   if (prevProps.specialMargins[prevProps.product._id] !== nextProps.specialMargins[nextProps.product._id]) return false;
   const prevSel = prevProps.selectedProducts.find((p: any) => p._id === prevProps.product._id);
   const nextSel = nextProps.selectedProducts.find((p: any) => p._id === nextProps.product._id);
@@ -1222,7 +1223,7 @@ const Products: React.FC<ProductsProps> = ({
             setSelectedProducts((prev) => prev.map((p) => {
               if (p._id !== id) return p;
               const minQty = getPackStep(p.name);
-              const sanitized = Math.max(minQty, Math.min(newQuantity, p.upcoming_stock ?? Infinity));
+              const sanitized = Math.max(minQty, Math.min(newQuantity, p.upcoming_stock || Infinity));
               debouncedSuccess(`Updated ${p.name} pre-order to quantity ${sanitized}`);
               return { ...p, pre_order_quantity: sanitized };
             }));
@@ -1238,7 +1239,7 @@ const Products: React.FC<ProductsProps> = ({
         const minQty = getPackStep(productInCart.name);
         const sanitized = Math.max(
           minQty,
-          (productInCart.pre_order && !productInCart.stock) ? Math.min(newQuantity, productInCart.upcoming_stock ?? Infinity) : Math.min(newQuantity, productInCart.stock)
+          (productInCart.pre_order && (productInCart.stock ?? 0) <= 0) ? Math.min(newQuantity, productInCart.upcoming_stock || Infinity) : Math.min(newQuantity, productInCart.stock)
         );
         const updated = selectedProducts.map((p) =>
           p._id === id ? { ...p, quantity: sanitized } : p
