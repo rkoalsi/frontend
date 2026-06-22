@@ -262,7 +262,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
             {selectedProducts.flatMap((product) => {
               const isSplit = product.pre_order === true && (product.stock ?? 0) > 0;
               const rows: any[] = [];
-              if (!isSplit || (product.quantity ?? 0) > 0) {
+              if ((product.quantity ?? 0) > 0) {
                 rows.push({ ...product, _cartKey: product._id, _cartIsPreOrder: false, _cartQty: product.quantity });
               }
               if (isSplit && (product.pre_order_quantity ?? 0) > 0) {

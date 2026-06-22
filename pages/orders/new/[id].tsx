@@ -404,9 +404,13 @@ const NewOrder: React.FC = () => {
       prev.totalAmount === debTotals.totalAmount &&
       prevSig === quantitySig
     ) return;
+    // Strip out any products where both quantities are 0 (shouldn't be in cart)
+    const validProducts = debProducts.filter(
+      (p: any) => (p.quantity ?? 0) > 0 || (p.pre_order_quantity ?? 0) > 0
+    );
     saveOrder(
       {
-        products: debProducts,
+        products: validProducts,
         total_gst: parseFloat(debTotals.totalGST.toFixed(2)),
         total_amount: parseFloat(debTotals.totalAmount.toFixed(2)),
       },
