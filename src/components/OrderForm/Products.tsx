@@ -502,6 +502,9 @@ const Products: React.FC<ProductsProps> = ({
   const [popupImageSrc, setPopupImageSrc]: any = useState([]);
   const [popupImageIndex, setPopupImageIndex]: any = useState(0);
   const [options, setOptions] = useState<SearchResult[]>([]);
+  // Lookup of every rendered product by id so handleQuantityChange can auto-add
+  // an item to the cart the moment a quantity is entered (no separate "Add" click).
+  const productLookupRef = useRef<Map<string, any>>(new Map());
   const [loading, setLoading] = useState<boolean>(false);
   const [paginationState, setPaginationState] = useState<{
     [key: string]: { page: number; hasMore: boolean };
@@ -1096,7 +1099,7 @@ const Products: React.FC<ProductsProps> = ({
   const isSplitProduct = (p: any) => p.pre_order === true && (p.stock ?? 0) > 0;
 
   const handleAddProducts = useCallback(
-    (product: any, isPreOrder = false) => {
+    (product: any, isPreOrder = false, explicitQty?: number) => {
       if (!product) return;
       const productId = product._id;
       const packStep = getPackStep(product.name);
@@ -1109,7 +1112,7 @@ const Products: React.FC<ProductsProps> = ({
           debouncedWarn(`${product.name} pre-order is already in the cart.`);
           return;
         }
-        const qty = temporaryQuantities[`${productId}-pre`] || packStep;
+        const qty = (explicitQty && explicitQty > 0 ? explicitQty : 0) || temporaryQuantities[`${productId}-pre`] || packStep;
         startTransition(() => {
           if (existing) {
             setSelectedProducts(selectedProducts.map((p) =>
@@ -1144,7 +1147,7 @@ const Products: React.FC<ProductsProps> = ({
         debouncedWarn(`${product.name} is already in the cart.`);
         return;
       }
-      const quantity = temporaryQuantities[productId] || product.quantity || packStep;
+      const quantity = (explicitQty && explicitQty > 0 ? explicitQty : 0) || temporaryQuantities[productId] || product.quantity || packStep;
       const isSharedParam = new URLSearchParams(window.location.search).has("shared");
       const updatedProducts: any = existing
         // Split product exists only as pre-order; now adding its stock qty
@@ -1229,7 +1232,14 @@ const Products: React.FC<ProductsProps> = ({
             }));
           });
         } else {
-          setTemporaryQuantities((prev) => ({ ...prev, [`${id}-pre`]: newQuantity }));
+          // Not in cart yet — entering a quantity adds it straight to the cart
+          // as a pre-order instead of requiring a separate "Add as Pre-Order" click.
+          const product = productLookupRef.current.get(id);
+          if (product && newQuantity > 0) {
+            handleAddProducts(product, true, newQuantity);
+          } else {
+            setTemporaryQuantities((prev) => ({ ...prev, [`${id}-pre`]: newQuantity }));
+          }
         }
         return;
       }
@@ -1249,10 +1259,17 @@ const Products: React.FC<ProductsProps> = ({
         });
         debouncedSuccess(`Updated ${productInCart.name} to quantity ${sanitized}`);
       } else {
-        setTemporaryQuantities((prev) => ({ ...prev, [id]: newQuantity }));
+        // Not in cart yet — entering a quantity adds it straight to the cart
+        // instead of requiring a separate "Add to Cart" click.
+        const product = productLookupRef.current.get(id);
+        if (product && newQuantity > 0) {
+          handleAddProducts(product, false, newQuantity);
+        } else {
+          setTemporaryQuantities((prev) => ({ ...prev, [id]: newQuantity }));
+        }
       }
     },
-    [selectedProducts, debouncedSuccess]
+    [selectedProducts, debouncedSuccess, handleAddProducts]
   );
 
   const handleClearCart = useCallback(async () => {
@@ -1507,6 +1524,29 @@ const Products: React.FC<ProductsProps> = ({
     const data = productsByBrandCategory[productsKey];
     return data || [];
   }, [productsByBrandCategory, productsKey, itemsData]);
+
+  // Keep a flat id→product lookup of everything currently renderable so that
+  // entering a quantity can resolve the full product and add it to the cart.
+  useEffect(() => {
+    const map = productLookupRef.current;
+    const add = (p: any) => {
+      if (p && p._id) map.set(p._id, p);
+    };
+    if (Array.isArray(itemsData)) {
+      itemsData.forEach((item: any) => {
+        if (item?.type === 'group') {
+          (item.products || []).forEach(add);
+          add(item.primaryProduct);
+        } else {
+          add(item?.product);
+        }
+      });
+    }
+    displayedProducts.forEach(add);
+    options.forEach(add);
+    outOfStockProducts.forEach(add);
+    selectedProducts.forEach(add);
+  }, [itemsData, displayedProducts, options, outOfStockProducts, selectedProducts]);
 
   // Get grouped data - only when backend doesn't already send grouped itemsData
   const groupedData = useMemo((): GroupedProducts | null => {
