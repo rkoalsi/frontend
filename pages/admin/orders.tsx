@@ -75,6 +75,7 @@ const Orders = () => {
     useState<boolean>(false);
   const [filterEstimatesGreaterThanZero, setFilterEstimatesGreaterThanZero] =
     useState<boolean>(false);
+  const [filterHasPreOrder, setFilterHasPreOrder] = useState<boolean>(false);
   const [salesPeople, setSalesPeople] = useState<string[]>([
     'SP1',
     'SP2',
@@ -166,6 +167,7 @@ const Orders = () => {
       if (filterEstimatesCreated)
         params.estimate_created = filterEstimatesCreated;
       if (filterEstimatesGreaterThanZero) params.amount = true;
+      if (filterHasPreOrder) params.has_pre_order = true;
       console.log(params);
       const response = await axiosInstance.get('/admin/orders/export', {
         params,
@@ -210,6 +212,7 @@ const Orders = () => {
       if (filterEstimatesCreated)
         params.estimate_created = filterEstimatesCreated;
       if (filterEstimatesGreaterThanZero) params.amount = true;
+      if (filterHasPreOrder) params.has_pre_order = true;
       const response = await axiosInstance.get(`/admin/orders`, {
         params,
       });
@@ -1016,6 +1019,17 @@ const Orders = () => {
               sx={{ mt: 2 }}
             />
 
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={filterHasPreOrder}
+                  onChange={(e) => setFilterHasPreOrder(e.target.checked)}
+                />
+              }
+              label='Has Pre-Order Items'
+              sx={{ mt: 2 }}
+            />
+
             {/* Apply Filters Button */}
             <Box sx={{ mt: 3 }}>
               <Button variant='contained' fullWidth onClick={applyFilters}>
@@ -1032,6 +1046,8 @@ const Orders = () => {
                   setFilterStatus('');
                   setFilterSalesPerson('');
                   setFilterEstimatesCreated(false);
+                  setFilterEstimatesGreaterThanZero(false);
+                  setFilterHasPreOrder(false);
                 }}
               >
                 Reset Filters
