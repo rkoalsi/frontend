@@ -480,7 +480,9 @@ const OrderDetails = () => {
           <Typography variant='h6' fontWeight={700} gutterBottom>
             Ordered Items
           </Typography>
-          {orderData.products?.length === 0 ? (
+          {(orderData.products?.filter(
+            (p: any) => Number(p.quantity) > 0
+          ).length ?? 0) === 0 ? (
             <Typography variant='body1' color='text.secondary'>
               No products found in this order.
             </Typography>
@@ -521,7 +523,9 @@ const OrderDetails = () => {
                   Subtotal
                 </Typography>
               </Box>
-              {orderData.products?.map((item: any, index: number) => {
+              {orderData.products
+                ?.filter((item: any) => Number(item.quantity) > 0)
+                .map((item: any, index: number, arr: any[]) => {
                 const subtotal = (item.price ?? 0) * (item.quantity ?? 1);
                 return (
                   <Box
@@ -532,7 +536,7 @@ const OrderDetails = () => {
                       gap: 1,
                       px: 1,
                       py: { xs: 1.5, sm: 1.25 },
-                      borderBottom: index < orderData.products.length - 1 ? '1px solid' : 'none',
+                      borderBottom: index < arr.length - 1 ? '1px solid' : 'none',
                       borderColor: 'divider',
                       alignItems: 'center',
                     }}

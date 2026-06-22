@@ -30,6 +30,11 @@ import AuthContext from '../../../src/components/Auth';
 import { toast } from 'react-toastify';
 import Header from '../../../src/components/common/Header';
 
+type OrderProduct = {
+  pre_order?: boolean;
+  pre_order_quantity?: number;
+};
+
 type OrderType = {
   _id: string;
   estimate_created?: boolean;
@@ -41,7 +46,13 @@ type OrderType = {
   status: string;
   total_amount?: number;
   spreadsheet_created?: boolean;
+  products?: OrderProduct[];
 };
+
+const hasPreOrderProducts = (order: OrderType): boolean =>
+  (order.products ?? []).some(
+    (p) => p?.pre_order === true || Number(p?.pre_order_quantity ?? 0) > 0
+  );
 
 type FilterType = 'all' | 'draft' | 'accepted' | 'declined' | 'invoiced';
 
@@ -248,6 +259,7 @@ const PastOrders = () => {
             const title = order.estimate_created
               ? order.estimate_number
               : `Order #${order._id.slice(-6)}`;
+            const isPreOrder = hasPreOrderProducts(order);
 
             return (
               <motion.div key={order._id} variants={cardVariants}>
@@ -304,6 +316,9 @@ const PastOrders = () => {
                           sx={{ fontWeight: 600 }}
                           onClick={(e) => e.stopPropagation()}
                         />
+                        {isPreOrder && (
+                          <Chip label='Pre Order' color='warning' size='small' sx={{ fontWeight: 600 }} onClick={(e) => e.stopPropagation()} />
+                        )}
                         {order.estimate_created && (
                           <Chip label='Estimate' color='success' size='small' variant='outlined' onClick={(e) => e.stopPropagation()} />
                         )}
@@ -367,6 +382,9 @@ const PastOrders = () => {
                         size='small'
                         sx={{ fontWeight: 600 }}
                       />
+                      {isPreOrder && (
+                        <Chip label='Pre Order' color='info' size='small' sx={{ fontWeight: 600 }} />
+                      )}
                       {order.estimate_created && (
                         <Chip label='Estimate' color='success' size='small' variant='outlined' />
                       )}
