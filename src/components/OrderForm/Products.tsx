@@ -301,7 +301,7 @@ const MemoizedDesktopProductCard = memo(({
               </Typography>
             </Box>
 
-            {splitProdDesktop && !isPreOrderTab ? (
+            {!isShared && (splitProdDesktop && !isPreOrderTab ? (
               <>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="body2" color="text.secondary">Stock:</Typography>
@@ -338,7 +338,7 @@ const MemoizedDesktopProductCard = memo(({
                   />
                 )}
               </Box>
-            )}
+            ))}
 
             {!isShared && (
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
