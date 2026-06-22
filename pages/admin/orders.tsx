@@ -269,14 +269,15 @@ const Orders = () => {
     setDrawerOpen(true);
   };
 
-  const handleDownload = async (order: any) => {
+  const handleDownload = async (order: any, type?: 'pre_order') => {
     try {
-      const resp = await axios.get(
-        `${process.env.api_url}/orders/download_pdf/${order._id}`,
-        {
-          responseType: 'blob', // Receive the response as binary data
-        }
-      );
+      const apiUrl =
+        type === 'pre_order'
+          ? `${process.env.api_url}/orders/download_pdf/${order._id}?type=pre_order`
+          : `${process.env.api_url}/orders/download_pdf/${order._id}`;
+      const resp = await axios.get(apiUrl, {
+        responseType: 'blob', // Receive the response as binary data
+      });
 
       // Check if the blob is an actual PDF or an error message
       if (resp.data.type !== 'application/pdf') {
@@ -287,7 +288,10 @@ const Orders = () => {
 
       // Extract filename from headers or set default
       const contentDisposition = resp.headers['content-disposition'];
-      let fileName = `${order.estimate_number}.pdf`;
+      let fileName =
+        type === 'pre_order'
+          ? `${order.pre_order_estimate_number}.pdf`
+          : `${order.estimate_number}.pdf`;
 
       if (contentDisposition) {
         const match = contentDisposition.match(/filename="(.+)"/);
@@ -469,9 +473,26 @@ const Orders = () => {
                             />
                           </TableCell>
                           <TableCell>
-                            {order?.estimate_created
-                              ? order?.estimate_number
-                              : order._id.slice(-6)}
+                            {order?.estimate_created ? (
+                              <Box
+                                display='flex'
+                                flexDirection='column'
+                                gap={0.25}
+                              >
+                                <span>{order?.estimate_number}</span>
+                                {order?.pre_order_estimate_created && (
+                                  <Chip
+                                    label={order?.pre_order_estimate_number}
+                                    color='warning'
+                                    size='small'
+                                    variant='outlined'
+                                    sx={{ fontWeight: 600 }}
+                                  />
+                                )}
+                              </Box>
+                            ) : (
+                              order._id.slice(-6)
+                            )}
                           </TableCell>
                           <TableCell>{order.customer_name}</TableCell>
                           <TableCell>
@@ -567,6 +588,16 @@ const Orders = () => {
                               {order?.estimate_created && (
                                 <IconButton
                                   onClick={() => handleDownload(order)}
+                                >
+                                  <Download />
+                                </IconButton>
+                              )}
+                              {order?.pre_order_estimate_created && (
+                                <IconButton
+                                  color='warning'
+                                  onClick={() =>
+                                    handleDownload(order, 'pre_order')
+                                  }
                                 >
                                   <Download />
                                 </IconButton>
@@ -710,6 +741,44 @@ const Orders = () => {
                     <Typography>
                       <strong>Estimate Number:</strong>{' '}
                       {selectedOrder?.estimate_number}
+                      {selectedOrder?.estimate_url && (
+                        <>
+                          {' '}
+                          <a
+                            href={selectedOrder.estimate_url}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            style={{
+                              color: theme.palette.primary.main,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            View ↗
+                          </a>
+                        </>
+                      )}
+                    </Typography>
+                  )}
+                  {selectedOrder?.pre_order_estimate_created && (
+                    <Typography>
+                      <strong>Pre-Order Estimate Number:</strong>{' '}
+                      {selectedOrder?.pre_order_estimate_number}
+                      {selectedOrder?.pre_order_estimate_url && (
+                        <>
+                          {' '}
+                          <a
+                            href={selectedOrder.pre_order_estimate_url}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            style={{
+                              color: theme.palette.warning.main,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            View ↗
+                          </a>
+                        </>
+                      )}
                     </Typography>
                   )}
                   {selectedOrder?.reference_number && (
