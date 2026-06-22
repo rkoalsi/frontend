@@ -883,7 +883,9 @@ const Orders = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {selectedOrder.products?.map((product: any) => (
+                      {selectedOrder.products
+                        ?.filter((product: any) => Number(product.quantity) > 0)
+                        .map((product: any) => (
                         <TableRow key={product.product_id}>
                           <TableCell>
                             <img
