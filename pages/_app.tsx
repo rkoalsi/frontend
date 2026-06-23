@@ -60,6 +60,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/forgot_password': 'Forgot Password',
   '/reset_password': 'Reset Password',
   '/customer_requests': 'Customer Requests',
+  '/linktree': 'Links',
   // Admin
   '/admin': 'Admin Dashboard',
   '/admin/announcements': 'Announcements',
@@ -83,6 +84,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/employee_management': 'Employee Management',
   '/admin/expected_reorders': 'Expected Reorders',
   '/admin/external_links': 'External Links',
+  '/admin/linktree': 'Link Tree',
   '/admin/hooks': 'Hooks',
   '/admin/hooks_categories': 'Hook Categories',
   '/admin/leads': 'Leads',
@@ -147,8 +149,15 @@ export default function MyApp(props: AppProps) {
   const isCustomerRoute =
     props.router?.pathname === '/customer' ||
     props.router?.pathname.startsWith('/customer/');
+  // Fully public, standalone pages render without any app chrome or auth gate.
+  const isStandalonePublic = props.router?.pathname === '/linktree';
+
+  const PassthroughLayout = ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  );
 
   const getLayoutComponent = () => {
+    if (isStandalonePublic) return PassthroughLayout;
     if (isAdminRoute) return AdminLayout;
     if (isCustomerRoute) return CustomerLayout;
     return Layout;
