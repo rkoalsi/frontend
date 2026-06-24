@@ -17,6 +17,7 @@ import {
   Divider,
   Tooltip,
   Collapse,
+  alpha,
 } from '@mui/material';
 import {
   Add,
@@ -335,6 +336,7 @@ const LinkTreeAdmin = () => {
                 borderRadius: 2,
                 border: (t) => `1px solid ${t.palette.divider}`,
                 borderLeft: `5px solid ${link.color || accentColor}`,
+                bgcolor: alpha(link.color || accentColor, 0.08),
                 display: 'grid',
                 gridTemplateColumns: { xs: '1fr', md: 'auto 1fr auto' },
                 gap: 2,
@@ -348,9 +350,18 @@ const LinkTreeAdmin = () => {
                   <ImageIcon color="disabled" />
                 </Avatar>
                 <Button component="label" size="small" disabled={uploadingKey === link.id}>
-                  {uploadingKey === link.id ? '…' : 'Image'}
+                  {uploadingKey === link.id ? '…' : link.image_url ? 'Replace' : 'Image'}
                   <input hidden type="file" accept="image/*" onChange={(e) => handleLinkImageUpload(link.id, e)} />
                 </Button>
+                {link.image_url && (
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => updateLink(link.id, 'image_url', '')}
+                  >
+                    Remove
+                  </Button>
+                )}
               </Box>
 
               {/* fields */}
