@@ -74,6 +74,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/catalogue_leads': 'Catalogue Leads',
   '/admin/catalogues': 'Catalogues',
   '/admin/chats': 'Chats',
+  '/admin/chatbot_customers': 'Chatbot Customers',
   '/admin/contact_submissions': 'Contact Submissions',
   '/admin/customer_activity': 'Customer Activity',
   '/admin/customer_analytics': 'Customer Analytics',
