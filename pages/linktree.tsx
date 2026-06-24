@@ -214,13 +214,14 @@ const LinkTreePage = () => {
                 elevation={0}
                 sx={{
                   borderRadius: 3,
-                  border: `1px solid ${theme.palette.divider}`,
+                  border: `1px solid ${alpha(linkColor, 0.4)}`,
                   borderLeft: `5px solid ${linkColor}`,
-                  bgcolor: theme.palette.background.paper,
-                  transition: 'transform .15s ease, box-shadow .15s ease, border-color .15s ease',
+                  bgcolor: alpha(linkColor, theme.palette.mode === 'dark' ? 0.18 : 0.1),
+                  transition: 'transform .15s ease, box-shadow .15s ease, border-color .15s ease, background-color .15s ease',
                   '&:hover': {
                     transform: 'translateY(-2px)',
                     borderColor: linkColor,
+                    bgcolor: alpha(linkColor, theme.palette.mode === 'dark' ? 0.26 : 0.16),
                     boxShadow: `0 8px 20px ${alpha(linkColor, 0.3)}`,
                   },
                 }}
