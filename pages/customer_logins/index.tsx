@@ -56,6 +56,8 @@ import {
     Badge,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
+import { useRouter } from 'next/router';
+import { History } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
 import AuthContext from '../../src/components/Auth';
 
@@ -87,6 +89,7 @@ const CustomerLoginsPage: React.FC = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const { user }: any = useContext(AuthContext);
+    const router = useRouter();
 
     const [users, setUsers] = useState<CustomerLoginUser[]>([]);
     const [loading, setLoading] = useState(true);
@@ -257,6 +260,14 @@ const CustomerLoginsPage: React.FC = () => {
         setDialogOpen(true);
     };
 
+    const handleViewOrders = (u: CustomerLoginUser) => {
+        if (!u.customer_id) {
+            toast.info('This login is not linked to a customer yet.');
+            return;
+        }
+        router.push(`/orders/past?customer_id=${u.customer_id}`);
+    };
+
     const handleSubmit = async () => {
         if (!validateForm()) return;
         setSubmitting(true);
@@ -405,6 +416,9 @@ const CustomerLoginsPage: React.FC = () => {
             <Box display="flex" gap={1} flexWrap="wrap">
                 <Button size="small" variant="outlined" startIcon={<Visibility />} onClick={() => handleViewClick(u)} sx={{ flex: 1, minWidth: 80, textTransform: 'none', fontSize: '0.75rem' }}>
                     View
+                </Button>
+                <Button size="small" variant="outlined" color="secondary" startIcon={<History />} onClick={() => handleViewOrders(u)} disabled={!u.customer_id} sx={{ flex: 1, minWidth: 80, textTransform: 'none', fontSize: '0.75rem' }}>
+                    Orders
                 </Button>
                 <Button size="small" variant="outlined" color="primary" startIcon={<Edit />} onClick={() => handleEditClick(u)} sx={{ flex: 1, minWidth: 80, textTransform: 'none', fontSize: '0.75rem' }}>
                     Edit
@@ -597,6 +611,13 @@ const CustomerLoginsPage: React.FC = () => {
                                                     <IconButton size="small" onClick={() => handleViewClick(u)} sx={{ bgcolor: alpha(theme.palette.info.main, 0.1), '&:hover': { bgcolor: alpha(theme.palette.info.main, 0.2) } }}>
                                                         <Visibility fontSize="small" color="info" />
                                                     </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title={u.customer_id ? 'View Past Orders' : 'No linked customer'}>
+                                                    <span>
+                                                        <IconButton size="small" onClick={() => handleViewOrders(u)} disabled={!u.customer_id} sx={{ bgcolor: alpha(theme.palette.secondary.main, 0.1), '&:hover': { bgcolor: alpha(theme.palette.secondary.main, 0.2) } }}>
+                                                            <History fontSize="small" color="secondary" />
+                                                        </IconButton>
+                                                    </span>
                                                 </Tooltip>
                                                 <Tooltip title="Edit">
                                                     <IconButton size="small" onClick={() => handleEditClick(u)} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) } }}>
