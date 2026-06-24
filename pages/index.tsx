@@ -337,6 +337,12 @@ const menuSections = [
         action: 'customer_logins',
       },
       {
+        icon: <ShoppingCart />,
+        text: 'Customer Orders',
+        color: '#0ea5e9',
+        action: 'customer_orders',
+      },
+      {
         icon: <LineAxis />,
         text: 'Customer Analytics',
         color: '#64748b',
@@ -595,6 +601,9 @@ const Home = () => {
         break;
       case 'customer_logins':
         router.push('/customer_logins');
+        break;
+      case 'customer_orders':
+        router.push('/customer_orders');
         break;
       case 'check_in':
         router.push('/check_in');

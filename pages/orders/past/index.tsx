@@ -97,10 +97,21 @@ const PastOrders = () => {
   const router = useRouter();
   const { user }: any = useContext(AuthContext);
 
+  // When opened from Customer Logins, scope to a single customer's orders
+  // (all orders for that customer, regardless of which salesperson created them).
+  const customerId = (router.query.customer_id as string) || '';
+
   const getData = async () => {
     try {
       setLoading(true);
-      const queryParams = { status: filterType === 'all' ? '' : filterType, created_by: user?._id };
+      const queryParams: Record<string, string> = {
+        status: filterType === 'all' ? '' : filterType,
+      };
+      if (customerId) {
+        queryParams.customer_id = customerId;
+      } else {
+        queryParams.created_by = user?._id;
+      }
       const queryString = new URLSearchParams(queryParams).toString();
       const resp = await axios.get(`${process.env.api_url}/orders?${queryString}`);
       setOrders(resp.data || []);
@@ -150,10 +161,11 @@ const PastOrders = () => {
   const pagedOrders = filteredOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   useEffect(() => {
+    if (!router.isReady) return;
     getData();
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterType]);
+  }, [filterType, router.isReady, customerId]);
 
   useEffect(() => {
     setPage(1);
@@ -172,7 +184,11 @@ const PastOrders = () => {
         gap: 2,
       }}
     >
-      <Header title='Past Orders' showBackButton backUrl='/' />
+      <Header
+        title={customerId && orders[0]?.customer_name ? `Orders — ${orders[0].customer_name}` : 'Past Orders'}
+        showBackButton
+        backUrl={customerId ? '/customer_logins' : '/'}
+      />
 
       {/* Filter chips + search row */}
       <Box
@@ -336,7 +352,7 @@ const PastOrders = () => {
                           <Chip label='XLSX' color='primary' size='small' variant='outlined' onClick={(e) => e.stopPropagation()} />
                         )}
                       </Box>
-                      {!order.estimate_created && (
+                      {!order.estimate_created && !customerId && (
                         <Box sx={{ display: 'flex', gap: 0.25 }}>
                           <Tooltip title={isEditable ? 'Edit order' : 'Cannot edit'}>
                             <span>
@@ -409,7 +425,7 @@ const PastOrders = () => {
                     >
                       ₹{(order.total_amount ?? 0).toLocaleString('en-IN')}
                     </Typography>
-                    {!order.estimate_created && (
+                    {!order.estimate_created && !customerId && (
                       <Box
                         sx={{ display: 'flex', gap: 0.5 }}
                         onClick={(e) => e.stopPropagation()}
