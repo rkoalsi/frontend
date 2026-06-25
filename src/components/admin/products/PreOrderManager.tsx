@@ -44,6 +44,8 @@ interface LineItem {
   upcoming_stock: number;
   pre_order: boolean;
   in_products: boolean;
+  inward_date?: string;
+  eta_port_date?: string;
 }
 
 const PreOrderManager = () => {
@@ -243,6 +245,26 @@ const PreOrderManager = () => {
               {saving ? 'Saving…' : selected.size === 0 ? 'Unmark All & Apply' : 'Apply Pre-Order Settings'}
             </Button>
           </Box>
+
+          {(lineItems[0]?.inward_date || lineItems[0]?.eta_port_date) && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
+              {lineItems[0]?.eta_port_date && (
+                <Chip
+                  size='small'
+                  variant='outlined'
+                  label={`ETA at Port: ${new Date(lineItems[0].eta_port_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                />
+              )}
+              {lineItems[0]?.inward_date && (
+                <Chip
+                  size='small'
+                  color='warning'
+                  variant='outlined'
+                  label={`Inward: ${new Date(lineItems[0].inward_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                />
+              )}
+            </Box>
+          )}
 
           <Paper variant='outlined' sx={{ overflow: 'hidden' }}>
             <Table size='small'>

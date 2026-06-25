@@ -93,6 +93,8 @@ interface SearchResult {
   new?: boolean;
   pre_order?: boolean;
   upcoming_stock?: number;
+  inward_date?: string;
+  eta_port_date?: string;
   quantity?: number;
   pre_order_quantity?: number;
   item_tax_preferences: any;
@@ -133,6 +135,28 @@ const MemoizedDesktopProductCard = memo(({
   const splitProdDesktop = product.pre_order === true && (product.stock ?? 0) > 0;
   const isPreOrderCartDesktop = isPreOrderTab && splitProdDesktop;
   const showAsPreOrderLabelDesktop = isPreOrderTab && product.pre_order === true;
+  // Admin/internal-only logistics dates for pre-order products
+  const fmtDate = (v?: string) => {
+    if (!v) return '';
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? v : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+  const preOrderDatesDesktop = (!isShared && product.pre_order && (product.inward_date || product.eta_port_date)) ? (
+    <>
+      {product.eta_port_date && (
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body2" color="text.secondary">ETA Port:</Typography>
+          <Typography variant="caption" color="text.secondary" fontWeight={600}>{fmtDate(product.eta_port_date)}</Typography>
+        </Box>
+      )}
+      {product.inward_date && (
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body2" color="text.secondary">Inward:</Typography>
+          <Typography variant="caption" color="warning.main" fontWeight={700}>{fmtDate(product.inward_date)}</Typography>
+        </Box>
+      )}
+    </>
+  ) : null;
   const quantity: any = isPreOrderCartDesktop
     ? (selectedProduct?.pre_order_quantity || temporaryQuantities[`${productId}-pre`] || "")
     : (selectedProduct?.quantity || temporaryQuantities[productId] || "");
@@ -316,8 +340,10 @@ const MemoizedDesktopProductCard = memo(({
                   <Typography variant="body2" color="text.secondary">Upcoming:</Typography>
                   <Chip label={product.upcoming_stock ?? '—'} size="small" color="warning" variant="outlined" />
                 </Box>
+                {preOrderDatesDesktop}
               </>
             ) : (
+              <>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography variant="body2" color="text.secondary">
                   {(isPreOrderTab || (product.pre_order && !product.stock)) ? 'Upcoming:' : 'Stock:'}
@@ -338,6 +364,8 @@ const MemoizedDesktopProductCard = memo(({
                   />
                 )}
               </Box>
+              {(isPreOrderTab || (product.pre_order && !product.stock)) && preOrderDatesDesktop}
+              </>
             ))}
 
             {!isShared && (

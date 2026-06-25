@@ -34,6 +34,8 @@ interface SearchResult {
   stock: number;
   pre_order?: boolean;
   upcoming_stock?: number;
+  inward_date?: string;
+  eta_port_date?: string;
   new?: boolean;
   item_tax_preferences: any;
   upc_code?: string;
@@ -83,6 +85,26 @@ const ProductCard: React.FC<ProductCardProps> = memo(
     );
     const isSplitProd = product.pre_order === true && (product.stock ?? 0) > 0;
     const isPreOrderCart = isPreOrderTab && isSplitProd;
+    // Admin/internal-only logistics dates for pre-order products
+    const fmtDate = (v?: string) => {
+      if (!v) return '';
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? v : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+    const preOrderDates = (!isShared && product.pre_order && (product.inward_date || product.eta_port_date)) ? (
+      <Box sx={{ mt: 0.5 }}>
+        {product.eta_port_date && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.6rem', fontWeight: 600 }}>
+            ETA Port: {fmtDate(product.eta_port_date)}
+          </Typography>
+        )}
+        {product.inward_date && (
+          <Typography variant="caption" color="warning.main" sx={{ display: 'block', fontSize: '0.6rem', fontWeight: 700 }}>
+            Inward: {fmtDate(product.inward_date)}
+          </Typography>
+        )}
+      </Box>
+    ) : null;
     // All pre-order products on the Pre Orders tab show pre-order labels
     const showAsPreOrderLabel = isPreOrderTab && product.pre_order === true;
     const quantity = isPreOrderCart
@@ -378,6 +400,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                       <Typography variant="body1" sx={{ fontWeight: 700, fontSize: '0.95rem', fontFamily: 'system-ui', color: 'warning.main', letterSpacing: '-0.3px' }}>
                         {product.upcoming_stock ?? '—'}
                       </Typography>
+                      {preOrderDates}
                     </Box>
                   ) : (
                     <Box sx={{ textAlign: 'right' }}>
@@ -413,6 +436,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                             : product.stock.toLocaleString('en-IN')}
                         </Typography>
                       </Box>
+                      {(isPreOrderTab || (product.pre_order && !product.stock)) && preOrderDates}
                     </Box>
                   )
                 )}
