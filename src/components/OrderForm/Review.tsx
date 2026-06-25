@@ -152,6 +152,15 @@ interface Props {
   referenceNumber: any;
 }
 
+// Format a brand_orders date string (e.g. "2026-05-21") as "21 May 2026".
+// Falls back to the raw value if it isn't a parseable date.
+const formatPreOrderDate = (value?: string): string => {
+  if (!value) return '';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
 // ── Main component ─────────────────────────────────────────────────
 
 const Review: React.FC<Props> = React.memo((props) => {
@@ -1052,7 +1061,9 @@ const Review: React.FC<Props> = React.memo((props) => {
                       </Box>
                     </Box>
                     <Typography variant='caption' color='info.main' sx={{ display: 'block', px: { xs: 1.75, sm: 2 }, pb: 1, mt: -0.5, fontWeight: 600 }}>
-                      📦 Pre Order — will be fulfilled when stock arrives
+                      {product.inward_date
+                        ? `📦 Pre Order — will be fulfilled by ${formatPreOrderDate(product.inward_date)}`
+                        : '📦 Pre Order — will be fulfilled when stock arrives'}
                     </Typography>
                   </Box>
                 </Box>
