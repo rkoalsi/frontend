@@ -277,8 +277,9 @@ const LinkTreeAdmin = () => {
             variant="outlined"
             startIcon={<OpenInNew />}
             component="a"
-            href="/linktree"
+            href="https://barkbutler.in/linktree"
             target="_blank"
+            rel="noopener noreferrer"
           >
             Preview
           </Button>
@@ -610,8 +611,9 @@ const LinkTreeAdmin = () => {
           variant="outlined"
           startIcon={<OpenInNew />}
           component="a"
-          href="/linktree"
+          href="https://barkbutler.in/linktree"
           target="_blank"
+          rel="noopener noreferrer"
         >
           Preview
         </Button>
