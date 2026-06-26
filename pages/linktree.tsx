@@ -15,11 +15,18 @@ import {
 } from '@mui/material';
 import {
   WhatsApp,
-  AutoAwesome,
   OpenInNew,
   Pets,
   DarkMode,
   LightMode,
+  ChevronRight,
+  Call,
+  Email,
+  Storefront,
+  Instagram,
+  LinkedIn,
+  Favorite,
+  Link as LinkIcon,
 } from '@mui/icons-material';
 import axiosInstance from '../src/util/axios';
 import { useColorMode } from '../src/context/ColorModeContext';
@@ -34,9 +41,24 @@ interface LinkItem {
   is_active?: boolean;
 }
 
+interface FooterLink {
+  id?: string;
+  icon?: string;
+  label?: string;
+  url?: string;
+}
+
 interface LinktreeConfig {
   is_active?: boolean;
   accent_color?: string;
+  logo_url?: string;
+  header?: { title?: string; description?: string };
+  footer?: {
+    tagline?: string;
+    stat?: string;
+    copyright?: string;
+    links?: FooterLink[];
+  };
   links?: LinkItem[];
   whatsapp?: {
     enabled?: boolean;
@@ -44,17 +66,29 @@ interface LinktreeConfig {
     message?: string;
     label?: string;
   };
-  spin_wheel?: {
-    enabled?: boolean;
-    title?: string;
-    description?: string;
-    cta_text?: string;
-  };
 }
+
+const DEFAULT_ACCENT = '#29ABE2';
+
+const DEFAULT_HEADER = {
+  title: 'HOUSE OF BRANDS FOR PETS',
+  description:
+    "We filter pet products, so you don't have to. Bringing the world's best pet brands to retailers across India.",
+};
+
+const FOOTER_ICONS: Record<string, React.ElementType> = {
+  phone: Call,
+  email: Email,
+  store: Storefront,
+  instagram: Instagram,
+  linkedin: LinkedIn,
+  whatsapp: WhatsApp,
+  link: LinkIcon,
+};
 
 const normalizeUrl = (url?: string) => {
   if (!url) return '#';
-  if (/^https?:\/\//i.test(url)) return url;
+  if (/^(https?:\/\/|mailto:|tel:)/i.test(url)) return url;
   return `https://${url}`;
 };
 
@@ -88,7 +122,7 @@ const LinkTreePage = () => {
     };
   }, []);
 
-  const accent = config?.accent_color || theme.palette.primary.main;
+  const accent = config?.accent_color || DEFAULT_ACCENT;
 
   if (loading) {
     return (
@@ -108,7 +142,15 @@ const LinkTreePage = () => {
 
   const links = (config?.links || []).filter((l) => l.is_active !== false);
   const whatsapp = config?.whatsapp;
-  const spin = config?.spin_wheel;
+  const logoUrl = config?.logo_url || '';
+  const header = { ...DEFAULT_HEADER, ...(config?.header || {}) };
+  const footer = {
+    tagline: 'BarkButler – House of Brands for Pets',
+    stat: '700+ Retail Stores Across India',
+    copyright: '© 2026 BarkButler',
+    links: [] as FooterLink[],
+    ...(config?.footer || {}),
+  };
   const waLink = whatsapp?.enabled
     ? buildWhatsAppLink(whatsapp?.number, whatsapp?.message)
     : '';
@@ -182,47 +224,84 @@ const LinkTreePage = () => {
 
       <Box
         sx={{
+          position: 'relative',
+          overflow: 'hidden',
           minHeight: 'calc(100vh - 56px)',
           width: '100%',
-          background: `radial-gradient(1200px circle at 50% -10%, ${alpha(
+          background: `radial-gradient(900px circle at 50% -5%, ${alpha(
             accent,
-            0.18
-          )}, transparent 60%), ${theme.palette.background.default}`,
+            0.12
+          )}, transparent 55%), #f7fbff`,
           display: 'flex',
           justifyContent: 'center',
           py: { xs: 4, sm: 6 },
           px: 2,
         }}
       >
+        {/* Decorative paw / heart outlines */}
+        <Favorite sx={{ position: 'absolute', left: { xs: 16, sm: 48 }, top: 96, fontSize: 40, color: alpha(accent, 0.2) }} />
+        <Pets sx={{ position: 'absolute', right: { xs: 20, sm: 56 }, top: 96, fontSize: 44, color: alpha(accent, 0.2) }} />
+        <Pets sx={{ position: 'absolute', left: { xs: 12, sm: 40 }, top: '33%', fontSize: 54, color: alpha(accent, 0.1) }} />
+        <Pets sx={{ position: 'absolute', right: { xs: 12, sm: 40 }, top: '33%', fontSize: 54, color: alpha(accent, 0.1) }} />
+
         <Box
           sx={{
+            position: 'relative',
             width: '100%',
             maxWidth: 520,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 3,
+            gap: 4,
           }}
         >
+          {/* Header */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, textAlign: 'center' }}>
+            {logoUrl && (
+              <Box
+                component="img"
+                src={logoUrl}
+                alt="BarkButler"
+                sx={{ width: { xs: 220, sm: 300 }, maxWidth: '80%', height: 'auto' }}
+              />
+            )}
+            <Box sx={{ width: 40, height: 4, borderRadius: 2, bgcolor: accent }} />
+            {header.title && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{ width: 24, height: '1px', bgcolor: accent }} />
+                <Typography
+                  variant="h6"
+                  fontWeight={800}
+                  sx={{ textTransform: 'uppercase', letterSpacing: '0.12em', color: '#1f2937', fontSize: { xs: 16, sm: 20 } }}
+                >
+                  {header.title}
+                </Typography>
+                <Box sx={{ width: 24, height: '1px', bgcolor: accent }} />
+              </Box>
+            )}
+            {header.description && (
+              <Typography variant="body1" sx={{ maxWidth: 440, color: '#475569' }}>
+                {header.description}
+              </Typography>
+            )}
+            <Box sx={{ width: 40, height: 4, borderRadius: 2, bgcolor: accent }} />
+          </Box>
+
           {/* Links */}
           <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {links.map((link, idx) => {
-              const linkColor = link.color || accent;
-              return (
+            {links.map((link, idx) => (
               <Card
                 key={link.id || idx}
                 elevation={0}
                 sx={{
                   borderRadius: 3,
-                  border: `1px solid ${alpha(linkColor, 0.4)}`,
-                  borderLeft: `5px solid ${linkColor}`,
-                  bgcolor: alpha(linkColor, theme.palette.mode === 'dark' ? 0.18 : 0.1),
-                  transition: 'transform .15s ease, box-shadow .15s ease, border-color .15s ease, background-color .15s ease',
+                  bgcolor: '#fff',
+                  boxShadow: '0 2px 10px rgba(15,23,42,0.06)',
+                  border: '1px solid rgba(15,23,42,0.05)',
+                  transition: 'transform .15s ease, box-shadow .15s ease',
                   '&:hover': {
                     transform: 'translateY(-2px)',
-                    borderColor: linkColor,
-                    bgcolor: alpha(linkColor, theme.palette.mode === 'dark' ? 0.26 : 0.16),
-                    boxShadow: `0 8px 20px ${alpha(linkColor, 0.3)}`,
+                    boxShadow: '0 10px 24px rgba(15,23,42,0.12)',
                   },
                 }}
               >
@@ -231,94 +310,129 @@ const LinkTreePage = () => {
                   href={normalizeUrl(link.url)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                    p: 1.25,
-                    minHeight: 64,
-                  }}
+                  sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.25, minHeight: 68 }}
                 >
                   {link.image_url ? (
                     <Avatar
                       variant="rounded"
                       src={link.image_url}
                       alt={link.text || ''}
-                      sx={{ width: 48, height: 48, bgcolor: '#fff' }}
+                      sx={{ width: 52, height: 52, bgcolor: '#fff', '& img': { objectFit: 'contain', p: 0.5 } }}
                     />
                   ) : (
                     <Avatar
                       variant="rounded"
-                      sx={{ width: 48, height: 48, bgcolor: alpha(linkColor, 0.15), color: linkColor }}
+                      sx={{ width: 52, height: 52, bgcolor: alpha(accent, 0.12), color: accent }}
                     >
                       <OpenInNew />
                     </Avatar>
                   )}
+                  <Box sx={{ width: '1px', height: 36, bgcolor: alpha(accent, 0.5) }} />
                   <Typography
-                    variant="subtitle1"
-                    fontWeight={600}
-                    sx={{ flex: 1, textAlign: 'center', pr: 5 }}
+                    fontWeight={700}
+                    sx={{ flex: 1, textAlign: 'left', textTransform: 'uppercase', letterSpacing: '0.03em', color: '#1f2937', fontSize: { xs: 15, sm: 17 } }}
                   >
                     {link.text || link.url}
                   </Typography>
+                  <Box
+                    sx={{
+                      width: 38,
+                      height: 38,
+                      flexShrink: 0,
+                      borderRadius: '50%',
+                      bgcolor: accent,
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <ChevronRight />
+                  </Box>
                 </CardActionArea>
               </Card>
-              );
-            })}
+            ))}
 
             {links.length === 0 && (
-              <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 4 }}>
+              <Typography variant="body2" sx={{ py: 4, textAlign: 'center', color: '#94a3b8' }}>
                 No links to show yet.
               </Typography>
             )}
           </Box>
 
-          {/* Spin the wheel teaser */}
-          {spin?.enabled && (
-            <Card
-              elevation={0}
-              sx={{
-                width: '100%',
-                borderRadius: 3,
-                p: 3,
-                textAlign: 'center',
-                border: `1px dashed ${accent}`,
-                background: `linear-gradient(135deg, ${alpha(accent, 0.12)}, ${alpha(
-                  accent,
-                  0.04
-                )})`,
-              }}
-            >
-              <AutoAwesome sx={{ color: accent, fontSize: 32 }} />
-              <Typography variant="h6" fontWeight={700} sx={{ mt: 1 }}>
-                {spin.title || 'Spin & Win'}
-              </Typography>
-              {spin.description && (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                  {spin.description}
-                </Typography>
-              )}
-              <Box
+          {/* Footer */}
+          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2.5 }}>
+            {footer.links && footer.links.length > 0 && (
+              <Card
+                elevation={0}
                 sx={{
-                  mt: 2,
-                  display: 'inline-block',
-                  px: 2,
-                  py: 0.75,
-                  borderRadius: 999,
-                  bgcolor: alpha(accent, 0.15),
-                  color: accent,
-                  fontWeight: 600,
-                  fontSize: 13,
+                  width: '100%',
+                  borderRadius: 3,
+                  bgcolor: '#fff',
+                  boxShadow: '0 2px 10px rgba(15,23,42,0.06)',
+                  border: '1px solid rgba(15,23,42,0.05)',
+                  px: 1.5,
+                  py: 2,
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  justifyContent: 'center',
+                  alignItems: 'stretch',
                 }}
               >
-                Coming soon
-              </Box>
-            </Card>
-          )}
+                {footer.links.map((fl, idx) => {
+                  const Icon = FOOTER_ICONS[fl.icon || 'link'] || LinkIcon;
+                  return (
+                    <Box key={fl.id || idx} sx={{ display: 'flex', alignItems: 'stretch' }}>
+                      {idx > 0 && <Box sx={{ width: '1px', bgcolor: 'rgba(15,23,42,0.1)', mx: 0.5 }} />}
+                      <Box
+                        component="a"
+                        href={normalizeUrl(fl.url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{
+                          width: 88,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 0.75,
+                          px: 0.5,
+                          textAlign: 'center',
+                          textDecoration: 'none',
+                          transition: 'transform .15s ease',
+                          '&:hover': { transform: 'translateY(-2px)' },
+                        }}
+                      >
+                        <Icon sx={{ color: accent, fontSize: 26 }} />
+                        <Typography sx={{ fontSize: 11, fontWeight: 600, lineHeight: 1.2, color: '#475569' }}>
+                          {fl.label}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Card>
+            )}
 
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-            Powered by Pupscribe
-          </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, textAlign: 'center' }}>
+              {footer.tagline && (
+                <Typography sx={{ display: 'flex', alignItems: 'center', gap: 0.75, fontWeight: 700, color: '#1f2937' }}>
+                  {footer.tagline}
+                  <Pets sx={{ fontSize: 16, color: accent }} />
+                </Typography>
+              )}
+              {footer.stat && (
+                <Typography sx={{ display: 'flex', alignItems: 'center', gap: 0.75, fontWeight: 700, color: '#1f2937' }}>
+                  {footer.stat}
+                  <Favorite sx={{ fontSize: 16, color: accent }} />
+                </Typography>
+              )}
+              {footer.copyright && (
+                <Typography variant="caption" sx={{ mt: 0.5, color: '#94a3b8' }}>
+                  {footer.copyright}
+                </Typography>
+              )}
+            </Box>
+          </Box>
         </Box>
 
         {/* Floating WhatsApp button */}

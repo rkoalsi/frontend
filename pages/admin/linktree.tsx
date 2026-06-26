@@ -63,7 +63,13 @@ const LinkTreeAdmin = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [accentColor, setAccentColor] = useState('#6366F1');
+  const [accentColor, setAccentColor] = useState('#29ABE2');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [header, setHeader] = useState({
+    title: 'HOUSE OF BRANDS FOR PETS',
+    description:
+      "We filter pet products, so you don't have to. Bringing the world's best pet brands to retailers across India.",
+  });
   const [links, setLinks] = useState<LinkItem[]>([]);
   const [whatsapp, setWhatsapp] = useState({
     enabled: false,
@@ -98,8 +104,15 @@ const LinkTreeAdmin = () => {
     try {
       const res = await axiosInstance.get('/admin/linktree');
       const c = res.data || {};
-      const accent = c.accent_color || '#6366F1';
+      const accent = c.accent_color || '#29ABE2';
       setAccentColor(accent);
+      setLogoUrl(c.logo_url || '');
+      setHeader({
+        title: c.header?.title || 'HOUSE OF BRANDS FOR PETS',
+        description:
+          c.header?.description ||
+          "We filter pet products, so you don't have to. Bringing the world's best pet brands to retailers across India.",
+      });
       setLinks(
         (c.links || []).map((l: any, i: number) => ({
           id: l.id || uid(),
@@ -266,6 +279,7 @@ const LinkTreeAdmin = () => {
       const payload = {
         is_active: true,
         accent_color: accentColor,
+        header,
         links: links.map((l, i) => ({ ...l, order: i })),
         whatsapp,
         spin_wheel: {
@@ -335,6 +349,46 @@ const LinkTreeAdmin = () => {
           </Button>
         </Box>
       </Box>
+
+      {/* Page header */}
+      <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, borderRadius: 3 }}>
+        <Typography variant="h6" fontWeight={700}>
+          Page header
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Shown under the BarkButler logo at the top of /linktree.
+        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Avatar
+            variant="rounded"
+            src={logoUrl || undefined}
+            sx={{ width: 96, height: 48, bgcolor: '#fff', '& img': { objectFit: 'contain' } }}
+          >
+            <ImageIcon color="disabled" />
+          </Avatar>
+          <Typography variant="caption" color="text.secondary">
+            Logo is pulled automatically from the “BarkButler” brand in the brands collection.
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'grid', gap: 2 }}>
+          <TextField
+            label="Title"
+            size="small"
+            fullWidth
+            value={header.title}
+            onChange={(e) => setHeader((h) => ({ ...h, title: e.target.value }))}
+          />
+          <TextField
+            label="Description"
+            size="small"
+            fullWidth
+            multiline
+            minRows={2}
+            value={header.description}
+            onChange={(e) => setHeader((h) => ({ ...h, description: e.target.value }))}
+          />
+        </Box>
+      </Paper>
 
       {/* Links */}
       <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, borderRadius: 3 }}>
