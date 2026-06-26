@@ -31,6 +31,7 @@ import {
   AutoAwesome,
   ExpandMore,
   ExpandLess,
+  Storefront,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -82,6 +83,12 @@ const LinkTreeAdmin = () => {
   });
   const [waDialogOpen, setWaDialogOpen] = useState(false);
   const [spinOpen, setSpinOpen] = useState(false);
+
+  // Brand-link picker
+  const [brandDialogOpen, setBrandDialogOpen] = useState(false);
+  const [brands, setBrands] = useState<{ _id: string; name: string; image_url: string }[]>([]);
+  const [brandsLoading, setBrandsLoading] = useState(false);
+  const [brandSearch, setBrandSearch] = useState('');
 
   // Tracks which link row (id) or 'avatar' is currently uploading.
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
@@ -169,6 +176,41 @@ const LinkTreeAdmin = () => {
       ...prev,
       { id: uid(), text: '', image_url: '', url: '', color: accentColor, order: prev.length, is_active: true },
     ]);
+
+  // Open the brand picker and lazily load the brand list (with images).
+  const openBrandDialog = async () => {
+    setBrandDialogOpen(true);
+    if (brands.length) return;
+    setBrandsLoading(true);
+    try {
+      const res = await axiosInstance.get('/admin/brands_with_images');
+      setBrands(res.data?.brands || []);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to load brands');
+    } finally {
+      setBrandsLoading(false);
+    }
+  };
+
+  // Add a link pre-filled from a brand: brand name + image, URL left empty.
+  const addBrandLink = (brand: { name: string; image_url?: string }) => {
+    setLinks((prev) => [
+      ...prev,
+      {
+        id: uid(),
+        text: brand.name,
+        image_url: brand.image_url || '',
+        url: '',
+        color: accentColor,
+        order: prev.length,
+        is_active: true,
+      },
+    ]);
+    setBrandDialogOpen(false);
+    setBrandSearch('');
+    toast.success(`Added “${brand.name}” — fill in its URL`);
+  };
 
   const updateLink = (id: string, field: keyof LinkItem, value: any) =>
     setLinks((prev) =>
@@ -321,6 +363,9 @@ const LinkTreeAdmin = () => {
                 style={{ width: 40, height: 32, border: 'none', background: 'none', cursor: 'pointer' }}
               />
             </Box>
+            <Button variant="outlined" startIcon={<Storefront />} onClick={openBrandDialog}>
+              Add brand link
+            </Button>
             <Button variant="outlined" startIcon={<Add />} onClick={addLink}>
               Add link
             </Button>
@@ -670,6 +715,76 @@ const LinkTreeAdmin = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setWaDialogOpen(false)}>Done</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Brand link picker */}
+      <Dialog
+        open={brandDialogOpen}
+        onClose={() => setBrandDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Add a brand link</DialogTitle>
+        <DialogContent dividers>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            placeholder="Search brands…"
+            value={brandSearch}
+            onChange={(e) => setBrandSearch(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          {brandsLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 420, overflowY: 'auto' }}>
+              {brands
+                .filter((b) =>
+                  b.name.toLowerCase().includes(brandSearch.trim().toLowerCase())
+                )
+                .map((b) => (
+                  <Box
+                    key={b._id}
+                    onClick={() => addBrandLink(b)}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2,
+                      p: 1,
+                      borderRadius: 2,
+                      cursor: 'pointer',
+                      border: (t) => `1px solid ${t.palette.divider}`,
+                      '&:hover': { bgcolor: (t) => alpha(t.palette.primary.main, 0.08) },
+                    }}
+                  >
+                    <Avatar variant="rounded" src={b.image_url || undefined} sx={{ width: 48, height: 48, bgcolor: '#fff' }}>
+                      <ImageIcon color="disabled" />
+                    </Avatar>
+                    <Typography fontWeight={600}>{b.name}</Typography>
+                  </Box>
+                ))}
+              {brands.length > 0 &&
+                brands.filter((b) =>
+                  b.name.toLowerCase().includes(brandSearch.trim().toLowerCase())
+                ).length === 0 && (
+                  <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+                    No brands match “{brandSearch}”.
+                  </Typography>
+                )}
+              {!brandsLoading && brands.length === 0 && (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+                  No brands found.
+                </Typography>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBrandDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>
