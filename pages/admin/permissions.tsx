@@ -119,26 +119,14 @@ const UserManagement = () => {
     const [formLoading, setFormLoading] = useState(false);
 
     // --- Roles state ---
-    const [roles, setRoles] = useState(DEFAULT_ROLES);
+    const [roles, setRoles] = useState<{ value: string; label: string }[]>(DEFAULT_ROLES);
     const [addRoleOpen, setAddRoleOpen] = useState(false);
     const [newRoleForm, setNewRoleForm] = useState({ label: '', value: '' });
+    const [newRolePerms, setNewRolePerms] = useState<Record<string, boolean>>({});
+    const [roleSaving, setRoleSaving] = useState(false);
 
     const formatRole = (role: string) => roles.find(r => r.value === role)?.label || role;
     const getRoleColor = (role: string) => ROLE_COLORS[role] || 'default';
-
-    const handleAddRole = () => {
-        const val = newRoleForm.value.trim().toLowerCase().replace(/\s+/g, '_');
-        const label = newRoleForm.label.trim();
-        if (!val || !label) return;
-        if (roles.some(r => r.value === val)) {
-            toast.error('A role with that value already exists');
-            return;
-        }
-        setRoles(prev => [...prev, { value: val, label }]);
-        setNewRoleForm({ label: '', value: '' });
-        setAddRoleOpen(false);
-        toast.success(`Role "${label}" added`);
-    };
 
     // --- Permissions matrix state ---
     const [allPermissions, setAllPermissions] = useState<any[]>([]);
@@ -181,9 +169,27 @@ const UserManagement = () => {
         }
     }, [API]);
 
+    const fetchRoles = useCallback(async () => {
+        try {
+            const res = await axiosInstance.get(`${API}/permissions/roles`);
+            const fetched = res.data.roles || [];
+            if (fetched.length) {
+                // Keep defaults' order, then append any custom roles from the backend
+                const merged = [...DEFAULT_ROLES];
+                fetched.forEach((r: any) => {
+                    if (!merged.some(m => m.value === r.value)) merged.push({ value: r.value, label: r.label });
+                });
+                setRoles(merged);
+            }
+        } catch {
+            // fall back to defaults silently
+        }
+    }, [API]);
+
     useEffect(() => {
         fetchUsers();
-    }, [fetchUsers]);
+        fetchRoles();
+    }, [fetchUsers, fetchRoles]);
 
     useEffect(() => {
         if (tab === 1) fetchAllPermissions();
@@ -417,6 +423,49 @@ const UserManagement = () => {
         }
     };
 
+    // ---- Add Role ----
+
+    const openAddRole = async () => {
+        setNewRoleForm({ label: '', value: '' });
+        setNewRolePerms({});
+        // Ensure the permission list is available so the admin can grant access on creation
+        if (allPermissions.length === 0) {
+            try {
+                const res = await axiosInstance.get(`${API}/permissions/admin/all-permissions`);
+                setAllPermissions(res.data.permissions || []);
+            } catch {
+                // dialog still works for label-only role creation
+            }
+        }
+        setAddRoleOpen(true);
+    };
+
+    const handleCreateRole = async () => {
+        const label = newRoleForm.label.trim();
+        const value = newRoleForm.value.trim().toLowerCase().replace(/\s+/g, '_');
+        if (!label || !value) {
+            toast.error('Please enter a role name');
+            return;
+        }
+        if (roles.some(r => r.value === value)) {
+            toast.error('A role with that value already exists');
+            return;
+        }
+        const permissions = Object.keys(newRolePerms).filter(id => newRolePerms[id]);
+        try {
+            setRoleSaving(true);
+            await axiosInstance.post(`${API}/permissions/admin/roles`, { label, value, permissions });
+            toast.success(`Role "${label}" created`);
+            setAddRoleOpen(false);
+            await fetchRoles();
+            if (tab === 1) fetchAllPermissions();
+        } catch (err: any) {
+            toast.error(err?.response?.data?.detail || 'Failed to create role');
+        } finally {
+            setRoleSaving(false);
+        }
+    };
+
     // ---- Filtered users ----
 
     const filteredUsers = users.filter((u: any) => {
@@ -500,11 +549,13 @@ const UserManagement = () => {
                                     ))}
                                 </Select>
                             </FormControl>
-                            <Tooltip title="Add new role">
-                                <IconButton onClick={() => { setNewRoleForm({ label: '', value: '' }); setAddRoleOpen(true); }} color="primary">
-                                    <AddIcon />
-                                </IconButton>
-                            </Tooltip>
+                            {isAdmin && (
+                                <Tooltip title="Add new role">
+                                    <IconButton onClick={openAddRole} color="primary">
+                                        <GroupIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
                             <Tooltip title="Refresh">
                                 <IconButton onClick={fetchUsers}><RefreshIcon /></IconButton>
                             </Tooltip>
@@ -1024,47 +1075,81 @@ const UserManagement = () => {
                 </DialogActions>
             </Dialog>
             {/* Add Role Dialog */}
-            <Dialog open={addRoleOpen} onClose={() => setAddRoleOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+            <Dialog open={addRoleOpen} onClose={() => !roleSaving && setAddRoleOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
                 <DialogTitle>
                     <Box display="flex" alignItems="center" gap={1}>
-                        <AddIcon color="primary" />
-                        <Typography variant="h6">Add New Role</Typography>
+                        <GroupIcon color="primary" />
+                        <Typography variant="h6">Create New Role</Typography>
                     </Box>
                 </DialogTitle>
                 <DialogContent dividers>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        Add a custom role to the dropdown. The value is auto-generated from the label.
+                        Create a custom role and grant it access to features. The role is saved and
+                        becomes available when adding or editing users.
                     </Typography>
-                    <TextField
-                        fullWidth
-                        label="Role Label *"
-                        size="small"
-                        value={newRoleForm.label}
-                        onChange={e => {
-                            const label = e.target.value;
-                            setNewRoleForm({ label, value: label.trim().toLowerCase().replace(/\s+/g, '_') });
-                        }}
-                        sx={{ mb: 2 }}
-                        placeholder="e.g. Finance Manager"
-                    />
-                    <TextField
-                        fullWidth
-                        label="Role Value (auto-generated)"
-                        size="small"
-                        value={newRoleForm.value}
-                        onChange={e => setNewRoleForm(f => ({ ...f, value: e.target.value }))}
-                        helperText="Unique identifier used internally"
-                    />
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
+                        <TextField
+                            fullWidth
+                            label="Role Name *"
+                            size="small"
+                            value={newRoleForm.label}
+                            onChange={e => {
+                                const label = e.target.value;
+                                setNewRoleForm({ label, value: label.trim().toLowerCase().replace(/\s+/g, '_') });
+                            }}
+                            placeholder="e.g. Finance Manager"
+                        />
+                        <TextField
+                            fullWidth
+                            label="Role Value"
+                            size="small"
+                            value={newRoleForm.value}
+                            onChange={e => setNewRoleForm(f => ({ ...f, value: e.target.value }))}
+                            helperText="Unique identifier (auto-generated)"
+                        />
+                    </Stack>
+                    <Divider sx={{ mb: 1 }} />
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                        Permissions for this role
+                    </Typography>
+                    {allPermissions.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary">
+                            No permissions available to assign. You can add them later from the Permissions tab.
+                        </Typography>
+                    ) : (
+                        <Box sx={{ maxHeight: 300, overflowY: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                            <Table size="small">
+                                <TableBody>
+                                    {allPermissions.map(p => (
+                                        <TableRow key={p.id} hover>
+                                            <TableCell>
+                                                <Typography variant="body2" fontWeight="medium">{p.text}</Typography>
+                                                <Typography variant="caption" color="text.secondary">{p.path}</Typography>
+                                            </TableCell>
+                                            <TableCell align="center" padding="checkbox">
+                                                <Checkbox
+                                                    checked={!!newRolePerms[p.id]}
+                                                    onChange={e => setNewRolePerms(prev => ({ ...prev, [p.id]: e.target.checked }))}
+                                                    color="primary"
+                                                    size="small"
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </Box>
+                    )}
                 </DialogContent>
                 <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={() => setAddRoleOpen(false)} color="inherit" variant="outlined">Cancel</Button>
+                    <Button onClick={() => setAddRoleOpen(false)} color="inherit" variant="outlined" disabled={roleSaving}>Cancel</Button>
                     <Button
-                        onClick={handleAddRole}
+                        onClick={handleCreateRole}
                         variant="contained"
-                        disabled={!newRoleForm.label.trim() || !newRoleForm.value.trim()}
-                        startIcon={<AddIcon />}
+                        disabled={roleSaving || !newRoleForm.label.trim() || !newRoleForm.value.trim()}
+                        startIcon={roleSaving ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
                     >
-                        Add Role
+                        {roleSaving ? 'Creating…' : 'Create Role'}
                     </Button>
                 </DialogActions>
             </Dialog>
