@@ -169,6 +169,7 @@ const Layout = ({ children }: any) => {
             {user && (
               user.role?.includes('admin') ||
               user.role?.includes('catalogue_manager') ||
+              user.role?.includes('marketing_manager') ||
               user.role?.includes('hr')
             ) && !router.pathname.includes('admin') && (
               isMobileOrTablet ? (
