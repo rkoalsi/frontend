@@ -29,7 +29,6 @@ import {
   Image as ImageIcon,
   Save,
   OpenInNew,
-  AutoAwesome,
   ExpandMore,
   ExpandLess,
   Storefront,
@@ -170,7 +169,12 @@ const LinkTreeAdmin = () => {
   // Social links are edited as a list (platform + url); converted to the object
   // map the blog's Social component expects on save. `retail` is the one boolean.
   const [socialRows, setSocialRows] = useState<{ id: string; platform: string; url: string }[]>([]);
+  const [pixelCode, setPixelCode] = useState('');
+  // Accordion open state per collapsible section (WhatsApp is intentionally not collapsible).
+  const [headerOpen, setHeaderOpen] = useState(false);
   const [footerOpen, setFooterOpen] = useState(false);
+  const [linksOpen, setLinksOpen] = useState(false);
+  const [pixelOpen, setPixelOpen] = useState(false);
   const [waDialogOpen, setWaDialogOpen] = useState(false);
   const [spinOpen, setSpinOpen] = useState(false);
 
@@ -258,6 +262,7 @@ const LinkTreeAdmin = () => {
           .filter(([k, v]) => k !== 'retail' && typeof v === 'string' && v)
           .map(([platform, url]) => ({ id: uid(), platform, url: url as string }))
       );
+      setPixelCode(c.pixel_code || '');
     } catch (e) {
       console.error(e);
       toast.error('Error loading link tree configuration.');
@@ -437,6 +442,7 @@ const LinkTreeAdmin = () => {
         accent_color: accentColor,
         header,
         footer: { ...footer, social },
+        pixel_code: pixelCode,
         links: links.map((l, i) => ({ ...l, order: i })),
         whatsapp,
         spin_wheel: {
@@ -463,6 +469,20 @@ const LinkTreeAdmin = () => {
       </Box>
     );
   }
+
+  // Brands already added to the Links section (matched by name), so the picker
+  // only offers brands not yet present. Also dedupes the brand list by name.
+  const usedBrandNames = new Set(
+    links.map((l) => (l.text || '').trim().toLowerCase()).filter(Boolean)
+  );
+  const availableBrands = brands.filter((b, i, arr) => {
+    const name = (b.name || '').trim().toLowerCase();
+    if (!name || usedBrandNames.has(name)) return false;
+    return arr.findIndex((x) => (x.name || '').trim().toLowerCase() === name) === i;
+  });
+  const filteredBrands = availableBrands.filter((b) =>
+    b.name.toLowerCase().includes(brandSearch.trim().toLowerCase())
+  );
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 960, mx: 'auto' }}>
@@ -531,12 +551,23 @@ const LinkTreeAdmin = () => {
       </Paper>
       {/* Page header */}
       <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, borderRadius: 3 }}>
-        <Typography variant="h6" fontWeight={700}>
-          Page header
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Shown under the BarkButler logo at the top of /linktree.
-        </Typography>
+        <Box
+          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+          onClick={() => setHeaderOpen((o) => !o)}
+        >
+          <Box>
+            <Typography variant="h6" fontWeight={700}>
+              Page header
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Shown under the BarkButler logo at the top of /linktree.
+            </Typography>
+          </Box>
+          <IconButton size="small">{headerOpen ? <ExpandLess /> : <ExpandMore />}</IconButton>
+        </Box>
+
+        <Collapse in={headerOpen}>
+        <Divider sx={{ my: 2 }} />
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
           <Avatar
             variant="rounded"
@@ -567,6 +598,7 @@ const LinkTreeAdmin = () => {
             onChange={(e) => setHeader((h) => ({ ...h, description: e.target.value }))}
           />
         </Box>
+        </Collapse>
       </Paper>
 
       {/* Footer */}
@@ -800,6 +832,40 @@ const LinkTreeAdmin = () => {
         </Collapse>
       </Paper>
 
+
+      {/* Tracking pixel */}
+      <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, borderRadius: 3 }}>
+        <Box
+          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+          onClick={() => setPixelOpen((o) => !o)}
+        >
+          <Box>
+            <Typography variant="h6" fontWeight={700}>
+              Tracking pixel
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Custom HTML/script (e.g. Meta Pixel, Google tag) injected into the /linktree page.
+            </Typography>
+          </Box>
+          <IconButton size="small">{pixelOpen ? <ExpandLess /> : <ExpandMore />}</IconButton>
+        </Box>
+
+        <Collapse in={pixelOpen}>
+          <Divider sx={{ my: 2 }} />
+          <TextField
+            label="Pixel / tracking code"
+            fullWidth
+            multiline
+            minRows={6}
+            placeholder="<!-- Paste your full pixel snippet, including <script> tags -->"
+            value={pixelCode}
+            onChange={(e) => setPixelCode(e.target.value)}
+            InputProps={{ sx: { fontFamily: 'monospace', fontSize: 13 } }}
+            helperText="Pasted exactly as provided by the analytics/ads platform. Leave empty to disable."
+          />
+        </Collapse>
+      </Paper>
+
       {/* Links */}
       <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, borderRadius: 3 }}>
         <Box
@@ -812,9 +878,15 @@ const LinkTreeAdmin = () => {
             mb: 2,
           }}
         >
-          <Typography variant="h6" fontWeight={700}>
-            Links ({links.length})
-          </Typography>
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
+            onClick={() => setLinksOpen((o) => !o)}
+          >
+            <Typography variant="h6" fontWeight={700}>
+              Links ({links.length})
+            </Typography>
+            <IconButton size="small">{linksOpen ? <ExpandLess /> : <ExpandMore />}</IconButton>
+          </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="body2" color="text.secondary">
@@ -827,15 +899,30 @@ const LinkTreeAdmin = () => {
                 style={{ width: 40, height: 32, border: 'none', background: 'none', cursor: 'pointer' }}
               />
             </Box>
-            <Button variant="outlined" startIcon={<Storefront />} onClick={openBrandDialog}>
+            <Button
+              variant="outlined"
+              startIcon={<Storefront />}
+              onClick={() => {
+                setLinksOpen(true);
+                openBrandDialog();
+              }}
+            >
               Add brand link
             </Button>
-            <Button variant="outlined" startIcon={<Add />} onClick={addLink}>
+            <Button
+              variant="outlined"
+              startIcon={<Add />}
+              onClick={() => {
+                setLinksOpen(true);
+                addLink();
+              }}
+            >
               Add link
             </Button>
           </Box>
         </Box>
 
+        <Collapse in={linksOpen}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {links.map((link, index) => (
             <Box
@@ -951,9 +1038,8 @@ const LinkTreeAdmin = () => {
             </Typography>
           )}
         </Box>
+        </Collapse>
       </Paper>
-
-
 
       {/* Spin the wheel */}
       {/* <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, borderRadius: 3 }}>
@@ -1184,42 +1270,35 @@ const LinkTreeAdmin = () => {
             </Box>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 420, overflowY: 'auto' }}>
-              {brands
-                .filter((b) =>
-                  b.name.toLowerCase().includes(brandSearch.trim().toLowerCase())
-                )
-                .map((b) => (
-                  <Box
-                    key={b._id}
-                    onClick={() => addBrandLink(b)}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      p: 1,
-                      borderRadius: 2,
-                      cursor: 'pointer',
-                      border: (t) => `1px solid ${t.palette.divider}`,
-                      '&:hover': { bgcolor: (t) => alpha(t.palette.primary.main, 0.08) },
-                    }}
-                  >
-                    <Avatar variant="rounded" src={b.image_url || undefined} sx={{ width: 48, height: 48, bgcolor: '#fff' }}>
-                      <ImageIcon color="disabled" />
-                    </Avatar>
-                    <Typography fontWeight={600}>{b.name}</Typography>
-                  </Box>
-                ))}
-              {brands.length > 0 &&
-                brands.filter((b) =>
-                  b.name.toLowerCase().includes(brandSearch.trim().toLowerCase())
-                ).length === 0 && (
-                  <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                    No brands match “{brandSearch}”.
-                  </Typography>
-                )}
-              {!brandsLoading && brands.length === 0 && (
+              {filteredBrands.map((b) => (
+                <Box
+                  key={b._id}
+                  onClick={() => addBrandLink(b)}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    p: 1,
+                    borderRadius: 2,
+                    cursor: 'pointer',
+                    border: (t) => `1px solid ${t.palette.divider}`,
+                    '&:hover': { bgcolor: (t) => alpha(t.palette.primary.main, 0.08) },
+                  }}
+                >
+                  <Avatar variant="rounded" src={b.image_url || undefined} sx={{ width: 48, height: 48, bgcolor: '#fff' }}>
+                    <ImageIcon color="disabled" />
+                  </Avatar>
+                  <Typography fontWeight={600}>{b.name}</Typography>
+                </Box>
+              ))}
+              {availableBrands.length > 0 && filteredBrands.length === 0 && (
                 <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                  No brands found.
+                  No brands match “{brandSearch}”.
+                </Typography>
+              )}
+              {!brandsLoading && availableBrands.length === 0 && (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+                  {brands.length === 0 ? 'No brands found.' : 'All brands have already been added.'}
                 </Typography>
               )}
             </Box>
