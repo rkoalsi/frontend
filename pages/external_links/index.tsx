@@ -294,7 +294,7 @@ function ExternalLinks(props: Props) {
             animate='visible'
             style={{ width: '100%', marginBottom: 32 }}
           >
-            <Header title='External Links' showBackButton />
+            <Header title='External Links' showBackButton useBack />
             <Typography
               variant='body1'
               sx={{

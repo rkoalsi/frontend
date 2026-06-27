@@ -34,6 +34,7 @@ import {
     alpha,
 } from '@mui/material';
 import {
+    ArrowBack,
     Edit,
     Delete,
     Search,
@@ -451,13 +452,18 @@ const CustomerLoginsPage: React.FC = () => {
                     borderBottom: `1px solid ${theme.palette.divider}`,
                 }}
             >
-                <Box>
-                    <Typography variant="h5" fontWeight="bold" color="primary">
-                        Customer Logins
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" mt={0.5}>
-                        Create and manage order-form logins for your customers
-                    </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                    <IconButton size="small" onClick={() => router.back()} sx={{ mt: 0.25 }} aria-label="Back">
+                        <ArrowBack />
+                    </IconButton>
+                    <Box>
+                        <Typography variant="h5" fontWeight="bold" color="primary">
+                            Customer Logins
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" mt={0.5}>
+                            Create and manage order-form logins for your customers
+                        </Typography>
+                    </Box>
                 </Box>
                 <Button
                     variant="contained"

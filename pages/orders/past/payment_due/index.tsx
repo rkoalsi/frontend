@@ -157,7 +157,7 @@ const PaymentDue = () => {
     <Box sx={{ minHeight: '100vh', pb: 4 }}>
       <Container maxWidth='lg'>
         <Box sx={{ pt: 3, pb: 4 }}>
-          <Header title={'Payments Due'} showBackButton />
+          <Header title={'Payments Due'} showBackButton useBack />
 
           {/* Search and Actions Bar */}
           <Paper

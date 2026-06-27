@@ -13,6 +13,7 @@ import {
   Divider,
   alpha,
   useTheme,
+  useMediaQuery,
   InputAdornment,
   ToggleButtonGroup,
   ToggleButton,
@@ -405,6 +406,8 @@ const ChequeItem = ({
 const LIMIT = 20;
 
 const ChequesPage = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [cheques, setCheques] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(0);
@@ -460,10 +463,10 @@ const ChequesPage = () => {
   }, []);
 
   return (
-    <Box sx={{ pb: 6 }}>
-      <Header title='Cheques' />
+    <Box sx={{ width: '100%', pb: 6 }}>
+      <Header title='Cheques' showBackButton useBack />
 
-      <Box sx={{ px: { xs: 2, sm: 3 }, pt: 1, maxWidth: 640, mx: 'auto' }}>
+      <Box sx={{ px: { xs: 1.5, sm: 3 }, pt: 1, maxWidth: 640, mx: 'auto' }}>
         {/* Search bar */}
         <Box sx={{ mb: 2.5 }}>
           <ToggleButtonGroup
@@ -471,12 +474,12 @@ const ChequesPage = () => {
             exclusive
             onChange={(_, val) => { if (val) { setSearchMode(val); setSearchText(''); } }}
             size='small'
-            sx={{ mb: 1.5 }}
+            sx={{ mb: 1.5, width: { xs: '100%', sm: 'auto' } }}
           >
-            <ToggleButton value='customer' sx={{ px: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.78rem' }}>
+            <ToggleButton value='customer' sx={{ flex: { xs: 1, sm: 'none' }, px: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.78rem' }}>
               Customer
             </ToggleButton>
-            <ToggleButton value='invoice' sx={{ px: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.78rem' }}>
+            <ToggleButton value='invoice' sx={{ flex: { xs: 1, sm: 'none' }, px: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.78rem' }}>
               Invoice #
             </ToggleButton>
           </ToggleButtonGroup>
@@ -560,7 +563,7 @@ const ChequesPage = () => {
       </Box>
 
       {/* Image / PDF preview */}
-      <Dialog open={!!previewUrl} onClose={() => setPreviewUrl('')} maxWidth='md' fullWidth>
+      <Dialog open={!!previewUrl} onClose={() => setPreviewUrl('')} maxWidth='md' fullWidth fullScreen={isMobile}>
         <DialogTitle
           sx={{
             display: 'flex',
@@ -577,7 +580,7 @@ const ChequesPage = () => {
         </DialogTitle>
         <DialogContent sx={{ p: 1, textAlign: 'center' }}>
           {previewUrl.endsWith('.pdf') ? (
-            <iframe src={previewUrl} width='100%' height={560} style={{ border: 'none' }} />
+            <iframe src={previewUrl} width='100%' height={isMobile ? '100%' : 560} style={{ border: 'none', minHeight: isMobile ? '75vh' : undefined }} />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img

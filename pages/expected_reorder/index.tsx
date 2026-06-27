@@ -294,7 +294,7 @@ function ExpectedReorder() {
             alignItems: 'center',
           }}
         >
-          <Header title='Customers Reorder' showBackButton />
+          <Header title='Customers Reorder' showBackButton useBack />
           <Alert color='info'>
             This is for Existing Customers In Zoho that are expected to place
             orders soon

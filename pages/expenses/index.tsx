@@ -93,7 +93,7 @@ export default function ExpensesPage() {
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 900, mx: 'auto' }}>
-      <Header title="My Expense Estimates" showBackButton backUrl="/" />
+      <Header title="My Expense Estimates" showBackButton useBack />
 
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
         <Typography variant="h5" fontWeight={700}>Expense Estimates</Typography>

@@ -1073,7 +1073,7 @@ const CustomerAnalytics = () => {
     <Box sx={{ minHeight: '100vh', pb: { xs: 2, sm: 3, md: 4 } }}>
       <StyledContainer>
         {/* Header */}
-        <Header title='Customer Analytics' showBackButton />
+        <Header title='Customer Analytics' showBackButton useBack />
 
         {/* Filters */}
         <FilterContainer>

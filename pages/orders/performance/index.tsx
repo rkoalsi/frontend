@@ -13,8 +13,11 @@ import {
   Divider,
   Alert,
   alpha,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
+  ArrowBack,
   TrendingUp,
   TrendingDown,
   TrendingFlat,
@@ -25,6 +28,7 @@ import {
   Schedule,
   Send,
 } from '@mui/icons-material';
+import { useRouter } from 'next/router';
 import AuthContext from '../../../src/components/Auth';
 import axiosInstance from '../../../src/util/axios';
 
@@ -128,6 +132,7 @@ const StatCard = ({
 
 const PerformancePage = () => {
   const { user }: any = useContext(AuthContext);
+  const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [data, setData] = useState<PerformanceData | null>(null);
@@ -190,7 +195,12 @@ const PerformancePage = () => {
             p: { xs: 3, md: 4 },
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Tooltip title='Back'>
+              <IconButton size='small' onClick={() => router.back()} aria-label='Back' sx={{ color: 'white' }}>
+                <ArrowBack />
+              </IconButton>
+            </Tooltip>
             <ShoppingCart sx={{ fontSize: 32 }} />
             <Box>
               <Typography variant={isMobile ? 'h6' : 'h5'} fontWeight={700}>

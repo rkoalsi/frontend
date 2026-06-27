@@ -131,7 +131,7 @@ const ShipmentDetail = () => {
   if (error) {
     return (
       <Box sx={{ p: 2 }}>
-        <Header title='Shipment' showBackButton backUrl='/shipments' />
+        <Header title='Shipment' showBackButton useBack />
         <Alert severity='error' sx={{ mt: 2 }}>{error}</Alert>
         <Button variant='contained' size='small' sx={{ mt: 2 }} onClick={fetchShipment}>
           Retry
@@ -143,7 +143,7 @@ const ShipmentDetail = () => {
   if (!shipment) {
     return (
       <Box sx={{ p: 2 }}>
-        <Header title='Shipment' showBackButton backUrl='/shipments' />
+        <Header title='Shipment' showBackButton useBack />
         <Alert severity='warning'>Shipment not found</Alert>
       </Box>
     );
@@ -151,7 +151,7 @@ const ShipmentDetail = () => {
 
   return (
     <Box sx={{ p: isMobile ? 1.5 : 2, maxWidth: '600px', mx: 'auto' }}>
-      <Header title={`Shipment ${shipment.shipment_number || ''}`} showBackButton backUrl='/shipments' />
+      <Header title={`Shipment ${shipment.shipment_number || ''}`} showBackButton useBack />
 
       {/* Main Info Card */}
       <Card elevation={0} sx={{ mb: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>

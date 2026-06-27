@@ -13,9 +13,11 @@ type HeaderProps = {
   title: string;
   showBackButton?: boolean;
   backUrl?: string;
+  /** Navigate to the previous page in history (router.back()) instead of pushing a URL. */
+  useBack?: boolean;
 };
 
-const Header: React.FC<HeaderProps> = ({ title, showBackButton = false, backUrl }) => {
+const Header: React.FC<HeaderProps> = ({ title, showBackButton = false, backUrl, useBack = false }) => {
   const router = useRouter();
   const theme: any = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -23,7 +25,9 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = false, backUrl 
   const textColor = isDark ? 'white' : theme.palette.primary.main;
 
   const handleBack = () => {
-    if (backUrl) {
+    if (useBack) {
+      router.back();
+    } else if (backUrl) {
       router.push(backUrl);
     } else {
       router.push('/');
