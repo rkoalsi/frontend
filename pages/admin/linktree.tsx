@@ -891,7 +891,7 @@ const LinkTreeAdmin = () => {
                   value={link.url}
                   onChange={(e) => updateLink(link.id, 'url', e.target.value)}
                 />
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {/* <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography variant="caption" color="text.secondary">
                     Highlight color
                   </Typography>
@@ -904,7 +904,7 @@ const LinkTreeAdmin = () => {
                   <Button size="small" onClick={() => updateLink(link.id, 'color', accentColor)}>
                     Use theme
                   </Button>
-                </Box>
+                </Box> */}
               </Box>
 
               {/* controls */}
