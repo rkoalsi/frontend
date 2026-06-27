@@ -204,7 +204,7 @@ const OrderDetails = () => {
         gap: 2,
       }}
     >
-      <Header title='Order Details' showBackButton backUrl='/orders/past' />
+      <Header title='Order Details' showBackButton useBack />
 
       {/* Main card */}
       <Paper

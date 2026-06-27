@@ -566,7 +566,7 @@ function ReturnOrders() {
           mb: 4,
         }}
       >
-        <Header title='Return Orders' showBackButton />
+        <Header title='Return Orders' showBackButton useBack />
         <Alert
           severity='info'
           icon={<AssignmentReturnIcon />}

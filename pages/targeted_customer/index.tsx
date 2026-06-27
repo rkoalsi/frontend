@@ -167,7 +167,7 @@ function TargetedCustomer() {
           mt: 2,
         }}
       >
-        <Header title='Targeted Customers' showBackButton />
+        <Header title='Targeted Customers' showBackButton useBack />
         <Alert color='info'>
           This is for existing customers that need to be targeted.
         </Alert>

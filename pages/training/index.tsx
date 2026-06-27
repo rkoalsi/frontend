@@ -54,7 +54,7 @@ function Training() {
         padding: isMobile ? '16px' : '16px',
       }}
     >
-      <Header title={'View Training Videos'} showBackButton />
+      <Header title={'View Training Videos'} showBackButton useBack />
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
           <CircularProgress />

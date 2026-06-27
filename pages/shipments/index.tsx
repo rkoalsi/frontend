@@ -124,7 +124,7 @@ function Shipments() {
       alignItems='center'
       sx={{ width: '100%', gap: 1.5, p: isMobile ? 1.5 : 3 }}
     >
-      <Header title='Shipments' showBackButton />
+      <Header title='Shipments' showBackButton useBack />
 
       {/* Search Bar */}
       <Box sx={{ width: '100%', maxWidth: 500, mb: 0.5 }}>

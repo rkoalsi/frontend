@@ -254,7 +254,7 @@ function Catalogue(props: Props) {
       alignItems='center'
       sx={{ width: '100%', minHeight: '100vh', paddingBottom: 4 }}
     >
-      <Header title='View Catalogues' showBackButton />
+      <Header title='View Catalogues' showBackButton useBack />
 
       <Container maxWidth='lg' sx={{ mt: 2 }}>
         {/* Share All Button */}

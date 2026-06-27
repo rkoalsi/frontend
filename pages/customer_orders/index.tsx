@@ -130,7 +130,7 @@ const CustomerOrdersPage: React.FC = () => {
         gap: 2,
       }}
     >
-      <Header title='Customer Orders' showBackButton backUrl='/' />
+      <Header title='Customer Orders' showBackButton useBack />
 
       <Typography variant='body2' color='text.secondary'>
         Orders placed by your customers, most recent customer first.

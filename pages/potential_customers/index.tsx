@@ -347,7 +347,7 @@ function PotentialCustomers() {
             alignItems: 'center',
           }}
         >
-          <Header title='Potential Customers' showBackButton />
+          <Header title='Potential Customers' showBackButton useBack />
           <Alert color='info'>
             This page is for creation of NEW customers that do not exist on zoho
           </Alert>

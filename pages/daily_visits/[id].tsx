@@ -420,7 +420,7 @@ const DailyVisitDetail = () => {
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2 }, maxWidth: '1200px', mx: 'auto' }}>
-      <Header title='Daily Visit Details' showBackButton backUrl='/daily_visits' />
+      <Header title='Daily Visit Details' showBackButton useBack />
       <Card elevation={3}>
         <DailyVisitHeader createdAt={dailyVisit.created_at} />
         <CardContent>

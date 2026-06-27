@@ -307,7 +307,7 @@ function CustomerMargin() {
           mb: 4,
         }}
       >
-        <Header title='Customer Margins' showBackButton />
+        <Header title='Customer Margins' showBackButton useBack />
         <Alert color='info'>
           This is for existing customers and their assigned margins
         </Alert>

@@ -14,6 +14,7 @@ import {
   Tooltip,
   Divider,
   Avatar,
+  IconButton,
 } from '@mui/material';
 import {
   Login as LoginIcon,
@@ -21,7 +22,9 @@ import {
   AccessTime as ClockIcon,
   CalendarToday as CalendarIcon,
   Person as PersonIcon,
+  ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
+import { useRouter } from 'next/router';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import AuthContext from '../../src/components/Auth';
@@ -31,6 +34,7 @@ const Checkin = () => {
   const { user }: any = useContext(AuthContext);
   const userData = user || {};
 
+  const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [attendanceData, setAttendanceData] = useState([]);
@@ -281,6 +285,13 @@ const Checkin = () => {
         />
 
         <CardContent sx={{ p: isMobile ? 3 : 4 }}>
+          <Box sx={{ mb: 1 }}>
+            <Tooltip title='Back'>
+              <IconButton size='small' onClick={() => router.back()} aria-label='Back'>
+                <ArrowBackIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
           <Stack spacing={4}>
             {/* User and Time Information */}
             <Stack

@@ -936,7 +936,7 @@ function DailyVisits() {
       alignItems='center'
       sx={{ width: '100%', gap: 2, p: isMobile ? 2 : 4 }}
     >
-      <Header title='Daily Visits' showBackButton />
+      <Header title='Daily Visits' showBackButton useBack />
       <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
         <Button
           variant='contained'
