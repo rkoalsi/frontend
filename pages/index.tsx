@@ -242,6 +242,17 @@ const customerAllowedActions = [
   'customer'
 ];
 
+// Roles allowed to see restricted cards (Payments Due, Return Orders, Shipments,
+// and the entire Daily and Customers sections). Other staff roles (e.g.
+// marketing_manager, hr) do not see these.
+const privilegedRoles = [
+  'admin',
+  'sales_admin',
+  'sales_person',
+  'catalogue_manager',
+  'warehouse',
+];
+
 // Grouped menu items for better organization
 const menuSections = [
   {
@@ -271,18 +282,21 @@ const menuSections = [
         text: 'Payments Due',
         color: '#ef4444',
         action: 'paymentsDue',
+        restricted: true,
       },
       {
         icon: <KeyboardReturn />,
         text: 'Return Orders',
         color: '#f59e0b',
         action: 'return_orders',
+        restricted: true,
       },
       {
         icon: <Rocket />,
         text: 'Shipments',
         color: '#10b981',
         action: 'shipments',
+        restricted: true,
       },
       {
         icon: <LineAxis />,
@@ -294,6 +308,7 @@ const menuSections = [
   },
   {
     title: 'Daily',
+    restricted: true,
     items: [
       {
         icon: <CalendarMonth />,
@@ -323,6 +338,7 @@ const menuSections = [
   },
   {
     title: 'Customers',
+    restricted: true,
     items: [
       {
         icon: <PersonAdd />,
@@ -394,6 +410,7 @@ const menuSections = [
         text: 'Announcements',
         color: '#f59e0b',
         action: 'announcements',
+        restricted:true,
       },
       {
         icon: <MenuBook />,
@@ -406,12 +423,14 @@ const menuSections = [
         text: 'External Links',
         color: '#6b7280',
         action: 'external_links',
+        restricted:true,
       },
       {
         icon: <PlayCircle />,
         text: 'Training Videos',
         color: '#d946ef',
         action: 'training',
+        restricted:true,
       },
     ],
   },
@@ -515,11 +534,18 @@ const Home = () => {
         .filter((section) => section.items.length > 0);
     }
 
-    // For non-customer roles (salesperson, admin), hide Customer Dashboard
+    // For non-customer roles (salesperson, admin), hide Customer Dashboard.
+    // Restricted sections/items are only shown to privileged roles.
+    const isPrivileged = privilegedRoles.includes(userRole);
     return menuSections
+      .filter((section) => isPrivileged || !(section as any).restricted)
       .map((section) => ({
         ...section,
-        items: section.items.filter((item) => item.action !== 'customer'),
+        items: section.items.filter(
+          (item) =>
+            item.action !== 'customer' &&
+            (isPrivileged || !(item as any).restricted)
+        ),
       }))
       .filter((section) => section.items.length > 0);
   };
