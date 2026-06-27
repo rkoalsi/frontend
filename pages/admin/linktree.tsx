@@ -17,6 +17,7 @@ import {
   Divider,
   Tooltip,
   Collapse,
+  MenuItem,
   alpha,
 } from '@mui/material';
 import {
@@ -57,7 +58,85 @@ interface Segment {
   weight: number;
 }
 
+interface NavLink {
+  id: string;
+  label: string;
+  url: string;
+}
+
+interface FooterConfig {
+  tagline: string;
+  stat: string;
+  copyright: string;
+  shop: { label: string; url: string };
+  nav_links: NavLink[];
+  social: Record<string, any>;
+  legal: { label: string; url: string };
+  // Icon links used by the public /linktree page itself. Not edited here, but
+  // preserved through load/save so we never drop them.
+  links?: any[];
+}
+
 const DEFAULT_COLORS = ['#6366F1', '#22C55E', '#F59E0B', '#EF4444', '#06B6D4', '#A855F7'];
+
+// Platforms the blog's Social component can render an icon for. Used to populate
+// the social-link platform dropdown (keys must match the blog Social component).
+const SOCIAL_OPTIONS: { key: string; label: string }[] = [
+  { key: 'instagram', label: 'Instagram' },
+  { key: 'facebook', label: 'Facebook' },
+  { key: 'linkedin', label: 'LinkedIn' },
+  { key: 'youtube', label: 'YouTube' },
+  { key: 'twitter', label: 'Twitter / X' },
+  { key: 'tiktok', label: 'TikTok' },
+  { key: 'pinterest', label: 'Pinterest' },
+  { key: 'whatsapp', label: 'WhatsApp' },
+  { key: 'snapchat', label: 'Snapchat' },
+  { key: 'reddit', label: 'Reddit' },
+  { key: 'medium', label: 'Medium' },
+  { key: 'github', label: 'GitHub' },
+  { key: 'gitlab', label: 'GitLab' },
+  { key: 'dribbble', label: 'Dribbble' },
+  { key: 'behance', label: 'Behance' },
+  { key: 'vimeo', label: 'Vimeo' },
+  { key: 'soundcloud', label: 'SoundCloud' },
+  { key: 'tumblr', label: 'Tumblr' },
+  { key: 'vk', label: 'VK' },
+  { key: 'codepen', label: 'CodePen' },
+  { key: 'bitbucket', label: 'Bitbucket' },
+  { key: 'foursquare', label: 'Foursquare' },
+  { key: 'skype', label: 'Skype' },
+  { key: 'rss', label: 'RSS' },
+  { key: 'website', label: 'Website' },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone' },
+];
+
+const DEFAULT_FOOTER: FooterConfig = {
+  tagline: 'BarkButler – House of Brands for Pets',
+  stat: '700+ Retail Stores Across India',
+  copyright: '© 2026 Pupscribe Enterprises Private Limited',
+  shop: {
+    label: 'Shop',
+    url: 'https://www.amazon.in/stores/page/39059D39-A60C-4518-B0DF-23C77F797F79',
+  },
+  nav_links: [
+    { id: 'blog', label: 'Blog', url: '/' },
+    { id: 'website', label: 'Website', url: 'https://pupscribe.in' },
+  ],
+  social: {
+    instagram: 'https://www.instagram.com/barkbutler/',
+    facebook: 'https://www.facebook.com/BarkButler',
+    linkedin: 'https://www.linkedin.com/company/barkbutler/mycompany/',
+    youtube: 'https://www.youtube.com/@barkbutler',
+    website: 'https://pupscribe.in',
+    email: 'info@barkbutler.in',
+    retail: true,
+  },
+  legal: {
+    label: 'Privacy Policy | Terms and Conditions',
+    url: 'https://d31mkmby5gvlu4.cloudfront.net/public/Pupscribe-Terms-Conditions-Privacy-Policy.pdf',
+  },
+};
 
 const LinkTreeAdmin = () => {
   const [loading, setLoading] = useState(true);
@@ -87,6 +166,11 @@ const LinkTreeAdmin = () => {
     end_date: '',
     segments: [] as Segment[],
   });
+  const [footer, setFooter] = useState<FooterConfig>(DEFAULT_FOOTER);
+  // Social links are edited as a list (platform + url); converted to the object
+  // map the blog's Social component expects on save. `retail` is the one boolean.
+  const [socialRows, setSocialRows] = useState<{ id: string; platform: string; url: string }[]>([]);
+  const [footerOpen, setFooterOpen] = useState(false);
   const [waDialogOpen, setWaDialogOpen] = useState(false);
   const [spinOpen, setSpinOpen] = useState(false);
 
@@ -146,6 +230,34 @@ const LinkTreeAdmin = () => {
           weight: s.weight ?? 1,
         })),
       });
+      const f = c.footer || {};
+      setFooter({
+        tagline: f.tagline ?? DEFAULT_FOOTER.tagline,
+        stat: f.stat ?? DEFAULT_FOOTER.stat,
+        copyright: f.copyright ?? DEFAULT_FOOTER.copyright,
+        shop: {
+          label: f.shop?.label ?? DEFAULT_FOOTER.shop.label,
+          url: f.shop?.url ?? DEFAULT_FOOTER.shop.url,
+        },
+        nav_links: (f.nav_links || DEFAULT_FOOTER.nav_links).map((n: any) => ({
+          id: n.id || uid(),
+          label: n.label || '',
+          url: n.url || '',
+        })),
+        social: { ...DEFAULT_FOOTER.social, ...(f.social || {}) },
+        legal: {
+          label: f.legal?.label ?? DEFAULT_FOOTER.legal.label,
+          url: f.legal?.url ?? DEFAULT_FOOTER.legal.url,
+        },
+        // Preserve the linktree page's own icon links so save doesn't drop them.
+        links: f.links,
+      });
+      const soc = { ...DEFAULT_FOOTER.social, ...(f.social || {}) };
+      setSocialRows(
+        Object.entries(soc)
+          .filter(([k, v]) => k !== 'retail' && typeof v === 'string' && v)
+          .map(([platform, url]) => ({ id: uid(), platform, url: url as string }))
+      );
     } catch (e) {
       console.error(e);
       toast.error('Error loading link tree configuration.');
@@ -243,6 +355,43 @@ const LinkTreeAdmin = () => {
     });
   };
 
+  // ── Footer helpers ────────────────────────────────────────────
+  const addFooterNav = () =>
+    setFooter((f) => ({
+      ...f,
+      nav_links: [...f.nav_links, { id: uid(), label: '', url: '' }],
+    }));
+
+  const updateFooterNav = (id: string, field: keyof NavLink, value: string) =>
+    setFooter((f) => ({
+      ...f,
+      nav_links: f.nav_links.map((n) => (n.id === id ? { ...n, [field]: value } : n)),
+    }));
+
+  const deleteFooterNav = (id: string) =>
+    setFooter((f) => ({ ...f, nav_links: f.nav_links.filter((n) => n.id !== id) }));
+
+  const moveFooterNav = (index: number, dir: -1 | 1) =>
+    setFooter((f) => {
+      const next = [...f.nav_links];
+      const target = index + dir;
+      if (target < 0 || target >= next.length) return f;
+      [next[index], next[target]] = [next[target], next[index]];
+      return { ...f, nav_links: next };
+    });
+
+  const addSocialRow = () =>
+    setSocialRows((prev) => [...prev, { id: uid(), platform: '', url: '' }]);
+
+  const updateSocialRow = (id: string, field: 'platform' | 'url', value: string) =>
+    setSocialRows((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
+
+  const deleteSocialRow = (id: string) =>
+    setSocialRows((prev) => prev.filter((s) => s.id !== id));
+
+  const setRetail = (value: boolean) =>
+    setFooter((f) => ({ ...f, social: { ...f.social, retail: value } }));
+
   // ── Segment helpers ───────────────────────────────────────────
   const addSegment = () =>
     setSpinWheel((prev) => ({
@@ -276,10 +425,18 @@ const LinkTreeAdmin = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const social: Record<string, any> = {};
+      socialRows.forEach((s) => {
+        const key = s.platform.trim();
+        const url = s.url.trim();
+        if (key && url) social[key] = url;
+      });
+      if (footer.social.retail) social.retail = true;
       const payload = {
         is_active: true,
         accent_color: accentColor,
         header,
+        footer: { ...footer, social },
         links: links.map((l, i) => ({ ...l, order: i })),
         whatsapp,
         spin_wheel: {
@@ -349,7 +506,29 @@ const LinkTreeAdmin = () => {
           </Button>
         </Box>
       </Box>
-
+      {/* WhatsApp */}
+      <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, borderRadius: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>
+              WhatsApp
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {whatsapp.enabled && whatsapp.number
+                ? `Enabled · ${whatsapp.number}`
+                : 'Not connected'}
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<WhatsApp />}
+            onClick={() => setWaDialogOpen(true)}
+            sx={{ bgcolor: '#25D366', '&:hover': { bgcolor: '#1ebe5d' } }}
+          >
+            {whatsapp.number ? 'Edit WhatsApp' : 'Connect WhatsApp'}
+          </Button>
+        </Box>
+      </Paper>
       {/* Page header */}
       <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, borderRadius: 3 }}>
         <Typography variant="h6" fontWeight={700}>
@@ -388,6 +567,237 @@ const LinkTreeAdmin = () => {
             onChange={(e) => setHeader((h) => ({ ...h, description: e.target.value }))}
           />
         </Box>
+      </Paper>
+
+      {/* Footer */}
+      <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, borderRadius: 3 }}>
+        <Box
+          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+          onClick={() => setFooterOpen((o) => !o)}
+        >
+          <Box>
+            <Typography variant="h6" fontWeight={700}>
+              Footer
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Controls the footer shown across the blog at barkbutler.in.
+            </Typography>
+          </Box>
+          <IconButton size="small">{footerOpen ? <ExpandLess /> : <ExpandMore />}</IconButton>
+        </Box>
+
+        <Collapse in={footerOpen}>
+        <Divider sx={{ my: 2 }} />
+
+        <Box sx={{ display: 'grid', gap: 2, mb: 3 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <TextField
+              label="Tagline"
+              size="small"
+              fullWidth
+              value={footer.tagline}
+              onChange={(e) => setFooter((f) => ({ ...f, tagline: e.target.value }))}
+            />
+            <TextField
+              label="Stat line"
+              size="small"
+              fullWidth
+              value={footer.stat}
+              onChange={(e) => setFooter((f) => ({ ...f, stat: e.target.value }))}
+            />
+          </Box>
+          <TextField
+            label="Copyright"
+            size="small"
+            fullWidth
+            value={footer.copyright}
+            onChange={(e) => setFooter((f) => ({ ...f, copyright: e.target.value }))}
+          />
+        </Box>
+
+        <Divider sx={{ my: 2 }} />
+
+        {/* Nav links (incl. Shop) */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            Navigation links ({footer.nav_links.length})
+          </Typography>
+          <Button size="small" startIcon={<Add />} onClick={addFooterNav}>
+            Add link
+          </Button>
+        </Box>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '200px 1fr' }, gap: 2, mb: 2 }}>
+          <TextField
+            label="Shop label"
+            size="small"
+            value={footer.shop.label}
+            onChange={(e) => setFooter((f) => ({ ...f, shop: { ...f.shop, label: e.target.value } }))}
+          />
+          <TextField
+            label="Shop URL"
+            size="small"
+            placeholder="https://…"
+            value={footer.shop.url}
+            onChange={(e) => setFooter((f) => ({ ...f, shop: { ...f.shop, url: e.target.value } }))}
+            helperText="Shown as a link in the footer; also used by the blog header Shop button."
+          />
+        </Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 3 }}>
+          {footer.nav_links.map((n, index) => (
+            <Box
+              key={n.id}
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr auto' },
+                gap: 1.5,
+                alignItems: 'center',
+                p: 1.5,
+                borderRadius: 2,
+                border: (t) => `1px solid ${t.palette.divider}`,
+              }}
+            >
+              <TextField
+                label="Label"
+                size="small"
+                value={n.label}
+                onChange={(e) => updateFooterNav(n.id, 'label', e.target.value)}
+              />
+              <TextField
+                label="URL"
+                size="small"
+                placeholder="https://… or /path"
+                value={n.url}
+                onChange={(e) => updateFooterNav(n.id, 'url', e.target.value)}
+              />
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                <Tooltip title="Move up">
+                  <span>
+                    <IconButton size="small" onClick={() => moveFooterNav(index, -1)} disabled={index === 0}>
+                      <ArrowUpward fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Tooltip title="Move down">
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={() => moveFooterNav(index, 1)}
+                      disabled={index === footer.nav_links.length - 1}
+                    >
+                      <ArrowDownward fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Tooltip title="Delete">
+                  <IconButton size="small" color="error" onClick={() => deleteFooterNav(n.id)}>
+                    <Delete fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </Box>
+          ))}
+          {footer.nav_links.length === 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+              No navigation links.
+            </Typography>
+          )}
+        </Box>
+
+        <Divider sx={{ my: 2 }} />
+
+        {/* Social links */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            Social links ({socialRows.length})
+          </Typography>
+          <Button size="small" startIcon={<Add />} onClick={addSocialRow}>
+            Add social link
+          </Button>
+        </Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
+          {socialRows.map((s) => (
+            <Box
+              key={s.id}
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '200px 1fr auto' },
+                gap: 1.5,
+                alignItems: 'center',
+                p: 1.5,
+                borderRadius: 2,
+                border: (t) => `1px solid ${t.palette.divider}`,
+              }}
+            >
+              <TextField
+                select
+                label="Platform"
+                size="small"
+                value={s.platform}
+                onChange={(e) => updateSocialRow(s.id, 'platform', e.target.value)}
+              >
+                {SOCIAL_OPTIONS.map((o) => (
+                  <MenuItem key={o.key} value={o.key}>
+                    {o.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                label={s.platform === 'email' ? 'Email address' : s.platform === 'phone' ? 'Phone number' : 'URL'}
+                size="small"
+                placeholder={s.platform === 'email' ? 'name@domain.com' : s.platform === 'phone' ? '+91…' : 'https://…'}
+                value={s.url}
+                onChange={(e) => updateSocialRow(s.id, 'url', e.target.value)}
+              />
+              <Tooltip title="Delete">
+                <IconButton size="small" color="error" onClick={() => deleteSocialRow(s.id)}>
+                  <Delete fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          ))}
+          {socialRows.length === 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+              No social links. Click “Add social link” to create one.
+            </Typography>
+          )}
+        </Box>
+        <FormControlLabel
+          sx={{ mb: 3 }}
+          control={
+            <Switch checked={!!footer.social.retail} onChange={(e) => setRetail(e.target.checked)} />
+          }
+          label={
+            <Box>
+              <Typography variant="body2">Retail / store locator icon</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Links to pupscribe.in/#contact
+              </Typography>
+            </Box>
+          }
+        />
+
+        <Divider sx={{ my: 2 }} />
+
+        {/* Legal link */}
+        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
+          Legal link
+        </Typography>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 2fr' }, gap: 2 }}>
+          <TextField
+            label="Label"
+            size="small"
+            value={footer.legal.label}
+            onChange={(e) => setFooter((f) => ({ ...f, legal: { ...f.legal, label: e.target.value } }))}
+          />
+          <TextField
+            label="URL"
+            size="small"
+            placeholder="https://…"
+            value={footer.legal.url}
+            onChange={(e) => setFooter((f) => ({ ...f, legal: { ...f.legal, url: e.target.value } }))}
+          />
+        </Box>
+        </Collapse>
       </Paper>
 
       {/* Links */}
@@ -543,29 +953,7 @@ const LinkTreeAdmin = () => {
         </Box>
       </Paper>
 
-      {/* WhatsApp */}
-      <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, borderRadius: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-          <Box>
-            <Typography variant="h6" fontWeight={700}>
-              WhatsApp
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {whatsapp.enabled && whatsapp.number
-                ? `Enabled · ${whatsapp.number}`
-                : 'Not connected'}
-            </Typography>
-          </Box>
-          <Button
-            variant="contained"
-            startIcon={<WhatsApp />}
-            onClick={() => setWaDialogOpen(true)}
-            sx={{ bgcolor: '#25D366', '&:hover': { bgcolor: '#1ebe5d' } }}
-          >
-            {whatsapp.number ? 'Edit WhatsApp' : 'Connect WhatsApp'}
-          </Button>
-        </Box>
-      </Paper>
+
 
       {/* Spin the wheel */}
       {/* <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, borderRadius: 3 }}>
