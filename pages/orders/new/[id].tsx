@@ -1523,6 +1523,7 @@ const NewOrder: React.FC = () => {
                       isCustomerRole={isCustomerUser}
                       order={order}
                       referenceNumber={referenceNumber}
+                      onPaymentSuccess={getOrder}
                     />
                   </Suspense>
                 </Box>

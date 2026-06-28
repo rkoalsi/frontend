@@ -45,6 +45,7 @@ type OrderType = {
   created_at: string;
   status: string;
   total_amount?: number;
+  payment?: { status?: string };
   spreadsheet_created?: boolean;
   products?: OrderProduct[];
 };
@@ -332,6 +333,9 @@ const PastOrders = () => {
                           sx={{ fontWeight: 600 }}
                           onClick={(e) => e.stopPropagation()}
                         />
+                        {order.payment?.status === 'paid' && (
+                          <Chip label='Paid' color='success' size='small' sx={{ fontWeight: 700 }} onClick={(e) => e.stopPropagation()} />
+                        )}
                         {isPreOrder && (
                           <Chip label='Pre Order' color='warning' size='small' sx={{ fontWeight: 600 }} onClick={(e) => e.stopPropagation()} />
                         )}
@@ -398,6 +402,9 @@ const PastOrders = () => {
                         size='small'
                         sx={{ fontWeight: 600 }}
                       />
+                      {order.payment?.status === 'paid' && (
+                        <Chip label='Paid' color='success' size='small' sx={{ fontWeight: 700 }} />
+                      )}
                       {isPreOrder && (
                         <Chip label='Pre Order' color='info' size='small' sx={{ fontWeight: 600 }} />
                       )}
