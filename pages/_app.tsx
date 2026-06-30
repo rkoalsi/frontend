@@ -97,6 +97,10 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/sales_people': 'Sales People',
   '/admin/shipments': 'Shipments',
   '/admin/targeted_customers': 'Targeted Customers',
+  '/admin/templates': 'WhatsApp Templates',
+  '/admin/segments': 'Customer Segments',
+  '/admin/campaigns': 'WhatsApp Campaigns',
+  '/admin/whatsapp_analytics': 'WhatsApp Analytics',
   '/admin/training': 'Training',
   '/admin/unbilled_customers': 'Unbilled Customers',
   // Customer portal

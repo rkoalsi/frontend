@@ -478,7 +478,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                 </Typography>
               ) : (() => {
                 const addressesWithInvestment = customerAddresses.filter(
-                  (a: any) => addressDetailMap[a.address_id]?.investment != null
+                  (a: any) =>
+                    addressDetailMap[a.address_id]?.investment != null ||
+                    (addressDetailMap[a.address_id]?.tags?.length || 0) > 0
                 );
                 const totalInvestment = addressesWithInvestment.reduce(
                   (sum: number, a: any) => sum + (addressDetailMap[a.address_id]?.investment || 0),
@@ -515,6 +517,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                             <TableHead>
                               <TableRow sx={{ backgroundColor: isDark ? 'rgba(124,111,205,0.15)' : '#e3f2fd' }}>
                                 <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Tags</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold' }} align="right">Investment</TableCell>
                               </TableRow>
                             </TableHead>
@@ -528,6 +531,17 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                     <Typography variant="caption" color="text.secondary">
                                       {[a.address, a.city, a.state].filter(Boolean).join(', ')}
                                     </Typography>
+                                  </TableCell>
+                                  <TableCell>
+                                    {(addressDetailMap[a.address_id]?.tags || []).length === 0 ? (
+                                      <Typography variant="caption" color="text.secondary">—</Typography>
+                                    ) : (
+                                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                        {(addressDetailMap[a.address_id]?.tags || []).map((t: string) => (
+                                          <Chip key={t} label={t} size="small" color="primary" variant="outlined" />
+                                        ))}
+                                      </Stack>
+                                    )}
                                   </TableCell>
                                   <TableCell align="right" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
                                     {formatCurrency(addressDetailMap[a.address_id]?.investment || 0)}
