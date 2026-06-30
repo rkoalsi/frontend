@@ -103,18 +103,27 @@ const ChatsPage = () => {
       const all: any[] = res.data.data;
       if (!all.length) { toast.info('No data to download.'); return; }
 
-      const rows = all.map((chat, i) => ({
+      const extractReferenceNumber = (message: string): string => {
+        const match = message?.match(/(?:EST|INV|SO)\/[A-Za-z0-9-]+\/[A-Za-z0-9-]+/);
+        return match ? match[0] : '-';
+      };
+
+      const rows = all.map((chat, i) => {
+        const message = getMessageBody(chat);
+        return {
         '#': i + 1,
         Type: chat.type || '-',
         From: chat.from || '-',
         To: chat.to || '-',
-        Message: getMessageBody(chat),
+        'Reference Number': extractReferenceNumber(message),
+        Message: message,
         Template: chat.template_name || '-',
         'Template Header': chat.template_header || '-',
         Status: chat.status || '-',
         Error: chat.error || '-',
         'Created At (IST)': formatIST(chat.created_at),
-      }));
+        };
+      });
 
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();

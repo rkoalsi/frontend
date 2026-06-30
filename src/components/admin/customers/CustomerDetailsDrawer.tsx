@@ -32,6 +32,7 @@ import {
   CircularProgress,
   Tooltip,
   InputAdornment,
+  Autocomplete,
 } from '@mui/material';
 import { Delete, ExpandMore, Refresh, Info } from '@mui/icons-material';
 import { toast } from 'react-toastify';
@@ -76,6 +77,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   const [billedAddresses, setBilledAddresses] = useState<Record<string, boolean>>({});
   const [inAnalyticsAddresses, setInAnalyticsAddresses] = useState<Record<string, boolean>>({});
   const [investmentInputs, setInvestmentInputs] = useState<Record<string, string>>({});
+  const [tagOptions, setTagOptions] = useState<string[]>([]);
   const [refreshTick, setRefreshTick] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -94,6 +96,13 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
       }
     };
     fetchSalesPeople();
+  }, []);
+
+  useEffect(() => {
+    axiosInstance
+      .get(`/customer_address_details/tags`)
+      .then((res) => setTagOptions(res.data.tags || []))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -221,6 +230,42 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
         setAddressDetails((prev) => ({ ...prev, [addressId]: prevDetail }));
         setInvestmentInputs((prev) => ({ ...prev, [addressId]: prevInput }));
         toast.error('Failed to update investment');
+      });
+  };
+
+  const handleAddressTagsChange = (addressId: string, newTags: string[]) => {
+    // De-duplicate (case-insensitive) and trim
+    const seen = new Set<string>();
+    const tags: string[] = [];
+    newTags.forEach((t) => {
+      const name = (t || '').trim();
+      const key = name.toLowerCase();
+      if (name && !seen.has(key)) {
+        seen.add(key);
+        tags.push(name);
+      }
+    });
+    const prevDetail = addressDetails[addressId];
+    setAddressDetails((prev) => ({
+      ...prev,
+      [addressId]: { ...(prev[addressId] || {}), tags },
+    }));
+    axiosInstance
+      .put(`/customer_address_details/${customer._id}/${addressId}`, { tags })
+      .then((res) => {
+        setAddressDetails((prev) => ({ ...prev, [addressId]: res.data.address_detail }));
+        // Merge any newly-created tags into the global suggestion list
+        setTagOptions((prev) => {
+          const merged = [...prev];
+          tags.forEach((t) => {
+            if (!merged.some((o) => o.toLowerCase() === t.toLowerCase())) merged.push(t);
+          });
+          return merged.sort((a, b) => a.localeCompare(b));
+        });
+      })
+      .catch(() => {
+        setAddressDetails((prev) => ({ ...prev, [addressId]: prevDetail }));
+        toast.error('Failed to update tags');
       });
   };
 
@@ -580,6 +625,35 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                             }}
                           />
                         </Tooltip>
+                        <Autocomplete
+                          multiple
+                          freeSolo
+                          size='small'
+                          options={tagOptions}
+                          value={addressDetails[a.address_id]?.tags || []}
+                          onChange={(_e, newValue) =>
+                            handleAddressTagsChange(a.address_id, newValue as string[])
+                          }
+                          sx={{ minWidth: 240, flexGrow: 1 }}
+                          renderTags={(value: string[], getTagProps) =>
+                            value.map((option: string, index: number) => (
+                              <Chip
+                                label={option}
+                                size='small'
+                                color='primary'
+                                {...getTagProps({ index })}
+                                key={option}
+                              />
+                            ))
+                          }
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label='Investment Tags'
+                              placeholder='Racks, Marketing…'
+                            />
+                          )}
+                        />
                       </Box>
                     </ListItem>
                   ))}
