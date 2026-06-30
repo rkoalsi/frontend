@@ -1,14 +1,50 @@
-import { Roboto } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import { createTheme } from '@mui/material/styles';
 
-export const roboto = Roboto({
-  weight: ['300', '400', '500', '700'],
+export const appFont = Inter({
+  weight: ['300', '400', '500', '600', '700'],
   subsets: ['latin'],
   display: 'swap',
 });
 
+// Backwards-compatible alias (consumed in _document.tsx)
+export const roboto = appFont;
+
+// Softer, modern elevation ramp (replaces MUI's harsh defaults).
+const buildShadows = (mode: 'dark' | 'light') => {
+  const c = mode === 'dark' ? '0,0,0' : '16,24,40';
+  const a = mode === 'dark' ? 1 : 0.08;
+  const base = [
+    'none',
+    `0 1px 2px rgba(${c},${a})`,
+    `0 1px 3px rgba(${c},${a}), 0 1px 2px rgba(${c},${a * 0.6})`,
+    `0 2px 4px rgba(${c},${a}), 0 1px 6px rgba(${c},${a * 0.5})`,
+    `0 4px 8px rgba(${c},${a}), 0 2px 4px rgba(${c},${a * 0.5})`,
+    `0 6px 12px rgba(${c},${a}), 0 2px 6px rgba(${c},${a * 0.5})`,
+    `0 8px 18px rgba(${c},${a}), 0 4px 8px rgba(${c},${a * 0.4})`,
+    `0 12px 24px rgba(${c},${a}), 0 4px 10px rgba(${c},${a * 0.4})`,
+  ];
+  // Fill the remaining MUI slots (up to 25) by reusing the strongest tier.
+  while (base.length < 25) base.push(base[base.length - 1]);
+  return base as unknown as import('@mui/material/styles').Shadows;
+};
+
 export const createAppTheme = (mode: 'dark' | 'light') =>
   createTheme({
+    shape: { borderRadius: 12 },
+    shadows: buildShadows(mode),
+    typography: {
+      fontFamily: appFont.style.fontFamily,
+      h1: { fontWeight: 700, letterSpacing: '-0.02em' },
+      h2: { fontWeight: 700, letterSpacing: '-0.02em' },
+      h3: { fontWeight: 700, letterSpacing: '-0.015em' },
+      h4: { fontWeight: 600, letterSpacing: '-0.01em' },
+      h5: { fontWeight: 600, letterSpacing: '-0.01em' },
+      h6: { fontWeight: 600 },
+      subtitle1: { fontWeight: 500 },
+      subtitle2: { fontWeight: 500 },
+      button: { fontWeight: 600, letterSpacing: '0.01em' },
+    },
     palette: {
       mode,
       primary: {
@@ -74,7 +110,7 @@ export const createAppTheme = (mode: 'dark' | 'light') =>
       MuiButton: {
         styleOverrides: {
           root: {
-            borderRadius: '8px',
+            borderRadius: '10px',
             textTransform: 'none',
             fontWeight: 600,
             letterSpacing: '0.02em',
@@ -156,6 +192,10 @@ export const createAppTheme = (mode: 'dark' | 'light') =>
         styleOverrides: {
           root: {
             backgroundImage: 'none',
+            borderRadius: 16,
+            border: mode === 'dark'
+              ? '1px solid rgba(255,255,255,0.08)'
+              : '1px solid rgba(16,24,40,0.06)',
           },
         },
       },
@@ -175,6 +215,7 @@ export const createAppTheme = (mode: 'dark' | 'light') =>
       MuiOutlinedInput: {
         styleOverrides: {
           root: {
+            borderRadius: 10,
             '& .MuiOutlinedInput-notchedOutline': {
               borderColor: mode === 'dark' ? 'rgba(255,255,255,0.23)' : 'rgba(0,0,0,0.23)',
             },

@@ -79,7 +79,7 @@ const ProductTable = ({
                   <TableCell>UPC Code</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Pre Order</TableCell>
-                  <TableCell>Clearance / Sale</TableCell>
+                  <TableCell>Special Offers</TableCell>
                   <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>

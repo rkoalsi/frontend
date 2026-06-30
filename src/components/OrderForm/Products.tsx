@@ -63,7 +63,6 @@ import {
   RemoveShoppingCart,
   Search as SearchIcon,
   ShoppingCartCheckout as ShoppingCartCheckoutIcon,
-  Sell as SellIcon,
 } from "@mui/icons-material";
 import debounce from "lodash.debounce";
 import { toast } from "react-toastify";
@@ -80,6 +79,12 @@ import QuantitySelector from "./QuantitySelector";
 import { groupProductsByName, ProductGroup, GroupedProducts, getPackStep } from "../../util/groupProducts";
 import { getEffectiveMarginPct } from "../../util/margin";
 import AuthContext from "../Auth";
+
+// The "Clearance" brand is an internal routing/counts key (see backend
+// /products counts). It is surfaced to users as "Special Offers".
+const SPECIAL_OFFERS_ICON = "https://assets.pupscribe.in/assets/special_offers.png";
+const brandDisplayName = (brand?: string) =>
+  brand === "Clearance" ? "Special Offers" : brand;
 
 interface SearchResult {
   id?: number;
@@ -1886,7 +1891,12 @@ const Products: React.FC<ProductsProps> = ({
                             </Box>
                           ) : selectedBrand?.brand === "Clearance" ? (
                             <Box sx={iconBoxSx}>
-                              <SellIcon sx={{ fontSize: 34, color: '#dc2626' }} />
+                              <Box
+                                component="img"
+                                src={SPECIAL_OFFERS_ICON}
+                                alt="Special Offers"
+                                sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              />
                             </Box>
                           ) : (selectedBrand?.image || selectedBrand?.url) && (
                             <Box sx={iconBoxSx}>
@@ -1899,7 +1909,7 @@ const Products: React.FC<ProductsProps> = ({
                             </Box>
                           )}
                           <Typography variant="h6">
-                            {selectedBrand?.brand}
+                            {brandDisplayName(selectedBrand?.brand)}
                           </Typography>
                         </Box>
                       );
@@ -1950,7 +1960,12 @@ const Products: React.FC<ProductsProps> = ({
                                   flexShrink: 0,
                                 }}
                               >
-                                <SellIcon sx={{ fontSize: 30, color: '#dc2626' }} />
+                                <Box
+                                  component="img"
+                                  src={SPECIAL_OFFERS_ICON}
+                                  alt="Special Offers"
+                                  sx={{ width: '100%', height: '100%', objectFit: 'contain', p: '6px' }}
+                                />
                               </Box>
                             ) : (b.image || b.url) && (
                               <Box
@@ -1979,7 +1994,7 @@ const Products: React.FC<ProductsProps> = ({
                             )}
                             <Box display="flex" flexDirection="column" flex={1}>
                               <Typography variant="h6" fontWeight="medium">
-                                {b.brand}
+                                {brandDisplayName(b.brand)}
                               </Typography>
                               <Typography
                                 variant="caption"
@@ -2086,7 +2101,12 @@ const Products: React.FC<ProductsProps> = ({
                                     flexShrink: 0,
                                   }}
                                 >
-                                  <SellIcon sx={{ fontSize: 40, color: '#dc2626' }} />
+                                  <Box
+                                    component="img"
+                                    src={SPECIAL_OFFERS_ICON}
+                                    alt="Special Offers"
+                                    sx={{ width: '100%', height: '100%', objectFit: 'contain', p: '6px' }}
+                                  />
                                 </Box>
                               ) : (b.image || b.url) && (
                                 <Box
@@ -2123,7 +2143,7 @@ const Products: React.FC<ProductsProps> = ({
                                     lineHeight: 1.2,
                                   }}
                                 >
-                                  {b.brand}
+                                  {brandDisplayName(b.brand)}
                                 </Typography>
                                 <Typography
                                   variant="caption"

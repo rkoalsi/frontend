@@ -111,7 +111,7 @@ const FilterDrawerComponent = ({
             }}
           />
         }
-        label='Clearance / Sale Only'
+        label='Special Offers Only'
       />
       <FormControlLabel
         control={

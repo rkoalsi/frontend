@@ -712,7 +712,7 @@ const ProductDialog = ({
                         label={
                           <Chip
                             size='small'
-                            label='Clearance / Sale'
+                            label='Special Offers'
                             color={selectedProduct?.clearance ? 'error' : 'default'}
                             variant='outlined'
                           />
