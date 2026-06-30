@@ -264,7 +264,29 @@ const Review: React.FC<Props> = React.memo((props) => {
       document.body.appendChild(script);
     });
 
+  // Poll the order's payment/estimate status until it resolves (or times out).
+  // The estimate is created in the background after /verify, so we wait for it
+  // here to show the result the moment it's ready instead of a blank screen.
+  const pollOrderStatus = async (
+    orderId: string,
+    { tries = 45, interval = 2000 }: { tries?: number; interval?: number } = {}
+  ): Promise<any | null> => {
+    for (let i = 0; i < tries; i += 1) {
+      try {
+        const { data } = await axiosInstance.get(`/payments/order/${orderId}/status`);
+        if (data?.done || data?.payment_status === 'failed') return data;
+      } catch (_e) {
+        /* transient — keep polling */
+      }
+      await new Promise((r) => setTimeout(r, interval));
+    }
+    return null; // timed out — payment is captured, estimate still finalising
+  };
+
   const verifyPayment = async (response: any) => {
+    // Show the loader immediately while we confirm with the server.
+    setPaymentResultMsg('');
+    setPaymentResult('processing');
     try {
       const verifyResp = await axiosInstance.post('/payments/verify', {
         order_id: order._id,
@@ -272,17 +294,36 @@ const Review: React.FC<Props> = React.memo((props) => {
         razorpay_payment_id: response.razorpay_payment_id,
         razorpay_signature: response.razorpay_signature,
       });
-      if (verifyResp.data?.success) {
-        setPaidLocally(true);
-        setPaymentResultMsg(
-          verifyResp.data?.message ||
-            'Your payment was received and the order has been confirmed.'
-        );
-        setPaymentResult('success');
-      } else {
+
+      if (!verifyResp.data?.success) {
         setPaymentResultMsg(verifyResp.data?.detail || 'Payment verification failed.');
         setPaymentResult('failure');
+        return;
       }
+
+      setPaidLocally(true);
+
+      // Wait for the backgrounded Zoho estimate to be created.
+      let estimateStatus = '';
+      if (verifyResp.data?.estimate_pending) {
+        const status = await pollOrderStatus(order._id);
+        if (status?.payment_status === 'failed') {
+          setPaymentResultMsg(
+            'We received your payment but could not confirm it. Please contact support.'
+          );
+          setPaymentResult('failure');
+          return;
+        }
+        estimateStatus = status?.estimate_status || '';
+      }
+
+      const statusSuffix = estimateStatus
+        ? ` Estimate status: ${estimateStatus.replace(/_/g, ' ')}.`
+        : '';
+      setPaymentResultMsg(
+        `Your payment was received and your order has been confirmed.${statusSuffix}`
+      );
+      setPaymentResult('success');
     } catch (error: any) {
       setPaymentResultMsg(
         error?.response?.data?.detail || 'Could not verify the payment.'
