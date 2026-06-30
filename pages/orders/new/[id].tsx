@@ -224,6 +224,12 @@ const NewOrder: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [xlsxLoading, setXlsxLoading] = useState<boolean>(false);
   const [order, setOrder] = useState<any>(null);
+  // Self-registered B2B customers pay online (Pay Now) instead of submitting an
+  // order, and have a minimum cart value before payment is allowed.
+  const [payConfig, setPayConfig] = useState<{ is_self_registered: boolean; min_order_value: number }>({
+    is_self_registered: false,
+    min_order_value: 0,
+  });
   const [billingAddress, setBillingAddress] = useState<any>(null);
   const [shippingAddress, setShippingAddress] = useState<any>(null);
   const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
@@ -618,6 +624,15 @@ const NewOrder: React.FC = () => {
   useEffect(() => {
     if (isCustomerUser && !isShared && activeStep === 0) setActiveStep(1);
   }, [isCustomerUser, isShared, activeStep]);
+
+  // Load payment config (self-registered? minimum order value?) for this order.
+  useEffect(() => {
+    if (!id) return;
+    api
+      .get(`/payments/order/${id}/config`)
+      .then((r) => setPayConfig(r.data))
+      .catch(() => {});
+  }, [id]);
 
   // router.query is empty on the first SSR render so isShared starts false and
   // activeStep initialises to 0. Once the router hydrates and isShared becomes
@@ -1524,6 +1539,9 @@ const NewOrder: React.FC = () => {
                       isCustomerRole={isCustomerUser}
                       order={order}
                       referenceNumber={referenceNumber}
+                      onPaymentSuccess={getOrder}
+                      isSelfRegistered={payConfig.is_self_registered}
+                      minOrderValue={payConfig.min_order_value}
                     />
                   </Suspense>
                 </Box>
@@ -1573,8 +1591,10 @@ const NewOrder: React.FC = () => {
                   width: isMobile ? '100%' : 'auto',
                 }}
               >
-                {/* Save as Draft / Submit Order — last step only */}
-                {activeStep === STEP_HELP.length - 1 && (
+                {/* Save as Draft / Submit Order — last step only.
+                    Self-registered customers pay online instead (Pay Now in Review),
+                    so the submit button is hidden for them. */}
+                {activeStep === STEP_HELP.length - 1 && !payConfig.is_self_registered && (
                   <Tooltip
                     title={saveDraftBlockers.length > 0 ? saveDraftBlockers.join(' · ') : ''}
                     arrow
