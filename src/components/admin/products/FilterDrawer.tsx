@@ -24,6 +24,8 @@ const FilterDrawerComponent = ({
   setFilterNewArrivals,
   filterPreOrder,
   setFilterPreOrder,
+  filterClearance,
+  setFilterClearance,
   missingInfoProducts,
   setMissingInfoProducts,
   filterBrand,
@@ -86,19 +88,7 @@ const FilterDrawerComponent = ({
         />
       </RadioGroup>
 
-      {/* New Arrivals, Pre Orders, and Missing Info */}
-      <FormControlLabel
-        control={
-          <Checkbox
-            checked={filterNewArrivals}
-            onChange={(e) => {
-              setFilterNewArrivals(e.target.checked);
-              setFilterStatus('');
-            }}
-          />
-        }
-        label='New Arrivals Only'
-      />
+      {/* Pre Orders, Clearance, and Missing Info */}
       <FormControlLabel
         control={
           <Checkbox
@@ -110,6 +100,18 @@ const FilterDrawerComponent = ({
           />
         }
         label='Pre Orders Only'
+      />
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={filterClearance}
+            onChange={(e) => {
+              setFilterClearance(e.target.checked);
+              setFilterStatus('');
+            }}
+          />
+        }
+        label='Clearance / Sale Only'
       />
       <FormControlLabel
         control={

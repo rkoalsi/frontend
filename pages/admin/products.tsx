@@ -30,6 +30,8 @@ interface Product {
   catalogue_order?: number;
   catalogue_page?: number;
   pre_order?: boolean;
+  clearance?: boolean;
+  clearance_margin?: number;
 }
 
 const Products = () => {
@@ -49,6 +51,7 @@ const Products = () => {
   const [filterStock, setFilterStock] = useState('');
   const [filterNewArrivals, setFilterNewArrivals] = useState(false);
   const [filterPreOrder, setFilterPreOrder] = useState(false);
+  const [filterClearance, setFilterClearance] = useState(false);
   const [missingInfoProducts, setMissingInfoProducts] = useState(false);
   const [filterBrand, setFilterBrand] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -125,6 +128,7 @@ const Products = () => {
       if (filterSortBy) params.sort_by = filterSortBy;
       if (filterNewArrivals) params.new_arrivals = true;
       if (filterPreOrder) params.pre_order = true;
+      if (filterClearance) params.clearance = true;
       if (missingInfoProducts) params.missing_info_products = true;
       if (filterBrand) params.brand = filterBrand;
       if (filterCategory) params.category = filterCategory;
@@ -152,6 +156,7 @@ const Products = () => {
     filterStock,
     filterNewArrivals,
     filterPreOrder,
+    filterClearance,
     filterBrand,
     filterCategory,
     filterSubCategory,
@@ -232,6 +237,45 @@ const Products = () => {
     } catch (error) {
       console.error(error);
       toast.error('Failed to update pre-order status.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleToggleClearance = async (product: Product) => {
+    try {
+      setUpdating(true);
+      const newClearance = !product.clearance;
+      const formData = new FormData();
+      formData.append('clearance', String(newClearance));
+      // Default to 0 additional margin when turning on; clear it when turning off
+      formData.append('clearance_margin', String(newClearance ? (product.clearance_margin ?? 0) : 0));
+      await axiosInstance.put(`/admin/products/${product._id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success(`Product ${newClearance ? 'added to Clearance' : 'removed from Clearance'}.`);
+      await getData();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update clearance status.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUpdateClearanceMargin = async (product: Product, margin: number) => {
+    try {
+      setUpdating(true);
+      const formData = new FormData();
+      formData.append('clearance_margin', String(margin));
+      await axiosInstance.put(`/admin/products/${product._id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success('Clearance margin updated.');
+      await getData();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update clearance margin.');
     } finally {
       setUpdating(false);
     }
@@ -661,6 +705,7 @@ const handleImageUpload = async (files: File[] | File) => {
       if (filterStock) params.stock = filterStock;
       if (filterNewArrivals) params.new_arrivals = true;
       if (filterPreOrder) params.pre_order = true;
+      if (filterClearance) params.clearance = true;
       if (missingInfoProducts) params.missing_info_products = true;
       if (filterBrand) params.brand = filterBrand;
       if (filterCategory) params.category = filterCategory;
@@ -803,6 +848,8 @@ const handleImageUpload = async (files: File[] | File) => {
           handleOpenEditModal={handleOpenEditModal}
           handleToggleActive={handleToggleActive}
           handleTogglePreOrder={handleTogglePreOrder}
+          handleToggleClearance={handleToggleClearance}
+          handleUpdateClearanceMargin={handleUpdateClearanceMargin}
         />
       </Paper>
 
@@ -817,6 +864,8 @@ const handleImageUpload = async (files: File[] | File) => {
         setFilterNewArrivals={setFilterNewArrivals}
         filterPreOrder={filterPreOrder}
         setFilterPreOrder={setFilterPreOrder}
+        filterClearance={filterClearance}
+        setFilterClearance={setFilterClearance}
         missingInfoProducts={missingInfoProducts}
         setMissingInfoProducts={setMissingInfoProducts}
         filterBrand={filterBrand}
@@ -842,6 +891,7 @@ const handleImageUpload = async (files: File[] | File) => {
           setFilterStock('');
           setFilterNewArrivals(false);
           setFilterPreOrder(false);
+          setFilterClearance(false);
           setFilterBrand('');
           setFilterCategory('');
           setFilterSubCategory('');
@@ -860,6 +910,8 @@ const handleImageUpload = async (files: File[] | File) => {
         handleSaveEdit={handleSaveEdit}
         handleToggleActive={handleToggleActive}
         handleTogglePreOrder={handleTogglePreOrder}
+        handleToggleClearance={handleToggleClearance}
+        handleUpdateClearanceMargin={handleUpdateClearanceMargin}
         handleImageClick={handleImageClick}
         handleImageUpload={handleImageUpload}
         handleImageReorder={handleImageReorder}

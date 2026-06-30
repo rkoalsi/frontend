@@ -63,6 +63,7 @@ import {
   RemoveShoppingCart,
   Search as SearchIcon,
   ShoppingCartCheckout as ShoppingCartCheckoutIcon,
+  Sell as SellIcon,
 } from "@mui/icons-material";
 import debounce from "lodash.debounce";
 import { toast } from "react-toastify";
@@ -77,6 +78,7 @@ import DoubleScrollTable, { DoubleScrollTableRef } from "./DoubleScrollTable";
 import ImageCarousel from "./products/ImageCarousel";
 import QuantitySelector from "./QuantitySelector";
 import { groupProductsByName, ProductGroup, GroupedProducts, getPackStep } from "../../util/groupProducts";
+import { getEffectiveMarginPct } from "../../util/margin";
 import AuthContext from "../Auth";
 
 interface SearchResult {
@@ -92,6 +94,8 @@ interface SearchResult {
   stock: number;
   new?: boolean;
   pre_order?: boolean;
+  clearance?: boolean;
+  clearance_margin?: number;
   upcoming_stock?: number;
   inward_date?: string;
   eta_port_date?: string;
@@ -208,13 +212,33 @@ const MemoizedDesktopProductCard = memo(({
               }}
             />
           )}
+          {product.clearance && (
+            <Chip
+              label={(product.clearance_margin ?? 0) > 0 ? `Sale +${product.clearance_margin}%` : 'Sale'}
+              size="small"
+              sx={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                zIndex: 2,
+                fontFamily: 'Poppins, sans-serif',
+                fontWeight: 700,
+                fontSize: '0.75rem',
+                backgroundColor: 'error.main',
+                color: 'white',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              }}
+            />
+          )}
           {product.new && (
             <Chip
               label="New Arrivals"
               size="small"
               sx={{
                 position: 'absolute',
-                top: 8,
+                top: product.clearance ? 44 : 8,
                 right: 8,
                 zIndex: 1,
                 fontFamily: 'Poppins, sans-serif',
@@ -368,19 +392,32 @@ const MemoizedDesktopProductCard = memo(({
               </>
             ))}
 
-            {!isShared && (
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body2" color="text.secondary" fontWeight={600}>
-                  Margin:
-                </Typography>
-                <Chip
-                  label={specialMargins[productId] || customer?.cf_margin || "40%"}
-                  size="small"
-                  color="warning"
-                  sx={{ fontWeight: 700 }}
-                />
-              </Box>
-            )}
+            {!isShared && (() => {
+              const baseMarginStr = specialMargins[productId] || customer?.cf_margin || "40%";
+              const basePct = parseInt(String(baseMarginStr).replace('%', ''), 10) || 40;
+              const totalPct = getEffectiveMarginPct(baseMarginStr, product);
+              const hasClearance = product.clearance && totalPct > basePct;
+              return (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                    Margin:
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    {hasClearance && (
+                      <Typography variant="caption" color="text.secondary">
+                        {basePct}% + {totalPct - basePct}% sale =
+                      </Typography>
+                    )}
+                    <Chip
+                      label={`${totalPct}%`}
+                      size="small"
+                      color={hasClearance ? "error" : "warning"}
+                      sx={{ fontWeight: 700 }}
+                    />
+                  </Box>
+                </Box>
+              );
+            })()}
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="body2" color="text.secondary">
@@ -696,7 +733,10 @@ const Products: React.FC<ProductsProps> = ({
         // Margin stored on the order line when added — last-resort fallback
         marginPercent = parseInt(String((product as any).margin).replace("%", ""));
       }
-      const margin = isNaN(marginPercent) ? 0.4 : marginPercent / 100;
+      if (isNaN(marginPercent)) marginPercent = 40;
+      // Clearance items add their bonus margin on top of the base margin.
+      const effectivePercent = getEffectiveMarginPct(marginPercent, product);
+      const margin = effectivePercent / 100;
       return parseFloat((product.rate - product.rate * margin).toFixed(2));
     },
     [specialMargins, customer?.cf_margin, order?.customer_margin]
@@ -719,11 +759,13 @@ const Products: React.FC<ProductsProps> = ({
         setLoadingMore(true);
         const sortToUse = sortOverride || sortOrder;
 
-        // Handle "New Arrivals" and "Pre Orders" brands specially
-        const brandParam = (brand === "New Arrivals" || brand === "Pre Orders") ? undefined : brand;
-        const categoryParam = (brand === "New Arrivals" || brand === "Pre Orders" || category === "All Products") ? undefined : category;
+        // Handle "New Arrivals", "Pre Orders" and "Clearance" brands specially
+        const isSpecialBrand = brand === "New Arrivals" || brand === "Pre Orders" || brand === "Clearance";
+        const brandParam = isSpecialBrand ? undefined : brand;
+        const categoryParam = (isSpecialBrand || category === "All Products") ? undefined : category;
         const newOnly = brand === "New Arrivals" ? true : undefined;
         const preOrder = brand === "Pre Orders" ? true : undefined;
+        const clearance = brand === "Clearance" ? true : undefined;
 
         const response = await axios.get(`${process.env.api_url}/products`, {
           params: {
@@ -740,6 +782,7 @@ const Products: React.FC<ProductsProps> = ({
             group_by_name: groupByProductName,
             new_only: newOnly,
             pre_order: preOrder,
+            clearance: clearance,
           },
           signal: controller.signal,
         });
@@ -802,9 +845,10 @@ const Products: React.FC<ProductsProps> = ({
     try {
       setLoadingOutOfStock(true);
 
-      // Handle "New Arrivals" and "Pre Orders" brands specially - don't pass brand parameter
-      const brandParam = (activeBrand === "New Arrivals" || activeBrand === "Pre Orders") ? undefined : activeBrand;
-      const categoryParam = (activeBrand === "New Arrivals" || activeBrand === "Pre Orders" || activeCategory === "All Products") ? undefined : activeCategory;
+      // Handle "New Arrivals", "Pre Orders" and "Clearance" brands specially - don't pass brand parameter
+      const isSpecialBrand = activeBrand === "New Arrivals" || activeBrand === "Pre Orders" || activeBrand === "Clearance";
+      const brandParam = isSpecialBrand ? undefined : activeBrand;
+      const categoryParam = (isSpecialBrand || activeCategory === "All Products") ? undefined : activeCategory;
       const preOrder = activeBrand === "Pre Orders" ? true : undefined;
 
       const response = await axios.get(`${process.env.api_url}/products/out-of-stock`, {
@@ -868,7 +912,8 @@ const Products: React.FC<ProductsProps> = ({
       const allBrands: { brand: string; url: string | null }[] =
         response.data.brands || [];
 
-      // Add "New Arrivals" and "Pre Orders" as the first two brands
+      // Add "New Arrivals", "Pre Orders" and "Clearance" as the first brands.
+      // Pre Orders / Clearance are filtered out by filteredBrandList when empty.
       const newArrivalsBrand = {
         brand: "New Arrivals",
         url: "https://assets.pupscribe.in/brands/new-arrivals.svg"
@@ -877,7 +922,11 @@ const Products: React.FC<ProductsProps> = ({
         brand: "Pre Orders",
         url: null
       };
-      const brandsWithNewArrivals = [newArrivalsBrand, preOrdersBrand, ...allBrands];
+      const clearanceBrand = {
+        brand: "Clearance",
+        url: null
+      };
+      const brandsWithNewArrivals = [newArrivalsBrand, preOrdersBrand, clearanceBrand, ...allBrands];
 
       setBrandList(brandsWithNewArrivals);
       if (!activeBrand && brandsWithNewArrivals[0]) {
@@ -930,8 +979,8 @@ const Products: React.FC<ProductsProps> = ({
   const fetchCategories = useCallback(
     async (brand: string) => {
       try {
-        // Handle "New Arrivals" and "Pre Orders" brands specially — no category sub-navigation
-        if (brand === "New Arrivals" || brand === "Pre Orders") {
+        // Handle "New Arrivals", "Pre Orders" and "Clearance" brands specially — no category sub-navigation
+        if (brand === "New Arrivals" || brand === "Pre Orders" || brand === "Clearance") {
           const categories = ["All Products"];
           setCategoriesByBrand((prev) => ({
             ...prev,
@@ -1590,7 +1639,14 @@ const Products: React.FC<ProductsProps> = ({
     const preOrderCount = productCounts["Pre Orders"]
       ? Object.values(productCounts["Pre Orders"]).reduce((a, b) => a + b, 0)
       : 0;
-    return brandList.filter((b) => b.brand !== "Pre Orders" || preOrderCount > 0);
+    const clearanceCount = productCounts["Clearance"]
+      ? Object.values(productCounts["Clearance"]).reduce((a, b) => a + b, 0)
+      : 0;
+    return brandList.filter((b) => {
+      if (b.brand === "Pre Orders") return preOrderCount > 0;
+      if (b.brand === "Clearance") return clearanceCount > 0;
+      return true;
+    });
   }, [brandList, productCounts]);
 
   const allCategoryCounts = useMemo(() => {
@@ -1809,24 +1865,31 @@ const Products: React.FC<ProductsProps> = ({
                       const selectedBrand: any = brandList.find(
                         (b) => b.brand === selected
                       );
+                      const iconBoxSx = {
+                        width: 64,
+                        height: 64,
+                        borderRadius: '4px',
+                        backgroundColor: '#ffffff',
+                        border: '1px solid rgba(0,0,0,0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        overflow: 'hidden',
+                        p: '2px',
+                      } as const;
                       return (
                         <Box display="flex" alignItems="center" gap={1}>
-                          {(selectedBrand?.image || selectedBrand?.url) && (
-                            <Box
-                              sx={{
-                                width: 64,
-                                height: 64,
-                                borderRadius: '4px',
-                                backgroundColor: '#ffffff',
-                                border: '1px solid rgba(0,0,0,0.1)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                flexShrink: 0,
-                                overflow: 'hidden',
-                                p: '2px',
-                              }}
-                            >
+                          {selectedBrand?.brand === "Pre Orders" ? (
+                            <Box sx={iconBoxSx}>
+                              <ShoppingCartCheckoutIcon sx={{ fontSize: 34, color: '#d97706' }} />
+                            </Box>
+                          ) : selectedBrand?.brand === "Clearance" ? (
+                            <Box sx={iconBoxSx}>
+                              <SellIcon sx={{ fontSize: 34, color: '#dc2626' }} />
+                            </Box>
+                          ) : (selectedBrand?.image || selectedBrand?.url) && (
+                            <Box sx={iconBoxSx}>
                               <Box
                                 component="img"
                                 src={selectedBrand.image || selectedBrand.url}
@@ -1872,6 +1935,22 @@ const Products: React.FC<ProductsProps> = ({
                                 }}
                               >
                                 <ShoppingCartCheckoutIcon sx={{ fontSize: 30, color: '#d97706' }} />
+                              </Box>
+                            ) : b.brand === "Clearance" ? (
+                              <Box
+                                sx={{
+                                  width: 56,
+                                  height: 56,
+                                  borderRadius: '6px',
+                                  backgroundColor: '#ffffff',
+                                  border: '1px solid rgba(0,0,0,0.1)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <SellIcon sx={{ fontSize: 30, color: '#dc2626' }} />
                               </Box>
                             ) : (b.image || b.url) && (
                               <Box
@@ -1990,6 +2069,24 @@ const Products: React.FC<ProductsProps> = ({
                                   }}
                                 >
                                   <ShoppingCartCheckoutIcon sx={{ fontSize: 40, color: '#d97706' }} />
+                                </Box>
+                              ) : b.brand === "Clearance" ? (
+                                <Box
+                                  className="brand-image"
+                                  sx={{
+                                    width: 80,
+                                    height: 80,
+                                    borderRadius: '8px',
+                                    backgroundColor: '#ffffff',
+                                    border: '2px solid transparent',
+                                    transition: 'all 0.2s ease-in-out',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <SellIcon sx={{ fontSize: 40, color: '#dc2626' }} />
                                 </Box>
                               ) : (b.image || b.url) && (
                                 <Box
@@ -2538,7 +2635,7 @@ const Products: React.FC<ProductsProps> = ({
             )}
 
             {/* Out of Stock Products Section - exclude from New Arrivals and Pre Orders */}
-            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && activeBrand !== "Pre Orders" && (
+            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && activeBrand !== "Pre Orders" && activeBrand !== "Clearance" && (
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
                   Out of Stock Products
@@ -3058,7 +3155,7 @@ const Products: React.FC<ProductsProps> = ({
             )}
 
             {/* Out of Stock Products Section - exclude from New Arrivals and Pre Orders */}
-            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && activeBrand !== "Pre Orders" && (
+            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && activeBrand !== "Pre Orders" && activeBrand !== "Clearance" && (
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
                   Out of Stock Products

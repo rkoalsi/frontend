@@ -58,6 +58,7 @@ import {
   Close,
 } from '@mui/icons-material';
 import useDebounce from '../../../src/util/useDebounce';
+import { getEffectiveMarginPct } from '../../../src/util/margin';
 import AuthContext from '../../../src/components/Auth';
 import SheetsDisplay from '../../../src/components/OrderForm/SheetDisplay';
 import CustomerTour, { TourStep } from '../../../src/components/common/CustomerTour';
@@ -358,8 +359,8 @@ const NewOrder: React.FC = () => {
           order?.customer_margin ||
           product.margin ||
           '40%';
-        let marginPct = parseInt(String(marginStr).replace('%', ''), 10);
-        if (Number.isNaN(marginPct)) marginPct = 40;
+        // Clearance items add their bonus margin on top of the base margin.
+        const marginPct = getEffectiveMarginPct(marginStr, product);
         const margin = marginPct / 100;
         const sellingPrice = rate - rate * margin;
         let gstAmount = 0;

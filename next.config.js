@@ -16,5 +16,8 @@ module.exports = {
   },
   env: {
     api_url: 'http://127.0.0.1:8000/api',
+    // Customer support channels (override per environment as needed)
+    support_email: 'enquiries@pupscribe.in',
+    support_whatsapp: '919867878275', // e.g. '919876543210' — leave empty to hide the WhatsApp button
   },
 };

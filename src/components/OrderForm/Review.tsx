@@ -35,6 +35,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import QuantitySelector from './QuantitySelector';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../util/axios';
+import { getEffectiveMarginPct } from '../../util/margin';
 import ImagePopupDialog from '../common/ImagePopUp';
 import ImageCarousel from './products/ImageCarousel';
 
@@ -334,8 +335,8 @@ const Review: React.FC<Props> = React.memo((props) => {
         order?.customer_margin ||
         product.margin ||
         '40%';
-      let marginPercent = parseInt(String(marginStr).replace('%', ''), 10);
-      if (Number.isNaN(marginPercent)) marginPercent = 40; // malformed margin string
+      // Clearance items add their bonus margin on top of the base margin.
+      const marginPercent = getEffectiveMarginPct(marginStr, product);
       const margin = marginPercent / 100;
       const rate = parseFloat(product.rate) || 0;
       const sellingPrice = parseFloat((rate - rate * margin).toFixed(2));

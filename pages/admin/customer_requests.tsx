@@ -106,6 +106,7 @@ interface CustomerRequest {
   status: 'pending' | 'approved' | 'rejected' | 'admin_commented' | 'salesperson_replied' | 'created_on_zoho';
   admin_comments?: Comment[];
   zoho_contact_id?: string;
+  self_registered?: boolean;
 }
 
 // Helper function to format address for display
@@ -1212,7 +1213,10 @@ const CustomerRequests = () => {
                 })()}
               </Box>
 
-              {/* Admin Comments Section */}
+              {/* Admin Comments Section — hidden for self-registered requests
+                  (comments are a salesperson back-and-forth, not visible to the
+                  self-registered customer) */}
+              {!selectedRequest?.self_registered && (
               <Box sx={{ mt: 3 }}>
                 <Divider sx={{ mb: 2 }} />
                 <Typography
@@ -1287,6 +1291,7 @@ const CustomerRequests = () => {
                   </Box>
                 )}
               </Box>
+              )}
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 2 }}>
               {isEditMode ? (

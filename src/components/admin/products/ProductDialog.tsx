@@ -14,6 +14,7 @@ import {
   CircularProgress,
   Chip,
   IconButton,
+  InputAdornment,
   useTheme,
 } from '@mui/material';
 import ImageDropzone from '../../common/ImageDropzone';
@@ -38,6 +39,8 @@ const ProductDialog = ({
   handleSaveEdit,
   handleToggleActive,
   handleTogglePreOrder,
+  handleToggleClearance,
+  handleUpdateClearanceMargin,
   handleImageClick,
   handleImageUpload,
   handleImageReorder,
@@ -695,6 +698,46 @@ const ProductDialog = ({
                             ? `Upcoming stock: ${selectedProduct.upcoming_stock} units`
                             : 'No open PO found'}
                         </Typography>
+                      )}
+                    </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={!!selectedProduct?.clearance}
+                            onChange={() => handleToggleClearance(selectedProduct)}
+                            color='error'
+                          />
+                        }
+                        label={
+                          <Chip
+                            size='small'
+                            label='Clearance / Sale'
+                            color={selectedProduct?.clearance ? 'error' : 'default'}
+                            variant='outlined'
+                          />
+                        }
+                      />
+                      {selectedProduct?.clearance && (
+                        <TextField
+                          key={selectedProduct._id}
+                          type='number'
+                          size='small'
+                          label='Additional Sale Margin'
+                          defaultValue={selectedProduct.clearance_margin ?? 0}
+                          onBlur={(e) => {
+                            const val = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                            if (val !== (selectedProduct.clearance_margin ?? 0)) {
+                              handleUpdateClearanceMargin(selectedProduct, val);
+                            }
+                          }}
+                          InputProps={{
+                            endAdornment: <InputAdornment position='end'>%</InputAdornment>,
+                            inputProps: { min: 0, max: 100 },
+                          }}
+                          helperText='Added on top of customer margin'
+                          sx={{ mt: 1, width: 200 }}
+                        />
                       )}
                     </Box>
                   </Box>

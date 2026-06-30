@@ -19,6 +19,8 @@ interface AuthContextType {
   loading: boolean;
   permissions: UserPermissions | null;
   login: (email: string, password: string) => Promise<void>;
+  loginWithOtp: (phone: string, code: string) => Promise<void>;
+  registerWithOtp: (phone: string, code: string) => Promise<void>;
   logout: () => void;
   checkRouteAccess: (routePath: string) => Promise<boolean>;
   checkPermission: (resource: string, action?: string) => Promise<boolean>;
@@ -61,6 +63,20 @@ export const AuthProvider = ({ children }: any) => {
     }
   };
 
+  // Shared post-login handling for any auth method (password or OTP)
+  const completeLogin = async (user: any, access_token?: string) => {
+    setUser(user);
+    // Keep token in localStorage only as a fallback for header-based auth
+    // (HttpOnly cookie is the authoritative session credential)
+    if (access_token) {
+      localStorage.setItem('token', access_token);
+    }
+    // Fetch permissions immediately — no setTimeout race condition
+    await fetchUserPermissions();
+    router.push('/');
+    toast.success('You have successfully logged in');
+  };
+
   const login = async (email: string, password: string) => {
     try {
       const base = `${process.env.api_url}`;
@@ -70,26 +86,39 @@ export const AuthProvider = ({ children }: any) => {
         { email, password },
         { withCredentials: true }
       );
-
-      // Issue 6: use the user object returned by the server — no JWT decoding needed
       const { user, access_token } = res.data;
-      setUser(user);
-
-      // Keep token in localStorage only as a fallback for header-based auth
-      // (HttpOnly cookie is the authoritative session credential)
-      if (access_token) {
-        localStorage.setItem('token', access_token);
-      }
-
-      // Fetch permissions immediately — no setTimeout race condition
-      await fetchUserPermissions();
-
-      router.push('/');
-      toast.success('You have successfully logged in');
+      await completeLogin(user, access_token);
     } catch (error) {
       console.error('Login failed', error);
       toast.error('Invalid Email or Password');
     }
+  };
+
+  // Mobile + WhatsApp OTP login. Works for any existing account
+  // (customer / salesperson / admin). Throws on failure so the caller can
+  // surface a precise message (e.g. invalid OTP).
+  const loginWithOtp = async (phone: string, code: string) => {
+    const base = `${process.env.api_url}`;
+    const res = await axios.post(
+      `${base}/users/otp/login`,
+      { phone, code },
+      { withCredentials: true }
+    );
+    const { user, access_token } = res.data;
+    await completeLogin(user, access_token);
+  };
+
+  // New B2B self-registration: verifying the OTP creates the account (no business
+  // details yet) and logs the user straight in. Throws on failure.
+  const registerWithOtp = async (phone: string, code: string) => {
+    const base = `${process.env.api_url}`;
+    const res = await axios.post(
+      `${base}/users/otp/verify`,
+      { phone, code },
+      { withCredentials: true }
+    );
+    const { user, access_token } = res.data;
+    await completeLogin(user, access_token);
   };
 
   const logout = async () => {
@@ -153,6 +182,7 @@ export const AuthProvider = ({ children }: any) => {
     // The shared-link case is handled by the `shared === 'true'` block above.
     const PUBLIC_PATHS = [
       '/login',
+      '/register',
       '/forgot_password',
       '/reset_password',
       '/catalogues/all_products',
@@ -185,11 +215,13 @@ export const AuthProvider = ({ children }: any) => {
 
   return (
     <AuthContext.Provider 
-      value={{ 
-        user, 
-        login, 
-        logout, 
-        loading, 
+      value={{
+        user,
+        login,
+        loginWithOtp,
+        registerWithOtp,
+        logout,
+        loading,
         permissions, 
         checkRouteAccess, 
         checkPermission 

@@ -34,6 +34,8 @@ const ProductTable = ({
   handleOpenEditModal,
   handleToggleActive,
   handleTogglePreOrder,
+  handleToggleClearance,
+  handleUpdateClearanceMargin,
 }: any) => {
   return (
     <>
@@ -77,13 +79,14 @@ const ProductTable = ({
                   <TableCell>UPC Code</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Pre Order</TableCell>
+                  <TableCell>Clearance / Sale</TableCell>
                   <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {products.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} align='center'>
+                    <TableCell colSpan={13} align='center'>
                       No products found.
                     </TableCell>
                   </TableRow>
@@ -145,6 +148,32 @@ const ProductTable = ({
                               : 'No PO found'}
                           </Typography>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
+                          <Switch
+                            checked={!!product.clearance}
+                            onChange={() => handleToggleClearance(product)}
+                            color='error'
+                          />
+                          {product.clearance && (
+                            <TextField
+                              key={`${product._id}-${product.clearance_margin ?? 0}`}
+                              type='number'
+                              size='small'
+                              label='Add. margin %'
+                              defaultValue={product.clearance_margin ?? 0}
+                              onBlur={(e) => {
+                                const val = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                                if (val !== (product.clearance_margin ?? 0)) {
+                                  handleUpdateClearanceMargin(product, val);
+                                }
+                              }}
+                              inputProps={{ min: 0, max: 100 }}
+                              sx={{ width: 110 }}
+                            />
+                          )}
+                        </Box>
                       </TableCell>
                       <TableCell>
                         <Button

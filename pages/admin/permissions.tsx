@@ -575,6 +575,7 @@ const UserManagement = () => {
                                             <TableCell sx={{ fontWeight: 'bold' }}>User</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Contact</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Role</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold' }}>Source</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Permissions</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
@@ -605,8 +606,24 @@ const UserManagement = () => {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Chip
+                                                        label={user.self_registered ? 'B2B Self-Reg' : 'Internal'}
+                                                        color={user.self_registered ? 'info' : 'default'}
+                                                        variant={user.self_registered ? 'filled' : 'outlined'}
+                                                        size="small"
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Chip
                                                         label={capitalize(user.status)}
-                                                        color={user.status === 'active' ? 'success' : 'error'}
+                                                        color={
+                                                            user.status === 'active'
+                                                                ? 'success'
+                                                                : user.status === 'pending'
+                                                                    ? 'warning'
+                                                                    : user.status === 'lead'
+                                                                        ? 'default'
+                                                                        : 'error'
+                                                        }
                                                         size="small"
                                                     />
                                                 </TableCell>
