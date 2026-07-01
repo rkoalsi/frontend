@@ -21,6 +21,7 @@ import {
   LineAxisOutlined,
   DarkMode,
   LightMode,
+  PersonAddAlt,
 } from '@mui/icons-material';
 import { useColorMode } from '../context/ColorModeContext';
 import NotificationBell from '../components/common/NotificationBell';
@@ -186,6 +187,36 @@ const Layout = ({ children }: any) => {
 
           {/* Right Side Actions */}
           <Box display='flex' alignItems='center' gap={1}>
+            {/* Register — shown to logged-out visitors on public pages */}
+            {!loading &&
+              !user &&
+              !['/register', '/login'].includes(router.pathname) && (
+                isMobileOrTablet ? (
+                  <Tooltip title='Register' arrow>
+                    <IconButton
+                      onClick={() => router.push('/register')}
+                      size='small'
+                      sx={{
+                        color: 'rgba(255,255,255,0.8)',
+                        backgroundColor: 'rgba(255,255,255,0.08)',
+                        borderRadius: '8px',
+                        '&:hover': { backgroundColor: 'rgba(255,255,255,0.15)' },
+                      }}
+                    >
+                      <PersonAddAlt fontSize='small' />
+                    </IconButton>
+                  </Tooltip>
+                ) : (
+                  <Button
+                    size='small'
+                    startIcon={<PersonAddAlt fontSize='small' />}
+                    onClick={() => router.push('/register')}
+                    sx={headerActionSx}
+                  >
+                    Register
+                  </Button>
+                )
+              )}
             {user && (
               user.role?.includes('admin') ||
               user.role?.includes('catalogue_manager') ||
