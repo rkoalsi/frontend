@@ -26,6 +26,7 @@ import QuantitySelector from "../QuantitySelector";
 import ImageCarousel from "./ImageCarousel";
 import { extractSize, extractWeight, getPackStep } from "../../../util/groupProducts";
 import { getEffectiveMarginPct } from "../../../util/margin";
+import { getTaxPercentage } from "../../../util/tax";
 
 interface SearchResult {
   _id: string;
@@ -701,7 +702,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                     letterSpacing: '-0.3px',
                   }}
                 >
-                  {currentVariant?.item_tax_preferences[currentVariant?.item_tax_preferences.length - 1].tax_percentage}%
+                  {getTaxPercentage(currentVariant)}%
                 </Typography>
               </Box>
             </Box>
