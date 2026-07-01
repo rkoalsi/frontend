@@ -894,6 +894,79 @@ const Orders = () => {
                   </Typography>
                 </Box>
 
+                {/* Payment (Razorpay) — shown when a payment link/gateway payment exists */}
+                {selectedOrder?.payment && (
+                  <Box sx={{ marginBottom: 3 }}>
+                    <Typography sx={{ mb: 1 }}>
+                      <strong>Payment</strong>
+                    </Typography>
+                    <Typography sx={{ mb: 1 }}>
+                      <strong>Status:</strong>{' '}
+                      <Chip
+                        size='small'
+                        label={capitalize(
+                          selectedOrder.payment.status || 'pending'
+                        )}
+                        color={
+                          selectedOrder.payment.status === 'paid'
+                            ? 'success'
+                            : selectedOrder.payment.status === 'failed'
+                            ? 'error'
+                            : 'warning'
+                        }
+                      />
+                    </Typography>
+                    {selectedOrder.payment.provider && (
+                      <Typography>
+                        <strong>Provider:</strong>{' '}
+                        {capitalize(selectedOrder.payment.provider)}
+                      </Typography>
+                    )}
+                    {selectedOrder.payment.razorpay_payment_id && (
+                      <Typography>
+                        <strong>Payment ID:</strong>{' '}
+                        {selectedOrder.payment.razorpay_payment_id}
+                      </Typography>
+                    )}
+                    {selectedOrder.payment.razorpay_order_id && (
+                      <Typography>
+                        <strong>Razorpay Order ID:</strong>{' '}
+                        {selectedOrder.payment.razorpay_order_id}
+                      </Typography>
+                    )}
+                    {selectedOrder.payment.payment_link_id && (
+                      <Typography>
+                        <strong>Payment Link ID:</strong>{' '}
+                        {selectedOrder.payment.payment_link_id}
+                        {selectedOrder.payment.short_url && (
+                          <>
+                            {' '}
+                            <a
+                              href={selectedOrder.payment.short_url}
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              style={{
+                                color: theme.palette.primary.main,
+                                textDecoration: 'none',
+                              }}
+                            >
+                              Open ↗
+                            </a>
+                          </>
+                        )}
+                      </Typography>
+                    )}
+                    {selectedOrder.payment.updated_at && (
+                      <Typography>
+                        <strong>Payment Updated:</strong>{' '}
+                        {new Date(
+                          selectedOrder.payment.updated_at
+                        ).toLocaleString()}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+
                 <Box sx={{ marginBottom: 3 }}>
                   <Typography>
                     <strong>Billing Address</strong>
