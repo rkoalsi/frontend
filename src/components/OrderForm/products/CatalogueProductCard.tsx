@@ -9,6 +9,7 @@ import {
 } from "@mui/material";
 import { ZoomIn } from "@mui/icons-material";
 import ImageCarousel from "./ImageCarousel";
+import { getTaxPercentage } from "../../../util/tax";
 
 interface Product {
   _id: string;
@@ -292,7 +293,7 @@ const CatalogueProductCard: React.FC<CatalogueProductCardProps> = memo(
                 color="text.secondary"
                 sx={{ fontSize: '0.62rem', mt: 0.25, display: 'block' }}
               >
-                GST: {product.item_tax_preferences[product.item_tax_preferences.length - 1].tax_percentage}%
+                GST: {getTaxPercentage(product)}%
               </Typography>
             )}
           </Box>

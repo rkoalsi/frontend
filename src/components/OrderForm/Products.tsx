@@ -78,6 +78,7 @@ import ImageCarousel from "./products/ImageCarousel";
 import QuantitySelector from "./QuantitySelector";
 import { groupProductsByName, ProductGroup, GroupedProducts, getPackStep } from "../../util/groupProducts";
 import { getEffectiveMarginPct } from "../../util/margin";
+import { getTaxPercentage } from "../../util/tax";
 import AuthContext from "../Auth";
 
 // The "Clearance" brand is an internal routing/counts key (see backend
@@ -438,7 +439,7 @@ const MemoizedDesktopProductCard = memo(({
                 GST:
               </Typography>
               <Typography variant="body2" fontWeight={500}>
-                {product.item_tax_preferences[product?.item_tax_preferences.length - 1].tax_percentage}%
+                {getTaxPercentage(product)}%
               </Typography>
             </Box>
           </Box>
@@ -575,6 +576,12 @@ const Products: React.FC<ProductsProps> = ({
   // Lookup of every rendered product by id so handleQuantityChange can auto-add
   // an item to the cart the moment a quantity is entered (no separate "Add" click).
   const productLookupRef = useRef<Map<string, any>>(new Map());
+  // Guards against the live-commit auto-add (fired on blur) and the "Add to
+  // Cart" button click racing within the same tap gesture off stale closures —
+  // without this the trailing click re-runs handleAddProducts on a stale cart
+  // and overwrites the typed quantity back to the pack default (e.g. 1).
+  const recentAddRef = useRef<Record<string, number>>({});
+  const RECENT_ADD_MS = 900;
   const [loading, setLoading] = useState<boolean>(false);
   const [paginationState, setPaginationState] = useState<{
     [key: string]: { page: number; hasMore: boolean };
@@ -1190,10 +1197,17 @@ const Products: React.FC<ProductsProps> = ({
       if (isPreOrder && splitProd) {
         // Adding the pre-order portion for a split product
         const existing = selectedProducts.find((p) => p._id === productId);
+        // A button click with no explicit qty landing right after a live-commit
+        // auto-add is the tail of one gesture — ignore it so it can't clobber
+        // the just-typed quantity with a stale closure.
+        if (!explicitQty && Date.now() - (recentAddRef.current[`${productId}-pre`] || 0) < RECENT_ADD_MS) {
+          return;
+        }
         if (existing && (existing.pre_order_quantity ?? 0) > 0) {
           debouncedWarn(`${product.name} pre-order is already in the cart.`);
           return;
         }
+        recentAddRef.current[`${productId}-pre`] = Date.now();
         const qty = (explicitQty && explicitQty > 0 ? explicitQty : 0) || temporaryQuantities[`${productId}-pre`] || packStep;
         startTransition(() => {
           if (existing) {
@@ -1225,10 +1239,16 @@ const Products: React.FC<ProductsProps> = ({
 
       // Normal (in-stock) add
       const existing = selectedProducts.find((p) => p._id === productId);
+      // Same-gesture guard: a no-explicit-qty click trailing a live-commit
+      // auto-add would otherwise re-add on a stale cart and reset the quantity.
+      if (!explicitQty && Date.now() - (recentAddRef.current[productId] || 0) < RECENT_ADD_MS) {
+        return;
+      }
       if (existing && ((existing.quantity ?? 0) > 0 || !splitProd)) {
         debouncedWarn(`${product.name} is already in the cart.`);
         return;
       }
+      recentAddRef.current[productId] = Date.now();
       const quantity = (explicitQty && explicitQty > 0 ? explicitQty : 0) || temporaryQuantities[productId] || product.quantity || packStep;
       const isSharedParam = new URLSearchParams(window.location.search).has("shared");
       const updatedProducts: any = existing
@@ -1270,6 +1290,8 @@ const Products: React.FC<ProductsProps> = ({
 
   const handleRemoveProduct = useCallback(
     (id: string, isPreOrder = false) => {
+      // Clear the same-gesture add guard so a quick remove → re-add isn't blocked.
+      delete recentAddRef.current[isPreOrder ? `${id}-pre` : id];
       if (isPreOrder) {
         // Clear only pre_order_quantity; remove item entirely if no stock qty remains
         const item = selectedProducts.find((p) => p._id === id);
@@ -1309,7 +1331,8 @@ const Products: React.FC<ProductsProps> = ({
               if (p._id !== id) return p;
               const minQty = getPackStep(p.name);
               const sanitized = Math.max(minQty, Math.min(newQuantity, p.upcoming_stock || Infinity));
-              debouncedSuccess(`Updated ${p.name} pre-order to quantity ${sanitized}`);
+              // No toast on in-place quantity edits — the card/cart totals update
+              // live, so a toast per keystroke-commit would just be noise.
               return { ...p, pre_order_quantity: sanitized };
             }));
           });
@@ -1339,7 +1362,7 @@ const Products: React.FC<ProductsProps> = ({
         startTransition(() => {
           setSelectedProducts(updated);
         });
-        debouncedSuccess(`Updated ${productInCart.name} to quantity ${sanitized}`);
+        // No toast on in-place quantity edits (see pre-order branch above).
       } else {
         // Not in cart yet — entering a quantity adds it straight to the cart
         // instead of requiring a separate "Add to Cart" click.

@@ -22,6 +22,7 @@ import QuantitySelector from "../QuantitySelector";
 import ImageCarousel from "./ImageCarousel";
 import { getPackStep } from "../../../util/groupProducts";
 import { getEffectiveMarginPct } from "../../../util/margin";
+import { getTaxPercentage } from "../../../util/tax";
 
 interface SearchResult {
   _id: string;
@@ -542,7 +543,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                       letterSpacing: '-0.3px',
                     }}
                   >
-                    {product?.item_tax_preferences[product?.item_tax_preferences.length - 1].tax_percentage}%
+                    {getTaxPercentage(product)}%
                   </Typography>
                 </Box>
               </Box>

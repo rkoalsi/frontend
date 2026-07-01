@@ -15,6 +15,7 @@ import { AddShoppingCart, LocalOffer, RemoveShoppingCart } from "@mui/icons-mate
 import QuantitySelector from "../QuantitySelector";
 import ImageCarousel from "./ImageCarousel";
 import { getEffectiveMarginPct } from "../../../util/margin";
+import { getTaxPercentage } from "../../../util/tax";
 
 interface SearchResult {
   _id: string;
@@ -293,7 +294,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
               variant="body1"
               sx={{ fontWeight: 500 }}
             >
-              {product.item_tax_preferences[product?.item_tax_preferences.length - 1].tax_percentage}%
+              {getTaxPercentage(product)}%
             </Typography>
           </Box>
         </TableCell>

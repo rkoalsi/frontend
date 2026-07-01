@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, IconButton, TextField, useMediaQuery,   useTheme } from '@mui/material';
 import { Add, Remove } from '@mui/icons-material';
 
@@ -10,6 +10,11 @@ interface QuantitySelectorProps {
   step?: number;
 }
 
+// Debounce window before a typed value is pushed to the parent while the
+// field is still focused. Blur/Enter flush immediately, so this only affects
+// live-typing updates.
+const COMMIT_DELAY = 400;
+
 const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   quantity,
   max,
@@ -18,13 +23,46 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   step = 1,
 }) => {
   const theme = useTheme()
-  const [inputValue, setInputValue] = useState<string>(quantity.toString());
+  const [inputValue, setInputValue] = useState<string>(quantity ? quantity.toString() : '');
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
+  // Track focus + latest quantity so the debounced commit and the prop-sync
+  // effect don't fight the user's keystrokes.
+  const isFocusedRef = useRef(false);
+  const quantityRef = useRef(quantity);
+  const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync the visible text from the parent, but never while the user is
+  // actively editing (otherwise clamping would overwrite mid-typed values).
   useEffect(() => {
-    setInputValue(quantity.toString());
+    quantityRef.current = quantity;
+    if (isFocusedRef.current) return;
+    setInputValue(quantity ? quantity.toString() : '');
   }, [quantity]);
+
+  // Clear any pending debounced commit on unmount.
+  useEffect(() => () => {
+    if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+  }, []);
+
+  // Parse + clamp a raw string to a valid multiple of `step` within `max`.
+  // Returns null for empty/invalid input (so we don't force a value).
+  const clamp = useCallback((raw: string): number | null => {
+    let n = parseInt(raw, 10);
+    if (isNaN(n)) return null;
+    if (n < step) {
+      n = step;
+    } else if (n > max) {
+      n = Math.floor(max / step) * step;
+      if (n < step) n = step;
+    } else {
+      n = Math.round(n / step) * step;
+      if (n > max) n = Math.floor(max / step) * step;
+      if (n < step) n = step;
+    }
+    return n;
+  }, [max, step]);
 
   const handleIncrease = useCallback((e?: React.MouseEvent | React.TouchEvent) => {
     e?.preventDefault();
@@ -54,34 +92,36 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const value = event.target.value;
       // Allow only numbers
-      if (/^\d*$/.test(value)) {
-        setInputValue(value);
-      }
+      if (!/^\d*$/.test(value)) return;
+      setInputValue(value);
+
+      // Push the value to the parent shortly after the user stops typing, so
+      // the quantity updates without needing to blur / click elsewhere.
+      if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+      if (value === '') return;
+      commitTimerRef.current = setTimeout(() => {
+        const next = clamp(value);
+        if (next != null && next !== quantityRef.current) onChange(next);
+      }, COMMIT_DELAY);
     },
-    []
+    [clamp, onChange]
   );
 
   const handleInputBlur = useCallback(() => {
-    let newQuantity = parseInt(inputValue, 10);
-    if (isNaN(newQuantity) || newQuantity < step) {
-      newQuantity = step;
-    } else if (newQuantity > max) {
-      // Round down to nearest multiple of step that fits within max
-      newQuantity = Math.floor(max / step) * step;
-      if (newQuantity < step) newQuantity = step;
-    } else {
-      // Round to nearest multiple of step
-      newQuantity = Math.round(newQuantity / step) * step;
-      if (newQuantity > max) newQuantity = Math.floor(max / step) * step;
-      if (newQuantity < step) newQuantity = step;
+    isFocusedRef.current = false;
+    if (commitTimerRef.current) {
+      clearTimeout(commitTimerRef.current);
+      commitTimerRef.current = null;
     }
-    if (newQuantity !== quantity) {
-      onChange(newQuantity);
-    } else {
-      // Reset inputValue to reflect any adjustments
-      setInputValue(newQuantity.toString());
+    const next = clamp(inputValue);
+    if (next == null) {
+      // Empty / invalid — restore the last known good value instead of forcing one.
+      setInputValue(quantity ? quantity.toString() : '');
+      return;
     }
-  }, [inputValue, max, step, onChange, quantity]);
+    setInputValue(next.toString());
+    if (next !== quantity) onChange(next);
+  }, [inputValue, clamp, onChange, quantity]);
 
   return (
     <Box
@@ -131,6 +171,7 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
         onChange={handleInputChange}
         onBlur={handleInputBlur}
         onFocus={(e) => {
+          isFocusedRef.current = true;
           // Select all text on focus for easier editing
           e.target.select();
         }}
@@ -147,7 +188,9 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
             style: {
               textAlign: 'center',
               width: isMobile ? '60px' : isTablet ? '70px' : '80px',
-              fontSize: isMobile ? '15px' : '16px',
+              // 16px minimum on mobile prevents iOS Safari from auto-zooming
+              // the page when the input gains focus.
+              fontSize: '16px',
               fontWeight: 600,
               padding: 0,
               height: isMobile ? '44px' : '36px',
