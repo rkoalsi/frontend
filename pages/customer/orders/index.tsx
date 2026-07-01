@@ -39,6 +39,7 @@ import axiosInstance from '../../../src/util/axios';
 import { format } from 'date-fns';
 import axios from 'axios';
 import { trackActivity } from '../../../src/util/trackActivity';
+import { toast } from 'react-toastify';
 
 interface Order {
   _id: string;
@@ -99,6 +100,12 @@ const CustomerOrders = () => {
   }, [user]);
 
   const handleNewOrder = async () => {
+    // Self-registered B2B customers must finish onboarding before ordering.
+    if (user?.self_registered && !user?.customer_id) {
+      toast.info('Please complete your business details in your profile to start ordering');
+      router.push('/customer/account');
+      return;
+    }
     try {
       const resp = await axios.post(`${process.env.api_url}/orders/`, {
         created_by: user?._id,

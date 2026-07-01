@@ -164,6 +164,42 @@ const AdminLayout = ({ children }: any) => {
   const toggleCategory = (category: string) =>
     setCollapsed((prev) => ({ ...prev, [category]: !prev[category] }));
 
+  // The category that owns the page we're currently on (longest path match, so
+  // nested routes like /admin/orders/[id] still map to their section).
+  const activeCategory = useMemo(() => {
+    const items = permissions?.menu_items ?? [];
+    let best: string | null = null;
+    let bestLen = -1;
+    items.forEach((it: any) => {
+      const p = it.path;
+      if (
+        p &&
+        (router.pathname === p || router.pathname.startsWith(p + '/')) &&
+        p.length > bestLen
+      ) {
+        bestLen = p.length;
+        best = it.category || 'Other';
+      }
+    });
+    return best;
+  }, [permissions, router.pathname]);
+
+  // Default sidebar state: on each navigation collapse every section except the
+  // one containing the current page. Manual toggles persist until the next nav.
+  useEffect(() => {
+    const items = permissions?.menu_items ?? [];
+    if (!items.length) return;
+    const categories = Array.from(
+      new Set(items.map((it: any) => it.category || 'Other'))
+    ) as string[];
+    setCollapsed(
+      categories.reduce(
+        (acc, c) => ({ ...acc, [c]: c !== activeCategory }),
+        {} as { [category: string]: boolean }
+      )
+    );
+  }, [router.pathname, activeCategory, permissions]);
+
   useEffect(() => {
     const checkAccess = async () => {
       if (!loading) {
