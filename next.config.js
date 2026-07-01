@@ -16,5 +16,7 @@ module.exports = {
   },
   env: {
     api_url: 'https://test.orderform.pupscribe.in/api',
+    support_email: 'enquiries@pupscribe.in',
+    support_whatsapp: '919867878275', // e.g. '
   },
 };

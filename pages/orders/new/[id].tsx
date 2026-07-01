@@ -58,6 +58,7 @@ import {
   Close,
 } from '@mui/icons-material';
 import useDebounce from '../../../src/util/useDebounce';
+import { getEffectiveMarginPct } from '../../../src/util/margin';
 import SheetsDisplay from '../../../src/components/OrderForm/SheetDisplay';
 import AuthContext from '../../../src/components/Auth';
 import CustomerTour, { TourStep } from '../../../src/components/common/CustomerTour';
@@ -223,6 +224,12 @@ const NewOrder: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [xlsxLoading, setXlsxLoading] = useState<boolean>(false);
   const [order, setOrder] = useState<any>(null);
+  // Self-registered B2B customers pay online (Pay Now) instead of submitting an
+  // order, and have a minimum cart value before payment is allowed.
+  const [payConfig, setPayConfig] = useState<{ is_self_registered: boolean; min_order_value: number }>({
+    is_self_registered: false,
+    min_order_value: 0,
+  });
   const [billingAddress, setBillingAddress] = useState<any>(null);
   const [shippingAddress, setShippingAddress] = useState<any>(null);
   const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
@@ -358,8 +365,8 @@ const NewOrder: React.FC = () => {
           order?.customer_margin ||
           product.margin ||
           '40%';
-        let marginPct = parseInt(String(marginStr).replace('%', ''), 10);
-        if (Number.isNaN(marginPct)) marginPct = 40;
+        // Clearance items add their bonus margin on top of the base margin.
+        const marginPct = getEffectiveMarginPct(marginStr, product);
         const margin = marginPct / 100;
         const sellingPrice = rate - rate * margin;
         let gstAmount = 0;
@@ -617,6 +624,15 @@ const NewOrder: React.FC = () => {
   useEffect(() => {
     if (isCustomerUser && !isShared && activeStep === 0) setActiveStep(1);
   }, [isCustomerUser, isShared, activeStep]);
+
+  // Load payment config (self-registered? minimum order value?) for this order.
+  useEffect(() => {
+    if (!id) return;
+    api
+      .get(`/payments/order/${id}/config`)
+      .then((r) => setPayConfig(r.data))
+      .catch(() => {});
+  }, [id]);
 
   // router.query is empty on the first SSR render so isShared starts false and
   // activeStep initialises to 0. Once the router hydrates and isShared becomes
@@ -1523,6 +1539,9 @@ const NewOrder: React.FC = () => {
                       isCustomerRole={isCustomerUser}
                       order={order}
                       referenceNumber={referenceNumber}
+                      onPaymentSuccess={getOrder}
+                      isSelfRegistered={payConfig.is_self_registered}
+                      minOrderValue={payConfig.min_order_value}
                     />
                   </Suspense>
                 </Box>
@@ -1572,8 +1591,10 @@ const NewOrder: React.FC = () => {
                   width: isMobile ? '100%' : 'auto',
                 }}
               >
-                {/* Save as Draft / Submit Order — last step only */}
-                {activeStep === STEP_HELP.length - 1 && (
+                {/* Save as Draft / Submit Order — last step only.
+                    Self-registered customers pay online instead (Pay Now in Review),
+                    so the submit button is hidden for them. */}
+                {activeStep === STEP_HELP.length - 1 && !payConfig.is_self_registered && (
                   <Tooltip
                     title={saveDraftBlockers.length > 0 ? saveDraftBlockers.join(' · ') : ''}
                     arrow

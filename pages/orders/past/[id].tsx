@@ -18,6 +18,7 @@ import { AddToPhotos, ContentCopy, Download, Edit } from '@mui/icons-material';
 import AuthContext from '../../../src/components/Auth';
 import { toast } from 'react-toastify';
 import Header from '../../../src/components/common/Header';
+import { parseMarginPct, getEffectiveMarginPct } from '../../../src/util/margin';
 
 const STATUS_COLOR: Record<string, 'warning' | 'info' | 'success' | 'error' | 'default'> = {
   draft: 'warning',
@@ -191,6 +192,26 @@ const OrderDetails = () => {
   const title = orderData.estimate_created
     ? orderData.estimate_number
     : `Order #${orderData._id.slice(-6)}`;
+
+  const estimateCreated = Boolean(
+    orderData.estimate_created || orderData.pre_order_estimate_created
+  );
+
+  // Margin shown per item:
+  //  • If an estimate exists, show the live per-line discount embedded from the
+  //    Zoho estimate (`estimate_margin`). That value already bakes in any
+  //    clearance bonus, so it's used as-is.
+  //  • Otherwise derive it from the customer's special margin for that product
+  //    (then their default margin) and add the clearance bonus on top.
+  const getItemMarginPct = (item: any): number => {
+    const pid = item.product_id;
+    const special = orderData.special_margins?.[pid];
+    if (estimateCreated && item.estimate_margin != null && item.estimate_margin !== '') {
+      return parseMarginPct(item.estimate_margin);
+    }
+    const base = special || orderData.customer_margin || item.margin || '40%';
+    return getEffectiveMarginPct(base, item);
+  };
 
   return (
     <Box
@@ -479,6 +500,16 @@ const OrderDetails = () => {
         <Box sx={{ px: { xs: 2, sm: 3 }, py: 2.5 }}>
           <Typography variant='h6' fontWeight={700} gutterBottom>
             Ordered Items
+            {estimateCreated && (
+              <Typography
+                component='span'
+                variant='body2'
+                color='text.secondary'
+                sx={{ fontWeight: 500, ml: 1 }}
+              >
+                (margins from estimate)
+              </Typography>
+            )}
           </Typography>
           {(orderData.products?.filter(
             (p: any) => Number(p.quantity) > 0
@@ -556,10 +587,18 @@ const OrderDetails = () => {
                           />
                         )}
                       </Box>
-                      <Typography variant='body2' color='text.secondary'>
-                        Qty: {item.quantity}
-                        {isMobile && ` × ₹${(item.price ?? 0).toLocaleString('en-IN')}`}
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 0.25 }}>
+                        <Typography variant='body2' color='text.secondary'>
+                          Qty: {item.quantity}
+                          {isMobile && ` × ₹${(item.price ?? 0).toLocaleString('en-IN')}`}
+                        </Typography>
+                        <Chip
+                          label={`${getItemMarginPct(item)}% margin`}
+                          size='small'
+                          color='success'
+                          sx={{ fontWeight: 700, height: 20, fontSize: '0.65rem' }}
+                        />
+                      </Box>
                     </Box>
                     {!isMobile && (
                       <Typography

@@ -77,6 +77,21 @@ const ROLE_COLORS: Record<string, any> = {
     customer: 'info',
 };
 
+// Sidebar groups a menu item can belong to. Order here matches the sidebar.
+const CATEGORIES = [
+    'Overview',
+    'Sales & Orders',
+    'Existing Customers',
+    'Customer Accounts',
+    'Leads',
+    'Daily Visits',
+    'Catalog & Inventory',
+    'Marketing',
+    'HR',
+    'Team & Admin',
+    'Other',
+];
+
 const EMPTY_USER_FORM = {
     name: '',
     first_name: '',
@@ -94,6 +109,32 @@ const UserManagement = () => {
     const isDark = theme.palette.mode === 'dark';
     const isAdmin = user?.role === 'admin'
     const [tab, setTab] = useState(0);
+
+    // --- App settings (min order value for self-registered customers) ---
+    const [minOrderValue, setMinOrderValue] = useState<string>('');
+    const [settingsSaving, setSettingsSaving] = useState(false);
+
+    useEffect(() => {
+        if (!isAdmin) return;
+        axiosInstance
+            .get(`${API}/admin/settings`)
+            .then((r) => setMinOrderValue(String(r.data?.min_order_value_self_registered ?? '')))
+            .catch(() => {});
+    }, [isAdmin]);
+
+    const handleSaveSettings = async () => {
+        const val = parseFloat(minOrderValue);
+        if (isNaN(val) || val < 0) { toast.error('Enter a valid amount'); return; }
+        setSettingsSaving(true);
+        try {
+            await axiosInstance.put(`${API}/admin/settings`, { min_order_value_self_registered: val });
+            toast.success('Settings saved');
+        } catch {
+            toast.error('Failed to save settings');
+        } finally {
+            setSettingsSaving(false);
+        }
+    };
 
     // --- Users state ---
     const [users, setUsers] = useState<any[]>([]);
@@ -132,6 +173,7 @@ const UserManagement = () => {
     const [allPermissions, setAllPermissions] = useState<any[]>([]);
     const [permLoading, setPermLoading] = useState(false);
     const [permMatrix, setPermMatrix] = useState<Record<string, string[]>>({});
+    const [catMatrix, setCatMatrix] = useState<Record<string, string>>({});
     const [permSaving, setPermSaving] = useState(false);
 
     const API = process.env.api_url;
@@ -158,10 +200,13 @@ const UserManagement = () => {
             setAllPermissions(perms);
             // Build local matrix from fetched data
             const matrix: Record<string, string[]> = {};
+            const cats: Record<string, string> = {};
             perms.forEach((p: any) => {
                 matrix[p.id] = [...(p.allowed_roles || [])];
+                cats[p.id] = p.category || 'Other';
             });
             setPermMatrix(matrix);
+            setCatMatrix(cats);
         } catch {
             toast.error('Failed to load permissions');
         } finally {
@@ -404,6 +449,10 @@ const UserManagement = () => {
         });
     };
 
+    const setCategory = (permId: string, category: string) => {
+        setCatMatrix(prev => ({ ...prev, [permId]: category }));
+    };
+
     const handleSavePermissions = async () => {
         try {
             setPermSaving(true);
@@ -411,6 +460,7 @@ const UserManagement = () => {
                 allPermissions.map(p =>
                     axiosInstance.put(`${API}/permissions/admin/permission/${p.id}`, {
                         allowed_roles: permMatrix[p.id] || [],
+                        category: catMatrix[p.id] || 'Other',
                     })
                 )
             );
@@ -516,6 +566,37 @@ const UserManagement = () => {
                 <Typography variant='body1' color='text.secondary' sx={{ mb: 2 }}>
                     Manage staff users and control role-based access
                 </Typography>
+
+                {isAdmin && (
+                    <Paper
+                        variant='outlined'
+                        sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 2, mb: 3, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 2 }}
+                    >
+                        <Box sx={{ flex: 1 }}>
+                            <Typography variant='subtitle1' fontWeight={600}>Order Settings</Typography>
+                            <Typography variant='body2' color='text.secondary'>
+                                Minimum cart value before a self-registered customer can pay online.
+                            </Typography>
+                        </Box>
+                        <TextField
+                            label='Min order value (₹)'
+                            type='number'
+                            size='small'
+                            value={minOrderValue}
+                            onChange={(e) => setMinOrderValue(e.target.value)}
+                            sx={{ width: { xs: '100%', sm: 200 } }}
+                        />
+                        <Button
+                            variant='contained'
+                            onClick={handleSaveSettings}
+                            disabled={settingsSaving}
+                            startIcon={settingsSaving ? <CircularProgress size={16} color='inherit' /> : <SaveIcon />}
+                        >
+                            {settingsSaving ? 'Saving…' : 'Save'}
+                        </Button>
+                    </Paper>
+                )}
+
                 <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
                     <Tab label="Staff Users" icon={<GroupIcon />} iconPosition="start" />
                     {isAdmin && <Tab label="Permissions" icon={<SecurityIcon />} iconPosition="start" />}
@@ -575,6 +656,7 @@ const UserManagement = () => {
                                             <TableCell sx={{ fontWeight: 'bold' }}>User</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Contact</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Role</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold' }}>Source</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Permissions</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
@@ -605,8 +687,24 @@ const UserManagement = () => {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Chip
+                                                        label={user.self_registered ? 'B2B Self-Reg' : 'Internal'}
+                                                        color={user.self_registered ? 'info' : 'default'}
+                                                        variant={user.self_registered ? 'filled' : 'outlined'}
+                                                        size="small"
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Chip
                                                         label={capitalize(user.status)}
-                                                        color={user.status === 'active' ? 'success' : 'error'}
+                                                        color={
+                                                            user.status === 'active'
+                                                                ? 'success'
+                                                                : user.status === 'pending'
+                                                                    ? 'warning'
+                                                                    : user.status === 'lead'
+                                                                        ? 'default'
+                                                                        : 'error'
+                                                        }
                                                         size="small"
                                                     />
                                                 </TableCell>
@@ -677,7 +775,7 @@ const UserManagement = () => {
                         <>
                             <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
                                 <Typography variant="body2" color="text.secondary">
-                                    Toggle which roles can access each feature. Click <strong>Save Permissions</strong> in the header to apply changes.
+                                    Toggle which roles can access each feature and set its <strong>Sidebar Group</strong>. Click <strong>Save Permissions</strong> in the header to apply changes.
                                 </Typography>
                             </Box>
                             <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
@@ -686,6 +784,9 @@ const UserManagement = () => {
                                         <TableRow>
                                             <TableCell sx={{ fontWeight: 'bold', minWidth: 220 }}>
                                                 Feature / Page
+                                            </TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', minWidth: 190 }}>
+                                                Sidebar Group
                                             </TableCell>
                                             {roles.map(role => (
                                                 <TableCell
@@ -711,6 +812,18 @@ const UserManagement = () => {
                                                         <Typography variant="body2" fontWeight="medium">{perm.text}</Typography>
                                                         <Typography variant="caption" color="text.secondary">{perm.path}</Typography>
                                                     </Box>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <FormControl size="small" fullWidth>
+                                                        <Select
+                                                            value={CATEGORIES.includes(catMatrix[perm.id]) ? catMatrix[perm.id] : 'Other'}
+                                                            onChange={e => setCategory(perm.id, e.target.value)}
+                                                        >
+                                                            {CATEGORIES.map(cat => (
+                                                                <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                                                            ))}
+                                                        </Select>
+                                                    </FormControl>
                                                 </TableCell>
                                                 {roles.map(role => {
                                                     const checked = (permMatrix[perm.id] || []).includes(role.value);

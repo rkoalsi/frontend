@@ -29,14 +29,17 @@ import {
   Download,
   Inventory2,
   ShoppingCartCheckout,
+  Payment,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import QuantitySelector from './QuantitySelector';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../util/axios';
+import { getEffectiveMarginPct } from '../../util/margin';
 import ImagePopupDialog from '../common/ImagePopUp';
 import ImageCarousel from './products/ImageCarousel';
+import PaymentResultDialog, { PaymentResult } from './PaymentResultDialog';
 
 // ── Helper sub-components ──────────────────────────────────────────
 
@@ -150,6 +153,9 @@ interface Props {
   isCustomerRole?: boolean;
   order: any;
   referenceNumber: any;
+  onPaymentSuccess?: () => void | Promise<void>;
+  isSelfRegistered?: boolean;
+  minOrderValue?: number;
 }
 
 // Format a brand_orders date string (e.g. "2026-05-21") as "21 May 2026".
@@ -177,7 +183,12 @@ const Review: React.FC<Props> = React.memo((props) => {
     isCustomerRole,
     order,
     referenceNumber,
+    isSelfRegistered = false,
+    minOrderValue = 0,
   } = props;
+
+  // Self-registered customers must reach a minimum cart value before they can pay.
+  const belowMinOrder = isSelfRegistered && minOrderValue > 0 && totals.totalAmount < minOrderValue;
 
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
@@ -189,6 +200,10 @@ const Review: React.FC<Props> = React.memo((props) => {
   const [popupImageSrc, setPopupImageSrc]: any = useState([]);
   const [popupImageIndex, setPopupImageIndex] = useState(0);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [payLoading, setPayLoading] = useState(false);
+  const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
+  const [paymentResultMsg, setPaymentResultMsg] = useState<string>('');
+  const [paidLocally, setPaidLocally] = useState(false);
   const [isScrollButtonDisabled, setIsScrollButtonDisabled] = useState(false);
   const [downloadMenuAnchor, setDownloadMenuAnchor] = useState<null | HTMLElement>(null);
 
@@ -234,6 +249,167 @@ const Review: React.FC<Props> = React.memo((props) => {
       toast.error(error.message || 'Failed to download PDF');
     } finally {
       setPdfLoading(false);
+    }
+  };
+
+  // ── Razorpay Checkout ───────────────────────────────────────────
+  // Lazy-load the Razorpay Checkout script once.
+  const loadRazorpayScript = (): Promise<boolean> =>
+    new Promise((resolve) => {
+      if ((window as any).Razorpay) return resolve(true);
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+
+  // Poll the order's payment/estimate status until it resolves (or times out).
+  // The estimate is created in the background after /verify, so we wait for it
+  // here to show the result the moment it's ready instead of a blank screen.
+  const pollOrderStatus = async (
+    orderId: string,
+    { tries = 45, interval = 2000 }: { tries?: number; interval?: number } = {}
+  ): Promise<any | null> => {
+    for (let i = 0; i < tries; i += 1) {
+      try {
+        const { data } = await axiosInstance.get(`/payments/order/${orderId}/status`);
+        if (data?.done || data?.payment_status === 'failed') return data;
+      } catch (_e) {
+        /* transient — keep polling */
+      }
+      await new Promise((r) => setTimeout(r, interval));
+    }
+    return null; // timed out — payment is captured, estimate still finalising
+  };
+
+  const verifyPayment = async (response: any) => {
+    // Show the loader immediately while we confirm with the server.
+    setPaymentResultMsg('');
+    setPaymentResult('processing');
+    try {
+      const verifyResp = await axiosInstance.post('/payments/verify', {
+        order_id: order._id,
+        razorpay_order_id: response.razorpay_order_id,
+        razorpay_payment_id: response.razorpay_payment_id,
+        razorpay_signature: response.razorpay_signature,
+      });
+
+      if (!verifyResp.data?.success) {
+        setPaymentResultMsg(verifyResp.data?.detail || 'Payment verification failed.');
+        setPaymentResult('failure');
+        return;
+      }
+
+      setPaidLocally(true);
+
+      // Wait for the backgrounded Zoho estimate to be created.
+      let estimateStatus = '';
+      if (verifyResp.data?.estimate_pending) {
+        const status = await pollOrderStatus(order._id);
+        if (status?.payment_status === 'failed') {
+          setPaymentResultMsg(
+            'We received your payment but could not confirm it. Please contact support.'
+          );
+          setPaymentResult('failure');
+          return;
+        }
+        estimateStatus = status?.estimate_status || '';
+      }
+
+      const statusSuffix = estimateStatus
+        ? ` Estimate status: ${estimateStatus.replace(/_/g, ' ')}.`
+        : '';
+      setPaymentResultMsg(
+        `Your payment was received and your order has been confirmed.${statusSuffix}`
+      );
+      setPaymentResult('success');
+    } catch (error: any) {
+      setPaymentResultMsg(
+        error?.response?.data?.detail || 'Could not verify the payment.'
+      );
+      setPaymentResult('failure');
+    }
+  };
+
+  const handlePayNow = async () => {
+    if (!order?._id) {
+      toast.error('Save the order before paying');
+      return;
+    }
+    setPayLoading(true);
+    try {
+      const ok = await loadRazorpayScript();
+      if (!ok || !(window as any).Razorpay) {
+        toast.error('Failed to load Razorpay. Check your connection.');
+        return;
+      }
+
+      // Create a Razorpay order on the backend.
+      const { data } = await axiosInstance.post(
+        `/payments/order/${order._id}/checkout`
+      );
+
+      // Track whether the attempt was settled (verified) so the modal's
+      // ondismiss doesn't show a false failure after a successful payment.
+      // Razorpay keeps the modal open and allows retry after a failed attempt,
+      // so we must NOT treat 'payment.failed' as final.
+      let settled = false;
+      let lastErrorMsg = '';
+
+      const rzp = new (window as any).Razorpay({
+        key: data.key_id,
+        amount: data.amount,
+        currency: data.currency,
+        name: data.name,
+        description: data.description,
+        order_id: data.razorpay_order_id,
+        prefill: data.prefill || {},
+        notes: data.notes || {},
+        theme: { color: primaryColor },
+        handler: async (response: any) => {
+          // Payment captured — verify on the server.
+          settled = true;
+          await verifyPayment(response);
+        },
+        modal: {
+          ondismiss: () => {
+            // Only a real failure if the user closed without a verified success.
+            if (!settled) {
+              settled = true;
+              setPaymentResultMsg(
+                lastErrorMsg || 'Payment was not completed. Please try again.'
+              );
+              setPaymentResult('failure');
+            }
+          },
+        },
+      });
+
+      // Capture the latest error so the dismiss message is informative —
+      // but don't surface a popup yet; the user can still retry in-modal.
+      rzp.on('payment.failed', (resp: any) => {
+        lastErrorMsg = resp?.error?.description || '';
+      });
+
+      rzp.open();
+    } catch (error: any) {
+      console.error('Error starting payment:', error);
+      toast.error(
+        error?.response?.data?.detail || error.message || 'Failed to start payment'
+      );
+    } finally {
+      setPayLoading(false);
+    }
+  };
+
+  const handlePaymentResultClose = () => {
+    const wasSuccess = paymentResult === 'success';
+    setPaymentResult(null);
+    // Refetch the order so its status (now "accepted") propagates to the whole
+    // page and locks the Submit / edit buttons.
+    if (wasSuccess && typeof props.onPaymentSuccess === 'function') {
+      props.onPaymentSuccess();
     }
   };
 
@@ -334,8 +510,8 @@ const Review: React.FC<Props> = React.memo((props) => {
         order?.customer_margin ||
         product.margin ||
         '40%';
-      let marginPercent = parseInt(String(marginStr).replace('%', ''), 10);
-      if (Number.isNaN(marginPercent)) marginPercent = 40; // malformed margin string
+      // Clearance items add their bonus margin on top of the base margin.
+      const marginPercent = getEffectiveMarginPct(marginStr, product);
       const margin = marginPercent / 100;
       const rate = parseFloat(product.rate) || 0;
       const sellingPrice = parseFloat((rate - rate * margin).toFixed(2));
@@ -378,9 +554,11 @@ const Review: React.FC<Props> = React.memo((props) => {
     );
   }
 
-  const isOrderLocked = ['accepted', 'declined', 'invoiced'].includes(
-    order?.status?.toLowerCase()
-  );
+  // A paid order is accepted on the backend; treat paidLocally as locked too so
+  // the buttons disable immediately without waiting for a refetch.
+  const isOrderLocked =
+    paidLocally ||
+    ['accepted', 'declined', 'invoiced'].includes(order?.status?.toLowerCase());
 
   // Aggregate everything blocking submission so it's visible as a banner
   // (the disabled submit button's tooltip is easy to miss on touch devices)
@@ -1136,6 +1314,36 @@ const Review: React.FC<Props> = React.memo((props) => {
               ₹{totals.totalAmount.toLocaleString('en-IN')}
             </Typography>
           </Box>
+          {order?.payment?.status === 'paid' || paidLocally ? (
+            <Box display='flex' justifyContent='center' mt={2}>
+              <Chip
+                icon={<Payment />}
+                label='Payment Received'
+                color='success'
+                sx={{ fontWeight: 700, px: 1, py: 2.2, borderRadius: 24 }}
+              />
+            </Box>
+          ) : isSelfRegistered ? (
+            <>
+              <Button
+                fullWidth
+                variant='contained'
+                color='success'
+                startIcon={payLoading ? <CircularProgress size={16} color='inherit' /> : <Payment />}
+                disabled={payLoading || isOrderLocked || totals.totalAmount <= 0 || belowMinOrder}
+                onClick={handlePayNow}
+                sx={{ mt: 2, textTransform: 'none', fontWeight: 700, borderRadius: 24, py: 1.1 }}
+              >
+                {payLoading ? 'Generating payment link…' : `Pay Now ₹${totals.totalAmount.toLocaleString('en-IN')}`}
+              </Button>
+              {belowMinOrder && (
+                <Typography variant='caption' color='error' sx={{ display: 'block', textAlign: 'center', mt: 1 }}>
+                  Add ₹{(minOrderValue - totals.totalAmount).toLocaleString('en-IN')} more — a minimum order of
+                  ₹{minOrderValue.toLocaleString('en-IN')} is required to pay.
+                </Typography>
+              )}
+            </>
+          ) : null}
         </Paper>
       )}
 
@@ -1145,6 +1353,13 @@ const Review: React.FC<Props> = React.memo((props) => {
         imageSources={popupImageSrc}
         initialSlide={popupImageIndex}
         setIndex={(newIndex: number) => setPopupImageIndex(newIndex)}
+      />
+
+      <PaymentResultDialog
+        open={!!paymentResult}
+        result={paymentResult}
+        message={paymentResultMsg}
+        onClose={handlePaymentResultClose}
       />
 
       {/* ── Scroll buttons — fixed bottom-right ── */}

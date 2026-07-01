@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { useContext, useState, useEffect, useCallback } from 'react';
 import AuthContext from '../src/components/Auth';
+import ProfileIncompleteBanner from '../src/components/ProfileIncompleteBanner';
 import { useRouter } from 'next/router';
 import {
   CalendarMonth,
@@ -553,6 +554,12 @@ const Home = () => {
   const filteredMenuSections = getFilteredMenuSections();
 
   const handleNewOrder = async () => {
+    // Self-registered B2B customers must finish onboarding before ordering.
+    if (user?.self_registered && !user?.customer_id) {
+      toast.info('Please complete your business details in your profile to start ordering');
+      router.push('/customer/account');
+      return;
+    }
     try {
       const resp = await axios.post(`${process.env.api_url}/orders/`, {
         created_by: user?._id,
@@ -663,6 +670,8 @@ const Home = () => {
           initial='hidden'
           animate='visible'
         >
+          <ProfileIncompleteBanner />
+
           {/* Header */}
           <Box
             data-tour='home-greeting'

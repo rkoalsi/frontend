@@ -243,17 +243,25 @@ const CustomerLayout = ({ children }: any) => {
                 </Tooltip>
               ) : (
                 <Button
-                  variant='text'
+                  size='small'
                   onClick={() => router.push('/')}
                   startIcon={<HomeIcon fontSize='small' />}
                   sx={{
-                    textTransform: 'none',
-                    color: 'rgba(255,255,255,0.75)',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
+                    color: 'rgba(255,255,255,0.85)',
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(255,255,255,0.14)',
                     borderRadius: '8px',
+                    textTransform: 'none',
+                    fontWeight: 600,
                     px: 1.5,
-                    '&:hover': { backgroundColor: 'rgba(255,255,255,0.08)', color: '#fff' },
+                    boxShadow: 'none',
+                    '& .MuiButton-startIcon': { mr: 0.5 },
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.16)',
+                      color: '#fff',
+                      borderColor: 'rgba(255,255,255,0.24)',
+                      boxShadow: 'none',
+                    },
                   }}
                 >
                   Home
