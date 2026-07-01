@@ -53,11 +53,22 @@ interface Order {
   updated_at?: string;
   products?: OrderProduct[];
   customer?: any;
-  shipping_address?: string;
+  shipping_address?: any;
   notes?: string;
+  total_amount?: number;
 }
 
 const orderSteps = ['Draft', 'Sent', 'Accepted', 'Invoiced'];
+
+// Order addresses are stored as objects ({ attention, address, city, state, zip }),
+// so render them as text instead of dropping the raw object into JSX.
+const formatAddress = (addr: any): string => {
+  if (!addr) return '';
+  if (typeof addr === 'string') return addr;
+  return [addr.attention, addr.address, addr.city, addr.state, addr.zip]
+    .filter(Boolean)
+    .join(', ');
+};
 
 const CustomerOrderDetail = () => {
   const { user }: any = useContext(AuthContext);
@@ -378,7 +389,7 @@ const CustomerOrderDetail = () => {
                         ₹{product.price?.toFixed(2) || '0.00'}
                       </TableCell>
                       <TableCell align='right'>
-                        ₹{product.total?.toFixed(2) || '0.00'}
+                        ₹{(product.total ?? (product.price ?? 0) * (product.quantity ?? 0)).toFixed(2)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -403,7 +414,7 @@ const CustomerOrderDetail = () => {
           )}
 
           {/* Order Total */}
-          {order.total && (
+          {(order.total ?? order.total_amount) != null && (
             <Paper
               elevation={0}
               sx={{
@@ -419,13 +430,13 @@ const CustomerOrderDetail = () => {
                 Order Total
               </Typography>
               <Typography variant='h5' fontWeight={700} color='primary'>
-                ₹{order.total?.toFixed(2)}
+                ₹{(order.total ?? order.total_amount ?? 0).toLocaleString('en-IN')}
               </Typography>
             </Paper>
           )}
 
           {/* Shipping Info */}
-          {order.shipping_address && (
+          {formatAddress(order.shipping_address) && (
             <Box sx={{ mt: 3 }}>
               <Typography variant='h6' fontWeight={600} sx={{ mb: 2 }}>
                 <LocalShipping sx={{ mr: 1, verticalAlign: 'middle' }} />
@@ -439,7 +450,7 @@ const CustomerOrderDetail = () => {
                   borderRadius: 2,
                 }}
               >
-                <Typography>{order.shipping_address}</Typography>
+                <Typography>{formatAddress(order.shipping_address)}</Typography>
               </Paper>
             </Box>
           )}

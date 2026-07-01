@@ -769,6 +769,17 @@ const NewOrder: React.FC = () => {
     }
   }, [order, isShared, router]);
 
+  // A paid order is locked — customers can no longer edit it. Send them to the
+  // read-only order details view. (Admins/sales can still open it if needed.)
+  useEffect(() => {
+    if (!order || !isCustomerUser) return;
+    const paid = (order?.payment?.status || '').toLowerCase() === 'paid';
+    if (paid) {
+      toast.info('This order has been paid and can no longer be edited.');
+      router.push(`/orders/past/${order._id}`);
+    }
+  }, [order, isCustomerUser, router]);
+
   // Count cart "rows": split products with both quantities set contribute 2 rows
   const cartRowCount = selectedProducts.reduce((n: number, p: any) => {
     const isSplit = p.pre_order === true && (p.stock ?? 0) > 0;

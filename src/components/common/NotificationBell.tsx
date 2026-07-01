@@ -29,12 +29,16 @@ const PREVIEW_LIMIT = 10;
 
 const NotificationBell = () => {
   const router = useRouter();
-  const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
+  const { notifications, unreadCount, markRead, markAllRead, fetchNotifications } =
+    useNotifications();
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
   const open = Boolean(anchor);
 
   const handleOpen = (e: React.MouseEvent<HTMLButtonElement>) => {
     setAnchor(e.currentTarget);
+    // The list is only fetched once on mount (which can race the auth token),
+    // so refresh it every time the box is opened to avoid showing it empty.
+    fetchNotifications(0, true);
   };
 
   const handleClose = () => setAnchor(null);

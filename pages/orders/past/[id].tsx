@@ -188,7 +188,11 @@ const OrderDetails = () => {
 
   const statusKey = orderData.status?.toLowerCase() ?? '';
   const statusColor = STATUS_COLOR[statusKey] ?? 'default';
-  const isEditable = !['declined', 'accepted', 'invoiced'].includes(statusKey);
+  // Payment (Razorpay) info stored on the order once the customer pays online.
+  const payment = orderData.payment || null;
+  const isPaid = (payment?.status || '').toLowerCase() === 'paid';
+  // A paid order is locked — it can no longer be edited.
+  const isEditable = !['declined', 'accepted', 'invoiced'].includes(statusKey) && !isPaid;
   const title = orderData.estimate_created
     ? orderData.estimate_number
     : `Order #${orderData._id.slice(-6)}`;
@@ -291,17 +295,19 @@ const OrderDetails = () => {
             >
               Duplicate Order
             </Button>
-            <Button
-              size='small'
-              variant='outlined'
-              color='primary'
-              startIcon={<Edit fontSize='small' />}
-              disabled={!isEditable}
-              onClick={() => router.push(`/orders/new/${orderData._id || id}`)}
-              sx={{ borderRadius: 2 }}
-            >
-              Edit
-            </Button>
+            {!isPaid && (
+              <Button
+                size='small'
+                variant='outlined'
+                color='primary'
+                startIcon={<Edit fontSize='small' />}
+                disabled={!isEditable}
+                onClick={() => router.push(`/orders/new/${orderData._id || id}`)}
+                sx={{ borderRadius: 2 }}
+              >
+                Edit
+              </Button>
+            )}
             {orderData.estimate_created && (
               <Button
                 size='small'
@@ -380,6 +386,48 @@ const OrderDetails = () => {
                 ₹{(orderData.total_gst ?? 0).toLocaleString('en-IN')}
               </Typography>
             </Box>
+            {payment && (
+              <Box sx={{ gridColumn: 'span 2' }}>
+                <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>
+                  Payment
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 0.25 }}>
+                  <Chip
+                    label={isPaid ? 'Paid' : (payment.status || 'Pending').charAt(0).toUpperCase() + (payment.status || 'pending').slice(1)}
+                    color={isPaid ? 'success' : payment.status === 'failed' ? 'error' : 'warning'}
+                    size='small'
+                    sx={{ fontWeight: 700 }}
+                  />
+                  {payment.amount != null && (
+                    <Typography variant='body1' fontWeight={600} color='text.primary'>
+                      ₹{(payment.amount / 100).toLocaleString('en-IN')}
+                    </Typography>
+                  )}
+                  {payment.provider && (
+                    <Typography variant='body2' color='text.secondary' sx={{ textTransform: 'capitalize' }}>
+                      via {payment.provider}
+                    </Typography>
+                  )}
+                </Box>
+                {payment.razorpay_payment_id && (
+                  <Typography variant='body2' color='text.secondary' sx={{ mt: 0.25 }}>
+                    Payment ID: {payment.razorpay_payment_id}
+                  </Typography>
+                )}
+                {payment.updated_at && (
+                  <Typography variant='body2' color='text.secondary'>
+                    {isPaid ? 'Paid on ' : 'Updated '}
+                    {new Date(payment.updated_at).toLocaleString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </Typography>
+                )}
+              </Box>
+            )}
             {orderData.estimate_created && (
               <Box sx={{ gridColumn: 'span 2' }}>
                 <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>

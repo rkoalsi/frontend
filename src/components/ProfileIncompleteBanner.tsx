@@ -21,6 +21,22 @@ const ProfileIncompleteBanner = () => {
   const selfReg = Boolean(user?.self_registered);
   const approved = Boolean(user?.customer_id);
 
+  // The "Account approved" confirmation is a one-time acknowledgement — once the
+  // customer has seen and dismissed it, don't show it again on future visits.
+  const approvedSeenKey = user?._id ? `acct_approved_seen_${user._id}` : '';
+  const [approvedDismissed, setApprovedDismissed] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !approvedSeenKey) return;
+    setApprovedDismissed(localStorage.getItem(approvedSeenKey) === '1');
+  }, [approvedSeenKey]);
+
+  const dismissApproved = () => {
+    if (typeof window !== 'undefined' && approvedSeenKey) {
+      localStorage.setItem(approvedSeenKey, '1');
+    }
+    setApprovedDismissed(true);
+  };
+
   useEffect(() => {
     // Only need the request status to tell "rejected" apart from "incomplete".
     if (!selfReg || approved) {
@@ -52,8 +68,9 @@ const ProfileIncompleteBanner = () => {
   let content: React.ReactNode = null;
 
   if (approved) {
+    if (approvedDismissed) return null; // already acknowledged — hide for good
     content = (
-      <Alert severity='success' sx={{ borderRadius: 2 }}>
+      <Alert severity='success' sx={{ borderRadius: 2 }} onClose={dismissApproved}>
         <AlertTitle>Account approved</AlertTitle>
         Your business details have been accepted — you can now place orders.
       </Alert>
