@@ -25,7 +25,7 @@ import {
   TablePagination,
 } from '@mui/material';
 import { toast } from 'react-toastify';
-import { Search, Delete, Upload, Close, PhotoLibrary, ChevronLeft, ChevronRight, SwapHoriz } from '@mui/icons-material';
+import { Search, Delete, Upload, Close, PhotoLibrary, ChevronLeft, ChevronRight, SwapHoriz, OpenInNew } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
 import AuthContext from '../../src/components/Auth';
 import { useDropzone } from 'react-dropzone';
@@ -44,6 +44,7 @@ interface Shipment {
   customer_name: string;
   carrier: string;
   tracking_number: string;
+  tracking_link?: string;
   status: string;
   date: string;
   images?: ShipmentImage[];
@@ -467,7 +468,24 @@ const AdminShipments = () => {
                       </Typography>
                     </TableCell>
                     <TableCell>{shipment.customer_name}</TableCell>
-                    <TableCell>{shipment.tracking_number}</TableCell>
+                    <TableCell>
+                      {shipment.tracking_number ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant='body2'>{shipment.tracking_number}</Typography>
+                          {shipment.tracking_link && (
+                            <IconButton
+                              size='small'
+                              href={shipment.tracking_link}
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              component='a'
+                            >
+                              <OpenInNew sx={{ fontSize: 14 }} />
+                            </IconButton>
+                          )}
+                        </Box>
+                      ) : '—'}
+                    </TableCell>
                     <TableCell>{shipment.carrier}</TableCell>
                     <TableCell>
                       <Chip

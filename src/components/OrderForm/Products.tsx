@@ -62,6 +62,7 @@ import {
   AddShoppingCart,
   RemoveShoppingCart,
   Search as SearchIcon,
+  ShoppingCartCheckout as ShoppingCartCheckoutIcon,
 } from "@mui/icons-material";
 import debounce from "lodash.debounce";
 import { toast } from "react-toastify";
@@ -90,6 +91,12 @@ interface SearchResult {
   rate: number;
   stock: number;
   new?: boolean;
+  pre_order?: boolean;
+  upcoming_stock?: number;
+  inward_date?: string;
+  eta_port_date?: string;
+  quantity?: number;
+  pre_order_quantity?: number;
   item_tax_preferences: any;
 }
 
@@ -119,18 +126,49 @@ const MemoizedDesktopProductCard = memo(({
   handleQuantityChange,
   handleRemoveProduct,
   handleAddProducts,
-  isShared
+  isShared,
+  isPreOrderTab,
 }: any) => {
   const productId = product._id;
   const packStep = getPackStep(product.name);
   const selectedProduct: any = selectedProducts.find((p: any) => p._id === productId);
-  const quantity: any = selectedProduct?.quantity || temporaryQuantities[productId] || "";
+  const splitProdDesktop = product.pre_order === true && (product.stock ?? 0) > 0;
+  const isPreOrderCartDesktop = isPreOrderTab && splitProdDesktop;
+  const showAsPreOrderLabelDesktop = isPreOrderTab && product.pre_order === true;
+  // Admin/internal-only logistics dates for pre-order products
+  const fmtDate = (v?: string) => {
+    if (!v) return '';
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? v : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+  const preOrderDatesDesktop = (!isShared && product.pre_order && (product.inward_date || product.eta_port_date)) ? (
+    <>
+      {product.eta_port_date && (
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body2" color="text.secondary">ETA Port:</Typography>
+          <Typography variant="caption" color="text.secondary" fontWeight={600}>{fmtDate(product.eta_port_date)}</Typography>
+        </Box>
+      )}
+      {product.inward_date && (
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body2" color="text.secondary">Inward:</Typography>
+          <Typography variant="caption" color="warning.main" fontWeight={700}>{fmtDate(product.inward_date)}</Typography>
+        </Box>
+      )}
+    </>
+  ) : null;
+  const quantity: any = isPreOrderCartDesktop
+    ? (selectedProduct?.pre_order_quantity || temporaryQuantities[`${productId}-pre`] || "")
+    : (selectedProduct?.quantity || temporaryQuantities[productId] || "");
+  const isInCartDesktop = isPreOrderCartDesktop
+    ? (selectedProduct?.pre_order_quantity ?? 0) > 0
+    : !!selectedProduct && (selectedProduct?.quantity ?? 0) > 0;
   const sellingPrice = getSellingPrice(product);
   const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
-  const isQuantityExceedingStock = quantity > product.stock;
-  const isDisabled =
-    order?.status?.toLowerCase().includes("accepted") ||
-    order?.status?.toLowerCase().includes("declined");
+  const isQuantityExceedingStock = !isPreOrderCartDesktop && (product.stock ?? 0) > 0 && quantity > product.stock;
+  const isDisabled = ['accepted', 'declined', 'invoiced'].includes(
+    order?.status?.toLowerCase()
+  );
 
   return (
     <Box key={productId}>
@@ -150,6 +188,26 @@ const MemoizedDesktopProductCard = memo(({
         }}
       >
         <Box sx={{ p: 2, position: 'relative' }}>
+          {product.pre_order && (
+            <Chip
+              label="Pre Order"
+              size="small"
+              sx={{
+                position: 'absolute',
+                top: 8,
+                left: 8,
+                zIndex: 1,
+                fontFamily: 'Poppins, sans-serif',
+                fontWeight: 700,
+                fontSize: '0.75rem',
+                backgroundColor: 'warning.main',
+                color: 'white',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              }}
+            />
+          )}
           {product.new && (
             <Chip
               label="New Arrivals"
@@ -267,17 +325,48 @@ const MemoizedDesktopProductCard = memo(({
               </Typography>
             </Box>
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                Stock:
-              </Typography>
-              <Chip
-                label={product.stock}
-                size="small"
-                color={product.stock > 10 ? 'success' : 'error'}
-                variant={product.stock > 10 ? 'filled' : 'outlined'}
-              />
-            </Box>
+            {!isShared && (splitProdDesktop && !isPreOrderTab ? (
+              <>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">Stock:</Typography>
+                  <Chip
+                    label={product.stock}
+                    size="small"
+                    color={product.stock > 10 ? 'success' : 'error'}
+                    variant={product.stock > 10 ? 'filled' : 'outlined'}
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">Upcoming:</Typography>
+                  <Chip label={product.upcoming_stock ?? '—'} size="small" color="warning" variant="outlined" />
+                </Box>
+                {preOrderDatesDesktop}
+              </>
+            ) : (
+              <>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  {(isPreOrderTab || (product.pre_order && !product.stock)) ? 'Upcoming:' : 'Stock:'}
+                </Typography>
+                {(isPreOrderTab || (product.pre_order && !product.stock)) ? (
+                  <Chip
+                    label={product.upcoming_stock ?? '—'}
+                    size="small"
+                    color="warning"
+                    variant="outlined"
+                  />
+                ) : (
+                  <Chip
+                    label={product.stock}
+                    size="small"
+                    color={product.stock > 10 ? 'success' : 'error'}
+                    variant={product.stock > 10 ? 'filled' : 'outlined'}
+                  />
+                )}
+              </Box>
+              {(isPreOrderTab || (product.pre_order && !product.stock)) && preOrderDatesDesktop}
+              </>
+            ))}
 
             {!isShared && (
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -317,9 +406,9 @@ const MemoizedDesktopProductCard = memo(({
           <Box sx={{ mb: 2 }}>
             <QuantitySelector
               quantity={quantity}
-              max={product.stock}
+              max={isPreOrderCartDesktop ? (product.upcoming_stock || Infinity) : (product.pre_order && (product.stock ?? 0) <= 0 ? (product.upcoming_stock || Infinity) : product.stock)}
               step={packStep}
-              onChange={(newQuantity: number) => handleQuantityChange(productId, newQuantity)}
+              onChange={(newQuantity: number) => handleQuantityChange(productId, newQuantity, isPreOrderCartDesktop)}
               disabled={isDisabled}
             />
             {isQuantityExceedingStock && (
@@ -349,17 +438,17 @@ const MemoizedDesktopProductCard = memo(({
 
           <Button
             fullWidth
-            variant={selectedProduct ? "outlined" : "contained"}
-            color={selectedProduct ? "error" : "primary"}
+            variant={isInCartDesktop ? "outlined" : "contained"}
+            color={isInCartDesktop ? "error" : "primary"}
             disabled={isDisabled}
             onClick={() => {
-              if (selectedProduct) {
-                handleRemoveProduct(productId);
+              if (isInCartDesktop) {
+                handleRemoveProduct(productId, isPreOrderCartDesktop);
               } else {
-                handleAddProducts(product);
+                handleAddProducts(product, isPreOrderCartDesktop);
               }
             }}
-            startIcon={selectedProduct ? <RemoveShoppingCart /> : <AddShoppingCart />}
+            startIcon={isInCartDesktop ? <RemoveShoppingCart /> : <AddShoppingCart />}
             sx={{
               textTransform: 'none',
               fontWeight: 600,
@@ -371,22 +460,26 @@ const MemoizedDesktopProductCard = memo(({
               },
             }}
           >
-            {selectedProduct ? "Remove from Cart" : "Add to Cart"}
+            {isInCartDesktop
+              ? (showAsPreOrderLabelDesktop ? "Remove Pre-Order" : "Remove from Cart")
+              : (showAsPreOrderLabelDesktop ? "Add as Pre-Order" : "Add to Cart")}
           </Button>
         </Box>
       </Card>
     </Box>
   );
 }, (prevProps, nextProps) => {
-  // Custom comparison function for better memoization
-  return (
-    prevProps.product._id === nextProps.product._id &&
-    prevProps.selectedProducts.some((p: any) => p._id === prevProps.product._id) ===
-    nextProps.selectedProducts.some((p: any) => p._id === nextProps.product._id) &&
-    prevProps.temporaryQuantities[prevProps.product._id] === nextProps.temporaryQuantities[nextProps.product._id] &&
-    prevProps.specialMargins[prevProps.product._id] === nextProps.specialMargins[nextProps.product._id] &&
-    prevProps.order?.status === nextProps.order?.status
-  );
+  if (prevProps.product._id !== nextProps.product._id) return false;
+  if (prevProps.isPreOrderTab !== nextProps.isPreOrderTab) return false;
+  if (prevProps.order?.status !== nextProps.order?.status) return false;
+  if (prevProps.temporaryQuantities[prevProps.product._id] !== nextProps.temporaryQuantities[nextProps.product._id]) return false;
+  if (prevProps.temporaryQuantities[`${prevProps.product._id}-pre`] !== nextProps.temporaryQuantities[`${nextProps.product._id}-pre`]) return false;
+  if (prevProps.specialMargins[prevProps.product._id] !== nextProps.specialMargins[nextProps.product._id]) return false;
+  const prevSel = prevProps.selectedProducts.find((p: any) => p._id === prevProps.product._id);
+  const nextSel = nextProps.selectedProducts.find((p: any) => p._id === nextProps.product._id);
+  if ((prevSel?.quantity ?? 0) !== (nextSel?.quantity ?? 0)) return false;
+  if ((prevSel?.pre_order_quantity ?? 0) !== (nextSel?.pre_order_quantity ?? 0)) return false;
+  return true;
 });
 
 const Products: React.FC<ProductsProps> = ({
@@ -437,6 +530,9 @@ const Products: React.FC<ProductsProps> = ({
   const [popupImageSrc, setPopupImageSrc]: any = useState([]);
   const [popupImageIndex, setPopupImageIndex]: any = useState(0);
   const [options, setOptions] = useState<SearchResult[]>([]);
+  // Lookup of every rendered product by id so handleQuantityChange can auto-add
+  // an item to the cart the moment a quantity is entered (no separate "Add" click).
+  const productLookupRef = useRef<Map<string, any>>(new Map());
   const [loading, setLoading] = useState<boolean>(false);
   const [paginationState, setPaginationState] = useState<{
     [key: string]: { page: number; hasMore: boolean };
@@ -461,7 +557,7 @@ const Products: React.FC<ProductsProps> = ({
   const [productCounts, setProductCounts] = useState<{
     [brand: string]: { [category: string]: number };
   }>({});
-  const [brandList, setBrandList] = useState<{ brand: string; url: string }[]>(
+  const [brandList, setBrandList] = useState<{ brand: string; url: string | null }[]>(
     []
   );
   const [groupByCategory, setGroupByCategory] = useState<boolean>(false);
@@ -592,11 +688,18 @@ const Products: React.FC<ProductsProps> = ({
         marginPercent = parseInt(specialMargins[product._id].replace("%", ""));
       } else if (customer?.cf_margin) {
         marginPercent = parseInt(customer.cf_margin.replace("%", ""));
+      } else if (order?.customer_margin) {
+        // Customer margin embedded on the order by the backend — used by
+        // unauthenticated shared-link visitors (no customer object)
+        marginPercent = parseInt(String(order.customer_margin).replace("%", ""));
+      } else if ((product as any).margin) {
+        // Margin stored on the order line when added — last-resort fallback
+        marginPercent = parseInt(String((product as any).margin).replace("%", ""));
       }
       const margin = isNaN(marginPercent) ? 0.4 : marginPercent / 100;
       return parseFloat((product.rate - product.rate * margin).toFixed(2));
     },
-    [specialMargins, customer?.cf_margin]
+    [specialMargins, customer?.cf_margin, order?.customer_margin]
   );
 
   // ------------------ API Calls ------------------
@@ -616,10 +719,11 @@ const Products: React.FC<ProductsProps> = ({
         setLoadingMore(true);
         const sortToUse = sortOverride || sortOrder;
 
-        // Handle "New Arrivals" brand specially - don't pass brand or category parameter, but pass new_only=true
-        const brandParam = brand === "New Arrivals" ? undefined : brand;
-        const categoryParam = brand === "New Arrivals" || category === "All Products" ? undefined : category;
+        // Handle "New Arrivals" and "Pre Orders" brands specially
+        const brandParam = (brand === "New Arrivals" || brand === "Pre Orders") ? undefined : brand;
+        const categoryParam = (brand === "New Arrivals" || brand === "Pre Orders" || category === "All Products") ? undefined : category;
         const newOnly = brand === "New Arrivals" ? true : undefined;
+        const preOrder = brand === "Pre Orders" ? true : undefined;
 
         const response = await axios.get(`${process.env.api_url}/products`, {
           params: {
@@ -634,8 +738,8 @@ const Products: React.FC<ProductsProps> = ({
               sortToUse === "catalogue" ? cataloguePage : undefined,
             // Pass group_by_name flag from the frontend state
             group_by_name: groupByProductName,
-            // Pass new_only flag for "New Arrivals" brand
             new_only: newOnly,
+            pre_order: preOrder,
           },
           signal: controller.signal,
         });
@@ -698,15 +802,17 @@ const Products: React.FC<ProductsProps> = ({
     try {
       setLoadingOutOfStock(true);
 
-      // Handle "New Arrivals" brand specially - don't pass brand parameter
-      const brandParam = activeBrand === "New Arrivals" ? undefined : activeBrand;
-      const categoryParam = (activeBrand === "New Arrivals" || activeCategory === "All Products") ? undefined : activeCategory;
+      // Handle "New Arrivals" and "Pre Orders" brands specially - don't pass brand parameter
+      const brandParam = (activeBrand === "New Arrivals" || activeBrand === "Pre Orders") ? undefined : activeBrand;
+      const categoryParam = (activeBrand === "New Arrivals" || activeBrand === "Pre Orders" || activeCategory === "All Products") ? undefined : activeCategory;
+      const preOrder = activeBrand === "Pre Orders" ? true : undefined;
 
       const response = await axios.get(`${process.env.api_url}/products/out-of-stock`, {
         params: {
           brand: brandParam,
           category: categoryParam,
           group_by_name: true,
+          pre_order: preOrder,
         },
       });
 
@@ -759,15 +865,19 @@ const Products: React.FC<ProductsProps> = ({
       const response = await axios.get(
         `${process.env.api_url}/products/brands`
       );
-      const allBrands: { brand: string; url: string }[] =
+      const allBrands: { brand: string; url: string | null }[] =
         response.data.brands || [];
 
-      // Add "New Arrivals" as the first brand with a professional badge
+      // Add "New Arrivals" and "Pre Orders" as the first two brands
       const newArrivalsBrand = {
         brand: "New Arrivals",
         url: "https://assets.pupscribe.in/brands/new-arrivals.svg"
       };
-      const brandsWithNewArrivals = [newArrivalsBrand, ...allBrands];
+      const preOrdersBrand = {
+        brand: "Pre Orders",
+        url: null
+      };
+      const brandsWithNewArrivals = [newArrivalsBrand, preOrdersBrand, ...allBrands];
 
       setBrandList(brandsWithNewArrivals);
       if (!activeBrand && brandsWithNewArrivals[0]) {
@@ -820,8 +930,8 @@ const Products: React.FC<ProductsProps> = ({
   const fetchCategories = useCallback(
     async (brand: string) => {
       try {
-        // Handle "New Arrivals" brand specially
-        if (brand === "New Arrivals") {
+        // Handle "New Arrivals" and "Pre Orders" brands specially — no category sub-navigation
+        if (brand === "New Arrivals" || brand === "Pre Orders") {
           const categories = ["All Products"];
           setCategoriesByBrand((prev) => ({
             ...prev,
@@ -831,7 +941,6 @@ const Products: React.FC<ProductsProps> = ({
           const defaultCategory = categories[0];
           if (!activeCategory && defaultCategory) {
             setActiveCategory(defaultCategory);
-            // Immediately trigger the API call for the new category
             setTimeout(() => {
               resetPaginationAndFetch(brand, defaultCategory);
             }, 0);
@@ -1013,72 +1122,122 @@ const Products: React.FC<ProductsProps> = ({
     [handleSearch]
   );
 
+  // A "split product" has pre_order=true but also has physical stock.
+  // It can be ordered both ways: stock units (quantity) and pre-order units (pre_order_quantity).
+  const isSplitProduct = (p: any) => p.pre_order === true && (p.stock ?? 0) > 0;
+
   const handleAddProducts = useCallback(
-    (product: any) => {
+    (product: any, isPreOrder = false, explicitQty?: number) => {
       if (!product) return;
-      const isAlreadySelected = selectedProducts.some(
-        (p) => p._id === product._id
-      );
       const productId = product._id;
       const packStep = getPackStep(product.name);
-      const quantity = temporaryQuantities[productId] || product.quantity || packStep;
-      if (!isAlreadySelected) {
-        const isShared = new URLSearchParams(window.location.search).has(
-          "shared"
-        );
-        const updatedProducts: any = [
-          ...selectedProducts,
-          {
-            ...product,
-            margin: specialMargins[productId]
-              ? specialMargins[productId]
-              : customer?.cf_margin || "40%",
-            quantity,
-            added_by: isShared ? "customer" : user?.role || 'sales_person',
-          },
-        ];
+      const splitProd = isSplitProduct(product);
 
-        // Batch all state updates together to prevent multiple re-renders
+      if (isPreOrder && splitProd) {
+        // Adding the pre-order portion for a split product
+        const existing = selectedProducts.find((p) => p._id === productId);
+        if (existing && (existing.pre_order_quantity ?? 0) > 0) {
+          debouncedWarn(`${product.name} pre-order is already in the cart.`);
+          return;
+        }
+        const qty = (explicitQty && explicitQty > 0 ? explicitQty : 0) || temporaryQuantities[`${productId}-pre`] || packStep;
         startTransition(() => {
-          setSelectedProducts(updatedProducts);
+          if (existing) {
+            setSelectedProducts(selectedProducts.map((p) =>
+              p._id === productId ? { ...p, pre_order_quantity: qty } : p
+            ));
+          } else {
+            const isSharedParam = new URLSearchParams(window.location.search).has("shared");
+            setSelectedProducts([...selectedProducts, {
+              ...product,
+              margin: specialMargins[productId] || customer?.cf_margin || order?.customer_margin || "40%",
+              quantity: 0,
+              pre_order_quantity: qty,
+              added_by: isSharedParam ? "customer" : user?.role || 'sales_person',
+            }]);
+            setOptions((prev) => Array.isArray(prev) ? prev.filter((o) => o._id !== productId) : []);
+          }
           setTemporaryQuantities((prev) => {
-            const updated = { ...prev };
-            delete updated[productId];
-            return updated;
+            const next = { ...prev };
+            delete next[`${productId}-pre`];
+            return next;
           });
-          setOptions((prev) => Array.isArray(prev) ? prev.filter((opt) => opt._id !== product._id) : []);
         });
-
-        // Show toast after state update to avoid blocking
         requestAnimationFrame(() => {
-          debouncedSuccess(`Added ${product.name} (x${quantity}) to cart.`);
+          debouncedSuccess(`Added ${product.name} (x${qty}) as pre-order to cart.`);
         });
-      } else {
-        debouncedWarn(`${product.name} is already in the cart.`);
+        return;
       }
+
+      // Normal (in-stock) add
+      const existing = selectedProducts.find((p) => p._id === productId);
+      if (existing && ((existing.quantity ?? 0) > 0 || !splitProd)) {
+        debouncedWarn(`${product.name} is already in the cart.`);
+        return;
+      }
+      const quantity = (explicitQty && explicitQty > 0 ? explicitQty : 0) || temporaryQuantities[productId] || product.quantity || packStep;
+      const isSharedParam = new URLSearchParams(window.location.search).has("shared");
+      const updatedProducts: any = existing
+        // Split product exists only as pre-order; now adding its stock qty
+        ? selectedProducts.map((p) => p._id === productId ? { ...p, quantity } : p)
+        : [
+            ...selectedProducts,
+            {
+              ...product,
+              margin: specialMargins[productId] || customer?.cf_margin || order?.customer_margin || "40%",
+              quantity,
+              added_by: isSharedParam ? "customer" : user?.role || 'sales_person',
+            },
+          ];
+
+      startTransition(() => {
+        setSelectedProducts(updatedProducts);
+        setTemporaryQuantities((prev) => {
+          const updated = { ...prev };
+          delete updated[productId];
+          return updated;
+        });
+        setOptions((prev) => Array.isArray(prev) ? prev.filter((opt) => opt._id !== product._id) : []);
+      });
+      requestAnimationFrame(() => {
+        debouncedSuccess(`Added ${product.name} (x${quantity}) to cart.`);
+      });
     },
     [
       selectedProducts,
       temporaryQuantities,
       specialMargins,
       customer,
+      order?.customer_margin,
       debouncedSuccess,
       debouncedWarn,
     ]
   );
 
   const handleRemoveProduct = useCallback(
-    (id: string) => {
+    (id: string, isPreOrder = false) => {
+      if (isPreOrder) {
+        // Clear only pre_order_quantity; remove item entirely if no stock qty remains
+        const item = selectedProducts.find((p) => p._id === id);
+        startTransition(() => {
+          setSelectedProducts(
+            selectedProducts
+              .map((p) => p._id === id ? { ...p, pre_order_quantity: 0 } : p)
+              .filter((p) => p._id !== id || (p.quantity ?? 0) > 0)
+          );
+        });
+        requestAnimationFrame(() => {
+          if (item) debouncedSuccess(`Removed ${item.name} pre-order from cart`);
+        });
+        return;
+      }
+
       const removedProduct = selectedProducts.find((p) => p._id === id);
       if (!removedProduct) return;
-
-      // Batch state updates to prevent multiple re-renders
       startTransition(() => {
         setSelectedProducts(selectedProducts.filter((p) => p._id !== id));
         setOptions((prev) => Array.isArray(prev) ? [...prev, removedProduct] : [removedProduct]);
       });
-
-      // Show toast after state update to avoid blocking
       requestAnimationFrame(() => {
         debouncedSuccess(`Removed ${removedProduct.name} from cart`);
       });
@@ -1087,94 +1246,58 @@ const Products: React.FC<ProductsProps> = ({
   );
 
   const handleQuantityChange = useCallback(
-    (id: string, newQuantity: number) => {
+    (id: string, newQuantity: number, isPreOrder = false) => {
+      if (isPreOrder) {
+        const productInCart = selectedProducts.find((p) => p._id === id);
+        if (productInCart) {
+          startTransition(() => {
+            setSelectedProducts((prev) => prev.map((p) => {
+              if (p._id !== id) return p;
+              const minQty = getPackStep(p.name);
+              const sanitized = Math.max(minQty, Math.min(newQuantity, p.upcoming_stock || Infinity));
+              debouncedSuccess(`Updated ${p.name} pre-order to quantity ${sanitized}`);
+              return { ...p, pre_order_quantity: sanitized };
+            }));
+          });
+        } else {
+          // Not in cart yet — entering a quantity adds it straight to the cart
+          // as a pre-order instead of requiring a separate "Add as Pre-Order" click.
+          const product = productLookupRef.current.get(id);
+          if (product && newQuantity > 0) {
+            handleAddProducts(product, true, newQuantity);
+          } else {
+            setTemporaryQuantities((prev) => ({ ...prev, [`${id}-pre`]: newQuantity }));
+          }
+        }
+        return;
+      }
+
       const productInCart = selectedProducts.find((p) => p._id === id);
       if (productInCart) {
         const minQty = getPackStep(productInCart.name);
         const sanitized = Math.max(
           minQty,
-          Math.min(newQuantity, productInCart.stock)
+          (productInCart.pre_order && (productInCart.stock ?? 0) <= 0) ? Math.min(newQuantity, productInCart.upcoming_stock || Infinity) : Math.min(newQuantity, productInCart.stock)
         );
         const updated = selectedProducts.map((p) =>
           p._id === id ? { ...p, quantity: sanitized } : p
         );
-
-        // Use startTransition for non-blocking update
         startTransition(() => {
           setSelectedProducts(updated);
         });
-
-        debouncedSuccess(
-          `Updated ${productInCart.name} to quantity ${sanitized}`
-        );
+        debouncedSuccess(`Updated ${productInCart.name} to quantity ${sanitized}`);
       } else {
-        const key = searchTerm.trim() !== ""
-          ? "search"
-          : groupByCategory
-            ? `all-${activeCategory}`
-            : `${activeBrand}-${activeCategory}`;
-
-        const data = productsByBrandCategory[key];
-        let product;
-
-        // Check if data has items array (grouped format) or is a plain array
-        if (data && (data as any).items !== undefined) {
-          // Grouped format - search through items
-          const items = (data as any).items || [];
-          for (const item of items) {
-            if (item.type === 'product' && item.product._id === id) {
-              product = item.product;
-              break;
-            } else if (item.type === 'group') {
-              const foundInGroup = item.products?.find((p: any) => p._id === id);
-              if (foundInGroup) {
-                product = foundInGroup;
-                break;
-              }
-            }
-          }
-        } else if (Array.isArray(data)) {
-          // Plain array format
-          product = data.find((p) => p._id === id);
-        }
-
-        if (product) {
-          const sanitized = Math.max(getPackStep(product.name), Math.min(newQuantity, product.stock));
-          const isShared = new URLSearchParams(window.location.search).has(
-            "shared"
-          );
-          const updated = [
-            ...selectedProducts,
-            {
-              ...product,
-              margin: specialMargins[id]
-                ? specialMargins[id]
-                : customer?.cf_margin || "40%",
-              quantity: sanitized,
-              added_by: isShared ? "customer" : "sales_person",
-            },
-          ];
-
-          // Use startTransition for non-blocking update
-          startTransition(() => {
-            setSelectedProducts(updated);
-          });
-
-          debouncedSuccess(`Added ${product.name} (x${sanitized}) to cart.`);
+        // Not in cart yet — entering a quantity adds it straight to the cart
+        // instead of requiring a separate "Add to Cart" click.
+        const product = productLookupRef.current.get(id);
+        if (product && newQuantity > 0) {
+          handleAddProducts(product, false, newQuantity);
+        } else {
+          setTemporaryQuantities((prev) => ({ ...prev, [id]: newQuantity }));
         }
       }
     },
-    [
-      selectedProducts,
-      productsByBrandCategory,
-      searchTerm,
-      activeBrand,
-      activeCategory,
-      groupByCategory,
-      specialMargins,
-      customer,
-      debouncedSuccess,
-    ]
+    [selectedProducts, debouncedSuccess, handleAddProducts]
   );
 
   const handleClearCart = useCallback(async () => {
@@ -1430,6 +1553,29 @@ const Products: React.FC<ProductsProps> = ({
     return data || [];
   }, [productsByBrandCategory, productsKey, itemsData]);
 
+  // Keep a flat id→product lookup of everything currently renderable so that
+  // entering a quantity can resolve the full product and add it to the cart.
+  useEffect(() => {
+    const map = productLookupRef.current;
+    const add = (p: any) => {
+      if (p && p._id) map.set(p._id, p);
+    };
+    if (Array.isArray(itemsData)) {
+      itemsData.forEach((item: any) => {
+        if (item?.type === 'group') {
+          (item.products || []).forEach(add);
+          add(item.primaryProduct);
+        } else {
+          add(item?.product);
+        }
+      });
+    }
+    displayedProducts.forEach(add);
+    options.forEach(add);
+    outOfStockProducts.forEach(add);
+    selectedProducts.forEach(add);
+  }, [itemsData, displayedProducts, options, outOfStockProducts, selectedProducts]);
+
   // Get grouped data - only when backend doesn't already send grouped itemsData
   const groupedData = useMemo((): GroupedProducts | null => {
     if (!groupByProductName || itemsData) {
@@ -1439,6 +1585,13 @@ const Products: React.FC<ProductsProps> = ({
     return groupProductsByName(displayedProducts);
   }, [groupByProductName, itemsData, displayedProducts]);
 
+
+  const filteredBrandList = useMemo(() => {
+    const preOrderCount = productCounts["Pre Orders"]
+      ? Object.values(productCounts["Pre Orders"]).reduce((a, b) => a + b, 0)
+      : 0;
+    return brandList.filter((b) => b.brand !== "Pre Orders" || preOrderCount > 0);
+  }, [brandList, productCounts]);
 
   const allCategoryCounts = useMemo(() => {
     const counts: { [category: string]: number } = {};
@@ -1473,6 +1626,13 @@ const Products: React.FC<ProductsProps> = ({
     >
       {/* Reference for top of page */}
       <div ref={pageTopRef} />
+
+      {/* Locked-order banner */}
+      {['accepted', 'declined', 'invoiced'].includes(order?.status?.toLowerCase()) && (
+        <Alert severity="warning" sx={{ borderRadius: 2, fontWeight: 500 }}>
+          Products cannot be added to an order that is <strong>{order.status.toLowerCase()}</strong>.
+        </Alert>
+      )}
 
       {/* Products Section */}
       <Box sx={{ flex: 3 }}>
@@ -1682,7 +1842,7 @@ const Products: React.FC<ProductsProps> = ({
                       );
                     }}
                   >
-                    {brandList.map((b: any) => {
+                    {filteredBrandList.map((b: any) => {
                       const brandCount = productCounts[b.brand]
                         ? Object.values(productCounts[b.brand]).reduce(
                           (a, b) => a + b,
@@ -1697,7 +1857,23 @@ const Products: React.FC<ProductsProps> = ({
                             gap={1.5}
                             width="100%"
                           >
-                            {(b.image || b.url) && (
+                            {b.brand === "Pre Orders" ? (
+                              <Box
+                                sx={{
+                                  width: 56,
+                                  height: 56,
+                                  borderRadius: '6px',
+                                  backgroundColor: '#ffffff',
+                                  border: '1px solid rgba(0,0,0,0.1)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <ShoppingCartCheckoutIcon sx={{ fontSize: 30, color: '#d97706' }} />
+                              </Box>
+                            ) : (b.image || b.url) && (
                               <Box
                                 sx={{
                                   width: 56,
@@ -1778,7 +1954,7 @@ const Products: React.FC<ProductsProps> = ({
                       },
                     }}
                   >
-                    {brandList.map((b: any) => {
+                    {filteredBrandList.map((b: any) => {
                       // Calculate brand count for all brands including "New Arrivals"
                       const brandCount = productCounts[b.brand]
                         ? Object.values(productCounts[b.brand]).reduce(
@@ -1797,7 +1973,25 @@ const Products: React.FC<ProductsProps> = ({
                               alignItems="center"
                               gap={1}
                             >
-                              {(b.image || b.url) && (
+                              {b.brand === "Pre Orders" ? (
+                                <Box
+                                  className="brand-image"
+                                  sx={{
+                                    width: 80,
+                                    height: 80,
+                                    borderRadius: '8px',
+                                    backgroundColor: '#ffffff',
+                                    border: '2px solid transparent',
+                                    transition: 'all 0.2s ease-in-out',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <ShoppingCartCheckoutIcon sx={{ fontSize: 40, color: '#d97706' }} />
+                                </Box>
+                              ) : (b.image || b.url) && (
                                 <Box
                                   className="brand-image"
                                   sx={{
@@ -2211,13 +2405,20 @@ const Products: React.FC<ProductsProps> = ({
                         getSellingPrice={getSellingPrice}
                         handleImageClick={handleImageClick}
                         handleQuantityChange={handleQuantityChange}
-                        handleAddOrRemove={(prod: any) =>
-                          selectedProducts.some((p) => p._id === prod._id)
-                            ? handleRemoveProduct(prod._id)
-                            : handleAddProducts(prod)
-                        }
+                        handleAddOrRemove={(prod: any) => {
+                          const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
+                          const _inCart = selectedProducts.find((p) => p._id === prod._id);
+                          if (_isPreCtx) {
+                            (_inCart?.pre_order_quantity ?? 0) > 0
+                              ? handleRemoveProduct(prod._id, true)
+                              : handleAddProducts(prod, true);
+                          } else {
+                            _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
+                          }
+                        }}
                         index={index}
                         isShared={isShared}
+                        isPreOrderTab={activeBrand === "Pre Orders" && !searchTerm.trim()}
                       />
                     );
                   } else {
@@ -2234,13 +2435,20 @@ const Products: React.FC<ProductsProps> = ({
                         getSellingPrice={getSellingPrice}
                         handleImageClick={handleImageClick}
                         handleQuantityChange={handleQuantityChange}
-                        handleAddOrRemove={(prod: any) =>
-                          selectedProducts.some((p) => p._id === prod._id)
-                            ? handleRemoveProduct(prod._id)
-                            : handleAddProducts(prod)
-                        }
+                        handleAddOrRemove={(prod: any) => {
+                          const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
+                          const _inCart = selectedProducts.find((p) => p._id === prod._id);
+                          if (_isPreCtx) {
+                            (_inCart?.pre_order_quantity ?? 0) > 0
+                              ? handleRemoveProduct(prod._id, true)
+                              : handleAddProducts(prod, true);
+                          } else {
+                            _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
+                          }
+                        }}
                         index={index}
                         isShared={isShared}
+                        isPreOrderTab={activeBrand === "Pre Orders" && !searchTerm.trim()}
                       />
                     );
                   }
@@ -2268,13 +2476,20 @@ const Products: React.FC<ProductsProps> = ({
                     getSellingPrice={getSellingPrice}
                     handleImageClick={handleImageClick}
                     handleQuantityChange={handleQuantityChange}
-                    handleAddOrRemove={(prod: any) =>
-                      selectedProducts.some((p) => p._id === prod._id)
-                        ? handleRemoveProduct(prod._id)
-                        : handleAddProducts(prod)
-                    }
+                    handleAddOrRemove={(prod: any) => {
+                      const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
+                      const _inCart = selectedProducts.find((p) => p._id === prod._id);
+                      if (_isPreCtx) {
+                        (_inCart?.pre_order_quantity ?? 0) > 0
+                          ? handleRemoveProduct(prod._id, true)
+                          : handleAddProducts(prod, true);
+                      } else {
+                        _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
+                      }
+                    }}
                     index={index}
                     isShared={isShared}
+                    isPreOrderTab={activeBrand === "Pre Orders" && !searchTerm.trim()}
                   />
                 ))}
               </Box>
@@ -2322,8 +2537,8 @@ const Products: React.FC<ProductsProps> = ({
               </Box>
             )}
 
-            {/* Out of Stock Products Section - exclude from New Arrivals */}
-            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && (
+            {/* Out of Stock Products Section - exclude from New Arrivals and Pre Orders */}
+            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && activeBrand !== "Pre Orders" && (
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
                   Out of Stock Products
@@ -2354,11 +2569,17 @@ const Products: React.FC<ProductsProps> = ({
                             getSellingPrice={getSellingPrice}
                             handleImageClick={handleImageClick}
                             handleQuantityChange={handleQuantityChange}
-                            handleAddOrRemove={(prod: any) =>
-                              selectedProducts.some((p) => p._id === prod._id)
-                                ? handleRemoveProduct(prod._id)
-                                : handleAddProducts(prod)
-                            }
+                            handleAddOrRemove={(prod: any) => {
+                              const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
+                              const _inCart = selectedProducts.find((p) => p._id === prod._id);
+                              if (_isPreCtx) {
+                                (_inCart?.pre_order_quantity ?? 0) > 0
+                                  ? handleRemoveProduct(prod._id, true)
+                                  : handleAddProducts(prod, true);
+                              } else {
+                                _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
+                              }
+                            }}
                             index={index}
                             isShared={isShared}
                             isOutOfStock={true}
@@ -2596,11 +2817,17 @@ const Products: React.FC<ProductsProps> = ({
                           getSellingPrice={getSellingPrice}
                           handleImageClick={handleImageClick}
                           handleQuantityChange={handleQuantityChange}
-                          handleAddOrRemove={(prod: any) =>
-                            selectedProducts.some((p) => p._id === prod._id)
-                              ? handleRemoveProduct(prod._id)
-                              : handleAddProducts(prod)
-                          }
+                          handleAddOrRemove={(prod: any) => {
+                            const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
+                            const _inCart = selectedProducts.find((p) => p._id === prod._id);
+                            if (_isPreCtx) {
+                              (_inCart?.pre_order_quantity ?? 0) > 0
+                                ? handleRemoveProduct(prod._id, true)
+                                : handleAddProducts(prod, true);
+                            } else {
+                              _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
+                            }
+                          }}
                           isShared={isShared}
                           showUPC={showUPC}
                         />
@@ -2710,13 +2937,20 @@ const Products: React.FC<ProductsProps> = ({
                         getSellingPrice={getSellingPrice}
                         handleImageClick={handleImageClick}
                         handleQuantityChange={handleQuantityChange}
-                        handleAddOrRemove={(prod: any) =>
-                          selectedProducts.some((p) => p._id === prod._id)
-                            ? handleRemoveProduct(prod._id)
-                            : handleAddProducts(prod)
-                        }
+                        handleAddOrRemove={(prod: any) => {
+                          const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
+                          const _inCart = selectedProducts.find((p) => p._id === prod._id);
+                          if (_isPreCtx) {
+                            (_inCart?.pre_order_quantity ?? 0) > 0
+                              ? handleRemoveProduct(prod._id, true)
+                              : handleAddProducts(prod, true);
+                          } else {
+                            _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
+                          }
+                        }}
                         index={index}
                         isShared={isShared}
+                        isPreOrderTab={activeBrand === "Pre Orders" && !searchTerm.trim()}
                       />
                     );
                   } else {
@@ -2733,13 +2967,20 @@ const Products: React.FC<ProductsProps> = ({
                         getSellingPrice={getSellingPrice}
                         handleImageClick={handleImageClick}
                         handleQuantityChange={handleQuantityChange}
-                        handleAddOrRemove={(prod: any) =>
-                          selectedProducts.some((p) => p._id === prod._id)
-                            ? handleRemoveProduct(prod._id)
-                            : handleAddProducts(prod)
-                        }
+                        handleAddOrRemove={(prod: any) => {
+                          const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
+                          const _inCart = selectedProducts.find((p) => p._id === prod._id);
+                          if (_isPreCtx) {
+                            (_inCart?.pre_order_quantity ?? 0) > 0
+                              ? handleRemoveProduct(prod._id, true)
+                              : handleAddProducts(prod, true);
+                          } else {
+                            _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
+                          }
+                        }}
                         index={index}
                         isShared={isShared}
+                        isPreOrderTab={activeBrand === "Pre Orders" && !searchTerm.trim()}
                       />
                     );
                   }
@@ -2776,6 +3017,7 @@ const Products: React.FC<ProductsProps> = ({
                     handleRemoveProduct={handleRemoveProduct}
                     handleAddProducts={handleAddProducts}
                     isShared={isShared}
+                    isPreOrderTab={activeBrand === "Pre Orders" && !searchTerm.trim()}
                   />
                 ))}
               </Box>
@@ -2815,8 +3057,8 @@ const Products: React.FC<ProductsProps> = ({
               </Box>
             )}
 
-            {/* Out of Stock Products Section - exclude from New Arrivals */}
-            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && (
+            {/* Out of Stock Products Section - exclude from New Arrivals and Pre Orders */}
+            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && activeBrand !== "Pre Orders" && (
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
                   Out of Stock Products
@@ -2853,11 +3095,17 @@ const Products: React.FC<ProductsProps> = ({
                             getSellingPrice={getSellingPrice}
                             handleImageClick={handleImageClick}
                             handleQuantityChange={handleQuantityChange}
-                            handleAddOrRemove={(prod: any) =>
-                              selectedProducts.some((p) => p._id === prod._id)
-                                ? handleRemoveProduct(prod._id)
-                                : handleAddProducts(prod)
-                            }
+                            handleAddOrRemove={(prod: any) => {
+                              const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
+                              const _inCart = selectedProducts.find((p) => p._id === prod._id);
+                              if (_isPreCtx) {
+                                (_inCart?.pre_order_quantity ?? 0) > 0
+                                  ? handleRemoveProduct(prod._id, true)
+                                  : handleAddProducts(prod, true);
+                              } else {
+                                _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
+                              }
+                            }}
                             index={index}
                             isShared={isShared}
                             isOutOfStock={true}
@@ -3138,7 +3386,11 @@ const Products: React.FC<ProductsProps> = ({
         }}
       >
         <Badge
-          badgeContent={selectedProducts.length}
+          badgeContent={selectedProducts.reduce((n: number, p: any) => {
+            const isSplit = p.pre_order === true && (p.stock ?? 0) > 0;
+            if (isSplit) return n + ((p.quantity ?? 0) > 0 ? 1 : 0) + ((p.pre_order_quantity ?? 0) > 0 ? 1 : 0);
+            return n + 1;
+          }, 0)}
           color="error"
           max={99}
           sx={{

@@ -22,7 +22,6 @@ import {
   InputLabel,
   Select,
   IconButton,
-  useTheme,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -31,6 +30,10 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
+  useTheme,
+  Chip,
+  FormGroup,
+  Divider,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
@@ -74,6 +77,7 @@ const Orders = () => {
     useState<boolean>(false);
   const [filterEstimatesGreaterThanZero, setFilterEstimatesGreaterThanZero] =
     useState<boolean>(false);
+  const [filterHasPreOrder, setFilterHasPreOrder] = useState<boolean>(false);
   const [salesPeople, setSalesPeople] = useState<string[]>([
     'SP1',
     'SP2',
@@ -102,11 +106,23 @@ const Orders = () => {
   const [searchEstimateNumber, setSearchEstimateNumber] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+  const [searchKey, setSearchKey] = useState(0);
 
   const [changeCreatorDialogOpen, setChangeCreatorDialogOpen] =
     useState<boolean>(false);
   const [loadingCreatorUpdate, setLoadingCreatorUpdate] =
     useState<boolean>(false);
+
+  // Estimate-selection dialog (choose in-stock / pre-order estimate for an action)
+  const [estimateSelectOpen, setEstimateSelectOpen] = useState<boolean>(false);
+  const [estimateActionOrder, setEstimateActionOrder] = useState<any>(null);
+  const [pendingAction, setPendingAction] = useState<
+    'draft' | 'accepted' | 'declined'
+  >('draft');
+  const [estimateTypes, setEstimateTypes] = useState<{
+    stock: boolean;
+    pre_order: boolean;
+  }>({ stock: true, pre_order: true });
 
   useEffect(() => {
     const fetchSalesPeople = async () => {
@@ -164,6 +180,7 @@ const Orders = () => {
       if (filterEstimatesCreated)
         params.estimate_created = filterEstimatesCreated;
       if (filterEstimatesGreaterThanZero) params.amount = true;
+      if (filterHasPreOrder) params.has_pre_order = true;
       console.log(params);
       const response = await axiosInstance.get('/admin/orders/export', {
         params,
@@ -187,9 +204,8 @@ const Orders = () => {
     setOpenImagePopup(false);
   }, []);
   const applyFilters = () => {
-    setPage(0); // reset page
     setOpenFilterModal(false);
-    fetchOrders(); // fetch with new filters
+    triggerSearch();
   };
   // Fetch orders from the server
   const fetchOrders = async () => {
@@ -209,6 +225,7 @@ const Orders = () => {
       if (filterEstimatesCreated)
         params.estimate_created = filterEstimatesCreated;
       if (filterEstimatesGreaterThanZero) params.amount = true;
+      if (filterHasPreOrder) params.has_pre_order = true;
       const response = await axiosInstance.get(`/admin/orders`, {
         params,
       });
@@ -227,10 +244,11 @@ const Orders = () => {
     }
   };
 
-  // Re-fetch orders whenever page or rowsPerPage changes
+  // Re-fetch orders whenever page, rowsPerPage, or search is triggered
   useEffect(() => {
     fetchOrders();
-  }, [page, rowsPerPage, !orderLoading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, rowsPerPage, searchKey]);
 
   // MUI Pagination: next/previous
   const handleChangePage = (event: any, newPage: number) => {
@@ -264,14 +282,15 @@ const Orders = () => {
     setDrawerOpen(true);
   };
 
-  const handleDownload = async (order: any) => {
+  const handleDownload = async (order: any, type?: 'pre_order') => {
     try {
-      const resp = await axios.get(
-        `${process.env.api_url}/orders/download_pdf/${order._id}`,
-        {
-          responseType: 'blob', // Receive the response as binary data
-        }
-      );
+      const apiUrl =
+        type === 'pre_order'
+          ? `${process.env.api_url}/orders/download_pdf/${order._id}?type=pre_order`
+          : `${process.env.api_url}/orders/download_pdf/${order._id}`;
+      const resp = await axios.get(apiUrl, {
+        responseType: 'blob', // Receive the response as binary data
+      });
 
       // Check if the blob is an actual PDF or an error message
       if (resp.data.type !== 'application/pdf') {
@@ -282,7 +301,10 @@ const Orders = () => {
 
       // Extract filename from headers or set default
       const contentDisposition = resp.headers['content-disposition'];
-      let fileName = `${order.estimate_number}.pdf`;
+      let fileName =
+        type === 'pre_order'
+          ? `${order.pre_order_estimate_number}.pdf`
+          : `${order.estimate_number}.pdf`;
 
       if (contentDisposition) {
         const match = contentDisposition.match(/filename="(.+)"/);
@@ -311,19 +333,21 @@ const Orders = () => {
     setDrawerOpen(false);
     setSelectedOrder(null);
   };
-  const getColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'invoiced':
-        return 'green';
-      case 'declined':
-        return 'red';
-      case 'deleted':
-        return 'red';
-      case 'accepted':
-        return 'green';
-      default:
-        return 'inherit';
+  const getStatusChipColor = (status: string): 'default' | 'warning' | 'info' | 'success' | 'error' | 'primary' => {
+    switch (status?.toLowerCase()) {
+      case 'draft': return 'warning';
+      case 'sent': return 'info';
+      case 'accepted': return 'primary';
+      case 'invoiced': return 'success';
+      case 'declined': return 'error';
+      case 'deleted': return 'error';
+      default: return 'default';
     }
+  };
+
+  const triggerSearch = () => {
+    setPage(0);
+    setSearchKey(k => k + 1);
   };
   const handleDelete = async (order: any) => {
     setOrderLoading(true);
@@ -341,13 +365,19 @@ const Orders = () => {
       setOrderLoading(false);
     }
   };
-  const handleEnd = async (order: any, status = 'draft') => {
+  const handleEnd = async (
+    order: any,
+    status = 'draft',
+    createFlags?: { stock: boolean; pre_order: boolean }
+  ) => {
     const base = `${process.env.api_url}`;
     setOrderLoading(true);
     try {
       const resp = await axiosInstance.post(`${base}/orders/finalise`, {
         order_id: order._id,
         status,
+        create_stock: createFlags?.stock ?? true,
+        create_pre_order: createFlags?.pre_order ?? true,
       });
       console.log(resp.data);
       if (resp.status === 200) {
@@ -357,10 +387,70 @@ const Orders = () => {
           toast.error(resp.data.message);
         }
       }
+      await fetchOrders();
     } catch (error) {
       console.log(error);
     } finally {
       setOrderLoading(false);
+    }
+  };
+
+  // ── Pre-order / in-stock helpers ──────────────────────────────────
+  // Saved order products carry `pre_order`, `quantity` and `pre_order_quantity`
+  // (but not live `stock`). A split product (pre_order with both portions) keeps
+  // a separate `pre_order_quantity`; a pure pre-order product carries its qty in
+  // `quantity`.
+  const productIsSplit = (p: any) =>
+    !!p?.pre_order && Number(p?.pre_order_quantity) > 0;
+
+  const orderHasStockItems = (o: any) =>
+    (o?.products || []).some((p: any) =>
+      productIsSplit(p)
+        ? Number(p.quantity) > 0
+        : !p.pre_order && Number(p.quantity) > 0
+    );
+
+  const orderHasPreOrderItems = (o: any) =>
+    (o?.products || []).some((p: any) =>
+      p.pre_order
+        ? productIsSplit(p)
+          ? Number(p.pre_order_quantity) > 0
+          : Number(p.quantity) > 0
+        : false
+    );
+
+  // Whether an order has both an in-stock and a pre-order dimension, so the
+  // admin must choose which estimate(s) the action applies to.
+  const orderNeedsEstimateChoice = (o: any) => {
+    const hasStock = orderHasStockItems(o) || !!o?.estimate_created;
+    const hasPreOrder = orderHasPreOrderItems(o) || !!o?.pre_order_estimate_created;
+    return hasStock && hasPreOrder;
+  };
+
+  // Entry point for the Save As Draft / Accept / Decline buttons.
+  const handleEstimateAction = (
+    order: any,
+    status: 'draft' | 'accepted' | 'declined'
+  ) => {
+    if (orderNeedsEstimateChoice(order)) {
+      setEstimateActionOrder(order);
+      setPendingAction(status);
+      // draft → create the estimates that don't exist yet;
+      // accept/decline → target the estimates that already exist.
+      setEstimateTypes(
+        status === 'draft'
+          ? {
+              stock: !order?.estimate_created,
+              pre_order: !order?.pre_order_estimate_created,
+            }
+          : {
+              stock: !!order?.estimate_created,
+              pre_order: !!order?.pre_order_estimate_created,
+            }
+      );
+      setEstimateSelectOpen(true);
+    } else {
+      handleEnd(order, status);
     }
   };
   return (
@@ -388,8 +478,15 @@ const Orders = () => {
               size='small'
               value={searchEstimateNumber}
               onChange={(e) => setSearchEstimateNumber(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && fetchOrders()}
+              onKeyDown={(e) => e.key === 'Enter' && triggerSearch()}
             />
+            <Button
+              variant='contained'
+              color='primary'
+              onClick={triggerSearch}
+            >
+              Search
+            </Button>
             <Button
               variant='contained'
               startIcon={<Download />}
@@ -455,13 +552,35 @@ const Orders = () => {
                             />
                           </TableCell>
                           <TableCell>
-                            {order?.estimate_created
-                              ? order?.estimate_number
-                              : order._id.slice(-6)}
+                            <Box
+                              display='flex'
+                              flexDirection='column'
+                              gap={0.25}
+                            >
+                              <span>
+                                {order?.estimate_created
+                                  ? order?.estimate_number
+                                  : order._id.slice(-6)}
+                              </span>
+                              {order?.pre_order_estimate_created && (
+                                <Chip
+                                  label={order?.pre_order_estimate_number}
+                                  color='warning'
+                                  size='small'
+                                  variant='outlined'
+                                  sx={{ fontWeight: 600 }}
+                                />
+                              )}
+                            </Box>
                           </TableCell>
                           <TableCell>{order.customer_name}</TableCell>
-                          <TableCell style={{ color: getColor(order.status) }}>
-                            {capitalize(order.status)}
+                          <TableCell>
+                            <Chip
+                              label={capitalize(order.status)}
+                              color={getStatusChipColor(order.status)}
+                              size='small'
+                              sx={{ fontWeight: 600, textTransform: 'capitalize' }}
+                            />
                           </TableCell>
                           <TableCell>
                             {order.created_by_info?.name || 'Unknown'}
@@ -483,7 +602,7 @@ const Orders = () => {
                                         order?.status?.toLowerCase()
                                       )) || !order?.total_amount
                                 }
-                                onClick={() => handleEnd(order)}
+                                onClick={() => handleEstimateAction(order, 'draft')}
                               >
                                 Save As Draft
                               </Button>
@@ -499,14 +618,14 @@ const Orders = () => {
                                     order?.status?.toLowerCase()
                                   )
                                 }
-                                onClick={() => handleEnd(order, 'accepted')}
+                                onClick={() => handleEstimateAction(order, 'accepted')}
                               >
                                 Accept
                               </Button>
                               <Button
                                 variant='outlined'
                                 color={'error'}
-                                onClick={() => handleEnd(order, 'declined')}
+                                onClick={() => handleEstimateAction(order, 'declined')}
                                 disabled={
                                   !order?.estimate_created ||
                                   ['deleted'].includes(
@@ -548,6 +667,16 @@ const Orders = () => {
                               {order?.estimate_created && (
                                 <IconButton
                                   onClick={() => handleDownload(order)}
+                                >
+                                  <Download />
+                                </IconButton>
+                              )}
+                              {order?.pre_order_estimate_created && (
+                                <IconButton
+                                  color='warning'
+                                  onClick={() =>
+                                    handleDownload(order, 'pre_order')
+                                  }
                                 >
                                   <Download />
                                 </IconButton>
@@ -691,6 +820,44 @@ const Orders = () => {
                     <Typography>
                       <strong>Estimate Number:</strong>{' '}
                       {selectedOrder?.estimate_number}
+                      {selectedOrder?.estimate_url && (
+                        <>
+                          {' '}
+                          <a
+                            href={selectedOrder.estimate_url}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            style={{
+                              color: theme.palette.primary.main,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            View ↗
+                          </a>
+                        </>
+                      )}
+                    </Typography>
+                  )}
+                  {selectedOrder?.pre_order_estimate_created && (
+                    <Typography>
+                      <strong>Pre-Order Estimate Number:</strong>{' '}
+                      {selectedOrder?.pre_order_estimate_number}
+                      {selectedOrder?.pre_order_estimate_url && (
+                        <>
+                          {' '}
+                          <a
+                            href={selectedOrder.pre_order_estimate_url}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            style={{
+                              color: theme.palette.warning.main,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            View ↗
+                          </a>
+                        </>
+                      )}
                     </Typography>
                   )}
                   {selectedOrder?.reference_number && (
@@ -864,7 +1031,9 @@ const Orders = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {selectedOrder.products?.map((product: any) => (
+                      {selectedOrder.products
+                        ?.filter((product: any) => Number(product.quantity) > 0)
+                        .map((product: any) => (
                         <TableRow key={product.product_id}>
                           <TableCell>
                             <img
@@ -883,7 +1052,38 @@ const Orders = () => {
                               }}
                             />
                           </TableCell>
-                          <TableCell>{product.name}</TableCell>
+                          <TableCell>
+                            <Box
+                              display='flex'
+                              flexDirection='column'
+                              gap={0.5}
+                            >
+                              <span>{product.name}</span>
+                              {product?.pre_order && (
+                                <Box display='flex' gap={0.5} flexWrap='wrap'>
+                                  <Chip
+                                    label={
+                                      productIsSplit(product)
+                                        ? 'Pre-Order (Split)'
+                                        : 'Pre-Order'
+                                    }
+                                    color='warning'
+                                    size='small'
+                                    variant='outlined'
+                                    sx={{ fontWeight: 600, height: 20 }}
+                                  />
+                                  {productIsSplit(product) && (
+                                    <Chip
+                                      label={`PO Qty: ${product.pre_order_quantity}`}
+                                      color='warning'
+                                      size='small'
+                                      sx={{ height: 20 }}
+                                    />
+                                  )}
+                                </Box>
+                              )}
+                            </Box>
+                          </TableCell>
                           <TableCell>{product.quantity}</TableCell>
                           <TableCell>₹{product.price?.toFixed(2)}</TableCell>
                           <TableCell>
@@ -1000,6 +1200,17 @@ const Orders = () => {
               sx={{ mt: 2 }}
             />
 
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={filterHasPreOrder}
+                  onChange={(e) => setFilterHasPreOrder(e.target.checked)}
+                />
+              }
+              label='Has Pre-Order Items'
+              sx={{ mt: 2 }}
+            />
+
             {/* Apply Filters Button */}
             <Box sx={{ mt: 3 }}>
               <Button variant='contained' fullWidth onClick={applyFilters}>
@@ -1016,6 +1227,8 @@ const Orders = () => {
                   setFilterStatus('');
                   setFilterSalesPerson('');
                   setFilterEstimatesCreated(false);
+                  setFilterEstimatesGreaterThanZero(false);
+                  setFilterHasPreOrder(false);
                 }}
               >
                 Reset Filters
@@ -1074,6 +1287,192 @@ const Orders = () => {
             sx={{ textTransform: 'none' }}
           >
             Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Estimate type selection dialog */}
+      <Dialog
+        open={estimateSelectOpen}
+        onClose={() => setEstimateSelectOpen(false)}
+        maxWidth='xs'
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+          {pendingAction === 'accepted'
+            ? 'Accept Order'
+            : pendingAction === 'declined'
+            ? 'Decline Order'
+            : 'Save as Draft'}{' '}
+          — Select Estimates
+        </DialogTitle>
+        <DialogContent>
+          {(() => {
+            const o = estimateActionOrder;
+            const hasStock = orderHasStockItems(o) || !!o?.estimate_created;
+            const hasPreOrder =
+              orderHasPreOrderItems(o) || !!o?.pre_order_estimate_created;
+            const stockCount = (o?.products || []).filter((p: any) =>
+              productIsSplit(p)
+                ? Number(p.quantity) > 0
+                : !p.pre_order && Number(p.quantity) > 0
+            ).length;
+            const preOrderCount = (o?.products || []).filter((p: any) =>
+              p.pre_order
+                ? productIsSplit(p)
+                  ? Number(p.pre_order_quantity) > 0
+                  : Number(p.quantity) > 0
+                : false
+            ).length;
+            return (
+              <>
+                <Typography variant='body2' color='text.secondary' mb={2}>
+                  This order has both in-stock and pre-order items. Choose which
+                  estimates this action applies to.
+                </Typography>
+                <FormGroup>
+                  {/* Select All */}
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={
+                          (hasStock ? estimateTypes.stock : true) &&
+                          (hasPreOrder ? estimateTypes.pre_order : true)
+                        }
+                        indeterminate={
+                          hasStock &&
+                          hasPreOrder &&
+                          estimateTypes.stock !== estimateTypes.pre_order
+                        }
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          setEstimateTypes({
+                            stock: hasStock ? val : estimateTypes.stock,
+                            pre_order: hasPreOrder
+                              ? val
+                              : estimateTypes.pre_order,
+                          });
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography variant='body2' fontWeight={700}>
+                        Select All
+                      </Typography>
+                    }
+                  />
+                  <Divider sx={{ mb: 1 }} />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={estimateTypes.stock}
+                        onChange={(e) =>
+                          setEstimateTypes((prev) => ({
+                            ...prev,
+                            stock: e.target.checked,
+                          }))
+                        }
+                        disabled={!hasStock}
+                      />
+                    }
+                    label={
+                      <Box>
+                        <Typography variant='body2' fontWeight={700}>
+                          In-Stock Estimate
+                          {o?.estimate_number && (
+                            <Chip
+                              label={o.estimate_number}
+                              size='small'
+                              sx={{ ml: 1, fontSize: '0.65rem', height: 18 }}
+                            />
+                          )}
+                        </Typography>
+                        <Typography variant='caption' color='text.secondary'>
+                          {stockCount} item{stockCount !== 1 ? 's' : ''}
+                          {o?.estimate_created
+                            ? ' · existing estimate'
+                            : ' · will create new estimate'}
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                  <FormControlLabel
+                    sx={{ mt: 1 }}
+                    control={
+                      <Checkbox
+                        checked={estimateTypes.pre_order}
+                        onChange={(e) =>
+                          setEstimateTypes((prev) => ({
+                            ...prev,
+                            pre_order: e.target.checked,
+                          }))
+                        }
+                        disabled={!hasPreOrder}
+                      />
+                    }
+                    label={
+                      <Box>
+                        <Typography
+                          variant='body2'
+                          fontWeight={700}
+                          color='warning.main'
+                        >
+                          Pre-Order Estimate
+                          {o?.pre_order_estimate_number && (
+                            <Chip
+                              label={o.pre_order_estimate_number}
+                              size='small'
+                              color='warning'
+                              sx={{ ml: 1, fontSize: '0.65rem', height: 18 }}
+                            />
+                          )}
+                        </Typography>
+                        <Typography variant='caption' color='text.secondary'>
+                          {preOrderCount} item{preOrderCount !== 1 ? 's' : ''}
+                          {o?.pre_order_estimate_created
+                            ? ' · existing estimate'
+                            : ' · will create new estimate'}
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </FormGroup>
+              </>
+            );
+          })()}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button
+            variant='outlined'
+            onClick={() => setEstimateSelectOpen(false)}
+            disabled={orderLoading}
+            sx={{ textTransform: 'none', borderRadius: 24 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant='contained'
+            color={pendingAction === 'declined' ? 'error' : 'primary'}
+            disabled={
+              orderLoading ||
+              (!estimateTypes.stock && !estimateTypes.pre_order)
+            }
+            onClick={async () => {
+              const o = estimateActionOrder;
+              setEstimateSelectOpen(false);
+              await handleEnd(o, pendingAction, estimateTypes);
+            }}
+            sx={{ textTransform: 'none', borderRadius: 24, fontWeight: 700 }}
+          >
+            {orderLoading ? (
+              <CircularProgress size={22} color='inherit' />
+            ) : pendingAction === 'accepted' ? (
+              'Accept Order'
+            ) : pendingAction === 'declined' ? (
+              'Decline Order'
+            ) : (
+              'Save as Draft'
+            )}
           </Button>
         </DialogActions>
       </Dialog>

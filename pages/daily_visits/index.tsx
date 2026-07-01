@@ -1,9 +1,8 @@
-import { useContext, useEffect, useState, useCallback, memo } from 'react';
+import { useContext, useEffect, useState, useCallback, memo, useMemo } from 'react';
 import {
   Box,
   Typography,
   CircularProgress,
-  Grid,
   Card,
   CardHeader,
   CardContent,
@@ -15,6 +14,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  TablePagination,
   useMediaQuery,
   useTheme,
   Paper,
@@ -685,6 +685,14 @@ const ShopCard = memo(function ShopCard({
 function DailyVisits() {
   const [dailyVisits, setDailyVisits] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [skipPage, setSkipPage] = useState('');
+  const [searchCustomer, setSearchCustomer] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [filterDate, setFilterDate] = useState('');
+  const ROWS_PER_PAGE = 5;
   const { user }: any = useContext(AuthContext);
   const router = useRouter();
 
@@ -707,14 +715,30 @@ function DailyVisits() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  const selfiePreviewUrl = useMemo(() => {
+    if (!selfie) return null;
+    const url = URL.createObjectURL(selfie as File);
+    return url;
+  }, [selfie]);
+
+  useEffect(() => {
+    return () => {
+      if (selfiePreviewUrl) URL.revokeObjectURL(selfiePreviewUrl);
+    };
+  }, [selfiePreviewUrl]);
+
   // Fetch daily visits from the API
-  const getData = async () => {
+  const getData = async (pageOverride?: number) => {
     setLoading(true);
+    const activePage = pageOverride !== undefined ? pageOverride : page;
     try {
-      const resp = await axios.get(`${process.env.api_url}/daily_visits`, {
-        params: { created_by: user?._id },
-      });
-      setDailyVisits(resp.data);
+      const params: any = { created_by: user?._id, page: activePage, limit: ROWS_PER_PAGE };
+      if (appliedSearch) params.customer_name = appliedSearch;
+      if (filterDate) params.date = filterDate;
+      const resp = await axios.get(`${process.env.api_url}/daily_visits`, { params });
+      setDailyVisits(resp.data.daily_visits);
+      setTotalCount(resp.data.total_count);
+      setTotalPages(resp.data.total_pages);
     } catch (error) {
       console.error(error);
       toast.error('Error fetching daily visits');
@@ -724,9 +748,9 @@ function DailyVisits() {
   };
 
   useEffect(() => {
-    getData();
+    if (user?._id) getData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [page, user?._id, appliedSearch, filterDate]);
 
   // Handler for selfie file selection
   const handleSelfieChange = (e: any) => {
@@ -745,7 +769,11 @@ function DailyVisits() {
         },
       });
       toast.success('Daily visit created successfully!');
-      getData();
+      setAppliedSearch('');
+      setSearchCustomer('');
+      setFilterDate('');
+      setPage(0);
+      getData(0);
       setShops([]);
       setSelfie(null);
       setOpen(false);
@@ -792,6 +820,7 @@ function DailyVisits() {
   }, []);
 
   const deleteShop = useCallback((index: any) => {
+    if (!window.confirm('Remove this shop from the visit?')) return;
     setShops((prev: any) => prev.filter((_: any, i: number) => i !== index));
   }, []);
 
@@ -822,7 +851,6 @@ function DailyVisits() {
   // Handle form submission for creating a daily visit with multiple shops
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    console.log(shops);
     // if (!selfie) {
     //   toast.error('Please upload a selfie');
     //   return;
@@ -852,8 +880,12 @@ function DailyVisits() {
           return;
         }
       }
-      if (!shop.address || !shop.reason) {
-        toast.error('Please complete address and reason for each shop.');
+      if (!shop.reason) {
+        toast.error('Please enter a reason for each shop.');
+        return;
+      }
+      if (!shop.potentialCustomer && !shop.address?.address_id) {
+        toast.error('Please select an address for each shop.');
         return;
       }
     }
@@ -875,6 +907,9 @@ function DailyVisits() {
         body['potential_customer_follow_up_date'] = shop.potential_customer_follow_up_date;
         body['potential_customer_comments'] = shop.potential_customer_comments;
         body['potential_customer_status'] = shop.potential_customer_status;
+        if (shop.potential_customer_id) {
+          body['potential_customer_id'] = shop.potential_customer_id;
+        }
       } else {
         body['customer_id'] = shop.selectedCustomer._id;
         body['customer_name'] = shop.selectedCustomer.contact_name;
@@ -901,7 +936,7 @@ function DailyVisits() {
       alignItems='center'
       sx={{ width: '100%', gap: 2, p: isMobile ? 2 : 4 }}
     >
-      <Header title='Daily Visits' showBackButton />
+      <Header title='Daily Visits' showBackButton useBack />
       <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
         <Button
           variant='contained'
@@ -921,7 +956,86 @@ function DailyVisits() {
         </Button>
       </Box>
 
-      {/* Display Daily Visits using a responsive Grid */}
+      {/* Filters */}
+      <Box
+        sx={{
+          width: '100%',
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 1.5,
+          alignItems: { xs: 'stretch', sm: 'center' },
+        }}
+      >
+        <TextField
+          label='Search Customer'
+          variant='outlined'
+          size='small'
+          value={searchCustomer}
+          onChange={(e) => setSearchCustomer(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              setAppliedSearch(searchCustomer);
+              setPage(0);
+            }
+          }}
+          sx={{ flex: 1 }}
+          InputProps={{
+            endAdornment: searchCustomer ? (
+              <IconButton
+                size='small'
+                onClick={() => {
+                  setSearchCustomer('');
+                  setAppliedSearch('');
+                  setPage(0);
+                }}
+              >
+                ×
+              </IconButton>
+            ) : null,
+          }}
+        />
+        <Button
+          variant='outlined'
+          size='small'
+          onClick={() => {
+            setAppliedSearch(searchCustomer);
+            setPage(0);
+          }}
+          sx={{ whiteSpace: 'nowrap', minWidth: 80 }}
+        >
+          Search
+        </Button>
+        <TextField
+          label='Filter by Date'
+          type='date'
+          variant='outlined'
+          size='small'
+          value={filterDate}
+          onChange={(e) => {
+            setFilterDate(e.target.value);
+            setPage(0);
+          }}
+          InputLabelProps={{ shrink: true }}
+          sx={{ minWidth: 160 }}
+        />
+        {(appliedSearch || filterDate) && (
+          <Button
+            variant='text'
+            size='small'
+            color='secondary'
+            onClick={() => {
+              setSearchCustomer('');
+              setAppliedSearch('');
+              setFilterDate('');
+              setPage(0);
+            }}
+          >
+            Clear
+          </Button>
+        )}
+      </Box>
+
+      {/* Daily Visits List */}
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
           <CircularProgress />
@@ -948,164 +1062,179 @@ function DailyVisits() {
           </Typography>
         </Paper>
       ) : (
-        <Box sx={{ width: '100%', p: 2 }}>
-          <Grid container spacing={3}>
+        <Box sx={{ width: '100%' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {dailyVisits.map((visit: any) => (
-              <Grid minWidth={'100%'} mt={2}>
-                <Card
-                  onClick={() => router.push(`/daily_visits/${visit._id}`)}
-                  sx={{
-                    cursor: 'pointer',
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    borderRadius: 2,
-                    transition: 'transform 0.2s, box-shadow 0.2s',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
-                    },
-                  }}
-                >
-                  <CardHeader
-                    avatar={
-                      <Avatar sx={{ backgroundColor: 'primary.main' }}>
-                        <CalendarTodayIcon />
-                      </Avatar>
-                    }
-                    title={
-                      <Typography variant='h6'>
-                        {new Date(visit.created_at).toLocaleDateString(
-                          'en-US',
-                          {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                          }
-                        )}
-                      </Typography>
-                    }
-                    subheader={
-                      <Chip
-                        size='small'
-                        label={`${visit.shops?.length || 0} shops`}
-                        color='primary'
-                        variant='outlined'
-                      />
-                    }
-                  />
-                  {visit.selfie && (
-                    <CardMedia
-                      component='img'
-                      image={visit.selfie}
-                      alt='Selfie'
-                      sx={{ height: 200, objectFit: 'cover' }}
-                    />
-                  )}
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    {visit.shops && visit.shops.length > 0 ? (
-                      visit.shops.map((shop: any, idx: number) => (
-                        <Box
-                          key={idx}
-                          sx={{
-                            mb: 2,
-                            p: 2,
-                            border: '1px solid #e0e0e0',
-                            borderRadius: 1,
-                            '&:last-child': {
-                              mb: 0,
-                            },
-                            '&:hover': {
-                              backgroundColor: 'rgba(0,0,0,0.02)',
-                            },
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              mb: 1,
-                            }}
-                          >
-                            <PersonIcon
-                              color='primary'
-                              fontSize='small'
-                              sx={{ mr: 1 }}
-                            />
-                            <Typography variant='body2' fontWeight='medium'>
-                              {shop.customer_name
-                                ? shop.customer_name
-                                : shop.potential_customer_name}
-                            </Typography>
-                          </Box>
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'flex-start',
-                              mb: 1,
-                            }}
-                          >
-                            <PlaceIcon
-                              color='action'
-                              fontSize='small'
-                              sx={{ mr: 1, mt: 0.3 }}
-                            />
-                            <Typography
-                              variant='body2'
-                              color='text.secondary'
-                              sx={{ fontSize: '0.8rem' }}
-                            >
-                              {shop?.potential_customer
-                                ? shop?.potential_customer_address
-                                : formatAddress(shop.address)}
-                            </Typography>
-                          </Box>
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'flex-start',
-                              mb: 1,
-                            }}
-                          >
-                            <DescriptionIcon
-                              color='action'
-                              fontSize='small'
-                              sx={{ mr: 1, mt: 0.3 }}
-                            />
-                            <Typography variant='body2'>
-                              {shop.reason}
-                            </Typography>
-                          </Box>
-                          <Box
-                            sx={{ display: 'flex', alignItems: 'flex-start' }}
-                          >
-                            <ShoppingCartOutlined
-                              color='action'
-                              fontSize='small'
-                              sx={{ mr: 1, mt: 0.3 }}
-                            />
-                            <Typography variant='body2'>
-                              Order Expected Soon:{' '}
-                              {shop?.order_expected ? 'Yes' : 'No'}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      ))
-                    ) : (
-                      <Typography
-                        variant='body2'
-                        color='text.secondary'
-                        sx={{ fontStyle: 'italic' }}
+              <Card
+                key={visit._id}
+                onClick={() => router.push(`/daily_visits/${visit._id}`)}
+                sx={{
+                  cursor: 'pointer',
+                  borderRadius: 2,
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+                  },
+                }}
+              >
+                <CardHeader
+                  avatar={
+                    <Avatar sx={{ backgroundColor: 'primary.main' }}>
+                      <CalendarTodayIcon />
+                    </Avatar>
+                  }
+                  title={
+                    <Typography variant='h6'>
+                      {new Date(visit.created_at).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </Typography>
+                  }
+                  subheader={
+                    <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mt: 0.5 }}>
+                      <Chip size='small' label={`${visit.shops?.length || 0} shops`} color='primary' variant='outlined' />
+                      {(visit.updates?.length || 0) > 0 && (
+                        <Chip
+                          size='small'
+                          label={`${visit.updates.length} update${visit.updates.length > 1 ? 's' : ''}`}
+                          color='success'
+                          variant='outlined'
+                        />
+                      )}
+                      {(() => {
+                        const comments = visit.admin_comments || [];
+                        if (comments.length === 0) return null;
+                        const pendingReply = comments.some((c: any) => !c.reply);
+                        return (
+                          <Chip
+                            size='small'
+                            label={pendingReply ? `${comments.length} comment${comments.length > 1 ? 's' : ''} — reply needed` : `${comments.length} comment${comments.length > 1 ? 's' : ''}`}
+                            color={pendingReply ? 'warning' : 'default'}
+                            variant={pendingReply ? 'filled' : 'outlined'}
+                          />
+                        );
+                      })()}
+                    </Box>
+                  }
+                />
+                {visit.selfie && (
+                  <CardMedia component='img' image={visit.selfie} alt='Selfie' sx={{ height: 200, objectFit: 'cover' }} />
+                )}
+                <CardContent>
+                  {visit.shops && visit.shops.length > 0 ? (
+                    visit.shops.map((shop: any, idx: number) => (
+                      <Box
+                        key={idx}
+                        sx={{
+                          mb: 2,
+                          p: 2,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          borderRadius: 1,
+                          '&:last-child': { mb: 0 },
+                        }}
                       >
-                        No Shops Available
-                      </Typography>
-                    )}
-                  </CardContent>
-                </Card>
-              </Grid>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          <PersonIcon color='primary' fontSize='small' sx={{ mr: 1 }} />
+                          <Typography variant='body2' fontWeight='medium'>
+                            {shop.customer_name || shop.potential_customer_name}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
+                          <PlaceIcon color='action' fontSize='small' sx={{ mr: 1, mt: 0.3 }} />
+                          <Typography variant='body2' color='text.secondary' sx={{ fontSize: '0.8rem' }}>
+                            {shop?.potential_customer ? shop?.potential_customer_address : formatAddress(shop.address)}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
+                          <DescriptionIcon color='action' fontSize='small' sx={{ mr: 1, mt: 0.3 }} />
+                          <Typography variant='body2'>{shop.reason}</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                          <ShoppingCartOutlined color='action' fontSize='small' sx={{ mr: 1, mt: 0.3 }} />
+                          <Typography variant='body2'>
+                            Order Expected Soon: {shop?.order_expected ? 'Yes' : 'No'}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    ))
+                  ) : (
+                    <Typography variant='body2' color='text.secondary' sx={{ fontStyle: 'italic' }}>
+                      No Shops Available
+                    </Typography>
+                  )}
+                </CardContent>
+              </Card>
             ))}
-          </Grid>
+          </Box>
+
+          {/* Pagination */}
+          <Box
+            display='flex'
+            flexDirection={{ xs: 'column', sm: 'row' }}
+            alignItems={{ xs: 'flex-start', sm: 'center' }}
+            justifyContent='space-between'
+            mt={2}
+            gap={1}
+          >
+            <TablePagination
+              rowsPerPageOptions={[ROWS_PER_PAGE]}
+              component='div'
+              count={totalCount}
+              rowsPerPage={ROWS_PER_PAGE}
+              page={page}
+              onPageChange={(_e, newPage) => {
+                setPage(newPage);
+                setSkipPage('');
+              }}
+              onRowsPerPageChange={() => {}}
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}–${to} of ${count} (Page ${page + 1} of ${totalPages})`
+              }
+            />
+            <Box display='flex' alignItems='center' gap={1}>
+              <Typography variant='body2' color='text.secondary'>
+                Jump to:
+              </Typography>
+              <TextField
+                type='number'
+                variant='outlined'
+                size='small'
+                sx={{ width: 72 }}
+                value={skipPage !== '' ? skipPage : page + 1}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  if (val <= totalPages) setSkipPage(e.target.value);
+                  else toast.error('Invalid page number');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const requested = parseInt(skipPage, 10);
+                    if (isNaN(requested) || requested < 1) { toast.error('Invalid page number'); return; }
+                    setPage(requested - 1);
+                    setSkipPage('');
+                  }
+                }}
+                inputProps={{ min: 1, max: totalPages }}
+              />
+              <Button
+                variant='contained'
+                size='small'
+                onClick={() => {
+                  const requested = parseInt(skipPage, 10);
+                  if (isNaN(requested) || requested < 1) { toast.error('Invalid page number'); return; }
+                  setPage(requested - 1);
+                  setSkipPage('');
+                }}
+              >
+                Go
+              </Button>
+            </Box>
+          </Box>
         </Box>
       )}
 
@@ -1140,21 +1269,47 @@ function DailyVisits() {
               <Typography variant='subtitle1' gutterBottom>
                 Upload Selfie
               </Typography>
-              <Button variant='outlined' component='label'>
-                {selfie ? 'Change Selfie' : 'Upload Selfie'}
-                <input
-                  hidden
-                  accept='image/*'
-                  type='file'
-                  onChange={handleSelfieChange}
-                />
-              </Button>
-              {selfie && (
+              {isMobile ? (
+                /* On mobile: two buttons — one opens front camera, one opens gallery */
+                <Stack direction='row' spacing={1} flexWrap='wrap' useFlexGap>
+                  <Button variant='outlined' component='label' startIcon={<PersonIcon />}>
+                    {selfie ? 'Retake Selfie' : 'Take Selfie'}
+                    <input
+                      hidden
+                      accept='image/*'
+                      capture='user'
+                      type='file'
+                      onChange={handleSelfieChange}
+                    />
+                  </Button>
+                  <Button variant='outlined' component='label' startIcon={<AddIcon />}>
+                    {selfie ? 'Change from Gallery' : 'Upload from Gallery'}
+                    <input
+                      hidden
+                      accept='image/*'
+                      type='file'
+                      onChange={handleSelfieChange}
+                    />
+                  </Button>
+                </Stack>
+              ) : (
+                /* On desktop: single upload button */
+                <Button variant='outlined' component='label'>
+                  {selfie ? 'Change Selfie' : 'Upload Selfie'}
+                  <input
+                    hidden
+                    accept='image/*'
+                    type='file'
+                    onChange={handleSelfieChange}
+                  />
+                </Button>
+              )}
+              {selfiePreviewUrl && (
                 <Box mt={2}>
                   <img
-                    src={URL.createObjectURL(selfie)}
+                    src={selfiePreviewUrl}
                     alt='Selfie Preview'
-                    style={{ maxWidth: '100%', height: 'auto' }}
+                    style={{ maxWidth: '100%', height: 'auto', borderRadius: 8 }}
                   />
                 </Box>
               )}

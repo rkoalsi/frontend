@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState, useRef, useCallback } from 'react';
+import { useContext, useEffect, useState, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -11,6 +11,8 @@ import {
   Chip,
   TextField,
   InputAdornment,
+  Pagination,
+  Button,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -24,6 +26,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 
+const PAGE_SIZE = 20;
+
 const STATUS_FILTERS = [
   { label: 'All', value: '' },
   { label: 'Shipped', value: 'shipped' },
@@ -33,139 +37,81 @@ const STATUS_FILTERS = [
 function Shipments() {
   const [shipments, setShipments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
   const { user }: any = useContext(AuthContext);
   const router = useRouter();
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const getData = async (searchTerm = '', pageNum = 1, append = false, status = '') => {
-    if (append) {
-      setLoadingMore(true);
-    } else {
-      setLoading(true);
-    }
+  const getData = async (searchTerm = '', pageNum = 1, status = '') => {
+    setLoading(true);
     try {
       const isAdminOrManager = user?.role?.includes('admin') || user?.role?.includes('catalogue_manager');
       const resp = await axios.get(`${process.env.api_url}/shipments`, {
         params: {
           created_by: user?._id,
           page: pageNum,
-          per_page: 20,
+          per_page: PAGE_SIZE,
           ...(searchTerm && { search: searchTerm }),
-          ...(status && { status: status }),
+          ...(status && { status }),
           ...(isAdminOrManager && { role: 'admin' }),
         },
       });
-      const newShipments = resp.data.shipments || [];
-      if (append) {
-        setShipments(prev => [...prev, ...newShipments]);
-      } else {
-        setShipments(newShipments);
-      }
+      setShipments(resp.data.shipments || []);
       setTotal(resp.data.total || 0);
-      setHasMore(pageNum < (resp.data.total_pages || 0));
+      setTotalPages(resp.data.total_pages || 0);
     } catch (error) {
       console.error(error);
       toast.error('Error fetching shipments');
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
   };
 
   useEffect(() => {
     if (user?._id) {
       setPage(1);
-      setShipments([]);
-      getData(search, 1, false, statusFilter);
+      getData(search, 1, statusFilter);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?._id, statusFilter]);
 
   // Debounced search
   useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       if (user?._id) {
         setPage(1);
-        setShipments([]);
-        getData(search, 1, false, statusFilter);
+        getData(search, 1, statusFilter);
       }
     }, 400);
-
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
-  const loadMore = useCallback(() => {
-    if (!loadingMore && hasMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      getData(search, nextPage, true, statusFilter);
-    }
-  }, [loadingMore, hasMore, page, search, statusFilter]);
-
-  useEffect(() => {
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
-          loadMore();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (loadMoreRef.current) {
-      observerRef.current.observe(loadMoreRef.current);
-    }
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-    };
-  }, [loadMore, hasMore, loadingMore, loading]);
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value);
-  };
-
-  const handleStatusFilter = (status: string) => {
-    setStatusFilter(status);
+  const handlePageChange = (_: React.ChangeEvent<unknown>, val: number) => {
+    setPage(val);
+    getData(search, val, statusFilter);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const getStatusColor = (status: string) => {
-    const statusLower = status?.toLowerCase() || '';
-    if (statusLower === 'delivered') return 'success';
-    if (statusLower === 'shipped') return 'primary';
+    const s = status?.toLowerCase() || '';
+    if (s === 'delivered') return 'success';
+    if (s === 'shipped') return 'primary';
     return 'default';
   };
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
     try {
-      return new Date(dateStr).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      });
+      return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     } catch {
       return dateStr;
     }
@@ -178,7 +124,7 @@ function Shipments() {
       alignItems='center'
       sx={{ width: '100%', gap: 1.5, p: isMobile ? 1.5 : 3 }}
     >
-      <Header title='Shipments' showBackButton />
+      <Header title='Shipments' showBackButton useBack />
 
       {/* Search Bar */}
       <Box sx={{ width: '100%', maxWidth: 500, mb: 0.5 }}>
@@ -186,7 +132,7 @@ function Shipments() {
           fullWidth
           placeholder='Search shipments...'
           value={search}
-          onChange={handleSearch}
+          onChange={(e) => setSearch(e.target.value)}
           InputProps={{
             startAdornment: (
               <InputAdornment position='start'>
@@ -195,12 +141,7 @@ function Shipments() {
             ),
           }}
           size='small'
-          sx={{
-            borderRadius: 2,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 2,
-            },
-          }}
+          sx={{ borderRadius: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
         />
       </Box>
 
@@ -213,7 +154,7 @@ function Shipments() {
             size='small'
             variant={statusFilter === filter.value ? 'filled' : 'outlined'}
             color={statusFilter === filter.value ? 'primary' : 'default'}
-            onClick={() => handleStatusFilter(filter.value)}
+            onClick={() => setStatusFilter(filter.value)}
             sx={{
               height: 28,
               fontSize: '0.75rem',
@@ -239,17 +180,9 @@ function Shipments() {
       ) : shipments.length === 0 ? (
         <Paper
           elevation={1}
-          sx={{
-            p: 3,
-            textAlign: 'center',
-            borderRadius: 2,
-            width: '100%',
-            maxWidth: 400,
-          }}
+          sx={{ p: 3, textAlign: 'center', borderRadius: 2, width: '100%', maxWidth: 400 }}
         >
-          <LocalShippingIcon
-            sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }}
-          />
+          <LocalShippingIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
           <Typography variant='body1' color='text.secondary' gutterBottom>
             No Shipments Found
           </Typography>
@@ -279,14 +212,7 @@ function Shipments() {
             >
               <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                 {/* Top row: Shipment number + Status */}
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    mb: 1.5,
-                  }}
-                >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
                   <Box>
                     <Typography variant='subtitle1' fontWeight={600} sx={{ lineHeight: 1.2 }}>
                       {shipment.shipment_number || 'N/A'}
@@ -343,21 +269,44 @@ function Shipments() {
             </Card>
           ))}
 
-          {/* Infinite scroll trigger */}
-          <Box ref={loadMoreRef} sx={{ height: 20, mt: 1 }} />
-
-          {/* Loading more indicator */}
-          {loadingMore && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-              <CircularProgress size={24} />
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, pt: 1 }}>
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={handlePageChange}
+                color='primary'
+                shape='rounded'
+                siblingCount={1}
+                boundaryCount={1}
+              />
+              <Box
+                component='form'
+                onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
+                  e.preventDefault();
+                  const input = (e.currentTarget.elements.namedItem('jumpPage') as HTMLInputElement).value;
+                  const num = parseInt(input, 10);
+                  if (num >= 1 && num <= totalPages) {
+                    setPage(num);
+                    getData(search, num, statusFilter);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    (e.currentTarget.elements.namedItem('jumpPage') as HTMLInputElement).value = '';
+                  }
+                }}
+                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              >
+                <Typography variant='body2' color='text.secondary'>Go to page</Typography>
+                <TextField
+                  name='jumpPage'
+                  size='small'
+                  type='number'
+                  slotProps={{ htmlInput: { min: 1, max: totalPages } }}
+                  sx={{ width: 72 }}
+                />
+                <Button type='submit' size='small' variant='outlined' sx={{ borderRadius: 2 }}>Go</Button>
+              </Box>
             </Box>
-          )}
-
-          {/* End of list */}
-          {!hasMore && shipments.length > 0 && (
-            <Typography variant='caption' color='text.disabled' sx={{ textAlign: 'center', display: 'block', py: 2 }}>
-              No more shipments
-            </Typography>
           )}
         </Box>
       )}

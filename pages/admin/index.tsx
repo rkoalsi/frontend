@@ -43,6 +43,10 @@ import {
   BrandingWatermark,
   Link,
   MiscellaneousServices,
+  TrendingUp,
+  TrendingDown,
+  TrendingFlat,
+  ReceiptLong,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
@@ -118,12 +122,23 @@ interface CardProps {
   growth?: number;
 }
 
+const STATS_CACHE_KEY = 'admin_stats_cache';
+
 const AdminDashboard = () => {
   const { user, permissions }: any = useContext(AuthContext);
   const theme: any = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const router = useRouter();
-  const [stats, setStats] = useState<Stats | null>(null);
+
+  // Seed from localStorage so the first render shows data immediately
+  const [stats, setStats] = useState<Stats | null>(() => {
+    try {
+      const cached = typeof window !== 'undefined' ? localStorage.getItem(STATS_CACHE_KEY) : null;
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -140,10 +155,9 @@ const AdminDashboard = () => {
 
       try {
         const { data } = await axiosInstance.get(`/admin/stats`);
-        setStats({
-          ...data,
-          last_updated: new Date().toISOString(),
-        });
+        const withTimestamp = { ...data, last_updated: new Date().toISOString() };
+        setStats(withTimestamp);
+        try { localStorage.setItem(STATS_CACHE_KEY, JSON.stringify(withTimestamp)); } catch {}
 
         if (showRefreshing) {
           setSnackbarMessage('Dashboard refreshed successfully');
@@ -175,7 +189,7 @@ const AdminDashboard = () => {
     [error]
   );
 
-  // Fetch stats on mount
+  // Fetch stats on mount — permissions gate only blocks the fetch, not the initial render
   useEffect(() => {
     if (permissions) {
       fetchStats();
@@ -591,6 +605,19 @@ const AdminDashboard = () => {
       icon: <MiscellaneousServices color='primary' />,
     },
     {
+      label: 'Expense Estimates',
+      route: 'expense_estimates',
+      value: 0,
+      subStats: [
+        {
+          label: 'Manage Expense Estimates',
+          value: 0,
+          color: 'info',
+        },
+      ],
+      icon: <ReceiptLong color='primary' />,
+    },
+    {
       label: 'Customer Management',
       route: 'customer_management',
       value: 0,
@@ -681,6 +708,32 @@ const AdminDashboard = () => {
     </Box>
   );
 
+  const renderGrowthBadge = (growth?: number) => {
+    if (growth === undefined) return null;
+    if (growth > 0) return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+        <TrendingUp sx={{ fontSize: 14, color: 'success.main' }} />
+        <Typography variant='caption' sx={{ color: 'success.main', fontWeight: 600 }}>
+          +{growth}%
+        </Typography>
+      </Box>
+    );
+    if (growth < 0) return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+        <TrendingDown sx={{ fontSize: 14, color: 'error.main' }} />
+        <Typography variant='caption' sx={{ color: 'error.main', fontWeight: 600 }}>
+          {growth}%
+        </Typography>
+      </Box>
+    );
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+        <TrendingFlat sx={{ fontSize: 14, color: 'text.secondary' }} />
+        <Typography variant='caption' color='text.secondary'>0%</Typography>
+      </Box>
+    );
+  };
+
   // Render compact card for square grouping
   const renderCompactCard = (card: CardProps, idx: number) => (
     <Paper
@@ -726,16 +779,18 @@ const AdminDashboard = () => {
         </Box>
 
         {card.value !== undefined && (
-          <Typography
-            variant='h5'
-            sx={{
-              fontWeight: 700,
-              color: theme.palette.primary.main,
-              mb: 0.5,
-            }}
-          >
-            {card.value.toLocaleString()}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
+            <Typography
+              variant='h5'
+              sx={{
+                fontWeight: 700,
+                color: theme.palette.primary.main,
+              }}
+            >
+              {card.value.toLocaleString()}
+            </Typography>
+            {renderGrowthBadge(card.growth)}
+          </Box>
         )}
 
         {card.subStats && card.subStats[0] && (
@@ -806,16 +861,18 @@ const AdminDashboard = () => {
         </Box>
 
         {card.value !== undefined && (
-          <Typography
-            variant='h3'
-            sx={{
-              fontWeight: 700,
-              color: theme.palette.primary.main,
-              mb: 3,
-            }}
-          >
-            {card.value.toLocaleString()}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, mb: 3 }}>
+            <Typography
+              variant='h3'
+              sx={{
+                fontWeight: 700,
+                color: theme.palette.primary.main,
+              }}
+            >
+              {card.value.toLocaleString()}
+            </Typography>
+            {renderGrowthBadge(card.growth)}
+          </Box>
         )}
 
         {/* Sub Stats */}
@@ -932,23 +989,8 @@ const AdminDashboard = () => {
     </Box>
   );
 
-  // Don't render if permissions are not loaded
-  if (!permissions) {
-    return (
-      <Container maxWidth='xl' sx={{ py: { xs: 2, md: 4 } }}>
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '50vh'
-          }}
-        >
-          <CircularProgress />
-        </Box>
-      </Container>
-    );
-  }
+  // Permissions haven't loaded yet — show the header skeleton but let the rest render
+  const permissionsReady = !!permissions;
 
   return (
     <Container maxWidth='xl' sx={{ py: { xs: 2, md: 4 } }}>
@@ -1058,7 +1100,7 @@ const AdminDashboard = () => {
             backgroundColor: theme.palette.background.default,
           }}
         >
-          {loading && !refreshing ? (
+          {(loading && !refreshing) || !permissionsReady ? (
             renderSkeletons()
           ) : error ? (
             <Alert

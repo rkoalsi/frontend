@@ -24,6 +24,7 @@ interface UpdateSectionProps {
   onDeleteUpdate: (update: any) => void;
   onHookUpdate: (update: any) => void;
   onClickImage: any;
+  deleteLoading?: boolean;
 }
 
 const UpdateSection = ({
@@ -33,6 +34,7 @@ const UpdateSection = ({
   onHookUpdate,
   onDeleteUpdate,
   onClickImage,
+  deleteLoading = false,
 }: UpdateSectionProps) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -130,13 +132,16 @@ const UpdateSection = ({
                   </IconButton>
                 </Tooltip>
                 <Tooltip title='Delete Update'>
-                  <IconButton
-                    onClick={() => onDeleteUpdate(upd._id)}
-                    size='small'
-                    color='error'
-                  >
-                    <DeleteIcon />
-                  </IconButton>
+                  <span>
+                    <IconButton
+                      onClick={() => onDeleteUpdate(upd._id)}
+                      size='small'
+                      color='error'
+                      disabled={deleteLoading}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </span>
                 </Tooltip>
               </Box>
             </Box>

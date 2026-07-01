@@ -37,6 +37,7 @@ const ProductDialog = ({
   handleEditableFieldChange,
   handleSaveEdit,
   handleToggleActive,
+  handleTogglePreOrder,
   handleImageClick,
   handleImageUpload,
   handleImageReorder,
@@ -670,6 +671,32 @@ const ProductDialog = ({
                         />
                       }
                     />
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={!!selectedProduct?.pre_order}
+                            onChange={() => handleTogglePreOrder(selectedProduct)}
+                            color='warning'
+                          />
+                        }
+                        label={
+                          <Chip
+                            size='small'
+                            label='Pre Order'
+                            color={selectedProduct?.pre_order ? 'warning' : 'default'}
+                            variant='outlined'
+                          />
+                        }
+                      />
+                      {selectedProduct?.pre_order && (
+                        <Typography variant='caption' color={selectedProduct.upcoming_stock > 0 ? 'warning.main' : 'text.disabled'} sx={{ ml: 1.5, fontWeight: 600 }}>
+                          {selectedProduct.upcoming_stock > 0
+                            ? `Upcoming stock: ${selectedProduct.upcoming_stock} units`
+                            : 'No open PO found'}
+                        </Typography>
+                      )}
+                    </Box>
                   </Box>
                   <Divider sx={{ mb: 2 }} />
 

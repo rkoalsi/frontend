@@ -454,7 +454,7 @@ function CustomerHooks() {
   return (
     <Container maxWidth='lg'>
       <Container sx={{ py: 4, display: 'flex', flexDirection: 'column' }}>
-        <Header title='Customer Hook Management' showBackButton />
+        <Header title='Customer Hook Management' showBackButton useBack />
 
         {/* Search Field */}
         <Box

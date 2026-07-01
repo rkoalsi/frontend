@@ -9,7 +9,6 @@ import {
   Tooltip,
   IconButton,
   Stack,
-  Grid,
   Container,
   Fade,
   Chip,
@@ -295,7 +294,7 @@ function ExternalLinks(props: Props) {
             animate='visible'
             style={{ width: '100%', marginBottom: 32 }}
           >
-            <Header title='External Links' showBackButton />
+            <Header title='External Links' showBackButton useBack />
             <Typography
               variant='body1'
               sx={{
@@ -325,18 +324,24 @@ function ExternalLinks(props: Props) {
                 </Typography>
               </Box>
             ) : externalLinks.length > 0 ? (
-              <Grid container spacing={isMobile ? 2 : 3}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+                  gap: isMobile ? 2 : 3,
+                }}
+              >
                 {externalLinks.map((link: any, index: number) => {
                   const IconComponent = getIcon(index);
                   return (
-                    <Box>
-                      <motion.div
-                        variants={itemVariants}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        style={{ height: '100%' }}
-                      >
-                        <StyledCard>
+                    <motion.div
+                      key={link._id || index}
+                      variants={itemVariants}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      style={{ height: '100%' }}
+                    >
+                      <StyledCard>
                           <StatusChip label='Live' size='small' />
 
                           <CardContent
@@ -407,12 +412,11 @@ function ExternalLinks(props: Props) {
                               </ActionButton>
                             </Tooltip>
                           </Box>
-                        </StyledCard>
-                      </motion.div>
-                    </Box>
+                      </StyledCard>
+                    </motion.div>
                   );
                 })}
-              </Grid>
+              </Box>
             ) : (
               <Fade in={!loading} timeout={800}>
                 <Box

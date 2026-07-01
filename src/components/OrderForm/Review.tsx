@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Box,
   Divider,
@@ -9,6 +9,12 @@ import {
   Button,
   IconButton,
   Tooltip,
+  CircularProgress,
+  Alert,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import {
   Edit,
@@ -18,12 +24,17 @@ import {
   ArrowUpward,
   ArrowDownward,
   Close,
+  LocalOffer,
+  ArrowDropDown,
+  Download,
+  Inventory2,
+  ShoppingCartCheckout,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import QuantitySelector from './QuantitySelector';
 import { toast } from 'react-toastify';
-import axios from 'axios';
+import axiosInstance from '../../util/axios';
 import ImagePopupDialog from '../common/ImagePopUp';
 import ImageCarousel from './products/ImageCarousel';
 
@@ -136,9 +147,19 @@ interface Props {
   specialMargins: { [key: string]: string };
   setActiveStep: (step: number) => void;
   isShared: boolean;
+  isCustomerRole?: boolean;
   order: any;
   referenceNumber: any;
 }
+
+// Format a brand_orders date string (e.g. "2026-05-21") as "21 May 2026".
+// Falls back to the raw value if it isn't a parseable date.
+const formatPreOrderDate = (value?: string): string => {
+  if (!value) return '';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+};
 
 // ── Main component ─────────────────────────────────────────────────
 
@@ -153,6 +174,7 @@ const Review: React.FC<Props> = React.memo((props) => {
     specialMargins,
     setActiveStep,
     isShared,
+    isCustomerRole,
     order,
     referenceNumber,
   } = props;
@@ -166,61 +188,127 @@ const Review: React.FC<Props> = React.memo((props) => {
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc]: any = useState([]);
   const [popupImageIndex, setPopupImageIndex] = useState(0);
-  const pageTopRef = useRef<HTMLDivElement>(null);
-  const pageBottomRef = useRef<HTMLDivElement>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [isScrollButtonDisabled, setIsScrollButtonDisabled] = useState(false);
+  const [downloadMenuAnchor, setDownloadMenuAnchor] = useState<null | HTMLElement>(null);
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+  }, []);
 
   // ── PDF Download ────────────────────────────────────────────────
-  const downloadAsPDF = async () => {
+  const downloadAsPDF = async (type: 'stock' | 'pre_order' = 'stock') => {
+    setPdfLoading(true);
     try {
-      const resp = await axios.get(
-        `${process.env.api_url}/orders/download_pdf/${order._id}`,
-        { responseType: 'blob' }
-      );
+      const url = type === 'pre_order'
+        ? `/orders/download_pdf/${order._id}?type=pre_order`
+        : `/orders/download_pdf/${order._id}`;
+      const resp = await axiosInstance.get(url, { responseType: 'blob' });
       if (resp.data.type !== 'application/pdf') {
-        toast.error('Draft Estimate Not Created');
+        toast.error('Estimate Not Created');
         return;
       }
       const contentDisposition = resp.headers['content-disposition'];
-      let fileName = `${order.estimate_number}.pdf`;
+      let fileName = type === 'pre_order'
+        ? `${order.pre_order_estimate_number}.pdf`
+        : `${order.estimate_number}.pdf`;
       if (contentDisposition) {
         const match = contentDisposition.match(/filename="(.+)"/);
         if (match && match[1]) fileName = match[1];
       }
       const blob = new Blob([resp.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
+      const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = url;
+      link.href = blobUrl;
       link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(blobUrl);
     } catch (error: any) {
       console.error('Error downloading PDF:', error);
       toast.error(error.message || 'Failed to download PDF');
+    } finally {
+      setPdfLoading(false);
     }
   };
 
   // ── Handlers ───────────────────────────────────────────────────
   const handleQuantityChange = useCallback(
     (id: string, newQuantity: number) => {
-      setSelectedProducts(
-        products.map((p) =>
+      setSelectedProducts((prev: any[]) =>
+        prev.map((p) =>
           p._id === id
-            ? { ...p, quantity: Math.max(1, Math.min(newQuantity, p.stock)) }
+            ? { ...p, quantity: Math.max(1, (p.pre_order && (p.stock ?? 0) <= 0) ? Math.min(newQuantity, p.upcoming_stock || Infinity) : Math.min(newQuantity, p.stock ?? Infinity)) }
             : p
         )
       );
     },
-    [products, setSelectedProducts]
+    [setSelectedProducts]
+  );
+
+  const handlePreOrderQuantityChange = useCallback(
+    (id: string, newQuantity: number) => {
+      setSelectedProducts((prev: any[]) =>
+        prev.map((p) =>
+          p._id === id
+            ? { ...p, pre_order_quantity: Math.max(1, Math.min(newQuantity, p.upcoming_stock || Infinity)) }
+            : p
+        )
+      );
+    },
+    [setSelectedProducts]
   );
 
   const handleRemoveProduct = useCallback(
     (id: string) => {
-      setSelectedProducts(products.filter((p) => p._id !== id));
+      setSelectedProducts((prev: any[]) => prev.filter((p) => p._id !== id));
     },
-    [products, setSelectedProducts]
+    [setSelectedProducts]
   );
+
+  // On mount: remove any pre-order product whose pre_order flag was turned off by admin
+  useEffect(() => {
+    const checkIds = products
+      .filter((p) => p.pre_order || (p.pre_order !== false && p.stock === 0))
+      .map((p) => p._id);
+    if (!checkIds.length) return;
+    axiosInstance
+      .get(`/products/batch?ids=${checkIds.join(',')}`)
+      .then((res) => {
+        const fetched: Record<string, any> = {};
+        const data = res.data?.products ?? res.data;
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          Object.values(data).forEach((p: any) => { if (p?._id) fetched[p._id] = p; });
+        } else if (Array.isArray(data)) {
+          data.forEach((p: any) => { if (p?._id) fetched[p._id] = p; });
+        }
+        const removedNames: string[] = [];
+        setSelectedProducts((prev: any[]) =>
+          prev.filter((p) => {
+            const current = fetched[p._id];
+            if (!current) return true;
+            const wasPreOrder = p.pre_order || (p.pre_order !== false && p.stock === 0);
+            if (wasPreOrder && current.pre_order === false && current.stock === 0) {
+              removedNames.push(p.name);
+              return false;
+            }
+            return true;
+          })
+        );
+        if (removedNames.length) {
+          toast.info(
+            `Removed ${removedNames.length} item${removedNames.length !== 1 ? 's' : ''} no longer available for pre-order: ${removedNames.join(', ')}`
+          );
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleImageClick = useCallback((srcList: any, index: number) => {
     const formattedImages =
@@ -237,13 +325,20 @@ const Review: React.FC<Props> = React.memo((props) => {
   const calculatePrices = useCallback(
     (product: any) => {
       const productId = product._id;
-      const marginPercent = specialMargins[productId]
-        ? parseInt(specialMargins[productId].replace('%', ''))
-        : parseInt(customer?.cf_margin?.replace('%', '') || '40');
+      // Same precedence as the page totals: live margins first, then the
+      // customer margin embedded on the order (shared links), then the margin
+      // stored on the order line
+      const marginStr =
+        specialMargins[productId] ||
+        customer?.cf_margin ||
+        order?.customer_margin ||
+        product.margin ||
+        '40%';
+      let marginPercent = parseInt(String(marginStr).replace('%', ''), 10);
+      if (Number.isNaN(marginPercent)) marginPercent = 40; // malformed margin string
       const margin = marginPercent / 100;
-      const sellingPrice = parseFloat(
-        (product.rate - product.rate * margin).toFixed(2)
-      );
+      const rate = parseFloat(product.rate) || 0;
+      const sellingPrice = parseFloat((rate - rate * margin).toFixed(2));
       const quantity = product.quantity || 1;
       const itemTotal = (quantity * sellingPrice).toFixed(2);
       return { sellingPrice, itemTotal, marginPercent };
@@ -251,18 +346,68 @@ const Review: React.FC<Props> = React.memo((props) => {
     [specialMargins, customer?.cf_margin]
   );
 
-  if (!customer) {
-    return <Typography>This is content for Review</Typography>;
+  // For shared-link visitors the customer fetch is unauthenticated and may fail,
+  // so customer can be null. The component already uses optional chaining throughout
+  // so it renders gracefully with null customer — only block non-shared flows.
+  if (!customer && !isShared) {
+    return (
+      <Box
+        sx={{
+          py: 6,
+          px: 3,
+          textAlign: 'center',
+          borderRadius: 3,
+          border: `2px dashed ${theme.palette.divider}`,
+        }}
+      >
+        <Person sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
+        <Typography variant='h6' color='text.secondary' mb={0.5}>
+          No customer selected
+        </Typography>
+        <Typography variant='body2' color='text.disabled' mb={2}>
+          Select a customer before reviewing the order.
+        </Typography>
+        <Button
+          variant='outlined'
+          onClick={() => setActiveStep(0)}
+          sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 24 }}
+        >
+          Select Customer
+        </Button>
+      </Box>
+    );
   }
 
-  const isOrderLocked =
-    order?.status?.toLowerCase()?.includes('accepted') ||
-    order?.status?.toLowerCase()?.includes('declined');
+  const isOrderLocked = ['accepted', 'declined', 'invoiced'].includes(
+    order?.status?.toLowerCase()
+  );
+
+  // Aggregate everything blocking submission so it's visible as a banner
+  // (the disabled submit button's tooltip is easy to miss on touch devices)
+  const reviewIssues: string[] = [];
+  if (!isShared) {
+    if (!billingAddress) reviewIssues.push('No billing address selected');
+    if (!shippingAddress) reviewIssues.push('No shipping address selected');
+  }
+  // Split products (pre_order=true && stock>0) can have both a stock quantity and a pre-order quantity.
+  const inStockProducts = products.flatMap((p) => {
+    const isSplit = p.pre_order === true && (p.stock ?? 0) > 0;
+    if (isSplit) return (p.quantity ?? 0) > 0 ? [p] : [];
+    return !p.pre_order ? [p] : [];
+  });
+  const preOrderProducts = products.flatMap((p) => {
+    const isSplit = p.pre_order === true && (p.stock ?? 0) > 0;
+    if (isSplit) return (p.pre_order_quantity ?? 0) > 0 ? [{ ...p, quantity: p.pre_order_quantity, _isPreOrderRow: true }] : [];
+    return p.pre_order ? [p] : [];
+  });
+  products.forEach((p) => {
+    if ((p.quantity || 1) > (p.stock ?? Infinity) && !((p.pre_order === true) && (p.stock ?? 0) <= 0)) {
+      reviewIssues.push(`${p.name} exceeds available stock (${p.stock} available)`);
+    }
+  });
 
   return (
     <Box sx={{ p: { xs: 0, sm: 1 }, width: '100%', position: 'relative' }}>
-      <div ref={pageTopRef} />
-
       {/* ── Header ── */}
       <Box
         display='flex'
@@ -286,25 +431,140 @@ const Review: React.FC<Props> = React.memo((props) => {
             ₹{totals.totalAmount.toLocaleString('en-IN')} total
           </Typography>
         </Box>
-        {!isShared && (
-          <Button
-            variant='contained'
-            color='primary'
-            onClick={downloadAsPDF}
-            disabled={!order?.estimate_created}
-            sx={{
-              textTransform: 'none',
-              fontWeight: 700,
-              borderRadius: 24,
-              whiteSpace: 'nowrap',
-              fontSize: { xs: '0.8rem', sm: '0.875rem' },
-              alignSelf: { xs: 'stretch', sm: 'auto' },
-            }}
-          >
-            {!order?.estimate_created ? 'Save as Draft to Create Estimate' : 'Download PDF'}
-          </Button>
-        )}
+        {!isShared && (() => {
+          const hasStock = !!order?.estimate_created;
+          const hasPreOrder = !!order?.pre_order_estimate_created;
+          const hasAny = hasStock || hasPreOrder;
+          return (
+            <Box alignSelf={{ xs: 'stretch', sm: 'auto' }}>
+              <Button
+                variant='contained'
+                color='primary'
+                disabled={!hasAny || pdfLoading}
+                onClick={(e) => hasAny && setDownloadMenuAnchor(e.currentTarget)}
+                endIcon={hasAny ? (pdfLoading ? <CircularProgress size={14} color='inherit' /> : <ArrowDropDown />) : undefined}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  borderRadius: 24,
+                  whiteSpace: 'nowrap',
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                  width: { xs: '100%', sm: 'auto' },
+                }}
+              >
+                {!hasAny ? 'Submit Order to Create Estimate' : pdfLoading ? 'Preparing PDF…' : 'Download Estimate'}
+              </Button>
+              <Menu
+                anchorEl={downloadMenuAnchor}
+                open={Boolean(downloadMenuAnchor)}
+                onClose={() => setDownloadMenuAnchor(null)}
+                slotProps={{ paper: { sx: { borderRadius: 2, minWidth: 240 } } }}
+              >
+                {hasStock && (
+                  <MenuItem onClick={() => { setDownloadMenuAnchor(null); downloadAsPDF('stock'); }}>
+                    <ListItemIcon><Inventory2 fontSize='small' /></ListItemIcon>
+                    <ListItemText
+                      primary={<Typography fontWeight={700} fontSize='0.85rem'>{order.estimate_number}</Typography>}
+                      secondary={<Typography fontSize='0.72rem' color='text.secondary'>In-Stock Estimate</Typography>}
+                    />
+                  </MenuItem>
+                )}
+                {hasPreOrder && (
+                  <MenuItem onClick={() => { setDownloadMenuAnchor(null); downloadAsPDF('pre_order'); }}>
+                    <ListItemIcon><ShoppingCartCheckout fontSize='small' sx={{ color: '#d97706' }} /></ListItemIcon>
+                    <ListItemText
+                      primary={<Typography fontWeight={700} fontSize='0.85rem' color='#d97706'>{order.pre_order_estimate_number} (Pre Order)</Typography>}
+                      secondary={<Typography fontSize='0.72rem' color='text.secondary'>Pre-Order Estimate</Typography>}
+                    />
+                  </MenuItem>
+                )}
+              </Menu>
+            </Box>
+          );
+        })()}
       </Box>
+
+      {/* ── Locked-order banner ── */}
+      {isOrderLocked && (
+        <Alert severity="warning" sx={{ mb: 2, borderRadius: 2, fontWeight: 500 }}>
+          This order is <strong>{order.status.toLowerCase()}</strong> and cannot be modified.
+        </Alert>
+      )}
+
+      {/* ── Submission blockers ── */}
+      {reviewIssues.length > 0 && (
+        <Alert severity='warning' sx={{ mb: 2, borderRadius: 2 }}>
+          <Typography variant='body2' fontWeight={700} mb={0.5}>
+            Resolve before submitting:
+          </Typography>
+          <Box component='ul' sx={{ m: 0, pl: 2.5 }}>
+            {reviewIssues.map((issue) => (
+              <Typography key={issue} component='li' variant='body2'>
+                {issue}
+              </Typography>
+            ))}
+          </Box>
+        </Alert>
+      )}
+
+      {/* ── Separate estimates notice ── */}
+      {inStockProducts.length > 0 && preOrderProducts.length > 0 && (
+        <Alert severity='info' sx={{ mb: 2, borderRadius: 2 }}>
+          <Typography variant='body2' fontWeight={700} mb={0.25}>
+            Two separate estimates will be created for this order:
+          </Typography>
+          <Box component='ul' sx={{ m: 0, pl: 2.5 }}>
+            <Typography component='li' variant='body2'>
+              <strong>In-Stock Estimate</strong>{order?.estimate_number ? ` — ${order.estimate_number}` : ''} · {inStockProducts.length} item{inStockProducts.length !== 1 ? 's' : ''}
+            </Typography>
+            <Typography component='li' variant='body2'>
+              <strong>Pre-Order Estimate</strong>{order?.pre_order_estimate_number ? ` — ${order.pre_order_estimate_number}` : ''} · {preOrderProducts.length} item{preOrderProducts.length !== 1 ? 's' : ''} · fulfilled when stock arrives
+            </Typography>
+          </Box>
+        </Alert>
+      )}
+
+      {/* ── Pre-order only notice (no in-stock items) ── */}
+      {preOrderProducts.length > 0 && inStockProducts.length === 0 && (
+        <Alert severity='info' sx={{ mb: 2, borderRadius: 2 }}>
+          <Typography variant='body2' fontWeight={700} mb={0.25}>
+            This order contains only pre-order items{order?.pre_order_estimate_number ? ` — Estimate ${order.pre_order_estimate_number}` : ''}:
+          </Typography>
+          <Typography variant='body2'>
+            A separate pre-order estimate will be created. Items will be fulfilled when stock arrives.
+          </Typography>
+        </Alert>
+      )}
+
+      {/* ── Compact summary (mobile only — grand total above the fold) ── */}
+      {products.length > 0 && (
+        <Paper
+          elevation={0}
+          sx={{
+            display: { xs: 'flex', sm: 'none' },
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            p: 1.5,
+            mb: 2,
+            borderRadius: 2,
+            border: `1.5px solid ${primaryColor}30`,
+            bgcolor: isDark ? `${primaryColor}10` : `${primaryColor}06`,
+          }}
+        >
+          <Box>
+            <Typography variant='caption' color='text.secondary' display='block'>
+              {products.length} item{products.length !== 1 ? 's' : ''} · GST ₹
+              {totals.totalGST.toFixed(2)}
+            </Typography>
+            <Typography variant='caption' color='text.disabled'>
+              Grand Total
+            </Typography>
+          </Box>
+          <Typography fontWeight={800} color='primary.main' sx={{ fontSize: '1.25rem' }}>
+            ₹{totals.totalAmount.toLocaleString('en-IN')}
+          </Typography>
+        </Paper>
+      )}
 
       {/* ── Customer Information ── */}
       <Paper
@@ -324,15 +584,29 @@ const Review: React.FC<Props> = React.memo((props) => {
           onEdit={!isShared ? () => setActiveStep(0) : undefined}
         />
         <Box display='flex' flexDirection='column' gap={0.75}>
-          <InfoRow label='Shop Name' value={customer?.contact_name} />
+          {/* For shared-link visitors customer is null — fall back to the name
+              stored directly on the order document and the billing address phone. */}
+          <InfoRow
+            label='Shop Name'
+            value={customer?.contact_name || order?.customer_name}
+          />
           <InfoRow
             label='Contact'
             value={
-              `${customer?.first_name || ''} ${customer?.last_name || ''}`.trim() ||
+              customer
+                ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || undefined
+                : undefined
+            }
+          />
+          <InfoRow
+            label='Phone'
+            value={
+              customer?.mobile ||
+              customer?.phone ||
+              billingAddress?.phone ||
               undefined
             }
           />
-          <InfoRow label='Phone' value={customer?.mobile || customer?.phone} />
           {referenceNumber && <InfoRow label='Reference' value={referenceNumber} />}
         </Box>
       </Paper>
@@ -430,244 +704,386 @@ const Review: React.FC<Props> = React.memo((props) => {
         </Paper>
       </Stack>
 
-      {/* ── Products ── */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: { xs: 2, sm: 2.5 },
-          mb: 2,
-          borderRadius: 2,
-          border: `1px solid ${theme.palette.divider}`,
-          bgcolor: 'background.paper',
-        }}
-      >
-        <SectionHeader
-          icon={<ShoppingCart sx={{ color: primaryColor, fontSize: 18 }} />}
-          title='Products'
-          color={primaryColor}
-          badge={products.length}
-          onEdit={!isShared ? () => setActiveStep(3) : undefined}
-        />
+      {/* ── In-Stock Products ── */}
+      {(inStockProducts.length > 0 || products.length === 0) && (
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2, sm: 2.5 },
+            mb: 2,
+            borderRadius: 2,
+            border: `1px solid ${theme.palette.divider}`,
+            bgcolor: 'background.paper',
+          }}
+        >
+          <SectionHeader
+            icon={<ShoppingCart sx={{ color: primaryColor, fontSize: 18 }} />}
+            title='In Stock Items'
+            color={primaryColor}
+            badge={inStockProducts.length}
+            onEdit={!isShared ? () => setActiveStep(3) : undefined}
+          />
 
-        <Box display='flex' flexDirection='column' gap={1.5}>
-          {products.length === 0 ? (
-            <Typography
-              variant='body2'
-              color='text.disabled'
-              textAlign='center'
-              py={4}
-            >
-              No products added
-            </Typography>
-          ) : (
-            products.map((product, index) => {
-              const { sellingPrice, itemTotal, marginPercent } =
-                calculatePrices(product);
+          {preOrderProducts.length > 0 && (
+            <Box display='flex' alignItems='center' gap={1} mb={1.5} mt={-1}>
+              <Chip
+                size='small'
+                label={order?.estimate_number ? `Separate Estimate — ${order.estimate_number}` : 'Separate estimate will be created'}
+                color='primary'
+                variant='outlined'
+                icon={<Inventory2 sx={{ fontSize: '14px !important' }} />}
+                sx={{ fontSize: '0.7rem', height: 22 }}
+              />
+            </Box>
+          )}
+
+          <Box display='flex' flexDirection='column' gap={1.5}>
+            {inStockProducts.length === 0 ? (
+              <Typography variant='body2' color='text.disabled' textAlign='center' py={4}>
+                No in-stock products added
+              </Typography>
+            ) : (
+              inStockProducts.map((product, index) => {
+                const { sellingPrice, itemTotal, marginPercent } = calculatePrices(product);
+                const isActive = product.status !== 'inactive';
+                const productId = product._id;
+                const _prefs = product?.item_tax_preferences;
+                const taxPct = _prefs?.length ? (_prefs[_prefs.length - 1]?.tax_percentage ?? 0) : 0;
+
+                return (
+                  <Box
+                    key={productId}
+                    sx={{
+                      display: 'flex',
+                      flexDirection: { xs: 'column', sm: 'row' },
+                      borderRadius: 2.5,
+                      border: `1px solid ${theme.palette.divider}`,
+                      overflow: 'hidden',
+                      bgcolor: 'background.paper',
+                      opacity: !isActive ? 0.7 : 1,
+                      transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
+                      '&:hover': {
+                        boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.45)' : '0 4px 24px rgba(0,0,0,0.1)',
+                        borderColor: `${primaryColor}50`,
+                      },
+                    }}
+                  >
+                    {/* ── Image with overlaid badges ── */}
+                    <Box
+                      sx={{
+                        width: { xs: '100%', sm: 120 },
+                        height: { xs: 200, sm: 'auto' },
+                        minHeight: { sm: 120 },
+                        flexShrink: 0,
+                        position: 'relative',
+                        borderRight: { sm: `1px solid ${theme.palette.divider}` },
+                        borderBottom: { xs: `1px solid ${theme.palette.divider}`, sm: 'none' },
+                      }}
+                    >
+                      <ImageCarousel product={product} handleImageClick={handleImageClick} small />
+                      <Box
+                        sx={{
+                          position: 'absolute', top: 8, left: 8,
+                          width: 26, height: 26, borderRadius: '50%',
+                          bgcolor: isDark ? 'rgba(0,0,0,0.72)' : 'rgba(255,255,255,0.92)',
+                          backdropFilter: 'blur(6px)', display: 'flex',
+                          alignItems: 'center', justifyContent: 'center',
+                          boxShadow: '0 1px 6px rgba(0,0,0,0.25)',
+                        }}
+                      >
+                        <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, lineHeight: 1, color: 'text.primary' }}>
+                          {index + 1}
+                        </Typography>
+                      </Box>
+                      <Tooltip title='Remove product'>
+                          <span style={{ position: 'absolute', top: 6, right: 6, display: 'block' }}>
+                            <IconButton
+                              size='small' disabled={isOrderLocked}
+                              onClick={() => handleRemoveProduct(productId)}
+                              sx={{
+                                width: 28, height: 28,
+                                bgcolor: isDark ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.88)',
+                                backdropFilter: 'blur(6px)', color: 'error.main',
+                                boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                                '&:hover': { bgcolor: 'error.main', color: 'white' },
+                                display: { xs: 'flex', sm: 'none' },
+                              }}
+                            >
+                              <Close sx={{ fontSize: 14 }} />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                    </Box>
+
+                    {/* ── Content ── */}
+                    <Box flex={1} minWidth={0} display='flex' flexDirection='column'>
+                      <Box sx={{ px: { xs: 1.75, sm: 2 }, pt: { xs: 1.5, sm: 1.75 }, pb: 0 }}>
+                        <Box display='flex' justifyContent='space-between' alignItems='flex-start' gap={1}>
+                          <Box flex={1} minWidth={0}>
+                            {(product.brand || product.cf_sku_code || product.sub_category) && (
+                              <Box display='flex' flexWrap='wrap' gap={0.5} mb={0.75}>
+                                {product.brand && <Chip label={product.brand} size='small' sx={{ height: 20, fontSize: '0.62rem', fontWeight: 700 }} />}
+                                {product.cf_sku_code && <Chip label={product.cf_sku_code} size='small' variant='outlined' sx={{ height: 20, fontSize: '0.62rem' }} />}
+                                {product.sub_category && <Chip label={product.sub_category} size='small' variant='outlined' sx={{ height: 20, fontSize: '0.62rem' }} />}
+                              </Box>
+                            )}
+                            <Typography variant='subtitle2' fontWeight={700} color='text.primary' sx={{ fontSize: { xs: '0.92rem', sm: '0.9rem' }, lineHeight: 1.35 }}>
+                              {product.name}
+                            </Typography>
+                          </Box>
+                          <Tooltip title='Remove product'>
+                              <span>
+                                <IconButton size='small' color='error' disabled={isOrderLocked} onClick={() => handleRemoveProduct(productId)}
+                                  sx={{ flexShrink: 0, mt: -0.5, mr: -0.5, display: { xs: 'none', sm: 'flex' } }}>
+                                  <Close sx={{ fontSize: 18 }} />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                        </Box>
+                      </Box>
+                      <Box sx={{ px: { xs: 1.75, sm: 2 }, pt: 1.25, pb: 0.5 }}>
+                        <Box display='flex' alignItems='baseline' gap={1} flexWrap='wrap' mb={0.5}>
+                          <Box display='flex' alignItems='center' gap={0.75}>
+                            <LocalOffer sx={{ fontSize: 13, color: 'primary.main', mb: '-1px' }} />
+                            <Typography fontWeight={800} color='primary.main' sx={{ fontSize: { xs: '1.05rem', sm: '1rem' }, letterSpacing: '-0.01em' }}>
+                              ₹{sellingPrice.toLocaleString('en-IN')}
+                            </Typography>
+                            <Typography variant='caption' color='text.secondary' fontWeight={500}>/ unit</Typography>
+                          </Box>
+                          {!isShared && (
+                            <Chip label={`${marginPercent}% off`} size='small'
+                              sx={{ height: 20, fontSize: '0.62rem', fontWeight: 700, bgcolor: isDark ? 'rgba(76,175,80,0.18)' : 'rgba(76,175,80,0.12)', color: 'success.main' }} />
+                          )}
+                        </Box>
+                        <Box display='flex' flexWrap='wrap' alignItems='center' gap={0.75}>
+                          <Typography variant='caption' color='text.disabled'>MRP ₹{product.rate?.toLocaleString('en-IN')}</Typography>
+                          <Typography variant='caption' color='text.disabled'>·</Typography>
+                          <Typography variant='caption' color='text.secondary'>GST {taxPct}%</Typography>
+                        </Box>
+                      </Box>
+                      <Box flex={1} />
+                      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: { sm: 'space-between' }, px: { xs: 1.75, sm: 2 }, py: { xs: 1.25, sm: 1.5 }, gap: { xs: 1, sm: 0 }, mt: 1, borderTop: `1px solid ${theme.palette.divider}`, bgcolor: isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.018)' }}>
+                        <QuantitySelector quantity={product.quantity || 1} max={product.stock ?? Infinity} onChange={(newQty) => handleQuantityChange(productId, newQty)} disabled={!isActive || isOrderLocked} />
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'space-between', sm: 'flex-end' }, gap: 1 }}>
+                          <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'text.disabled' }}>Total</Typography>
+                          <Typography fontWeight={800} color='primary.main' sx={{ fontSize: { xs: '1.1rem', sm: '1rem' }, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
+                            ₹{parseFloat(itemTotal).toLocaleString('en-IN')}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      {!product.pre_order && product.quantity > product.stock && (
+                        <Typography variant='caption' color='error.main' sx={{ display: 'block', px: { xs: 1.75, sm: 2 }, pb: 1, mt: -0.5 }}>
+                          ⚠ Exceeds stock ({product.stock} available)
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                );
+              })
+            )}
+          </Box>
+
+          {/* Section footer */}
+          {inStockProducts.length > 0 && (
+            <Box display='flex' justifyContent='space-between' alignItems='center' mt={2} pt={1.5} borderTop={`1px solid ${theme.palette.divider}`}>
+              <Box display='flex' alignItems='center' gap={1}>
+                {order?.estimate_number && (
+                  <Chip label={`Estimate: ${order.estimate_number}`} size='small' color='success' variant='outlined' sx={{ fontSize: '0.7rem' }} />
+                )}
+              </Box>
+              <Typography variant='body2' fontWeight={700} color='text.primary'>
+                Subtotal: ₹{inStockProducts.reduce((acc, p) => { const { sellingPrice } = calculatePrices(p); return acc + sellingPrice * (p.quantity || 1); }, 0).toLocaleString('en-IN')}
+              </Typography>
+            </Box>
+          )}
+        </Paper>
+      )}
+
+      {/* ── Pre-Order Products ── */}
+      {preOrderProducts.length > 0 && (
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2, sm: 2.5 },
+            mb: 2,
+            borderRadius: 2,
+            border: `1px solid ${theme.palette.warning.main}40`,
+            bgcolor: 'background.paper',
+          }}
+        >
+          <SectionHeader
+            icon={<ShoppingCart sx={{ color: theme.palette.warning.main, fontSize: 18 }} />}
+            title='Pre-Order Items'
+            color={theme.palette.warning.main}
+            badge={preOrderProducts.length}
+            onEdit={!isShared ? () => setActiveStep(3) : undefined}
+          />
+
+          <Box display='flex' alignItems='center' gap={1} mb={1.5} mt={-1}>
+            <Chip
+              size='small'
+              label={order?.pre_order_estimate_number ? `Separate Estimate — ${order.pre_order_estimate_number} (Pre Order)` : 'Separate pre-order estimate will be created'}
+              color='warning'
+              variant='outlined'
+              icon={<ShoppingCartCheckout sx={{ fontSize: '14px !important' }} />}
+              sx={{ fontSize: '0.7rem', height: 22 }}
+            />
+          </Box>
+
+          <Box display='flex' flexDirection='column' gap={1.5}>
+            {preOrderProducts.map((product, index) => {
+              const { sellingPrice, itemTotal, marginPercent } = calculatePrices(product);
               const isActive = product.status !== 'inactive';
               const productId = product._id;
-              const taxPct =
-                product?.item_tax_preferences?.[
-                  product.item_tax_preferences.length - 1
-                ]?.tax_percentage ?? 0;
+              const _prefs = product?.item_tax_preferences;
+              const taxPct = _prefs?.length ? (_prefs[_prefs.length - 1]?.tax_percentage ?? 0) : 0;
+              const warningColor = theme.palette.warning.main;
 
               return (
                 <Box
                   key={productId}
                   sx={{
                     display: 'flex',
-                    gap: { xs: 1.5, sm: 2 },
-                    alignItems: 'flex-start',
-                    p: { xs: 1.5, sm: 2 },
-                    borderRadius: 2,
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    borderRadius: 2.5,
                     border: `1px solid ${theme.palette.divider}`,
-                    bgcolor: !isActive
-                      ? isDark
-                        ? 'rgba(255,255,255,0.02)'
-                        : 'rgba(0,0,0,0.02)'
-                      : 'transparent',
-                    opacity: !isActive ? 0.75 : 1,
-                    transition: 'box-shadow 0.2s ease',
+                    overflow: 'hidden',
+                    bgcolor: 'background.paper',
+                    opacity: !isActive ? 0.7 : 1,
+                    transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
                     '&:hover': {
-                      boxShadow: isDark
-                        ? '0 2px 10px rgba(0,0,0,0.35)'
-                        : '0 2px 10px rgba(0,0,0,0.08)',
+                      boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.45)' : '0 4px 24px rgba(0,0,0,0.1)',
+                      borderColor: `${warningColor}50`,
                     },
                   }}
                 >
-                  {/* Product image */}
+                  {/* ── Image with overlaid badges ── */}
                   <Box
                     sx={{
-                      width: { xs: 76, sm: 96 },
-                      height: { xs: 76, sm: 96 },
+                      width: { xs: '100%', sm: 120 },
+                      height: { xs: 200, sm: 'auto' },
+                      minHeight: { sm: 120 },
                       flexShrink: 0,
-                      borderRadius: 1.5,
-                      overflow: 'hidden',
-                      border: `1px solid ${theme.palette.divider}`,
+                      position: 'relative',
+                      borderRight: { sm: `1px solid ${theme.palette.divider}` },
+                      borderBottom: { xs: `1px solid ${theme.palette.divider}`, sm: 'none' },
                     }}
                   >
-                    <ImageCarousel
-                      product={product}
-                      handleImageClick={handleImageClick}
-                      small
-                    />
-                  </Box>
-
-                  {/* Details */}
-                  <Box flex={1} minWidth={0}>
-                    {/* Name + remove button */}
+                    <ImageCarousel product={product} handleImageClick={handleImageClick} small />
                     <Box
-                      display='flex'
-                      justifyContent='space-between'
-                      alignItems='flex-start'
-                      gap={1}
+                      sx={{
+                        position: 'absolute', top: 8, left: 8,
+                        width: 26, height: 26, borderRadius: '50%',
+                        bgcolor: isDark ? 'rgba(0,0,0,0.72)' : 'rgba(255,255,255,0.92)',
+                        backdropFilter: 'blur(6px)', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 1px 6px rgba(0,0,0,0.25)',
+                      }}
                     >
-                      <Typography
-                        variant='subtitle2'
-                        fontWeight={700}
-                        color='text.primary'
-                        sx={{
-                          fontSize: { xs: '0.82rem', sm: '0.9rem' },
-                          lineHeight: 1.35,
-                          flex: 1,
-                        }}
-                      >
-                        <Typography
-                          component='span'
-                          variant='caption'
-                          color='text.disabled'
-                          fontWeight={600}
-                          sx={{ mr: 0.5 }}
-                        >
-                          {index + 1}.
-                        </Typography>
-                        {product.name}
+                      <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, lineHeight: 1, color: 'text.primary' }}>
+                        {index + 1}
                       </Typography>
-                      <Tooltip title='Remove product'>
-                        <span>
+                    </Box>
+                    <Tooltip title='Remove product'>
+                        <span style={{ position: 'absolute', top: 6, right: 6, display: 'block' }}>
                           <IconButton
-                            size='small'
-                            color='error'
-                            disabled={isOrderLocked}
+                            size='small' disabled={isOrderLocked}
                             onClick={() => handleRemoveProduct(productId)}
-                            sx={{ flexShrink: 0, mt: -0.5, mr: -0.5 }}
+                            sx={{
+                              width: 28, height: 28,
+                              bgcolor: isDark ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.88)',
+                              backdropFilter: 'blur(6px)', color: 'error.main',
+                              boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                              '&:hover': { bgcolor: 'error.main', color: 'white' },
+                              display: { xs: 'flex', sm: 'none' },
+                            }}
                           >
-                            <Close sx={{ fontSize: { xs: 16, sm: 18 } }} />
+                            <Close sx={{ fontSize: 14 }} />
                           </IconButton>
                         </span>
                       </Tooltip>
-                    </Box>
+                  </Box>
 
-                    {/* Meta chips */}
-                    <Box display='flex' flexWrap='wrap' gap={0.5} mt={0.5} mb={1}>
-                      {product.brand && (
-                        <Chip
-                          label={product.brand}
-                          size='small'
-                          sx={{ height: 20, fontSize: '0.62rem', fontWeight: 600 }}
-                        />
-                      )}
-                      {product.cf_sku_code && (
-                        <Chip
-                          label={product.cf_sku_code}
-                          size='small'
-                          variant='outlined'
-                          sx={{ height: 20, fontSize: '0.62rem' }}
-                        />
-                      )}
-                      {product.sub_category && (
-                        <Chip
-                          label={product.sub_category}
-                          size='small'
-                          variant='outlined'
-                          sx={{ height: 20, fontSize: '0.62rem' }}
-                        />
-                      )}
+                  {/* ── Content ── */}
+                  <Box flex={1} minWidth={0} display='flex' flexDirection='column'>
+                    <Box sx={{ px: { xs: 1.75, sm: 2 }, pt: { xs: 1.5, sm: 1.75 }, pb: 0 }}>
+                      <Box display='flex' justifyContent='space-between' alignItems='flex-start' gap={1}>
+                        <Box flex={1} minWidth={0}>
+                          {(product.brand || product.cf_sku_code || product.sub_category) && (
+                            <Box display='flex' flexWrap='wrap' gap={0.5} mb={0.75}>
+                              {product.brand && <Chip label={product.brand} size='small' sx={{ height: 20, fontSize: '0.62rem', fontWeight: 700 }} />}
+                              {product.cf_sku_code && <Chip label={product.cf_sku_code} size='small' variant='outlined' sx={{ height: 20, fontSize: '0.62rem' }} />}
+                              {product.sub_category && <Chip label={product.sub_category} size='small' variant='outlined' sx={{ height: 20, fontSize: '0.62rem' }} />}
+                            </Box>
+                          )}
+                          <Typography variant='subtitle2' fontWeight={700} color='text.primary' sx={{ fontSize: { xs: '0.92rem', sm: '0.9rem' }, lineHeight: 1.35 }}>
+                            {product.name}
+                          </Typography>
+                        </Box>
+                        <Tooltip title='Remove product'>
+                            <span>
+                              <IconButton size='small' color='error' disabled={isOrderLocked} onClick={() => handleRemoveProduct(productId)}
+                                sx={{ flexShrink: 0, mt: -0.5, mr: -0.5, display: { xs: 'none', sm: 'flex' } }}>
+                                <Close sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                      </Box>
                     </Box>
-
-                    {/* Price info + qty + total */}
-                    <Box
-                      display='flex'
-                      flexDirection={{ xs: 'column', sm: 'row' }}
-                      alignItems={{ xs: 'flex-start', sm: 'center' }}
-                      gap={{ xs: 0.75, sm: 2 }}
-                    >
-                      {/* Unit price / GST / margin */}
-                      <Box
-                        display='flex'
-                        flexDirection={{ xs: 'column', sm: 'row' }}
-                        flexWrap='wrap'
-                        gap={{ xs: 0.3, sm: 0.75 }}
-                        alignItems={{ xs: 'flex-start', sm: 'center' }}
-                      >
-                        <Typography variant='caption' color='text.secondary'>
-                          MRP ₹{sellingPrice.toLocaleString('en-IN')}/unit
-                        </Typography>
-                        <Typography
-                          variant='caption'
-                          color='text.disabled'
-                          sx={{ display: { xs: 'none', sm: 'inline' } }}
-                        >·</Typography>
-                        <Typography variant='caption' color='text.secondary'>
-                          GST {taxPct}%
-                        </Typography>
+                    <Box sx={{ px: { xs: 1.75, sm: 2 }, pt: 1.25, pb: 0.5 }}>
+                      <Box display='flex' alignItems='baseline' gap={1} flexWrap='wrap' mb={0.5}>
+                        <Box display='flex' alignItems='center' gap={0.75}>
+                          <LocalOffer sx={{ fontSize: 13, color: 'primary.main', mb: '-1px' }} />
+                          <Typography fontWeight={800} color='primary.main' sx={{ fontSize: { xs: '1.05rem', sm: '1rem' }, letterSpacing: '-0.01em' }}>
+                            ₹{sellingPrice.toLocaleString('en-IN')}
+                          </Typography>
+                          <Typography variant='caption' color='text.secondary' fontWeight={500}>/ unit</Typography>
+                        </Box>
                         {!isShared && (
-                          <>
-                            <Typography
-                              variant='caption'
-                              color='text.disabled'
-                              sx={{ display: { xs: 'none', sm: 'inline' } }}
-                            >·</Typography>
-                            <Typography variant='caption' color='text.secondary'>
-                              Margin {marginPercent}%
-                            </Typography>
-                          </>
+                          <Chip label={`${marginPercent}% off`} size='small'
+                            sx={{ height: 20, fontSize: '0.62rem', fontWeight: 700, bgcolor: isDark ? 'rgba(76,175,80,0.18)' : 'rgba(76,175,80,0.12)', color: 'success.main' }} />
                         )}
                       </Box>
-
-                      {/* Qty + total */}
-                      <Box display='flex' alignItems='center' gap={1.5} flexWrap='wrap'>
-                        <Box
-                          sx={{
-                            transform: { xs: 'scale(0.82)', sm: 'none' },
-                            transformOrigin: 'left center',
-                          }}
-                        >
-                          <QuantitySelector
-                            quantity={product.quantity || 1}
-                            max={product.stock}
-                            onChange={(newQty) =>
-                              handleQuantityChange(productId, newQty)
-                            }
-                            disabled={!isActive || isOrderLocked}
-                          />
-                        </Box>
-                        <Typography
-                          variant='body2'
-                          fontWeight={700}
-                          color='primary.main'
-                          sx={{ whiteSpace: 'nowrap' }}
-                        >
+                      <Box display='flex' flexWrap='wrap' alignItems='center' gap={0.75}>
+                        <Typography variant='caption' color='text.disabled'>MRP ₹{product.rate?.toLocaleString('en-IN')}</Typography>
+                        <Typography variant='caption' color='text.disabled'>·</Typography>
+                        <Typography variant='caption' color='text.secondary'>GST {taxPct}%</Typography>
+                      </Box>
+                    </Box>
+                    <Box flex={1} />
+                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: { sm: 'space-between' }, px: { xs: 1.75, sm: 2 }, py: { xs: 1.25, sm: 1.5 }, gap: { xs: 1, sm: 0 }, mt: 1, borderTop: `1px solid ${theme.palette.divider}`, bgcolor: isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.018)' }}>
+                      <QuantitySelector quantity={product.quantity || 1} max={product.upcoming_stock || Infinity} onChange={(newQty) => product._isPreOrderRow ? handlePreOrderQuantityChange(productId, newQty) : handleQuantityChange(productId, newQty)} disabled={!isActive || isOrderLocked} />
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'space-between', sm: 'flex-end' }, gap: 1 }}>
+                        <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'text.disabled' }}>Total</Typography>
+                        <Typography fontWeight={800} color='primary.main' sx={{ fontSize: { xs: '1.1rem', sm: '1rem' }, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
                           ₹{parseFloat(itemTotal).toLocaleString('en-IN')}
                         </Typography>
                       </Box>
                     </Box>
-
-                    {product.quantity > product.stock && (
-                      <Typography
-                        variant='caption'
-                        color='error.main'
-                        sx={{ display: 'block', mt: 0.5 }}
-                      >
-                        ⚠ Exceeds stock ({product.stock} available)
-                      </Typography>
-                    )}
+                    <Typography variant='caption' color='info.main' sx={{ display: 'block', px: { xs: 1.75, sm: 2 }, pb: 1, mt: -0.5, fontWeight: 600 }}>
+                      {product.inward_date
+                        ? `📦 Pre Order — will be fulfilled by ${formatPreOrderDate(product.inward_date)}`
+                        : '📦 Pre Order — will be fulfilled when stock arrives'}
+                    </Typography>
                   </Box>
                 </Box>
               );
-            })
-          )}
-        </Box>
-      </Paper>
+            })}
+          </Box>
+
+          {/* Section footer */}
+          <Box display='flex' justifyContent='space-between' alignItems='center' mt={2} pt={1.5} borderTop={`1px solid ${theme.palette.divider}`}>
+            <Box display='flex' alignItems='center' gap={1}>
+              {order?.pre_order_estimate_number && (
+                <Chip label={`Pre-Order Estimate: ${order.pre_order_estimate_number}`} size='small' color='warning' variant='outlined' sx={{ fontSize: '0.7rem' }} />
+              )}
+            </Box>
+            <Typography variant='body2' fontWeight={700} color='text.primary'>
+              Subtotal: ₹{preOrderProducts.reduce((acc, p) => { const { sellingPrice } = calculatePrices(p); return acc + sellingPrice * (p.quantity || 1); }, 0).toLocaleString('en-IN')}
+            </Typography>
+          </Box>
+        </Paper>
+      )}
 
       {/* ── Order Summary ── */}
       {products.length > 0 && (
@@ -699,7 +1115,7 @@ const Review: React.FC<Props> = React.memo((props) => {
                 variant='caption'
                 color='text.disabled'
               >
-                ({customer?.cf_in_ex || 'Exclusive'})
+                ({customer?.cf_in_ex || order?.gst_type || 'Exclusive'})
               </Typography>
             </Typography>
             <Typography variant='body2' fontWeight={600} color='text.primary'>
@@ -723,8 +1139,6 @@ const Review: React.FC<Props> = React.memo((props) => {
         </Paper>
       )}
 
-      <div ref={pageBottomRef} />
-
       <ImagePopupDialog
         open={openImagePopup}
         onClose={handleClosePopup}
@@ -733,65 +1147,77 @@ const Review: React.FC<Props> = React.memo((props) => {
         setIndex={(newIndex: number) => setPopupImageIndex(newIndex)}
       />
 
-      {/* ── Scroll navigation ── */}
+      {/* ── Scroll buttons — fixed bottom-right ── */}
       <Box
         sx={{
           position: 'fixed',
           bottom: { xs: theme.spacing(14), sm: theme.spacing(10), md: theme.spacing(5) },
-          right: { xs: theme.spacing(1.5), sm: theme.spacing(2.5), md: theme.spacing(2) },
+          right: { xs: theme.spacing(1), sm: theme.spacing(3), md: theme.spacing(2) },
           display: 'flex',
           flexDirection: 'column',
-          gap: 1,
+          gap: 1.5,
           zIndex: 1000,
+          pointerEvents: 'none',
         }}
       >
         <IconButton
-          onClick={() =>
-            pageTopRef.current?.scrollIntoView({ behavior: 'smooth' })
-          }
-          size={isMobile ? 'medium' : 'large'}
+          color='primary'
+          onClick={scrollToTop}
+          disabled={isScrollButtonDisabled}
           sx={{
-            bgcolor: isDark
-              ? 'rgba(124,111,205,0.85)'
-              : 'rgba(42,74,107,0.85)',
+            backgroundColor: 'primary.main',
             color: 'white',
-            width: { xs: 40, sm: 48 },
-            height: { xs: 40, sm: 48 },
-            boxShadow: 4,
-            backdropFilter: 'blur(8px)',
-            '&:hover': {
-              bgcolor: 'primary.main',
-              boxShadow: 6,
-              transform: 'scale(1.08)',
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 },
+            boxShadow: 6,
+            '&:disabled': {
+              backgroundColor: 'action.disabledBackground',
+              color: 'action.disabled',
+              opacity: 0.5,
             },
-            transition: 'all 0.2s ease',
+            '&:hover:not(:disabled)': {
+              backgroundColor: 'primary.dark',
+              boxShadow: 8,
+              transform: isMobile ? 'none' : 'scale3d(1.1, 1.1, 1) translate3d(0, -2px, 0)',
+            },
+            '&:active:not(:disabled)': {
+              transform: isMobile ? 'none' : 'scale3d(0.95, 0.95, 1)',
+            },
+            transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease',
+            pointerEvents: 'auto',
           }}
         >
-          <ArrowUpward fontSize='small' />
+          <ArrowUpward fontSize={isMobile ? 'medium' : 'large'} />
         </IconButton>
+
         <IconButton
-          onClick={() =>
-            pageBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-          }
-          size={isMobile ? 'medium' : 'large'}
+          color='primary'
+          onClick={scrollToBottom}
+          disabled={isScrollButtonDisabled}
           sx={{
-            bgcolor: isDark
-              ? 'rgba(124,111,205,0.85)'
-              : 'rgba(42,74,107,0.85)',
+            backgroundColor: 'primary.main',
             color: 'white',
-            width: { xs: 40, sm: 48 },
-            height: { xs: 40, sm: 48 },
-            boxShadow: 4,
-            backdropFilter: 'blur(8px)',
-            '&:hover': {
-              bgcolor: 'primary.main',
-              boxShadow: 6,
-              transform: 'scale(1.08)',
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 },
+            boxShadow: 6,
+            '&:disabled': {
+              backgroundColor: 'action.disabledBackground',
+              color: 'action.disabled',
+              opacity: 0.5,
             },
-            transition: 'all 0.2s ease',
+            '&:hover:not(:disabled)': {
+              backgroundColor: 'primary.dark',
+              boxShadow: 8,
+              transform: isMobile ? 'none' : 'scale3d(1.1, 1.1, 1) translate3d(0, 2px, 0)',
+            },
+            '&:active:not(:disabled)': {
+              transform: isMobile ? 'none' : 'scale3d(0.95, 0.95, 1)',
+            },
+            transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease',
+            pointerEvents: 'auto',
           }}
         >
-          <ArrowDownward fontSize='small' />
+          <ArrowDownward fontSize={isMobile ? 'medium' : 'large'} />
         </IconButton>
       </Box>
     </Box>

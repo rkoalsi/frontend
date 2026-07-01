@@ -26,7 +26,7 @@ const Hooks = () => {
   // State for shopHooks data and pagination
   const [shopHooks, setShopHooks] = useState([]);
   const [page, setPage] = useState(0); // 0-based index
-  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPagesCount, setTotalPageCount] = useState(0);
   const [skipPage, setSkipPage] = useState('');
@@ -289,7 +289,7 @@ const Hooks = () => {
                     }}
                   >
                     <TablePagination
-                      rowsPerPageOptions={[25, 50, 100, 200]}
+                      rowsPerPageOptions={[10, 25, 50, 100, 200]}
                       component='div'
                       count={totalCount}
                       rowsPerPage={rowsPerPage}

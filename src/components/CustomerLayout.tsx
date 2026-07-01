@@ -35,10 +35,12 @@ import {
   Payments,
   DarkMode,
   LightMode,
+  LocationOn,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
 import { useColorMode } from '../context/ColorModeContext';
+import NotificationBell from './common/NotificationBell';
 
 const iconMap: { [key: string]: React.ReactElement } = {
   Dashboard: <Dashboard />,
@@ -50,6 +52,7 @@ const iconMap: { [key: string]: React.ReactElement } = {
   CreditCard: <CreditCard />,
   LocalShipping: <LocalShipping />,
   Payments: <Payments />,
+  LocationOn: <LocationOn />,
 };
 
 const defaultCustomerMenuItems = [
@@ -58,6 +61,7 @@ const defaultCustomerMenuItems = [
   { text: 'My Account', icon: 'ManageAccounts', path: '/customer/account' },
   { text: 'Analytics', icon: 'Analytics', path: '/customer/analytics' },
   { text: 'Payments', icon: 'Payment', path: '/customer/payments' },
+  // { text: 'My Addresses', icon: 'LocationOn', path: '/customer/addresses' },
 ];
 
 const CustomerLayout = ({ children }: any) => {
@@ -172,6 +176,7 @@ const CustomerLayout = ({ children }: any) => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <IconButton
               edge='start'
+              data-tour='sidebar-toggle'
               onClick={() => setSidebarOpen(!isSidebarOpen)}
               sx={{
                 color: 'rgba(255,255,255,0.7)',
@@ -271,6 +276,8 @@ const CustomerLayout = ({ children }: any) => {
                 {isDark ? <LightMode fontSize='small' /> : <DarkMode fontSize='small' />}
               </IconButton>
             </Tooltip>
+
+            {user && <NotificationBell />}
 
             <Divider orientation='vertical' flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)', mx: 0.5 }} />
             <Tooltip title='Logout' arrow>

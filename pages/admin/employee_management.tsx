@@ -20,8 +20,6 @@ import {
     DialogContent,
     DialogActions,
     Avatar,
-    Card,
-    CardContent,
     Tooltip,
     Alert,
     Grid,
@@ -33,6 +31,7 @@ import {
     FormHelperText,
     Divider,
     Stack,
+    TablePagination,
 } from '@mui/material';
 import {
     Add,
@@ -43,15 +42,9 @@ import {
     Person,
     Email,
     Phone,
-    Badge,
-    Business,
-    Work,
-    CalendarToday,
     Save,
-    Cancel,
     Visibility,
     PersonAdd,
-    FilterList,
     Download,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
@@ -102,7 +95,7 @@ const EmployeeManagement: React.FC = () => {
     const [pagination, setPagination] = useState<PaginationData>({
         total: 0,
         skip: 0,
-        limit: 100,
+        limit: 25,
         has_more: false
     });
     
@@ -401,126 +394,55 @@ const EmployeeManagement: React.FC = () => {
     };
 
     return (
-        <Box sx={{ p: { xs: 2, md: 3 }, minHeight: '100vh' }}>
-            {/* Header Section */}
-            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
-                <Box>
-                    <Typography
-                        variant='h4'
-                        sx={{
-                            fontWeight: 700,
-                            color: '#1e293b',
-                            mb: 1,
-                            fontSize: { xs: '1.75rem', md: '2.125rem' }
-                        }}
-                    >
+        <Box sx={{ padding: { xs: 2, sm: 3 } }}>
+            <Paper
+                elevation={3}
+                sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4, position: 'relative' }}
+            >
+                {/* Header */}
+                <Box
+                    display='flex'
+                    justifyContent='space-between'
+                    alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    flexDirection={{ xs: 'column', sm: 'row' }}
+                    gap={{ xs: 2, sm: 0 }}
+                    mb={1}
+                >
+                    <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
                         Employee Management
                     </Typography>
-                    <Typography
-                        variant='body1'
-                        sx={{
-                            color: '#64748b',
-                            fontSize: '1.1rem'
-                        }}
-                    >
-                        Manage employee information and maintain attendance records
-                    </Typography>
+                    <Box display='flex' alignItems='center' gap={2} flexDirection={{ xs: 'column', sm: 'row' }} width={{ xs: '100%', sm: 'auto' }}>
+                        <Button
+                            variant='outlined'
+                            startIcon={<Download />}
+                            onClick={handleDownloadReport}
+                            sx={{ width: { xs: '100%', sm: 'auto' } }}
+                        >
+                            Download Report
+                        </Button>
+                        <Button
+                            variant='contained'
+                            startIcon={<PersonAdd />}
+                            onClick={handleCreate}
+                            sx={{ width: { xs: '100%', sm: 'auto' } }}
+                        >
+                            Add Employee
+                        </Button>
+                    </Box>
                 </Box>
+                <Typography variant='body1' color='text.secondary' sx={{ mb: 3 }}>
+                    Manage employee information and maintain attendance records
+                </Typography>
 
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                    <Button
-                        variant='outlined'
-                        startIcon={<Download />}
-                        onClick={handleDownloadReport}
-                        sx={{
-                            borderRadius: 2,
-                            px: 3,
-                            py: 1.5,
-                            textTransform: 'none',
-                            fontWeight: 600
-                        }}
-                    >
-                        Download Report
-                    </Button>
-                    <Button
-                        variant='contained'
-                        startIcon={<PersonAdd />}
-                        onClick={handleCreate}
-                        sx={{
-                            borderRadius: 2,
-                            px: 3,
-                            py: 1.5,
-                            textTransform: 'none',
-                            fontWeight: 600
-                        }}
-                    >
-                        Add New Employee
-                    </Button>
-                </Box>
-            </Box>
-
-            {/* Statistics Cards */}
-            <Box
-                sx={{
-                    display: 'grid',
-                    gridTemplateColumns: {
-                        xs: '1fr',
-                        sm: 'repeat(2, 1fr)',
-                        md: 'repeat(3, 1fr)'
-                    },
-                    gap: 3,
-                    mb: 4
-                }}
-            >
-                <Card elevation={0} sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', borderRadius: 3 }}>
-                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                        <Person sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
-                        <Typography variant='h4' sx={{ fontWeight: 700, mb: 0.5 }}>
-                            {totalEmployees}
-                        </Typography>
-                        <Typography variant='body2' sx={{ opacity: 0.9 }}>
-                            Total Employees
-                        </Typography>
-                    </CardContent>
-                </Card>
-
-                <Card elevation={0} sx={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white', borderRadius: 3 }}>
-                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                        <Badge sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
-                        <Typography variant='h4' sx={{ fontWeight: 700, mb: 0.5 }}>
-                            {activeEmployees}
-                        </Typography>
-                        <Typography variant='body2' sx={{ opacity: 0.9 }}>
-                            Active Employees
-                        </Typography>
-                    </CardContent>
-                </Card>
-
-                <Card elevation={0} sx={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white', borderRadius: 3 }}>
-                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                        <CalendarToday sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
-                        <Typography variant='h4' sx={{ fontWeight: 700, mb: 0.5 }}>
-                            {new Date().toLocaleDateString('en-IN', { day: '2-digit', month:'long', year:'2-digit'})}
-                        </Typography>
-                        <Typography variant='body2' sx={{ opacity: 0.9 }}>
-                            Today's Date
-                        </Typography>
-                    </CardContent>
-                </Card>
-            </Box>
-
-            {/* Search and Filters */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: '1px solid divider' }}>
-                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }}>
+                {/* Search and Filters */}
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }} sx={{ mb: 2 }}>
                     <TextField
                         label='Search Employees'
                         variant='outlined'
+                        size='small'
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        sx={{
-                            minWidth: 300,
-                            '& .MuiOutlinedInput-root': { borderRadius: 2 }
-                        }}
+                        sx={{ minWidth: { xs: '100%', sm: 280 } }}
                         InputProps={{
                             startAdornment: (
                                 <InputAdornment position="start">
@@ -537,14 +459,12 @@ const EmployeeManagement: React.FC = () => {
                         }}
                         placeholder="Search by name, email, or employee number..."
                     />
-
-                    <FormControl sx={{ minWidth: 200 }}>
+                    <FormControl size='small' sx={{ minWidth: { xs: '100%', sm: 180 } }}>
                         <InputLabel>Department</InputLabel>
                         <Select
                             value={departmentFilter}
                             label="Department"
                             onChange={(e) => setDepartmentFilter(e.target.value)}
-                            sx={{ borderRadius: 2 }}
                         >
                             <MenuItem value="">All Departments</MenuItem>
                             {departmentOptions.map(dept => (
@@ -552,74 +472,46 @@ const EmployeeManagement: React.FC = () => {
                             ))}
                         </Select>
                     </FormControl>
-
-                    <FormControl sx={{ minWidth: 180 }}>
+                    <FormControl size='small' sx={{ minWidth: { xs: '100%', sm: 150 } }}>
                         <InputLabel>Status</InputLabel>
                         <Select
                             value={statusFilter}
                             label="Status"
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            sx={{ borderRadius: 2 }}
                         >
                             <MenuItem value="">All Status</MenuItem>
                             <MenuItem value="active">Active</MenuItem>
                             <MenuItem value="inactive">Inactive</MenuItem>
                         </Select>
                     </FormControl>
-
                     {(searchTerm || departmentFilter || statusFilter) && (
-                        <Button
-                            variant="outlined"
-                            onClick={clearFilters}
-                            startIcon={<Clear />}
-                            sx={{ borderRadius: 2 }}
-                        >
-                            Clear Filters
+                        <Button variant="outlined" onClick={clearFilters} startIcon={<Clear />} size='small'>
+                            Clear
                         </Button>
                     )}
                 </Stack>
 
                 {(debouncedSearch || departmentFilter || statusFilter) && (
-                    <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                         {debouncedSearch && (
-                            <Chip
-                                label={`Search: ${debouncedSearch}`}
-                                onDelete={() => setSearchTerm('')}
-                                color='primary'
-                                variant='outlined'
-                            />
+                            <Chip label={`Search: ${debouncedSearch}`} onDelete={() => setSearchTerm('')} color='primary' variant='outlined' size='small' />
                         )}
                         {departmentFilter && (
-                            <Chip
-                                label={`Department: ${departmentFilter}`}
-                                onDelete={() => setDepartmentFilter('')}
-                                color='primary'
-                                variant='outlined'
-                            />
+                            <Chip label={`Dept: ${departmentFilter}`} onDelete={() => setDepartmentFilter('')} color='primary' variant='outlined' size='small' />
                         )}
                         {statusFilter && (
-                            <Chip
-                                label={`Status: ${statusFilter}`}
-                                onDelete={() => setStatusFilter('')}
-                                color='primary'
-                                variant='outlined'
-                            />
+                            <Chip label={`Status: ${statusFilter}`} onDelete={() => setStatusFilter('')} color='primary' variant='outlined' size='small' />
                         )}
                     </Box>
                 )}
-            </Paper>
 
-            {/* Main Content */}
-            <Paper elevation={0} sx={{ borderRadius: 3, overflow: 'hidden', border: '1px solid divider' }}>
+            {/* Table */}
                 {loading ? (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '400px', gap: 2 }}>
-                        <CircularProgress size={40} />
-                        <Typography variant="body1" color="text.secondary">
-                            Loading employees...
-                        </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+                        <CircularProgress />
                     </Box>
                 ) : employees.length > 0 ? (
-                    <TableContainer>
+                    <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
                         <Table>
                             <TableHead>
                                 <TableRow sx={{}}>
@@ -711,55 +603,34 @@ const EmployeeManagement: React.FC = () => {
                         </Table>
                     </TableContainer>
                 ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '400px', p: 4 }}>
-                        <Person sx={{ fontSize: 80, color: '#cbd5e1', mb: 2 }} />
-                        <Typography variant='h5' sx={{ fontWeight: 600, mb: 1, color: '#475569' }}>
-                            No Employees Found
+                    <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '200px', p: 4 }}>
+                        <Person sx={{ fontSize: 60, color: 'text.disabled', mb: 1 }} />
+                        <Typography variant='h6' color='text.secondary'>
+                            {debouncedSearch || departmentFilter ? 'No employees match your filters' : 'No employees yet'}
                         </Typography>
-                        <Typography variant='body1' color='text.secondary' textAlign="center">
-                            {debouncedSearch || departmentFilter ?
-                                'No employees match your current filters' :
-                                'Start by adding your first employee'
-                            }
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            onClick={handleCreate}
-                            startIcon={<PersonAdd />}
-                            sx={{ mt: 2, borderRadius: 2 }}
-                        >
-                            Add First Employee
-                        </Button>
+                        {!debouncedSearch && !departmentFilter && (
+                            <Button variant="contained" onClick={handleCreate} startIcon={<PersonAdd />} sx={{ mt: 2 }}>
+                                Add First Employee
+                            </Button>
+                        )}
                     </Box>
                 )}
 
-                {/* Pagination Controls */}
+                {/* Pagination */}
                 {pagination.total > 0 && (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, borderTop: '1px solid' }}>
-                        <Typography variant='body2' color='text.secondary'>
-                            Showing {pagination.skip + 1}–{Math.min(pagination.skip + employees.length, pagination.total)} of {pagination.total} employees
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button
-                                variant='outlined'
-                                size='small'
-                                disabled={pagination.skip === 0}
-                                onClick={() => setPagination(prev => ({ ...prev, skip: Math.max(0, prev.skip - prev.limit) }))}
-                                sx={{ borderRadius: 2 }}
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant='outlined'
-                                size='small'
-                                disabled={!pagination.has_more}
-                                onClick={() => setPagination(prev => ({ ...prev, skip: prev.skip + prev.limit }))}
-                                sx={{ borderRadius: 2 }}
-                            >
-                                Next
-                            </Button>
-                        </Box>
-                    </Box>
+                    <TablePagination
+                        component="div"
+                        count={pagination.total}
+                        page={Math.floor(pagination.skip / pagination.limit)}
+                        rowsPerPage={pagination.limit}
+                        rowsPerPageOptions={[25, 50, 100]}
+                        onPageChange={(_, newPage) =>
+                            setPagination(prev => ({ ...prev, skip: newPage * prev.limit }))
+                        }
+                        onRowsPerPageChange={(e) =>
+                            setPagination(prev => ({ ...prev, limit: parseInt(e.target.value), skip: 0 }))
+                        }
+                    />
                 )}
             </Paper>
 

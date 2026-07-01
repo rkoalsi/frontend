@@ -24,6 +24,7 @@ interface SearchResult {
   cf_sku_code?: string;
   rate: number;
   stock: number;
+  pre_order?: boolean;
   new?: boolean;
   item_tax_preferences: any;
   upc_code?: string;
@@ -67,7 +68,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
       selectedProduct?.quantity || temporaryQuantities[productId] || "";
     const sellingPrice = getSellingPrice(product);
     const itemTotal = parseFloat((sellingPrice * quantity).toFixed(2));
-    const isQuantityExceedingStock = quantity > product.stock;
+    const isQuantityExceedingStock = !product.pre_order && quantity > product.stock;
     const isDisabled =
       orderStatus?.toLowerCase().includes("accepted") ||
       orderStatus?.toLowerCase().includes("declined");
@@ -295,7 +296,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
             <QuantitySelector
               quantity={quantity}
-              max={product.stock}
+              max={product.pre_order ? Infinity : product.stock}
               onChange={(newQuantity) => handleQuantityChange(productId, newQuantity)}
               disabled={isDisabled}
             />

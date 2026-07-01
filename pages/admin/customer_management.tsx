@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import {
     Typography,
     Box,
@@ -36,6 +36,10 @@ import {
     TablePagination,
     useTheme,
     alpha,
+    List,
+    ListItem,
+    ListItemIcon,
+    ListItemText,
 } from '@mui/material';
 import {
     Add,
@@ -59,6 +63,11 @@ import {
     Link as LinkIcon,
     Key,
     Badge,
+    FileDownload,
+    Upload,
+    Warning,
+    CheckCircleOutline,
+    ErrorOutline,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -71,7 +80,7 @@ interface User {
     first_name?: string;
     last_name?: string;
     email: string;
-    phone: string;
+    phone: number;
     role: string;
     status: string;
     code?: string;
@@ -97,6 +106,37 @@ interface Stats {
     active: number;
     inactive: number;
     by_role: Record<string, number>;
+}
+
+interface BulkPreviewEntry {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    zoho_customer_name: string;
+    row: number;
+    customer_id?: string;
+    matched_customer_name?: string;
+    reason?: string;
+}
+
+interface BulkPreviewData {
+    found: BulkPreviewEntry[];
+    not_found: BulkPreviewEntry[];
+}
+
+interface BulkCreatedEntry {
+    user_id: string;
+    name: string;
+    email: string;
+    password: string;
+    customer_name: string;
+}
+
+interface BulkCreateResult {
+    created: BulkCreatedEntry[];
+    errors: Array<{ entry: BulkPreviewEntry; reason: string }>;
+    total_created: number;
 }
 
 const CustomerManagement: React.FC = () => {
@@ -128,7 +168,7 @@ const CustomerManagement: React.FC = () => {
         first_name: '',
         last_name: '',
         email: '',
-        phone: '',
+        phone: '' as number | '',
         status: 'active',
         password: '',
         customer_id: '',
@@ -143,6 +183,23 @@ const CustomerManagement: React.FC = () => {
 
     // Password state
     const [newPassword, setNewPassword] = useState<string>('');
+
+    // Share credentials state
+    const [shareCredOpen, setShareCredOpen] = useState<boolean>(false);
+    const [userToShare, setUserToShare] = useState<User | null>(null);
+    const [sharePwd, setSharePwd] = useState<string>('');
+    const [sharingPwd, setSharingPwd] = useState<boolean>(false);
+
+    // Bulk upload state
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [bulkUploading, setBulkUploading] = useState<boolean>(false);
+    const [bulkPreviewOpen, setBulkPreviewOpen] = useState<boolean>(false);
+    const [bulkPreviewData, setBulkPreviewData] = useState<BulkPreviewData | null>(null);
+    const [bulkCreating, setBulkCreating] = useState<boolean>(false);
+    const [bulkResultOpen, setBulkResultOpen] = useState<boolean>(false);
+    const [bulkResult, setBulkResult] = useState<BulkCreateResult | null>(null);
+    const [notFoundOptions, setNotFoundOptions] = useState<Customer[]>([]);
+    const [notFoundSearchLoading, setNotFoundSearchLoading] = useState<boolean>(false);
 
     // Debounced search effect
     useEffect(() => {
@@ -235,7 +292,7 @@ const CustomerManagement: React.FC = () => {
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
             errors.email = 'Invalid email format';
         }
-        if (!formData.phone?.trim()) errors.phone = 'Phone is required';
+        if (!formData.phone) errors.phone = 'Phone is required';
         if (!formData.status) errors.status = 'Status is required';
 
         // Password required only for new users
@@ -259,7 +316,7 @@ const CustomerManagement: React.FC = () => {
             first_name: '',
             last_name: '',
             email: '',
-            phone: '',
+            phone: '' as number | '',
             status: 'active',
             password: '',
             customer_id: '',
@@ -278,7 +335,7 @@ const CustomerManagement: React.FC = () => {
             first_name: userItem.first_name || '',
             last_name: userItem.last_name || '',
             email: userItem.email || '',
-            phone: userItem.phone || '',
+            phone: userItem.phone ? Number(userItem.phone) : '',
             status: userItem.status || 'active',
             password: '',
             customer_id: userItem.customer_id || '',
@@ -404,6 +461,143 @@ const CustomerManagement: React.FC = () => {
         }
     };
 
+    const handleShareCredClick = (userItem: User) => {
+        setUserToShare(userItem);
+        setSharePwd('');
+        setShareCredOpen(true);
+    };
+
+    const handleGenerateSharePwd = async () => {
+        setSharingPwd(true);
+        try {
+            const response = await axiosInstance.get('/admin/users/generate-password');
+            setSharePwd(response.data.password);
+        } catch {
+            toast.error('Error generating password.');
+        } finally {
+            setSharingPwd(false);
+        }
+    };
+
+    const handleCopyShareCred = () => {
+        if (!userToShare || !sharePwd) return;
+        const text = `Link: https://orderform.pupscribe.in/login\nEmail: ${userToShare.email}\nPassword: ${sharePwd}`;
+        navigator.clipboard.writeText(text).then(
+            () => toast.success('Credentials copied!'),
+            () => toast.error('Failed to copy.')
+        );
+    };
+
+    const handleDownloadTemplate = async () => {
+        try {
+            const response = await axiosInstance.get('/admin/users/bulk-upload/template', {
+                responseType: 'blob',
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'customer_upload_template.xlsx');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            toast.error('Error downloading template.');
+        }
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = '';
+
+        setBulkUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const response = await axiosInstance.post('/admin/users/bulk-upload/preview', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            setBulkPreviewData(response.data);
+            setBulkPreviewOpen(true);
+        } catch (error: any) {
+            toast.error(error.response?.data?.detail || 'Error reading file. Ensure you used the correct template.');
+        } finally {
+            setBulkUploading(false);
+        }
+    };
+
+    const handleBulkConfirm = async () => {
+        if (!bulkPreviewData || bulkPreviewData.found.length === 0) return;
+
+        setBulkCreating(true);
+        try {
+            const response = await axiosInstance.post('/admin/users/bulk-upload/create', {
+                entries: bulkPreviewData.found,
+            });
+            setBulkResult(response.data);
+            setBulkPreviewOpen(false);
+            setBulkResultOpen(true);
+            fetchUsers();
+        } catch (error: any) {
+            toast.error(error.response?.data?.detail || 'Error creating users.');
+        } finally {
+            setBulkCreating(false);
+        }
+    };
+
+    const handleDownloadResults = () => {
+        if (!bulkResult) return;
+        const rows = [
+            ['Name', 'Email', 'Password', 'Zoho Customer'],
+            ...bulkResult.created.map(u => [u.name, u.email, u.password, u.customer_name]),
+        ];
+        const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'created_customers.csv');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+    };
+
+    const searchNotFoundCustomers = async (search: string) => {
+        if (!search || search.length < 1) {
+            setNotFoundOptions([]);
+            return;
+        }
+        setNotFoundSearchLoading(true);
+        try {
+            const response = await axiosInstance.get(`/admin/users/search/customers?search=${encodeURIComponent(search)}`);
+            setNotFoundOptions(response.data.customers);
+        } catch {
+            // ignore
+        } finally {
+            setNotFoundSearchLoading(false);
+        }
+    };
+
+    const handleNotFoundCustomerSelect = (entryIdx: number, customer: Customer | null) => {
+        if (!customer || !bulkPreviewData) return;
+        const entry = bulkPreviewData.not_found[entryIdx];
+        const updatedEntry: BulkPreviewEntry = {
+            ...entry,
+            customer_id: customer.contact_id,
+            matched_customer_name: customer.display_name,
+        };
+        setBulkPreviewData(prev => {
+            if (!prev) return prev;
+            return {
+                found: [...prev.found, updatedEntry],
+                not_found: prev.not_found.filter((_, i) => i !== entryIdx),
+            };
+        });
+        setNotFoundOptions([]);
+    };
+
     // Handle status toggle
     const handleStatusToggle = async (userItem: User) => {
         const newStatus = userItem.status === 'active' ? 'inactive' : 'active';
@@ -438,22 +632,43 @@ const CustomerManagement: React.FC = () => {
                         Manage customer accounts and their linked contacts
                     </Typography>
                 </Box>
-                <Button
-                    variant="contained"
-                    size="large"
-                    startIcon={<PersonAdd />}
-                    onClick={handleCreateClick}
-                    sx={{
-                        borderRadius: 2,
-                        px: 3,
-                        py: 1.5,
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        boxShadow: 2,
-                    }}
-                >
-                    Add Customer
-                </Button>
+                <Box display="flex" gap={1.5} flexWrap="wrap" justifyContent="flex-end">
+                    <Button
+                        variant="outlined"
+                        size="large"
+                        startIcon={<FileDownload />}
+                        onClick={handleDownloadTemplate}
+                        sx={{ borderRadius: 2, px: 2.5, py: 1.5, textTransform: 'none', fontWeight: 600 }}
+                    >
+                        Download Template
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        size="large"
+                        startIcon={bulkUploading ? <CircularProgress size={18} /> : <Upload />}
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={bulkUploading}
+                        sx={{ borderRadius: 2, px: 2.5, py: 1.5, textTransform: 'none', fontWeight: 600 }}
+                    >
+                        Bulk Upload
+                    </Button>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".xlsx"
+                        style={{ display: 'none' }}
+                        onChange={handleFileChange}
+                    />
+                    <Button
+                        variant="contained"
+                        size="large"
+                        startIcon={<PersonAdd />}
+                        onClick={handleCreateClick}
+                        sx={{ borderRadius: 2, px: 3, py: 1.5, textTransform: 'none', fontWeight: 600, boxShadow: 2 }}
+                    >
+                        Add Customer
+                    </Button>
+                </Box>
             </Box>
 
             {/* Statistics Cards */}
@@ -802,6 +1017,18 @@ const CustomerManagement: React.FC = () => {
                                                                 <LockReset fontSize="small" color="warning" />
                                                             </IconButton>
                                                         </Tooltip>
+                                                        <Tooltip title="Share Credentials">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => handleShareCredClick(userItem)}
+                                                                sx={{
+                                                                    bgcolor: alpha(theme.palette.success.main, 0.1),
+                                                                    '&:hover': { bgcolor: alpha(theme.palette.success.main, 0.2) },
+                                                                }}
+                                                            >
+                                                                <ContentCopy fontSize="small" color="success" />
+                                                            </IconButton>
+                                                        </Tooltip>
                                                         <Tooltip title="Delete">
                                                             <IconButton
                                                                 size="small"
@@ -1091,8 +1318,9 @@ const CustomerManagement: React.FC = () => {
                                             <TextField
                                                 fullWidth
                                                 label="Phone Number"
+                                                type="number"
                                                 value={formData.phone}
-                                                onChange={(e) => handleFormChange('phone', e.target.value)}
+                                                onChange={(e) => handleFormChange('phone', e.target.value === '' ? '' : Number(e.target.value) as any)}
                                                 error={!!formErrors.phone}
                                                 helperText={formErrors.phone}
                                                 required
@@ -1395,6 +1623,392 @@ const CustomerManagement: React.FC = () => {
                         startIcon={<LockReset />}
                     >
                         Reset Password
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Share Credentials Dialog */}
+            <Dialog
+                open={shareCredOpen}
+                onClose={() => setShareCredOpen(false)}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle>
+                    <Box display="flex" alignItems="center" gap={2}>
+                        <Avatar sx={{ bgcolor: 'success.main' }}>
+                            <ContentCopy />
+                        </Avatar>
+                        <Box>
+                            <Typography variant="h6">Share Login Credentials</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                {userToShare?.name}
+                            </Typography>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    <TextField
+                        fullWidth
+                        label="Email"
+                        value={userToShare?.email ?? ''}
+                        slotProps={{ input: { readOnly: true } }}
+                        sx={{ mt: 2, mb: 2 }}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <Email color="action" />
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                    <TextField
+                        fullWidth
+                        label="Password"
+                        type="text"
+                        value={sharePwd}
+                        onChange={(e) => setSharePwd(e.target.value)}
+                        placeholder="Type or generate a password"
+                        helperText="Enter a password to include in the copied credentials"
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <Key color="action" />
+                                </InputAdornment>
+                            ),
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <Tooltip title="Generate Password">
+                                        <span>
+                                            <IconButton onClick={handleGenerateSharePwd} disabled={sharingPwd} color="primary">
+                                                {sharingPwd ? <CircularProgress size={20} /> : <Refresh />}
+                                            </IconButton>
+                                        </span>
+                                    </Tooltip>
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                    {sharePwd && (
+                        <Alert severity="info" sx={{ mt: 2 }}>
+                            <Typography variant="body2" fontFamily="monospace" whiteSpace="pre-line">
+                                {`Link: https://orderform.pupscribe.in/login\nEmail: ${userToShare?.email}\nPassword: ${sharePwd}`}
+                            </Typography>
+                        </Alert>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setShareCredOpen(false)}>Cancel</Button>
+                    <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<ContentCopy />}
+                        onClick={handleCopyShareCred}
+                        disabled={!sharePwd}
+                    >
+                        Copy Credentials
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Bulk Upload Preview Dialog */}
+            <Dialog
+                open={bulkPreviewOpen}
+                onClose={() => setBulkPreviewOpen(false)}
+                maxWidth="md"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle sx={{ borderBottom: `1px solid ${theme.palette.divider}`, pb: 2 }}>
+                    <Box display="flex" alignItems="center" gap={2}>
+                        <Avatar sx={{ bgcolor: 'primary.main' }}>
+                            <Upload />
+                        </Avatar>
+                        <Box>
+                            <Typography variant="h6">Confirm Bulk Upload</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Review matched and unmatched customers before creating accounts
+                            </Typography>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent sx={{ pt: 3 }}>
+                    {bulkPreviewData && (
+                        <Box display="flex" flexDirection="column" gap={3}>
+                            {/* Summary chips */}
+                            <Box display="flex" gap={2}>
+                                <Chip
+                                    icon={<CheckCircleOutline />}
+                                    label={`${bulkPreviewData.found.length} will be created`}
+                                    color="success"
+                                    variant="outlined"
+                                    sx={{ fontWeight: 600 }}
+                                />
+                                <Chip
+                                    icon={<ErrorOutline />}
+                                    label={`${bulkPreviewData.not_found.length} not matched — select manually`}
+                                    color="error"
+                                    variant="outlined"
+                                    sx={{ fontWeight: 600 }}
+                                />
+                            </Box>
+
+                            {/* Found entries */}
+                            {bulkPreviewData.found.length > 0 && (
+                                <Paper
+                                    elevation={0}
+                                    sx={{ border: `1px solid ${theme.palette.success.main}`, borderRadius: 2 }}
+                                >
+                                    <Box
+                                        px={2}
+                                        py={1.5}
+                                        sx={{
+                                            bgcolor: alpha(theme.palette.success.main, 0.08),
+                                            borderBottom: `1px solid ${theme.palette.success.main}`,
+                                            borderRadius: '8px 8px 0 0',
+                                        }}
+                                    >
+                                        <Typography variant="subtitle2" color="success.main" fontWeight={700}>
+                                            Matched — accounts will be created
+                                        </Typography>
+                                    </Box>
+                                    <TableContainer sx={{ maxHeight: 280 }}>
+                                        <Table size="small" stickyHeader>
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
+                                                    <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
+                                                    <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
+                                                    <TableCell sx={{ fontWeight: 600 }}>Zoho Input</TableCell>
+                                                    <TableCell sx={{ fontWeight: 600 }}>Matched Customer</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {bulkPreviewData.found.map((entry, idx) => (
+                                                    <TableRow key={idx}>
+                                                        <TableCell>{`${entry.first_name} ${entry.last_name}`.trim()}</TableCell>
+                                                        <TableCell>{entry.email}</TableCell>
+                                                        <TableCell>{entry.phone}</TableCell>
+                                                        <TableCell>
+                                                            <Typography variant="body2" color="text.secondary" noWrap>
+                                                                {entry.zoho_customer_name}
+                                                            </Typography>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Chip
+                                                                label={entry.matched_customer_name}
+                                                                size="small"
+                                                                color="success"
+                                                                variant="outlined"
+                                                            />
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Paper>
+                            )}
+
+                            {/* Not found entries */}
+                            {bulkPreviewData.not_found.length > 0 && (
+                                <Paper
+                                    elevation={0}
+                                    sx={{ border: `1px solid ${theme.palette.error.main}`, borderRadius: 2 }}
+                                >
+                                    <Box
+                                        px={2}
+                                        py={1.5}
+                                        sx={{
+                                            bgcolor: alpha(theme.palette.error.main, 0.08),
+                                            borderBottom: `1px solid ${theme.palette.error.main}`,
+                                            borderRadius: '8px 8px 0 0',
+                                        }}
+                                    >
+                                        <Typography variant="subtitle2" color="error.main" fontWeight={700}>
+                                            Not found — select the correct customer to include, or these rows will be skipped
+                                        </Typography>
+                                    </Box>
+                                    <TableContainer sx={{ maxHeight: 280 }}>
+                                        <Table size="small" stickyHeader>
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell sx={{ fontWeight: 600 }}>Row</TableCell>
+                                                    <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
+                                                    <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
+                                                    <TableCell sx={{ fontWeight: 600 }}>Zoho Customer Name</TableCell>
+                                                    <TableCell sx={{ fontWeight: 600 }}>Reason</TableCell>
+                                                    <TableCell sx={{ fontWeight: 600, minWidth: 240 }}>Select Customer</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {bulkPreviewData.not_found.map((entry, idx) => (
+                                                    <TableRow key={idx}>
+                                                        <TableCell>{entry.row}</TableCell>
+                                                        <TableCell>{`${entry.first_name} ${entry.last_name}`.trim()}</TableCell>
+                                                        <TableCell>{entry.email}</TableCell>
+                                                        <TableCell>
+                                                            <Typography variant="body2" color="error" noWrap>
+                                                                {entry.zoho_customer_name || '—'}
+                                                            </Typography>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {entry.reason}
+                                                            </Typography>
+                                                        </TableCell>
+                                                        <TableCell sx={{ minWidth: 240 }}>
+                                                            <Autocomplete
+                                                                size="small"
+                                                                options={notFoundOptions}
+                                                                getOptionLabel={(o) => o.display_name}
+                                                                loading={notFoundSearchLoading}
+                                                                onInputChange={(_, value) => searchNotFoundCustomers(value)}
+                                                                onChange={(_, value) => handleNotFoundCustomerSelect(idx, value)}
+                                                                renderInput={(params) => (
+                                                                    <TextField
+                                                                        {...params}
+                                                                        placeholder="Search & select..."
+                                                                        InputProps={{
+                                                                            ...params.InputProps,
+                                                                            endAdornment: (
+                                                                                <>
+                                                                                    {notFoundSearchLoading && <CircularProgress size={14} color="inherit" />}
+                                                                                    {params.InputProps.endAdornment}
+                                                                                </>
+                                                                            ),
+                                                                        }}
+                                                                    />
+                                                                )}
+                                                                isOptionEqualToValue={(o, v) => o.contact_id === v.contact_id}
+                                                                noOptionsText="Type to search active customers..."
+                                                            />
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Paper>
+                            )}
+
+                            {bulkPreviewData.found.length === 0 && (
+                                <Alert severity="warning">
+                                    No customers matched. Please check your Zoho Customer Name values and try again.
+                                </Alert>
+                            )}
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+                    <Button onClick={() => setBulkPreviewOpen(false)} startIcon={<Cancel />}>
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="success"
+                        onClick={handleBulkConfirm}
+                        disabled={bulkCreating || !bulkPreviewData || bulkPreviewData.found.length === 0}
+                        startIcon={bulkCreating ? <CircularProgress size={18} color="inherit" /> : <CheckCircle />}
+                        sx={{ px: 3 }}
+                    >
+                        Create {bulkPreviewData?.found.length ?? 0} Accounts
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Bulk Upload Results Dialog */}
+            <Dialog
+                open={bulkResultOpen}
+                onClose={() => setBulkResultOpen(false)}
+                maxWidth="md"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle sx={{ borderBottom: `1px solid ${theme.palette.divider}`, pb: 2 }}>
+                    <Box display="flex" alignItems="center" gap={2}>
+                        <Avatar sx={{ bgcolor: 'success.main' }}>
+                            <CheckCircle />
+                        </Avatar>
+                        <Box>
+                            <Typography variant="h6">Bulk Upload Complete</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                {bulkResult?.total_created ?? 0} customer accounts created successfully
+                            </Typography>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent sx={{ pt: 3 }}>
+                    {bulkResult && (
+                        <Box display="flex" flexDirection="column" gap={3}>
+                            <Alert severity="warning" icon={<Warning />}>
+                                Save or download the passwords below — they will not be shown again.
+                            </Alert>
+
+                            {bulkResult.created.length > 0 && (
+                                <TableContainer
+                                    component={Paper}
+                                    elevation={0}
+                                    sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 2, maxHeight: 360 }}
+                                >
+                                    <Table size="small" stickyHeader>
+                                        <TableHead>
+                                            <TableRow sx={{ bgcolor: alpha(theme.palette.success.main, 0.08) }}>
+                                                <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Password</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Linked Customer</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {bulkResult.created.map((u, idx) => (
+                                                <TableRow key={idx}>
+                                                    <TableCell>{u.name}</TableCell>
+                                                    <TableCell>{u.email}</TableCell>
+                                                    <TableCell>
+                                                        <Box display="flex" alignItems="center" gap={1}>
+                                                            <Typography variant="body2" fontFamily="monospace">
+                                                                {u.password}
+                                                            </Typography>
+                                                            <Tooltip title="Copy">
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={() => copyToClipboard(u.password)}
+                                                                >
+                                                                    <ContentCopy fontSize="small" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        </Box>
+                                                    </TableCell>
+                                                    <TableCell>{u.customer_name}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            )}
+
+                            {bulkResult.errors.length > 0 && (
+                                <Alert severity="error">
+                                    {bulkResult.errors.length} entries failed:{' '}
+                                    {bulkResult.errors.map(e => `${e.entry.email} (${e.reason})`).join(', ')}
+                                </Alert>
+                            )}
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+                    <Button
+                        variant="outlined"
+                        startIcon={<FileDownload />}
+                        onClick={handleDownloadResults}
+                        disabled={!bulkResult || bulkResult.created.length === 0}
+                    >
+                        Download CSV
+                    </Button>
+                    <Button variant="contained" onClick={() => setBulkResultOpen(false)}>
+                        Done
                     </Button>
                 </DialogActions>
             </Dialog>

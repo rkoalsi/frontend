@@ -29,24 +29,24 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   const handleIncrease = useCallback((e?: React.MouseEvent | React.TouchEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
-    // Prevent default touch behavior that might cause scrolling
     if (e && 'touches' in e) {
       e.preventDefault();
     }
-    if (quantity + step <= max) {
-      onChange(quantity + step);
+    const next = Math.ceil((quantity + 1) / step) * step;
+    if (next <= max) {
+      onChange(next);
     }
   }, [quantity, max, step, onChange]);
 
   const handleDecrease = useCallback((e?: React.MouseEvent | React.TouchEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
-    // Prevent default touch behavior that might cause scrolling
     if (e && 'touches' in e) {
       e.preventDefault();
     }
-    if (quantity - step >= step) {
-      onChange(quantity - step);
+    const prev = Math.max(step, Math.floor((quantity - 1) / step) * step);
+    if (prev < quantity) {
+      onChange(prev);
     }
   }, [quantity, step, onChange]);
 

@@ -26,7 +26,7 @@ import {
     IconButton,
     InputAdornment,
     Grid,
-    Container,
+    Stack,
     Tooltip,
     Tabs,
     Tab,
@@ -57,7 +57,7 @@ import capitalize from '../../src/util/capitalize';
 import { toast } from 'react-toastify';
 import AuthContext from '../../src/components/Auth';
 
-const ROLES = [
+const DEFAULT_ROLES = [
     { value: 'admin', label: 'Admin' },
     { value: 'sales_admin', label: 'Sales Admin' },
     { value: 'sales_person', label: 'Sales Person' },
@@ -76,10 +76,6 @@ const ROLE_COLORS: Record<string, any> = {
     warehouse: 'secondary',
     customer: 'info',
 };
-
-const formatRole = (role: string) => ROLES.find(r => r.value === role)?.label || role;
-
-const getRoleColor = (role: string) => ROLE_COLORS[role] || 'default';
 
 const EMPTY_USER_FORM = {
     name: '',
@@ -122,6 +118,16 @@ const UserManagement = () => {
     const [newPassword, setNewPassword] = useState('');
     const [formLoading, setFormLoading] = useState(false);
 
+    // --- Roles state ---
+    const [roles, setRoles] = useState<{ value: string; label: string }[]>(DEFAULT_ROLES);
+    const [addRoleOpen, setAddRoleOpen] = useState(false);
+    const [newRoleForm, setNewRoleForm] = useState({ label: '', value: '' });
+    const [newRolePerms, setNewRolePerms] = useState<Record<string, boolean>>({});
+    const [roleSaving, setRoleSaving] = useState(false);
+
+    const formatRole = (role: string) => roles.find(r => r.value === role)?.label || role;
+    const getRoleColor = (role: string) => ROLE_COLORS[role] || 'default';
+
     // --- Permissions matrix state ---
     const [allPermissions, setAllPermissions] = useState<any[]>([]);
     const [permLoading, setPermLoading] = useState(false);
@@ -163,9 +169,27 @@ const UserManagement = () => {
         }
     }, [API]);
 
+    const fetchRoles = useCallback(async () => {
+        try {
+            const res = await axiosInstance.get(`${API}/permissions/roles`);
+            const fetched = res.data.roles || [];
+            if (fetched.length) {
+                // Keep defaults' order, then append any custom roles from the backend
+                const merged = [...DEFAULT_ROLES];
+                fetched.forEach((r: any) => {
+                    if (!merged.some(m => m.value === r.value)) merged.push({ value: r.value, label: r.label });
+                });
+                setRoles(merged);
+            }
+        } catch {
+            // fall back to defaults silently
+        }
+    }, [API]);
+
     useEffect(() => {
         fetchUsers();
-    }, [fetchUsers]);
+        fetchRoles();
+    }, [fetchUsers, fetchRoles]);
 
     useEffect(() => {
         if (tab === 1) fetchAllPermissions();
@@ -399,6 +423,49 @@ const UserManagement = () => {
         }
     };
 
+    // ---- Add Role ----
+
+    const openAddRole = async () => {
+        setNewRoleForm({ label: '', value: '' });
+        setNewRolePerms({});
+        // Ensure the permission list is available so the admin can grant access on creation
+        if (allPermissions.length === 0) {
+            try {
+                const res = await axiosInstance.get(`${API}/permissions/admin/all-permissions`);
+                setAllPermissions(res.data.permissions || []);
+            } catch {
+                // dialog still works for label-only role creation
+            }
+        }
+        setAddRoleOpen(true);
+    };
+
+    const handleCreateRole = async () => {
+        const label = newRoleForm.label.trim();
+        const value = newRoleForm.value.trim().toLowerCase().replace(/\s+/g, '_');
+        if (!label || !value) {
+            toast.error('Please enter a role name');
+            return;
+        }
+        if (roles.some(r => r.value === value)) {
+            toast.error('A role with that value already exists');
+            return;
+        }
+        const permissions = Object.keys(newRolePerms).filter(id => newRolePerms[id]);
+        try {
+            setRoleSaving(true);
+            await axiosInstance.post(`${API}/permissions/admin/roles`, { label, value, permissions });
+            toast.success(`Role "${label}" created`);
+            setAddRoleOpen(false);
+            await fetchRoles();
+            if (tab === 1) fetchAllPermissions();
+        } catch (err: any) {
+            toast.error(err?.response?.data?.detail || 'Failed to create role');
+        } finally {
+            setRoleSaving(false);
+        }
+    };
+
     // ---- Filtered users ----
 
     const filteredUsers = users.filter((u: any) => {
@@ -412,19 +479,20 @@ const UserManagement = () => {
     // ---- Render ----
 
     return (
-        <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3 } }}>
-            {/* Header */}
-            <Paper elevation={1} sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
-                    <Box>
-                        <Typography variant="h4" display="flex" alignItems="center" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-                            <GroupIcon sx={{ mr: 2, color: 'primary.main', fontSize: 32 }} />
-                            User & Permission Management
-                        </Typography>
-                        <Typography variant="body1" color="text.secondary">
-                            Manage staff users and control role-based access
-                        </Typography>
-                    </Box>
+        <Box sx={{ padding: { xs: 2, sm: 3 } }}>
+            <Paper elevation={3} sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4 }}>
+                {/* Header */}
+                <Box
+                    display='flex'
+                    justifyContent='space-between'
+                    alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    flexDirection={{ xs: 'column', sm: 'row' }}
+                    gap={{ xs: 2, sm: 0 }}
+                    mb={1}
+                >
+                    <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+                        User & Permission Management
+                    </Typography>
                     {tab === 0 && (
                         <Button
                             variant="contained"
@@ -445,66 +513,65 @@ const UserManagement = () => {
                         </Button>
                     )}
                 </Box>
-                <Tabs value={tab} onChange={(_, v) => setTab(v)}>
+                <Typography variant='body1' color='text.secondary' sx={{ mb: 2 }}>
+                    Manage staff users and control role-based access
+                </Typography>
+                <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
                     <Tab label="Staff Users" icon={<GroupIcon />} iconPosition="start" />
                     {isAdmin && <Tab label="Permissions" icon={<SecurityIcon />} iconPosition="start" />}
                 </Tabs>
-            </Paper>
 
-
-            {/* ======================== USERS TAB ======================== */}
-            {tab === 0 && (
-                <>
-                    {/* Filters */}
-                    <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
-                        <Grid container spacing={2} alignItems="center">
-                            <Grid sx={{ flexGrow: 1 }}>
-                                <TextField
-                                    fullWidth
-                                    placeholder="Search by name or email…"
-                                    value={searchTerm}
-                                    onChange={e => setSearchTerm(e.target.value)}
-                                    InputProps={{
-                                        startAdornment: (
-                                            <InputAdornment position="start">
-                                                <SearchIcon color="action" />
-                                            </InputAdornment>
-                                        ),
-                                    }}
-                                    size="small"
-                                />
-                            </Grid>
-                            <Grid sx={{ minWidth: 180 }}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel>Role</InputLabel>
-                                    <Select value={selectedRole} label="Role" onChange={e => setSelectedRole(e.target.value)}>
-                                        <MenuItem value="all">All Roles</MenuItem>
-                                        {ROLES.map(r => (
-                                            <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid>
-                                <Tooltip title="Refresh">
-                                    <IconButton onClick={fetchUsers}><RefreshIcon /></IconButton>
+                {/* ======================== USERS TAB ======================== */}
+                {tab === 0 && (
+                    <>
+                        {/* Filters */}
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ mb: 3 }}>
+                            <TextField
+                                placeholder="Search by name or email…"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SearchIcon color="action" />
+                                        </InputAdornment>
+                                    ),
+                                }}
+                                size="small"
+                                sx={{ flexGrow: 1 }}
+                            />
+                            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 180 } }}>
+                                <InputLabel>Role</InputLabel>
+                                <Select value={selectedRole} label="Role" onChange={e => setSelectedRole(e.target.value)}>
+                                    <MenuItem value="all">All Roles</MenuItem>
+                                    {roles.map(r => (
+                                        <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                            {isAdmin && (
+                                <Tooltip title="Add new role">
+                                    <IconButton onClick={openAddRole} color="primary">
+                                        <GroupIcon />
+                                    </IconButton>
                                 </Tooltip>
-                            </Grid>
-                        </Grid>
-                    </Paper>
+                            )}
+                            <Tooltip title="Refresh">
+                                <IconButton onClick={fetchUsers}><RefreshIcon /></IconButton>
+                            </Tooltip>
+                        </Stack>
 
-                    {/* Users table */}
-                    <Paper elevation={1}>
+                        {/* Users table */}
                         {usersLoading ? (
                             <Box display="flex" justifyContent="center" alignItems="center" py={8}>
                                 <CircularProgress sx={{ mr: 2 }} />
                                 <Typography color="text.secondary">Loading users…</Typography>
                             </Box>
                         ) : (
-                            <TableContainer>
+                            <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
                                 <Table>
                                     <TableHead>
-                                        <TableRow sx={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'grey.50' }}>
+                                        <TableRow>
                                             <TableCell sx={{ fontWeight: 'bold' }}>User</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Contact</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Role</TableCell>
@@ -595,13 +662,12 @@ const UserManagement = () => {
                                 <Typography variant="body2" color="text.secondary">Try adjusting your search or filters</Typography>
                             </Box>
                         )}
-                    </Paper>
-                </>
-            )}
+                    </>
+                )}
 
-            {/* ======================== PERMISSIONS TAB ======================== */}
-            {tab === 1 && (
-                <Paper elevation={1}>
+                {/* ======================== PERMISSIONS TAB ======================== */}
+                {tab === 1 && (
+                    <Box>
                     {permLoading ? (
                         <Box display="flex" justifyContent="center" alignItems="center" py={8}>
                             <CircularProgress sx={{ mr: 2 }} />
@@ -614,18 +680,18 @@ const UserManagement = () => {
                                     Toggle which roles can access each feature. Click <strong>Save Permissions</strong> in the header to apply changes.
                                 </Typography>
                             </Box>
-                            <TableContainer sx={{ overflowX: 'auto' }}>
+                            <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
                                 <Table size="small" stickyHeader>
                                     <TableHead>
                                         <TableRow>
-                                            <TableCell sx={{ fontWeight: 'bold', minWidth: 220, backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'grey.50' }}>
+                                            <TableCell sx={{ fontWeight: 'bold', minWidth: 220 }}>
                                                 Feature / Page
                                             </TableCell>
-                                            {ROLES.map(role => (
+                                            {roles.map(role => (
                                                 <TableCell
                                                     key={role.value}
                                                     align="center"
-                                                    sx={{ fontWeight: 'bold', minWidth: 110, backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'grey.50' }}
+                                                    sx={{ fontWeight: 'bold', minWidth: 110 }}
                                                 >
                                                     <Chip
                                                         label={role.label}
@@ -646,7 +712,7 @@ const UserManagement = () => {
                                                         <Typography variant="caption" color="text.secondary">{perm.path}</Typography>
                                                     </Box>
                                                 </TableCell>
-                                                {ROLES.map(role => {
+                                                {roles.map(role => {
                                                     const checked = (permMatrix[perm.id] || []).includes(role.value);
                                                     return (
                                                         <TableCell key={role.value} align="center" padding="checkbox">
@@ -672,8 +738,10 @@ const UserManagement = () => {
                             )}
                         </>
                     )}
-                </Paper>
-            )}
+                </Box>
+                )}
+
+            </Paper>
 
             {/* ======================== DIALOGS ======================== */}
 
@@ -752,7 +820,7 @@ const UserManagement = () => {
                             <FormControl fullWidth size="small">
                                 <InputLabel>Role *</InputLabel>
                                 <Select value={addForm.role} label="Role *" onChange={e => setAddForm(f => ({ ...f, role: e.target.value }))}>
-                                    {ROLES.map(r => <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>)}
+                                    {roles.map(r => <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>)}
                                 </Select>
                             </FormControl>
                         </Grid>
@@ -809,7 +877,7 @@ const UserManagement = () => {
                             <FormControl fullWidth size="small">
                                 <InputLabel>Role</InputLabel>
                                 <Select value={editForm.role || ''} label="Role" onChange={e => setEditForm((f: any) => ({ ...f, role: e.target.value }))}>
-                                    {ROLES.map(r => <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>)}
+                                    {roles.map(r => <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>)}
                                 </Select>
                             </FormControl>
                         </Grid>
@@ -1006,7 +1074,86 @@ const UserManagement = () => {
                     <Button onClick={() => setPermViewOpen(false)} variant="contained">Close</Button>
                 </DialogActions>
             </Dialog>
-        </Container>
+            {/* Add Role Dialog */}
+            <Dialog open={addRoleOpen} onClose={() => !roleSaving && setAddRoleOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+                <DialogTitle>
+                    <Box display="flex" alignItems="center" gap={1}>
+                        <GroupIcon color="primary" />
+                        <Typography variant="h6">Create New Role</Typography>
+                    </Box>
+                </DialogTitle>
+                <DialogContent dividers>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Create a custom role and grant it access to features. The role is saved and
+                        becomes available when adding or editing users.
+                    </Typography>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
+                        <TextField
+                            fullWidth
+                            label="Role Name *"
+                            size="small"
+                            value={newRoleForm.label}
+                            onChange={e => {
+                                const label = e.target.value;
+                                setNewRoleForm({ label, value: label.trim().toLowerCase().replace(/\s+/g, '_') });
+                            }}
+                            placeholder="e.g. Finance Manager"
+                        />
+                        <TextField
+                            fullWidth
+                            label="Role Value"
+                            size="small"
+                            value={newRoleForm.value}
+                            onChange={e => setNewRoleForm(f => ({ ...f, value: e.target.value }))}
+                            helperText="Unique identifier (auto-generated)"
+                        />
+                    </Stack>
+                    <Divider sx={{ mb: 1 }} />
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                        Permissions for this role
+                    </Typography>
+                    {allPermissions.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary">
+                            No permissions available to assign. You can add them later from the Permissions tab.
+                        </Typography>
+                    ) : (
+                        <Box sx={{ maxHeight: 300, overflowY: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                            <Table size="small">
+                                <TableBody>
+                                    {allPermissions.map(p => (
+                                        <TableRow key={p.id} hover>
+                                            <TableCell>
+                                                <Typography variant="body2" fontWeight="medium">{p.text}</Typography>
+                                                <Typography variant="caption" color="text.secondary">{p.path}</Typography>
+                                            </TableCell>
+                                            <TableCell align="center" padding="checkbox">
+                                                <Checkbox
+                                                    checked={!!newRolePerms[p.id]}
+                                                    onChange={e => setNewRolePerms(prev => ({ ...prev, [p.id]: e.target.checked }))}
+                                                    color="primary"
+                                                    size="small"
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setAddRoleOpen(false)} color="inherit" variant="outlined" disabled={roleSaving}>Cancel</Button>
+                    <Button
+                        onClick={handleCreateRole}
+                        variant="contained"
+                        disabled={roleSaving || !newRoleForm.label.trim() || !newRoleForm.value.trim()}
+                        startIcon={roleSaving ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
+                    >
+                        {roleSaving ? 'Creating…' : 'Create Role'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </Box>
     );
 };
 

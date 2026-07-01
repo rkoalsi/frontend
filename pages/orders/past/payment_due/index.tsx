@@ -6,16 +6,17 @@ import {
   Skeleton,
   Chip,
   useMediaQuery,
-  Card,
-  CardContent,
   TextField,
   Container,
   Paper,
   Stack,
   Divider,
-  IconButton,
   InputAdornment,
   Fade,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  TablePagination,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useRouter } from 'next/router';
@@ -23,37 +24,47 @@ import axios from 'axios';
 import AuthContext from '../../../../src/components/Auth';
 import axiosInstance from '../../../../src/util/axios';
 import { toast } from 'react-toastify';
-import CustomButton from '../../../../src/components/common/Button';
 import {
   Visibility,
   Search,
   GetApp,
   ArrowBack,
   WarningAmber,
-  CheckCircleOutline,
-  AccessTime,
+  ExpandMore,
+  Person,
 } from '@mui/icons-material';
 import Header from '../../../../src/components/common/Header';
+
+const agingLabel = (days: number) => {
+  if (days <= 30) return { label: `${days}d overdue`, color: 'warning' as const };
+  if (days <= 60) return { label: `${days}d overdue`, color: 'error' as const };
+  return { label: `${days}d overdue`, color: 'error' as const };
+};
+
+const agingBucketColor = (maxDays: number) => {
+  if (maxDays > 60) return 'error' as const;
+  if (maxDays > 30) return 'warning' as const;
+  return 'default' as const;
+};
 
 const PaymentDue = () => {
   const [loading, setLoading] = useState(false);
   const [invoices, setInvoices] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [skipPage, setSkipPage] = useState('');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isMedium = useMediaQuery(theme.breakpoints.down('md'));
   const router = useRouter();
   const { user }: any = useContext(AuthContext);
 
-  /**
-   * Fetch orders from the backend
-   */
   const getData = async () => {
     try {
       setLoading(true);
       let resp;
       if (user.role.includes('admin')) {
-        resp = await axiosInstance.get(`/admin/payments_due`);
+        resp = await axiosInstance.get(`/admin/payments_due?limit=500`);
       } else {
         resp = await axios.get(
           `${process.env.api_url}/invoices?created_by=${user?._id}`
@@ -68,13 +79,6 @@ const PaymentDue = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  /**
-   * Navigate to invoice details page
-   */
-  const handleOrderClick = (id: any) => {
-    router.push(`/orders/past/payment_due/${id}`);
   };
 
   useEffect(() => {
@@ -105,52 +109,55 @@ const PaymentDue = () => {
     }
   };
 
-  const getStatusIcon = (status: any) => {
-    switch (status.toLowerCase()) {
-      case 'overdue':
-        return (
-          <WarningAmber
-            fontSize='small'
-            sx={{ color: theme.palette.warning.main }}
-          />
-        );
-      case 'paid':
-        return (
-          <CheckCircleOutline
-            fontSize='small'
-            sx={{ color: theme.palette.success.main }}
-          />
-        );
-      default:
-        return (
-          <AccessTime
-            fontSize='small'
-            sx={{ color: theme.palette.info.main }}
-          />
-        );
-    }
-  };
-
-  const filteredInvoices = invoices.filter((invoice: any) =>
-    invoice.customer_name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter then group by customer
+  const filteredInvoices: any[] = (invoices as any[]).filter((invoice: any) =>
+    invoice.customer_name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const customerGroups: Record<string, any[]> = {};
+  for (const inv of filteredInvoices) {
+    const key = inv.customer_name || 'Unknown';
+    if (!customerGroups[key]) customerGroups[key] = [];
+    customerGroups[key].push(inv);
+  }
+
+  // Sort customers by their max overdue_by_days descending
+  const sortedCustomers = Object.entries(customerGroups).sort(([, a], [, b]) => {
+    const maxA = Math.max(...a.map((i: any) => parseInt(i.overdue_by_days) || 0));
+    const maxB = Math.max(...b.map((i: any) => parseInt(i.overdue_by_days) || 0));
+    return maxA - maxB;
+  });
+
+  const totalCustomers = sortedCustomers.length;
+  const totalPages = Math.max(1, Math.ceil(totalCustomers / rowsPerPage));
+  const pagedCustomers = sortedCustomers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  const handleChangePage = (_: any, newPage: number) => {
+    setPage(newPage);
+    setSkipPage('');
+  };
+
+  const handleChangeRowsPerPage = (e: any) => {
+    setRowsPerPage(parseInt(e.target.value, 10));
+    setPage(0);
+    setSkipPage('');
+  };
+
+  const handleSkipPage = () => {
+    const requested = parseInt(skipPage, 10);
+    if (isNaN(requested) || requested < 1 || requested > totalPages) {
+      toast.error('Invalid page number');
+      return;
+    }
+    setPage(requested - 1);
+    setSkipPage('');
+  };
+
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        pb: 4,
-      }}
-    >
+    <Box sx={{ minHeight: '100vh', pb: 4 }}>
       <Container maxWidth='lg'>
-        <Box
-          sx={{
-            pt: 3,
-            pb: 4,
-          }}
-        >
-          {/* Header Section */}
-          <Header title={'Payments Due'} showBackButton />
+        <Box sx={{ pt: 3, pb: 4 }}>
+          <Header title={'Payments Due'} showBackButton useBack />
 
           {/* Search and Actions Bar */}
           <Paper
@@ -170,16 +177,14 @@ const PaymentDue = () => {
           >
             <TextField
               variant='outlined'
-              placeholder='Search by Name'
+              placeholder='Search by Customer Name'
               fullWidth={isMobile}
               size='small'
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
               sx={{
                 maxWidth: isMobile ? '100%' : '350px',
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '8px',
-                },
+                '& .MuiOutlinedInput-root': { borderRadius: '8px' },
               }}
               InputProps={{
                 startAdornment: (
@@ -212,226 +217,280 @@ const PaymentDue = () => {
                 <Skeleton
                   key={item}
                   variant='rectangular'
-                  height={100}
-                  sx={{
-                    mb: 2,
-                    borderRadius: '12px',
-                    animation: 'pulse 1.5s ease-in-out infinite',
-                  }}
+                  height={80}
+                  sx={{ mb: 2, borderRadius: '12px' }}
                 />
               ))}
             </Box>
           ) : (
-            /* Invoices List */
             <Fade in={!loading}>
               <Box sx={{ width: '100%' }}>
-                {filteredInvoices.length > 0 ? (
-                  <Stack spacing={2}>
-                    {filteredInvoices.map((invoice) => {
-                      const {
-                        _id,
-                        invoice_number,
-                        customer_name,
-                        created_at,
-                        due_date,
-                        status,
-                        total,
-                        balance,
-                        overdue_by_days,
-                        invoice_notes = {},
-                      }: any = invoice;
-                      const { images = [] }: any = invoice_notes;
-
-                      // Determine whether the invoice is past due
-                      const invoiceDueDate = new Date(due_date);
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      invoiceDueDate.setHours(0, 0, 0, 0);
-                      const isPastDue = invoiceDueDate < today;
-
-                      // Format the status label with first letter uppercase
-                      const formattedStatus =
-                        status.charAt(0).toUpperCase() +
-                        status.slice(1).toLowerCase();
+                {sortedCustomers.length > 0 ? (
+                  <>
+                  <Stack spacing={1.5}>
+                    {pagedCustomers.map(([customerName, custInvoices]) => {
+                      const totalBalance = custInvoices.reduce(
+                        (sum: number, inv: any) => sum + (parseFloat(inv.balance) || 0),
+                        0
+                      );
+                      const maxOverdue = Math.max(
+                        ...custInvoices.map((i: any) => parseInt(i.overdue_by_days) || 0)
+                      );
+                      const bucketColor = agingBucketColor(maxOverdue);
+                      const hasAttachments = custInvoices.some(
+                        (i: any) => i.invoice_notes?.images?.length > 0
+                      );
 
                       return (
-                        <Card
-                          key={_id}
+                        <Accordion
+                          key={customerName}
+                          disableGutters
                           elevation={2}
-                          onClick={() => handleOrderClick(_id)}
                           sx={{
-                            paddingBottom: '0px !important',
-                            borderRadius: '12px',
+                            borderRadius: '12px !important',
                             overflow: 'hidden',
-                            transition: 'all 0.3s ease',
-                            cursor: 'pointer',
-                            '&:hover': {
-                              transform: 'translateY(-4px)',
-                              boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                            },
-                            border: isPastDue
-                              ? `1px solid ${theme.palette.error.light}`
-                              : 'none',
+                            '&:before': { display: 'none' },
+                            border:
+                              maxOverdue > 60
+                                ? `1px solid ${theme.palette.error.light}`
+                                : maxOverdue > 30
+                                ? `1px solid ${theme.palette.warning.light}`
+                                : `1px solid ${theme.palette.divider}`,
                           }}
                         >
-                          <CardContent sx={{ p: 0 }}>
-                            <Box
-                              sx={{
-                                p: 2,
-                                display: 'flex',
-                                flexDirection: isMedium ? 'column' : 'row',
-                                justifyContent: 'space-between',
-                                gap: 2,
-                              }}
-                            >
-                              {/* Left section - Invoice Details */}
-                              <Box sx={{ flex: 1 }}>
-                                <Box
-                                  display='flex'
-                                  alignItems='center'
-                                  justifyContent='space-between'
-                                >
-                                  <Typography
-                                    variant='h6'
-                                    fontWeight='600'
-                                    sx={{
-                                      fontSize: { xs: '1rem', sm: '1.1rem' },
-                                      color: theme.palette.text.primary,
-                                    }}
-                                  >
-                                    {invoice_number}
-                                  </Typography>
-
-                                  {images.length > 0 && (
-                                    <Chip
-                                      icon={<Visibility fontSize='small' />}
-                                      label='Attachments'
-                                      size='small'
-                                      sx={{
-                                        borderRadius: '6px',
-                                        fontSize: '0.75rem',
-                                      }}
-                                    />
-                                  )}
-                                </Box>
-
-                                <Typography
-                                  variant='body1'
-                                  sx={{
-                                    mt: 1,
-                                    fontWeight: 500,
-                                    color: theme.palette.text.primary,
-                                  }}
-                                >
-                                  {customer_name}
-                                </Typography>
-
-                                <Box
-                                  sx={{
-                                    mt: 1,
-                                    display: 'flex',
-                                    flexWrap: 'wrap',
-                                    gap: 2,
-                                  }}
-                                >
-                                  <Typography
-                                    variant='body2'
-                                    color='text.secondary'
-                                  >
-                                    Created:{' '}
-                                    {new Date(created_at).toLocaleDateString()}
-                                  </Typography>
-
-                                  <Typography
-                                    variant='body2'
-                                    sx={{
-                                      color: isPastDue
-                                        ? theme.palette.error.main
-                                        : theme.palette.text.secondary,
-                                      fontWeight: isPastDue ? 600 : 400,
-                                    }}
-                                  >
-                                    Due: {invoiceDueDate.toLocaleDateString()}
-                                  </Typography>
-                                </Box>
-
-                                {parseInt(overdue_by_days) > 0 && (
-                                  <Typography
-                                    variant='body2'
-                                    sx={{
-                                      mt: 1,
-                                      color: theme.palette.error.main,
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    Overdue by: {overdue_by_days}{' '}
-                                    {parseInt(overdue_by_days) === 1
-                                      ? 'day'
-                                      : 'days'}
-                                  </Typography>
-                                )}
-                              </Box>
-
-                              {/* Right section - Status & Amounts */}
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  flexDirection: isMobile ? 'row' : 'column',
-                                  justifyContent: isMobile
-                                    ? 'space-between'
-                                    : 'flex-end',
-                                  alignItems: isMobile ? 'center' : 'flex-end',
-                                  minWidth: isMedium ? 'auto' : '180px',
-                                  gap: 1,
-                                }}
+                          <AccordionSummary
+                            expandIcon={<ExpandMore />}
+                            sx={{
+                              px: 2,
+                              py: isMobile ? 1.5 : 1,
+                              '& .MuiAccordionSummary-content': {
+                                alignItems: isMobile ? 'flex-start' : 'center',
+                                gap: isMobile ? 1 : 2,
+                                flexWrap: 'wrap',
+                                flexDirection: isMobile ? 'column' : 'row',
+                              },
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: isMobile ? '100%' : 'auto' }}>
+                              <Person
+                                fontSize='small'
+                                sx={{ color: theme.palette.text.secondary, flexShrink: 0 }}
+                              />
+                              <Typography
+                                variant='subtitle1'
+                                fontWeight={600}
+                                sx={{ flex: 1, minWidth: 120, color: theme.palette.text.primary }}
                               >
-                                <Chip
-                                  icon={getStatusIcon(status)}
-                                  label={formattedStatus}
-                                  size='small'
-                                  color={
-                                    status.toLowerCase() === 'overdue'
-                                      ? 'warning'
-                                      : 'default'
-                                  }
-                                  sx={{
-                                    fontWeight: 500,
-                                    borderRadius: '16px',
-                                    px: 0.5,
-                                  }}
-                                />
-
-                                <Box
-                                  sx={{
-                                    textAlign: isMobile ? 'right' : 'right',
-                                  }}
-                                >
-                                  <Typography
-                                    variant='h6'
-                                    sx={{
-                                      fontWeight: 600,
-                                      color: theme.palette.text.primary,
-                                      fontSize: { xs: '1rem', sm: '1.1rem' },
-                                    }}
-                                  >
-                                    ₹{total || 0}
-                                  </Typography>
-
-                                  <Typography
-                                    variant='body2'
-                                    color='text.secondary'
-                                    sx={{ fontWeight: 500 }}
-                                  >
-                                    Balance: ₹{balance || 0}
-                                  </Typography>
-                                </Box>
-                              </Box>
+                                {customerName}
+                              </Typography>
                             </Box>
-                          </CardContent>
-                        </Card>
+
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+                              <Chip
+                                size='small'
+                                label={`${custInvoices.length} invoice${custInvoices.length > 1 ? 's' : ''}`}
+                                sx={{ fontWeight: 500, fontSize: '0.72rem' }}
+                              />
+                              <Typography
+                                variant='body2'
+                                fontWeight={600}
+                                sx={{ color: theme.palette.text.primary }}
+                              >
+                                ₹{totalBalance.toLocaleString('en-IN', { maximumFractionDigits: 0 })} due
+                              </Typography>
+                              {maxOverdue > 0 && (
+                                <Chip
+                                  size='small'
+                                  icon={<WarningAmber fontSize='small' />}
+                                  label={`Up to ${maxOverdue}d overdue`}
+                                  color={bucketColor}
+                                  sx={{ fontWeight: 600, fontSize: '0.72rem' }}
+                                />
+                              )}
+                              {hasAttachments && (
+                                <Chip
+                                  size='small'
+                                  icon={<Visibility fontSize='small' />}
+                                  label='Attachments'
+                                  sx={{ fontSize: '0.72rem' }}
+                                />
+                              )}
+                            </Box>
+                          </AccordionSummary>
+
+                          <AccordionDetails sx={{ px: 2, pt: 0, pb: 2.5 }}>
+                            <Divider sx={{ mb: 2 }} />
+                            <Stack spacing={1.5}>
+                              {custInvoices
+                                .sort(
+                                  (a: any, b: any) =>
+                                    (parseInt(b.overdue_by_days) || 0) -
+                                    (parseInt(a.overdue_by_days) || 0)
+                                )
+                                .map((invoice: any) => {
+                                  const {
+                                    _id,
+                                    invoice_number,
+                                    due_date,
+                                    balance,
+                                    total,
+                                    overdue_by_days,
+                                    invoice_notes = {},
+                                  } = invoice;
+                                  const { images = [] }: any = invoice_notes;
+                                  const days = parseInt(overdue_by_days) || 0;
+                                  const aging = agingLabel(days);
+                                  const accentColor =
+                                    days > 60
+                                      ? theme.palette.error.main
+                                      : days > 30
+                                      ? theme.palette.warning.main
+                                      : theme.palette.divider;
+
+                                  return (
+                                    <Box
+                                      key={_id}
+                                      onClick={() =>
+                                        router.push(`/orders/past/payment_due/${_id}`)
+                                      }
+                                      sx={{
+                                        display: 'flex',
+                                        alignItems: isMobile ? 'flex-start' : 'center',
+                                        justifyContent: 'space-between',
+                                        flexDirection: isMobile ? 'column' : 'row',
+                                        gap: 2,
+                                        pl: isMobile ? 2.5 : 2,
+                                        pr: 2,
+                                        py: 1.5,
+                                        borderRadius: '10px',
+                                        borderLeft: `4px solid ${accentColor}`,
+                                        background: theme.palette.action.hover,
+                                        cursor: 'pointer',
+                                        transition: 'background 0.2s, box-shadow 0.2s',
+                                        '&:hover': {
+                                          background: theme.palette.mode === 'dark'
+                                            ? 'rgba(255,255,255,0.08)'
+                                            : 'rgba(0,0,0,0.06)',
+                                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                        },
+                                      }}
+                                    >
+                                      {/* Left: invoice number + due date */}
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 0 }}>
+                                        <Typography
+                                          variant='body2'
+                                          fontWeight={700}
+                                          sx={{ color: theme.palette.text.primary, letterSpacing: 0.2 }}
+                                        >
+                                          {invoice_number}
+                                        </Typography>
+                                        <Typography variant='caption' color='text.secondary'>
+                                          Due: {new Date(due_date).toLocaleDateString('en-IN')}
+                                        </Typography>
+                                      </Box>
+
+                                      {/* Right: chips + balance */}
+                                      <Box
+                                        sx={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          flexWrap: 'wrap',
+                                          gap: 1,
+                                          justifyContent: isMobile ? 'flex-start' : 'flex-end',
+                                        }}
+                                      >
+                                        {days > 0 && (
+                                          <Chip
+                                            size='small'
+                                            label={aging.label}
+                                            color={aging.color}
+                                            sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                                          />
+                                        )}
+                                        {images.length > 0 && (
+                                          <Chip
+                                            size='small'
+                                            icon={<Visibility fontSize='small' />}
+                                            label='Attachment'
+                                            sx={{ fontSize: '0.7rem' }}
+                                          />
+                                        )}
+                                        <Box
+                                          sx={{
+                                            textAlign: isMobile ? 'left' : 'right',
+                                            pl: isMobile ? 0 : 1,
+                                          }}
+                                        >
+                                          <Typography
+                                            variant='body2'
+                                            fontWeight={700}
+                                            sx={{ color: theme.palette.text.primary }}
+                                          >
+                                            ₹{parseFloat(balance || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                                          </Typography>
+                                          <Typography variant='caption' color='text.secondary'>
+                                            of ₹{parseFloat(total || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                                          </Typography>
+                                        </Box>
+                                      </Box>
+                                    </Box>
+                                  );
+                                })}
+                            </Stack>
+                          </AccordionDetails>
+                        </Accordion>
                       );
                     })}
                   </Stack>
+
+                  {/* Pagination */}
+                  <Box
+                    sx={{
+                      mt: 2,
+                      display: 'flex',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      alignItems: isMobile ? 'flex-start' : 'center',
+                      justifyContent: 'space-between',
+                      gap: 1,
+                    }}
+                  >
+                    <TablePagination
+                      rowsPerPageOptions={[10, 25, 50]}
+                      component='div'
+                      count={totalCustomers}
+                      rowsPerPage={rowsPerPage}
+                      page={page}
+                      onPageChange={handleChangePage}
+                      onRowsPerPageChange={handleChangeRowsPerPage}
+                      labelRowsPerPage='Customers per page'
+                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pb: 1 }}>
+                      <TextField
+                        label='Go to page'
+                        type='number'
+                        size='small'
+                        variant='outlined'
+                        sx={{ width: 110 }}
+                        value={skipPage !== '' ? skipPage : page + 1}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value, 10);
+                          if (v > totalPages) {
+                            toast.error('Page out of range');
+                          } else {
+                            setSkipPage(e.target.value);
+                          }
+                        }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSkipPage(); }}
+                      />
+                      <Button variant='contained' onClick={handleSkipPage} sx={{ textTransform: 'none' }}>
+                        Go
+                      </Button>
+                      <Typography variant='caption' color='text.secondary'>
+                        / {totalPages}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  </>
                 ) : (
                   <Paper
                     elevation={0}
@@ -444,8 +503,7 @@ const PaymentDue = () => {
                     }}
                   >
                     <Typography variant='body1' color='text.secondary'>
-                      No invoices found. Try adjusting your search or create a
-                      new invoice.
+                      No overdue invoices found.
                     </Typography>
                   </Paper>
                 )}
@@ -467,12 +525,7 @@ const PaymentDue = () => {
               variant='outlined'
               startIcon={<ArrowBack />}
               onClick={() => router.push('/')}
-              sx={{
-                borderRadius: '8px',
-                textTransform: 'none',
-                px: 3,
-                py: 1,
-              }}
+              sx={{ borderRadius: '8px', textTransform: 'none', px: 3, py: 1 }}
             >
               Back to Dashboard
             </Button>

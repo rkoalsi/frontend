@@ -37,6 +37,15 @@ const typeColor: Record<string, 'success' | 'primary' | 'default'> = {
   callback: 'default',
 };
 
+const statusColor = (status: string | null | undefined): 'success' | 'error' | 'warning' | 'info' | 'default' => {
+  if (!status) return 'default';
+  if (['delivered', 'read'].includes(status)) return 'success';
+  if (['failed', 'undelivered', 'rate_limit_exceeded'].includes(status)) return 'error';
+  if (status === 'sent') return 'info';
+  if (status === 'queued') return 'warning';
+  return 'default';
+};
+
 const ChatsPage = () => {
   const [chats, setChats] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -94,17 +103,27 @@ const ChatsPage = () => {
       const all: any[] = res.data.data;
       if (!all.length) { toast.info('No data to download.'); return; }
 
-      const rows = all.map((chat, i) => ({
+      const extractReferenceNumber = (message: string): string => {
+        const match = message?.match(/(?:EST|INV|SO)\/[A-Za-z0-9-]+\/[A-Za-z0-9-]+/);
+        return match ? match[0] : '-';
+      };
+
+      const rows = all.map((chat, i) => {
+        const message = getMessageBody(chat);
+        return {
         '#': i + 1,
         Type: chat.type || '-',
         From: chat.from || '-',
         To: chat.to || '-',
-        Message: getMessageBody(chat),
+        'Reference Number': extractReferenceNumber(message),
+        Message: message,
         Template: chat.template_name || '-',
         'Template Header': chat.template_header || '-',
         Status: chat.status || '-',
+        Error: chat.error || '-',
         'Created At (IST)': formatIST(chat.created_at),
-      }));
+        };
+      });
 
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
@@ -217,7 +236,9 @@ const ChatsPage = () => {
                           </TableCell>
                           <TableCell>
                             {chat.status ? (
-                              <Chip label={chat.status} size='small' />
+                              <Tooltip title={chat.error || ''} placement='top' arrow>
+                                <Chip label={chat.status} size='small' color={statusColor(chat.status)} />
+                              </Tooltip>
                             ) : '-'}
                           </TableCell>
                           <TableCell sx={{ whiteSpace: 'nowrap' }}>

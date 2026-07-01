@@ -29,7 +29,7 @@ interface Product {
   manufacturer?: string;
   catalogue_order?: number;
   catalogue_page?: number;
-  // Add other product fields as needed from your API response
+  pre_order?: boolean;
 }
 
 const Products = () => {
@@ -48,6 +48,7 @@ const Products = () => {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterStock, setFilterStock] = useState('');
   const [filterNewArrivals, setFilterNewArrivals] = useState(false);
+  const [filterPreOrder, setFilterPreOrder] = useState(false);
   const [missingInfoProducts, setMissingInfoProducts] = useState(false);
   const [filterBrand, setFilterBrand] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -123,6 +124,7 @@ const Products = () => {
       if (filterStock) params.stock = filterStock;
       if (filterSortBy) params.sort_by = filterSortBy;
       if (filterNewArrivals) params.new_arrivals = true;
+      if (filterPreOrder) params.pre_order = true;
       if (missingInfoProducts) params.missing_info_products = true;
       if (filterBrand) params.brand = filterBrand;
       if (filterCategory) params.category = filterCategory;
@@ -149,11 +151,12 @@ const Products = () => {
     filterStatus,
     filterStock,
     filterNewArrivals,
+    filterPreOrder,
     filterBrand,
     filterCategory,
     filterSubCategory,
-    filterSortBy, // Added filterSortBy to dependencies
-    missingInfoProducts, // Added missingInfoProducts to dependencies
+    filterSortBy,
+    missingInfoProducts,
   ]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -215,6 +218,25 @@ const Products = () => {
     setUpdating(false);
   }
 };
+  const handleTogglePreOrder = async (product: Product) => {
+    try {
+      setUpdating(true);
+      const newPreOrder = !product.pre_order;
+      const formData = new FormData();
+      formData.append('pre_order', String(newPreOrder));
+      await axiosInstance.put(`/admin/products/${product._id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success(`Product marked as ${newPreOrder ? 'Pre Order' : 'not Pre Order'}.`);
+      await getData();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update pre-order status.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleOpenEditModal = (product: Product) => {
     setSelectedProduct(product);
     setOpenEditModal(true);
@@ -472,6 +494,74 @@ const handleImageUpload = async (files: File[] | File) => {
     }
   };
 
+  const handleVideoUpload = async (files: File[] | File) => {
+    const filesArray = Array.isArray(files) ? files : [files];
+    if (!selectedProduct || filesArray.length === 0) return;
+    setUpdating(true);
+    try {
+      for (const file of filesArray) {
+        const formData = new FormData();
+        formData.append('product_id', selectedProduct._id);
+        formData.append('file', file);
+        const response = await axiosInstance.post('/admin/upload-video', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        const updatedVideos = response.data.videos;
+        setSelectedProduct((prev: any) => prev ? { ...prev, videos: updatedVideos } : prev);
+        setProducts(prev => prev.map(p => p._id === selectedProduct._id ? { ...p, videos: updatedVideos } as any : p));
+      }
+      toast.success('Video(s) uploaded successfully.');
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to upload video.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleVideoReorder = async (reorderedVideos: string[]) => {
+    if (!selectedProduct) return;
+    setUpdating(true);
+    const formData = new FormData();
+    formData.append('product_id', selectedProduct._id);
+    formData.append('videos', JSON.stringify(reorderedVideos));
+    try {
+      const response = await axiosInstance.post('/admin/reorder-videos', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setSelectedProduct((prev: any) => prev ? { ...prev, videos: response.data.videos } : prev);
+      setProducts(prev => prev.map(p => p._id === selectedProduct._id ? { ...p, videos: response.data.videos } as any : p));
+      toast.success('Videos reordered successfully!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to reorder videos.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleVideoDelete = async (indexToDelete: number) => {
+    if (!selectedProduct?.videos) return;
+    const videoUrl = selectedProduct.videos[indexToDelete];
+    if (!videoUrl) return;
+    if (!window.confirm('Delete this video? This cannot be undone.')) return;
+    setUpdating(true);
+    const formData = new FormData();
+    formData.append('product_id', selectedProduct._id);
+    formData.append('video_url', videoUrl);
+    try {
+      const response = await axiosInstance.delete('/admin/delete-video', {
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setSelectedProduct((prev: any) => prev ? { ...prev, videos: response.data.videos } : prev);
+      setProducts(prev => prev.map(p => p._id === selectedProduct._id ? { ...p, videos: response.data.videos } as any : p));
+      toast.success('Video deleted!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to delete video.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleEditableFieldChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -570,11 +660,12 @@ const handleImageUpload = async (files: File[] | File) => {
       if (filterStatus) params.status = filterStatus;
       if (filterStock) params.stock = filterStock;
       if (filterNewArrivals) params.new_arrivals = true;
+      if (filterPreOrder) params.pre_order = true;
       if (missingInfoProducts) params.missing_info_products = true;
       if (filterBrand) params.brand = filterBrand;
       if (filterCategory) params.category = filterCategory;
       if (filterSubCategory) params.sub_category = filterSubCategory;
-      if (filterSortBy) params.sort_by = filterSortBy; // Ensure sort_by is included for downloads too
+      if (filterSortBy) params.sort_by = filterSortBy;
 
       const response = await axiosInstance.get('/admin/products/download', {
         params,
@@ -711,6 +802,7 @@ const handleImageUpload = async (files: File[] | File) => {
           handleImageClick={handleImageClick}
           handleOpenEditModal={handleOpenEditModal}
           handleToggleActive={handleToggleActive}
+          handleTogglePreOrder={handleTogglePreOrder}
         />
       </Paper>
 
@@ -723,6 +815,8 @@ const handleImageUpload = async (files: File[] | File) => {
         setFilterStock={setFilterStock}
         filterNewArrivals={filterNewArrivals}
         setFilterNewArrivals={setFilterNewArrivals}
+        filterPreOrder={filterPreOrder}
+        setFilterPreOrder={setFilterPreOrder}
         missingInfoProducts={missingInfoProducts}
         setMissingInfoProducts={setMissingInfoProducts}
         filterBrand={filterBrand}
@@ -747,11 +841,12 @@ const handleImageUpload = async (files: File[] | File) => {
           setFilterStatus('');
           setFilterStock('');
           setFilterNewArrivals(false);
+          setFilterPreOrder(false);
           setFilterBrand('');
           setFilterCategory('');
           setFilterSubCategory('');
           setMissingInfoProducts(false);
-          setFilterSortBy(''); // Reset sort by as well
+          setFilterSortBy('');
         }}
       />
 
@@ -764,11 +859,15 @@ const handleImageUpload = async (files: File[] | File) => {
         handleEditableFieldChange={handleEditableFieldChange}
         handleSaveEdit={handleSaveEdit}
         handleToggleActive={handleToggleActive}
+        handleTogglePreOrder={handleTogglePreOrder}
         handleImageClick={handleImageClick}
         handleImageUpload={handleImageUpload}
-        handleImageReorder={handleImageReorder} // NEW PROP
-        handleImageDelete={handleImageDelete} // NEW PROP
-        handleMakePrimary={handleMakePrimary} // NEW PROP
+        handleImageReorder={handleImageReorder}
+        handleImageDelete={handleImageDelete}
+        handleMakePrimary={handleMakePrimary}
+        handleVideoUpload={handleVideoUpload}
+        handleVideoReorder={handleVideoReorder}
+        handleVideoDelete={handleVideoDelete}
       />
 
       <ImagePopupDialog

@@ -33,6 +33,7 @@ const ProductTable = ({
   handleImageClick,
   handleOpenEditModal,
   handleToggleActive,
+  handleTogglePreOrder,
 }: any) => {
   return (
     <>
@@ -75,13 +76,14 @@ const ProductTable = ({
                   <TableCell>Stock</TableCell>
                   <TableCell>UPC Code</TableCell>
                   <TableCell>Status</TableCell>
+                  <TableCell>Pre Order</TableCell>
                   <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {products.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} align='center'>
+                    <TableCell colSpan={12} align='center'>
                       No products found.
                     </TableCell>
                   </TableRow>
@@ -129,6 +131,20 @@ const ProductTable = ({
                           checked={product.status === 'active'}
                           onChange={() => handleToggleActive(product)}
                         />
+                      </TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={!!product.pre_order}
+                          onChange={() => handleTogglePreOrder(product)}
+                          color='warning'
+                        />
+                        {product.pre_order && (
+                          <Typography variant='caption' display='block' color={product.upcoming_stock > 0 ? 'warning.main' : 'text.disabled'}>
+                            {product.upcoming_stock > 0
+                              ? `Upcoming: ${product.upcoming_stock}`
+                              : 'No PO found'}
+                          </Typography>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Button

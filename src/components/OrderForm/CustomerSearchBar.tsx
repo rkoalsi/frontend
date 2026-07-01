@@ -131,10 +131,6 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
     onChange(value);
   };
 
-  const isCompanyCustomer =
-    selectedOption?.cf_sales_person?.includes('Company customers') ||
-    selectedOption?.salesperson_name?.includes('Company customers');
-
   return (
     <StyledPaper>
       {/* Section header */}
@@ -488,10 +484,9 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
           </Box>
         )}
 
-        {/* ── Reference Number (Company customers only) ── */}
+        {/* ── Reference Number ── */}
         {selectedOption &&
-          ref_no &&
-          isCompanyCustomer && (
+          ref_no && (
             <Box>
               <Box display='flex' alignItems='center' mb={1.5}>
                 <Business

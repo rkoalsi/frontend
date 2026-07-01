@@ -78,6 +78,9 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   const [brandLoading, setBrandLoading] = useState(false);
   const [brandView, setBrandView] = useState<'annual' | 'quarterly'>('annual');
   const [selectedQuarter, setSelectedQuarter] = useState<'Q1' | 'Q2' | 'Q3' | 'Q4'>('Q1');
+  const [customerAddresses, setCustomerAddresses] = useState<any[]>([]);
+  const [addressDetailMap, setAddressDetailMap] = useState<Record<string, any>>({});
+  const [investmentLoading, setInvestmentLoading] = useState(false);
 
   useEffect(() => {
     if (open && customer) {
@@ -99,8 +102,35 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
             setBrandLoading(false);
           });
       }
+
+      const mongoId = customer.customerMongoId;
+      if (mongoId) {
+        setInvestmentLoading(true);
+        Promise.all([
+          axiosInstance.get(`/customers/${mongoId}`),
+          axiosInstance.get(`/customer_address_details/${mongoId}`),
+        ])
+          .then(([custRes, detailRes]) => {
+            setCustomerAddresses(custRes.data.customer?.addresses || []);
+            const map = (detailRes.data.address_details || []).reduce(
+              (acc: Record<string, any>, item: any) => {
+                acc[item.address_id] = item;
+                return acc;
+              },
+              {}
+            );
+            setAddressDetailMap(map);
+          })
+          .catch(() => {
+            setCustomerAddresses([]);
+            setAddressDetailMap({});
+          })
+          .finally(() => setInvestmentLoading(false));
+      }
     } else {
       setBrandBreakdown([]);
+      setCustomerAddresses([]);
+      setAddressDetailMap({});
     }
   }, [open, customer]);
 
@@ -424,6 +454,108 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
               >
                 {customer.shippingAddress || 'No address provided'}
               </Typography>
+            </CardContent>
+          </Card>
+        </Fade>
+
+        {/* Shop Investments */}
+        <Fade in timeout={450}>
+          <Card sx={{ mb: 3, boxShadow: 2 }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <AccountBalance sx={{ color: 'primary.main', fontSize: 24 }} />
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                  Shop Investments
+                </Typography>
+              </Box>
+              {investmentLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : customerAddresses.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No address data available
+                </Typography>
+              ) : (() => {
+                const addressesWithInvestment = customerAddresses.filter(
+                  (a: any) =>
+                    addressDetailMap[a.address_id]?.investment != null ||
+                    (addressDetailMap[a.address_id]?.tags?.length || 0) > 0
+                );
+                const totalInvestment = addressesWithInvestment.reduce(
+                  (sum: number, a: any) => sum + (addressDetailMap[a.address_id]?.investment || 0),
+                  0
+                );
+                return (
+                  <>
+                    {addressesWithInvestment.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary">
+                        No investments recorded
+                      </Typography>
+                    ) : (
+                      <>
+                        <Box
+                          sx={{
+                            mb: 2,
+                            p: 2,
+                            backgroundColor: isDark ? 'rgba(124,111,205,0.1)' : '#e3f2fd',
+                            borderRadius: 2,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                            Total Investment
+                          </Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                            {formatCurrency(totalInvestment)}
+                          </Typography>
+                        </Box>
+                        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow sx={{ backgroundColor: isDark ? 'rgba(124,111,205,0.15)' : '#e3f2fd' }}>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Tags</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }} align="right">Investment</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {addressesWithInvestment.map((a: any) => (
+                                <TableRow key={a.address_id} hover>
+                                  <TableCell>
+                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                      {a.attention || a.city || 'Address'}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {[a.address, a.city, a.state].filter(Boolean).join(', ')}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell>
+                                    {(addressDetailMap[a.address_id]?.tags || []).length === 0 ? (
+                                      <Typography variant="caption" color="text.secondary">—</Typography>
+                                    ) : (
+                                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                        {(addressDetailMap[a.address_id]?.tags || []).map((t: string) => (
+                                          <Chip key={t} label={t} size="small" color="primary" variant="outlined" />
+                                        ))}
+                                      </Stack>
+                                    )}
+                                  </TableCell>
+                                  <TableCell align="right" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                                    {formatCurrency(addressDetailMap[a.address_id]?.investment || 0)}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </Fade>

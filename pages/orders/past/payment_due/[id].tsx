@@ -21,6 +21,7 @@ import {
   Chip,
   Tooltip,
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -323,6 +324,11 @@ const OrderDetails = () => {
           width: '96%',
         }}
       >
+        <Box sx={{ mb: 1 }}>
+          <IconButton size='small' onClick={() => router.back()} aria-label='Back'>
+            <ArrowBackIcon />
+          </IconButton>
+        </Box>
         {/* Order Header */}
         <Box
           display='flex'

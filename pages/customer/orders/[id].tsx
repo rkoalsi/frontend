@@ -57,7 +57,7 @@ interface Order {
   notes?: string;
 }
 
-const orderSteps = ['Draft', 'Accepted', 'Invoiced', 'Delivered'];
+const orderSteps = ['Draft', 'Sent', 'Accepted', 'Invoiced'];
 
 const CustomerOrderDetail = () => {
   const { user }: any = useContext(AuthContext);
@@ -130,11 +130,11 @@ const CustomerOrderDetail = () => {
     switch (status) {
       case 'draft':
         return 0;
-      case 'accepted':
+      case 'sent':
         return 1;
-      case 'invoiced':
+      case 'accepted':
         return 2;
-      case 'delivered':
+      case 'invoiced':
         return 3;
       default:
         return 0;
@@ -287,7 +287,7 @@ const CustomerOrderDetail = () => {
             sx={{
               p: 2,
               mb: 3,
-              backgroundColor: 'grey.50',
+              backgroundColor: 'action.hover',
               borderRadius: 2,
             }}
           >
@@ -352,7 +352,7 @@ const CustomerOrderDetail = () => {
             >
               <Table>
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: 'grey.50' }}>
+                  <TableRow sx={{ backgroundColor: 'action.hover' }}>
                     <TableCell sx={{ fontWeight: 'bold' }}>Product</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }} align='center'>
                       Quantity
@@ -375,10 +375,10 @@ const CustomerOrderDetail = () => {
                       </TableCell>
                       <TableCell align='center'>{product.quantity}</TableCell>
                       <TableCell align='right'>
-                        ${product.price?.toFixed(2) || '0.00'}
+                        ₹{product.price?.toFixed(2) || '0.00'}
                       </TableCell>
                       <TableCell align='right'>
-                        ${product.total?.toFixed(2) || '0.00'}
+                        ₹{product.total?.toFixed(2) || '0.00'}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -391,7 +391,7 @@ const CustomerOrderDetail = () => {
               sx={{
                 p: 4,
                 textAlign: 'center',
-                backgroundColor: 'grey.50',
+                backgroundColor: 'action.hover',
                 borderRadius: 2,
                 mb: 3,
               }}
@@ -419,7 +419,7 @@ const CustomerOrderDetail = () => {
                 Order Total
               </Typography>
               <Typography variant='h5' fontWeight={700} color='primary'>
-                ${order.total?.toFixed(2)}
+                ₹{order.total?.toFixed(2)}
               </Typography>
             </Paper>
           )}
@@ -435,7 +435,7 @@ const CustomerOrderDetail = () => {
                 elevation={0}
                 sx={{
                   p: 2,
-                  backgroundColor: 'grey.50',
+                  backgroundColor: 'action.hover',
                   borderRadius: 2,
                 }}
               >
@@ -454,7 +454,7 @@ const CustomerOrderDetail = () => {
                 elevation={0}
                 sx={{
                   p: 2,
-                  backgroundColor: 'grey.50',
+                  backgroundColor: 'action.hover',
                   borderRadius: 2,
                 }}
               >

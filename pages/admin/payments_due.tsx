@@ -21,6 +21,10 @@ import {
   MenuItem,
   Checkbox,
   Input,
+  Stack,
+  Chip,
+  useTheme,
+  alpha,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -34,6 +38,7 @@ interface SortConfig {
 }
 
 const PaymentsDue = () => {
+  const theme = useTheme();
   const [data, setData] = useState<any[]>([]);
   const [page, setPage] = useState(0); // 0-based current page
   const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -48,9 +53,29 @@ const PaymentsDue = () => {
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [openImagePopup, setOpenImagePopup] = useState<boolean>(false);
   const [popupImageSrc, setPopupImageSrc] = useState<string>('');
+  const [agingStats, setAgingStats] = useState<{
+    current: { count: number; balance: number };
+    overdue30: { count: number; balance: number };
+    overdue60: { count: number; balance: number };
+  }>({
+    current: { count: 0, balance: 0 },
+    overdue30: { count: 0, balance: 0 },
+    overdue60: { count: 0, balance: 0 },
+  });
 
   // New sort state
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+
+  const fetchAgingStats = async (salesPerson: string) => {
+    try {
+      let url = '/admin/payments_due/aging_stats';
+      if (salesPerson) url += `?sales_person=${encodeURIComponent(salesPerson)}`;
+      const { data: stats } = await axiosInstance.get(url);
+      setAgingStats(stats);
+    } catch {
+      // non-critical, leave at 0
+    }
+  };
 
   // Fetch data from the server
   const fetchData = async () => {
@@ -94,6 +119,7 @@ const PaymentsDue = () => {
   // Re-fetch data whenever page, rowsPerPage, or filters change
   useEffect(() => {
     fetchData();
+    if (page === 0) fetchAgingStats(appliedSalesPersonFilter);
   }, [page, rowsPerPage, appliedSalesPersonFilter, invoiceNumber]);
 
   // MUI Pagination: next/previous
@@ -259,6 +285,13 @@ const PaymentsDue = () => {
     return sortConfig.direction === 'asc' ? ' 🔼' : ' 🔽';
   };
 
+
+  const getRowStyle = (overdueDays: number) => {
+    if (overdueDays > 60) return { backgroundColor: alpha('#d32f2f', 0.08) };
+    if (overdueDays > 30) return { backgroundColor: alpha('#f57c00', 0.08) };
+    return {};
+  };
+
   return (
     <Box sx={{ padding: { xs: 2, sm: 3 } }}>
       <Paper
@@ -341,6 +374,28 @@ const PaymentsDue = () => {
           <>
             {data.length > 0 ? (
               <>
+                {/* Aging Buckets Summary */}
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
+                  {[
+                    { label: '0 – 30 days', count: agingStats.current.count, balance: agingStats.current.balance, color: theme.palette.warning.main, bg: alpha(theme.palette.warning.main, 0.08) },
+                    { label: '31 – 60 days', count: agingStats.overdue30.count, balance: agingStats.overdue30.balance, color: theme.palette.error.light, bg: alpha('#f57c00', 0.08) },
+                    { label: '60+ days', count: agingStats.overdue60.count, balance: agingStats.overdue60.balance, color: theme.palette.error.main, bg: alpha(theme.palette.error.main, 0.08) },
+                  ].map(({ label, count, balance, color, bg }) => (
+                    <Paper key={label} elevation={0} sx={{ flex: 1, p: 2, borderRadius: 2, border: `1px solid ${color}40`, backgroundColor: bg }}>
+                      <Typography variant='caption' fontWeight={600} sx={{ color, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</Typography>
+                      <Typography variant='h5' fontWeight={700} sx={{ color, my: 0.5 }}>{count}</Typography>
+                      <Typography variant='body2' color='text.secondary'>₹{balance.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</Typography>
+                    </Paper>
+                  ))}
+                </Stack>
+
+                {/* Legend */}
+                <Stack direction='row' spacing={1.5} sx={{ mb: 1.5 }} alignItems='center'>
+                  <Typography variant='caption' color='text.secondary'>Row colour:</Typography>
+                  <Chip size='small' label='0–30 days' sx={{ backgroundColor: alpha('#f57c00', 0.12), color: '#e65100', fontWeight: 600, fontSize: '0.65rem' }} />
+                  <Chip size='small' label='60+ days' sx={{ backgroundColor: alpha('#d32f2f', 0.12), color: '#c62828', fontWeight: 600, fontSize: '0.65rem' }} />
+                </Stack>
+
                 {/* Data Table */}
                 <TableContainer component={Paper}>
                   <Table>
@@ -446,7 +501,7 @@ const PaymentsDue = () => {
                         const { additional_info = '', images = [] } =
                           invoiceNotes;
                         return (
-                          <TableRow key={_id}>
+                          <TableRow key={_id} sx={getRowStyle(parseInt(overdue_by_days) || 0)}>
                             <TableCell>
                               {new Date(created_at).toLocaleDateString()}
                             </TableCell>

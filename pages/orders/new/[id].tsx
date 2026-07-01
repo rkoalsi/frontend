@@ -31,6 +31,15 @@ import {
   Chip,
   Tooltip,
   Slide,
+  Divider,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import { useTheme, styled } from '@mui/material/styles';
 import CustomerSearchBar from '../../../src/components/OrderForm/CustomerSearchBar';
@@ -45,10 +54,60 @@ import {
   ShoppingCart,
   ArrowForward,
   CheckCircle,
+  Percent,
+  Close,
 } from '@mui/icons-material';
 import useDebounce from '../../../src/util/useDebounce';
 import SheetsDisplay from '../../../src/components/OrderForm/SheetDisplay';
 import AuthContext from '../../../src/components/Auth';
+import CustomerTour, { TourStep } from '../../../src/components/common/CustomerTour';
+
+const ORDERS_TOUR_STEPS: TourStep[] = [
+  {
+    target: null,
+    title: 'Your Order Form',
+    content: "This is where you build and submit your order. We'll walk you through each section so you know exactly what to do.",
+  },
+  {
+    target: 'order-header',
+    title: 'Order Details',
+    content: "This card shows your name, the current order status (Draft → Sent → Accepted), and your estimate number once the order is submitted. You can tap the estimate number to copy it.",
+  },
+  {
+    target: 'order-share',
+    title: 'Share This Order',
+    content: "Once your addresses are set, a 'Share Link' button appears here. Use it to copy a link you can send to someone else — they can view and even help fill in this order without needing to log in.",
+  },
+  {
+    target: 'order-download',
+    title: 'Download Order Form',
+    content: "This section lets you open your order as a Google Sheet — handy for offline browsing or sharing a formatted copy. You can also download it as an Excel file.",
+  },
+  {
+    target: 'order-stepper',
+    mobileTarget: 'order-stepper-header',
+    title: 'Step 2 — Billing Address',
+    content: "Choose the address your invoice should be billed to. If you have multiple addresses saved, tap one to select it. To add a new address, get in touch with a sales person.",
+  },
+  {
+    target: 'order-stepper',
+    mobileTarget: 'order-stepper-header',
+    title: 'Step 3 — Shipping Address',
+    content: "Pick where you'd like the order delivered. If it's the same as your billing address, tap 'Use billing address' to copy it across — no need to enter it twice.",
+  },
+  {
+    target: 'order-stepper',
+    mobileTarget: 'order-stepper-header',
+    title: 'Step 4 — Products',
+    content: "Browse and add items to your cart. Grouped cards show a product with multiple variants (e.g. different sizes or flavours) — tap a variant to set its quantity. Individual cards are single-SKU items.",
+  },
+  {
+    target: 'order-stepper',
+    mobileTarget: 'order-stepper-header',
+    title: 'Step 5 — Review & Submit',
+    content: "Check your items, quantities, and totals. Once everything looks good, tap 'Submit Order'. If you saved a draft first, the button becomes 'Update Order' — you can keep editing and resubmit as many times as you need.",
+  },
+];
 
 // Lazy load heavy components
 const Products = lazy(() =>
@@ -81,21 +140,40 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Helper to update order data
-const updateOrderData = async (id: string, data: any) => {
+// Helper to update order data. Returns true on success so callers can avoid
+// advancing the wizard when a save silently failed. `silent` suppresses the
+// failure toast for background auto-saves.
+const updateOrderData = async (
+  id: string,
+  data: any,
+  options: { silent?: boolean } = {}
+): Promise<boolean> => {
   try {
     await api.put(`/orders/${id}`, data);
+    return true;
   } catch (error) {
     console.error('Error updating order:', error);
+    if (!options.silent) {
+      toast.error('Failed to save order changes. Please check your connection and try again.');
+    }
+    return false;
   }
 };
 
-interface StepContent {
-  name: string;
-  mobileName: string;
-  helpText: string;
-  component: React.ReactNode;
-}
+// Clipboard write with feedback on failure (clipboard API needs HTTPS / permission)
+const copyToClipboard = async (text: string): Promise<boolean> => {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (error) {
+    console.error('Clipboard write failed:', error);
+    toast.error('Could not copy to clipboard.');
+    return false;
+  }
+};
+
+const addressCaption = (addr: any) =>
+  addr ? [addr.city, addr.state].filter(Boolean).join(', ') || addr.address || '' : '';
 
 // Per-step contextual help shown below the stepper
 const STEP_HELP: { name: string; mobileName: string; helpText: string }[] = [
@@ -131,8 +209,13 @@ const NewOrder: React.FC = () => {
   const { id, shared } = router.query;
   const isShared = shared === 'true';
   const { user }: any = useContext(AuthContext);
-  const isAdmin = user?.role.includes('admin');
+  const isAdmin = user?.role?.includes('admin');
   const isCustomerUser = user?.role === 'customer';
+  const canViewMargins =
+    !isCustomerUser &&
+    !isShared &&
+    !!user?.role &&
+    ['admin', 'sales_admin', 'sales_person'].some((r) => (user.role as string).includes(r));
   const userCustomerId = user?.customer_id; // contact_id linked to this user
   // States
   const [customer, setCustomer] = useState<any>(null);
@@ -147,52 +230,86 @@ const NewOrder: React.FC = () => {
   const [open, setOpen] = useState<boolean>(false);
   const [error, setError] = useState<any>(null);
   const [sort, setSort] = useState<string>('default');
-  const [link, setLink] = useState(
-    order?.spreadsheet_created ? order?.spreadsheet_url : ''
-  );
+  const [link, setLink] = useState(''); // populated by getOrder once the order loads
   const [linkCopied, setLinkCopied] = useState<boolean>(false);
   const [specialMargins, setSpecialMargins] = useState<{ [key: string]: string }>({});
+  const [specialMarginsList, setSpecialMarginsList] = useState<any[]>([]);
+  const [marginDialogOpen, setMarginDialogOpen] = useState(false);
+
+  // Group special margins by brand; derive brand margin (mode) and flag exceptions
+  const specialMarginsByBrand = useMemo(() => {
+    const grouped: Record<string, { brandMargin: string; allProducts: any[]; exceptions: any[] }> = {};
+    const byBrand: Record<string, any[]> = {};
+    for (const item of specialMarginsList) {
+      const brand = item.brand || 'Unknown';
+      if (!byBrand[brand]) byBrand[brand] = [];
+      byBrand[brand].push(item);
+    }
+    for (const [brand, products] of Object.entries(byBrand)) {
+      // Mode: pick the most frequent margin in this brand group as the summary chip
+      const freq: Record<string, number> = {};
+      for (const p of products) freq[p.margin] = (freq[p.margin] || 0) + 1;
+      const brandMargin = Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0];
+      const exceptions = products.filter((p) => p.margin !== brandMargin);
+      grouped[brand] = { brandMargin, allProducts: products, exceptions };
+    }
+    return grouped;
+  }, [specialMarginsList]);
   const [addressDetails, setAddressDetails] = useState<Record<string, any>>({});
 
   // Submit confirmation dialog (for shared/customer users)
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [estimateSelectOpen, setEstimateSelectOpen] = useState(false);
+  const [estimateTypes, setEstimateTypes] = useState({ stock: true, pre_order: true });
+  const [pendingAction, setPendingAction] = useState<'draft' | 'accepted' | 'declined'>('draft');
+
+  // Auto-save indicator — wraps updateOrderData so the UI can show
+  // "Saving… / All changes saved / Save failed" near the stepper.
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const saveStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveOrder = useCallback(
+    async (data: any, options: { silent?: boolean } = {}) => {
+      if (saveStatusTimer.current) clearTimeout(saveStatusTimer.current);
+      setSaveStatus('saving');
+      const ok = await updateOrderData(id as string, data, options);
+      setSaveStatus(ok ? 'saved' : 'error');
+      if (ok) {
+        saveStatusTimer.current = setTimeout(() => setSaveStatus('idle'), 2500);
+      }
+      return ok;
+    },
+    [id]
+  );
+  useEffect(() => () => {
+    if (saveStatusTimer.current) clearTimeout(saveStatusTimer.current);
+  }, []);
 
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // ------------------ Fetch Special Margins -------------------------
+  // ------------------ Fetch Special Margins + Address Details (parallel) --------
   useEffect(() => {
     if (!customer?._id) return;
     const controller = new AbortController();
-    const fetchSpecialMargins = async () => {
+    const signal = controller.signal;
+
+    (async () => {
       try {
-        const res = await api.get(`/customers/special_margins/${customer._id}`, {
-          signal: controller.signal,
-        });
-        const marginMap = (res.data.products || []).reduce((acc: any, item: any) => {
+        const [marginsRes, addressRes] = await Promise.all([
+          api.get(`/customers/special_margins/${customer._id}`, { signal }),
+          api.get(`/customer_address_details/${customer._id}`, { signal }),
+        ]);
+
+        const products = marginsRes.data.products || [];
+        const marginMap = products.reduce((acc: any, item: any) => {
           acc[item.product_id] = item.margin;
           return acc;
         }, {});
         setSpecialMargins(marginMap);
-      } catch (error: any) {
-        if (error.name !== 'CanceledError') console.error('Error fetching special margins:', error);
-      }
-    };
-    fetchSpecialMargins();
-    return () => controller.abort();
-  }, [customer?._id]);
+        setSpecialMarginsList(products);
 
-  // ------------------ Fetch Address Details -------------------------
-  useEffect(() => {
-    if (!customer?._id) return;
-    const controller = new AbortController();
-    const fetchAddressDetails = async () => {
-      try {
-        const res = await api.get(`/customer_address_details/${customer._id}`, {
-          signal: controller.signal,
-        });
-        const detailMap = (res.data.address_details || []).reduce(
+        const detailMap = (addressRes.data.address_details || []).reduce(
           (acc: Record<string, any>, item: any) => {
             acc[item.address_id] = item;
             return acc;
@@ -201,10 +318,10 @@ const NewOrder: React.FC = () => {
         );
         setAddressDetails(detailMap);
       } catch (error: any) {
-        if (error.name !== 'CanceledError') console.error('Error fetching address details:', error);
+        if (error.name !== 'CanceledError') console.error('Error fetching customer data:', error);
       }
-    };
-    fetchAddressDetails();
+    })();
+
     return () => controller.abort();
   }, [customer?._id]);
 
@@ -220,19 +337,36 @@ const NewOrder: React.FC = () => {
 
   // ------------------ Calculate Totals ---------------------
   const totals = useMemo(() => {
-    if (!selectedProducts.length || !customer) return { totalGST: 0, totalAmount: 0 };
+    // Don't require `customer` here — for shared-link visitors customer may be
+    // null (unauthenticated) but we still want to display the running total using
+    // the defaults already embedded in the calculation below (margin '40', Exclusive).
+    if (!selectedProducts.length) return { totalGST: 0, totalAmount: 0 };
     const { totalGST, totalAmount } = selectedProducts.reduce(
       (acc: { totalGST: number; totalAmount: number }, product) => {
         const taxPercentage = product?.item_tax_preferences?.[0]?.tax_percentage || 0;
         const rate = parseFloat(product.rate.toString()) || 0;
-        const quantity = parseInt(product.quantity?.toString() || '1', 10) || 1;
-        const margin = specialMargins[product._id]
-          ? parseInt(specialMargins[product._id].replace('%', ''), 10) / 100
-          : parseInt(customer?.cf_margin?.replace('%', '') || '40', 10) / 100;
+        const isSplitP = product.pre_order === true && (product.stock ?? 0) > 0;
+        const baseQty = parseInt(product.quantity?.toString() || '0', 10) || 0;
+        const preQty = isSplitP ? (parseInt(product.pre_order_quantity?.toString() || '0', 10) || 0) : 0;
+        const quantity = isSplitP ? (baseQty + preQty) : (baseQty || 1);
+        // Margin precedence: live special margin → live customer margin →
+        // customer margin embedded on the order (what shared-link visitors
+        // rely on) → margin stored on the order line when added → 40% default.
+        const marginStr =
+          specialMargins[product._id] ||
+          customer?.cf_margin ||
+          order?.customer_margin ||
+          product.margin ||
+          '40%';
+        let marginPct = parseInt(String(marginStr).replace('%', ''), 10);
+        if (Number.isNaN(marginPct)) marginPct = 40;
+        const margin = marginPct / 100;
         const sellingPrice = rate - rate * margin;
         let gstAmount = 0;
         let total = 0;
-        if (customer?.cf_in_ex === 'Inclusive') {
+        // For shared users customer is null; fall back to gst_type stored on the order
+        const gstType = customer?.cf_in_ex || order?.gst_type || 'Exclusive';
+        if (gstType === 'Inclusive') {
           const basePrice = sellingPrice / (1 + taxPercentage / 100);
           gstAmount = (sellingPrice - basePrice) * quantity;
           total = sellingPrice * quantity;
@@ -250,7 +384,7 @@ const NewOrder: React.FC = () => {
       totalGST: Math.round(totalGST * 100) / 100,
       totalAmount: totalAmount % 1 >= 0.5 ? Math.ceil(totalAmount) : Math.floor(totalAmount),
     };
-  }, [selectedProducts, customer, specialMargins]);
+  }, [selectedProducts, customer, specialMargins, order]);
 
   // ------------------ Debounced Order Updates ---------------------
   const lastUpdateDataRef = useRef<any>(null);
@@ -258,9 +392,11 @@ const NewOrder: React.FC = () => {
 
   useEffect(() => {
     const { selectedProducts: debProducts, totals: debTotals } = debouncedData;
-    if (!debProducts.length && !debTotals.totalAmount) return;
     const prev = lastUpdateDataRef.current;
-    const quantitySig = debProducts.map((p: any) => `${p._id}:${p.quantity}`).join(',');
+    // Skip the very first debounce tick if the cart is empty (order hasn't loaded yet).
+    // Once prev is set we allow saving an empty cart so removals are persisted.
+    if (!prev && !debProducts.length && !debTotals.totalAmount) return;
+    const quantitySig = debProducts.map((p: any) => `${p._id}:${p.quantity}:${p.pre_order_quantity ?? 0}`).join(',');
     const prevSig = prev?.quantitySig;
     if (
       prev &&
@@ -268,27 +404,40 @@ const NewOrder: React.FC = () => {
       prev.totalAmount === debTotals.totalAmount &&
       prevSig === quantitySig
     ) return;
-    updateOrderData(id as string, {
-      products: debProducts,
-      total_gst: parseFloat(debTotals.totalGST.toFixed(2)),
-      total_amount: parseFloat(debTotals.totalAmount.toFixed(2)),
-    });
+    // Strip out any products where both quantities are 0 (shouldn't be in cart)
+    const validProducts = debProducts.filter(
+      (p: any) => (p.quantity ?? 0) > 0 || (p.pre_order_quantity ?? 0) > 0
+    );
+    saveOrder(
+      {
+        products: validProducts,
+        total_gst: parseFloat(debTotals.totalGST.toFixed(2)),
+        total_amount: parseFloat(debTotals.totalAmount.toFixed(2)),
+      },
+      { silent: true } // background auto-save — don't toast on every retry
+    );
     lastUpdateDataRef.current = {
       length: debProducts.length,
       totalAmount: debTotals.totalAmount,
       quantitySig,
     };
-  }, [debouncedData, id]);
+  }, [debouncedData, saveOrder]);
 
   // ------------------ Update Addresses ---------------------
+  // Guard: skip the first population that comes from getOrder() to avoid
+  // a spurious PUT immediately after the order loads.
   useEffect(() => {
+    if (!hasOrderLoaded.current) return;
     if (billingAddress || shippingAddress) {
-      updateOrderData(id as string, {
-        billing_address: billingAddress,
-        shipping_address: shippingAddress,
-      });
+      saveOrder(
+        {
+          billing_address: billingAddress,
+          shipping_address: shippingAddress,
+        },
+        { silent: true }
+      );
     }
-  }, [billingAddress, shippingAddress, id]);
+  }, [billingAddress, shippingAddress, saveOrder]);
 
   // ------------------ Validate and Collect Data per Step ---------------------
   const validateAndCollectData = useCallback(
@@ -332,42 +481,82 @@ const NewOrder: React.FC = () => {
   );
 
   // ------------------ Get Order Data ---------------------
+  const hasOrderLoaded = useRef(false);
   const customerRef = useRef<any>(null);
   const getOrder = useCallback(async () => {
     try {
       const resp = await api.get(`/orders/${id}`);
-      if (resp.data.customer_id && customerRef.current !== resp.data.customer_id) {
-        customerRef.current = resp.data.customer_id;
-        // Customer fetch requires auth — shared-link visitors won't have a token.
-        // Wrap in its own try/catch so a 403 here doesn't abort the whole order load.
-        try {
-          const customerResponse = await api.get(
-            `/customers/${resp.data.customer_id}`
-          );
-          setCustomer(customerResponse.data.customer);
-        } catch {
-          // Not authenticated to fetch customer details (e.g. shared link) — ignore
-        }
-        setReferenceNumber(resp.data?.reference_number);
+
+      // Kick off customer fetch and product batch fetch in parallel
+      const orderData = resp.data;
+
+      const customerPromise =
+        orderData.customer_id && customerRef.current !== orderData.customer_id
+          ? api.get(`/customers/${orderData.customer_id}`).catch(() => null)
+          : Promise.resolve(null);
+
+      const productsPromise =
+        orderData.products && orderData.products.length > 0
+          ? (() => {
+              const ids = orderData.products
+                .map((p: any) => p.product_id)
+                .filter(Boolean)
+                .join(',');
+              return api.get(`/products/batch?ids=${ids}`).catch(() => null);
+            })()
+          : Promise.resolve(null);
+
+      const [customerRes, batchRes] = await Promise.all([customerPromise, productsPromise]);
+
+      if (customerRes && orderData.customer_id && customerRef.current !== orderData.customer_id) {
+        customerRef.current = orderData.customer_id;
+        setCustomer(customerRes.data.customer);
+        setReferenceNumber(orderData?.reference_number);
       }
-      if (resp.data.billing_address) setBillingAddress(resp.data.billing_address);
-      if (resp.data.shipping_address) setShippingAddress(resp.data.shipping_address);
-      if (resp.data.spreadsheet_created) setLink(resp.data.spreadsheet_url);
-      if (resp.data.products && resp.data.products.length > 0) {
-        const detailedProducts = await Promise.all(
-          resp.data.products.map(async (product: any) => {
-            try {
-              const res = await api.get(`/products/${product.product_id}`);
-              return { ...product, ...res.data };
-            } catch (error) {
-              console.error(`Failed to fetch product ${product.product_id}`, error);
-              return product;
-            }
-          })
+
+      if (orderData.billing_address) setBillingAddress(orderData.billing_address);
+      if (orderData.shipping_address) setShippingAddress(orderData.shipping_address);
+      if (orderData.spreadsheet_created) setLink(orderData.spreadsheet_url);
+
+      // Seed special margins from the order itself — this is what shared-link
+      // visitors price with; authenticated users get the same data refreshed
+      // by the customer effect once the customer loads.
+      if (
+        orderData.special_margins &&
+        Object.keys(orderData.special_margins).length > 0
+      ) {
+        setSpecialMargins((prev) =>
+          Object.keys(prev).length > 0 ? prev : orderData.special_margins
         );
-        setSelectedProducts(detailedProducts);
       }
-      setOrder(resp.data);
+
+      if (batchRes && orderData.products && orderData.products.length > 0) {
+        const productMap: Record<string, any> = batchRes.data.products || {};
+        const removedPreOrderNames: string[] = [];
+        const detailedProducts = orderData.products.reduce((acc: any[], p: any) => {
+          const currentProduct = productMap[p.product_id] || {};
+          // Remove if this was a pre-order product (saved with pre_order:true or with stock:0
+          // and pre_order not explicitly false) that admin has since turned off
+          const wasPreOrder = p.pre_order === true || (p.pre_order !== false && p.stock === 0);
+          if (wasPreOrder && currentProduct.pre_order === false && currentProduct.stock === 0) {
+            removedPreOrderNames.push(p.name || currentProduct.name || 'Unknown product');
+            return acc;
+          }
+          acc.push({ ...p, ...currentProduct });
+          return acc;
+        }, []);
+        setSelectedProducts(detailedProducts);
+        if (removedPreOrderNames.length) {
+          setTimeout(() => {
+            toast.info(
+              `Removed ${removedPreOrderNames.length} item${removedPreOrderNames.length !== 1 ? 's' : ''} no longer available for pre-order: ${removedPreOrderNames.join(', ')}`
+            );
+          }, 500);
+        }
+      }
+
+      setOrder(orderData);
+      hasOrderLoaded.current = true;
     } catch (error) {
       console.error('Error fetching order:', error);
     }
@@ -407,13 +596,13 @@ const NewOrder: React.FC = () => {
               const defaultAddress = customerData.addresses[0];
               setBillingAddress(defaultAddress);
               setShippingAddress(defaultAddress);
-              await updateOrderData(id as string, {
+              await saveOrder({
                 customer_id: customerData._id,
                 billing_address: defaultAddress,
                 shipping_address: defaultAddress,
               });
             } else {
-              await updateOrderData(id as string, { customer_id: customerData._id });
+              await saveOrder({ customer_id: customerData._id });
             }
             setActiveStep(1);
           }
@@ -423,11 +612,19 @@ const NewOrder: React.FC = () => {
       }
     };
     fetchCustomerForUser();
-  }, [isCustomerUser, userCustomerId, user, customer, id]);
+  }, [isCustomerUser, userCustomerId, user, customer, id, saveOrder]);
 
   useEffect(() => {
     if (isCustomerUser && !isShared && activeStep === 0) setActiveStep(1);
   }, [isCustomerUser, isShared, activeStep]);
+
+  // router.query is empty on the first SSR render so isShared starts false and
+  // activeStep initialises to 0. Once the router hydrates and isShared becomes
+  // true, jump straight to the Products step (3) so shared-link visitors land
+  // on the right step and can proceed to Review.
+  useEffect(() => {
+    if (isShared && activeStep < 3) setActiveStep(3);
+  }, [isShared]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ------------------ Navigation & Finalization ---------------------
   const handleNext = useCallback(async () => {
@@ -437,20 +634,27 @@ const NewOrder: React.FC = () => {
       setOpen(true);
       return;
     }
-    await updateOrderData(id as string, body);
+    const saved = await saveOrder(body);
+    if (!saved) return; // don't advance when the save failed
     setActiveStep((prev) => Math.min(prev + 1, STEP_HELP.length - 1));
-  }, [activeStep, id, validateAndCollectData]);
+  }, [activeStep, saveOrder, validateAndCollectData]);
 
   const handleEnd = useCallback(
-    async (status = 'draft', notify_sp = false) => {
+    async (status = 'draft', notify_sp = false, createFlags?: { stock: boolean; pre_order: boolean }) => {
       setLoading(true);
+      let finalised = false;
       try {
-        const resp = await api.post('/orders/finalise', { order_id: id, status });
+        const resp = await api.post('/orders/finalise', {
+          order_id: id,
+          status,
+          create_stock: createFlags?.stock ?? true,
+          create_pre_order: createFlags?.pre_order ?? true,
+        });
         if (resp.status === 200) {
+          finalised = resp.data.status === 'success';
           await getOrder();
-          toast[resp.data.status === 'success' ? 'success' : 'error'](resp.data.message);
+          toast[finalised ? 'success' : 'error'](resp.data.message);
         }
-        if (notify_sp) await api.post('/orders/notify', { order_id: id });
       } catch (error: any) {
         console.error(error);
         const errorMessage =
@@ -461,11 +665,20 @@ const NewOrder: React.FC = () => {
       } finally {
         setLoading(false);
       }
+      // Notify separately — a notification failure must not read as a failed order
+      if (finalised && notify_sp) {
+        try {
+          await api.post('/orders/notify', { order_id: id });
+        } catch (error) {
+          console.error('Error notifying sales person:', error);
+          toast.warn('Order submitted, but the sales person notification could not be sent.');
+        }
+      }
     },
     [id, getOrder]
   );
 
-  const generateSharedLink = useCallback(() => {
+  const generateSharedLink = useCallback(async () => {
     const baseURL = window.location.origin;
     const params = new URLSearchParams();
     params.set('shared', 'true');
@@ -480,8 +693,7 @@ const NewOrder: React.FC = () => {
       if (currentCategory) params.set('category', currentCategory);
     }
     const link = `${baseURL}/orders/new/${id}?${params.toString()}`;
-    navigator.clipboard.writeText(link);
-    setLinkCopied(true);
+    if (await copyToClipboard(link)) setLinkCopied(true);
   }, [id]);
 
   const handleStepClick = useCallback(
@@ -508,20 +720,22 @@ const NewOrder: React.FC = () => {
         setActiveStep(index);
         return;
       }
-      const { message, body } = validateAndCollectData(activeStep);
-      if (message) {
-        toast.error(message);
-        return;
+      // Validate every step between the current one and the target so a
+      // forward jump (e.g. Customer → Review) can't skip required data.
+      let mergedBody: any = {};
+      for (let step = activeStep; step < index; step++) {
+        const { message, body } = validateAndCollectData(step);
+        if (message) {
+          toast.error(message);
+          if (step !== activeStep) setActiveStep(step); // land on the first incomplete step
+          return;
+        }
+        mergedBody = { ...mergedBody, ...body };
       }
-      try {
-        await updateOrderData(id as string, body);
-        setActiveStep(index);
-      } catch (error) {
-        console.error('Error updating order:', error);
-        toast.error('Failed to update order. Please try again.');
-      }
+      const saved = await saveOrder(mergedBody);
+      if (saved) setActiveStep(index);
     },
-    [activeStep, isShared, selectedProducts, validateAndCollectData, id, isCustomerUser]
+    [activeStep, isShared, selectedProducts, validateAndCollectData, saveOrder, isCustomerUser]
   );
 
   const handleClose = useCallback((reason: any) => {
@@ -539,131 +753,37 @@ const NewOrder: React.FC = () => {
     }
   }, [order, isShared, router]);
 
-  // ------------------ Steps Configuration ---------------------
-  const steps: StepContent[] = useMemo(() => {
-    return STEP_HELP.map((meta, index) => {
-      let component: React.ReactNode = null;
-      switch (index) {
-        case 0:
-          component = isShared ? null : (
-            <CustomerSearchBar
-              disabled={isCustomerUser || ['declined', 'accepted'].includes(order?.status?.toLowerCase())}
-              label={isCustomerUser ? 'Your Account' : 'Select Customer'}
-              onChange={async (value: any) => {
-                setCustomer(value);
-                if (value?.addresses && value.addresses.length > 0) {
-                  const defaultAddress = value.addresses[0];
-                  setBillingAddress(defaultAddress);
-                  setShippingAddress(defaultAddress);
-                  await updateOrderData(id as string, {
-                    customer_id: value._id,
-                    billing_address: defaultAddress,
-                    shipping_address: defaultAddress,
-                  });
-                } else {
-                  setBillingAddress(null);
-                  setShippingAddress(null);
-                  await updateOrderData(id as string, { customer_id: value?._id });
-                }
-              }}
-              value={customer}
-              initialValue={customer}
-              onChangeReference={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setReferenceNumber(e.target.value)
-              }
-              reference={referenceNumber}
-            />
-          );
-          break;
-        case 1:
-          component = isShared ? null : (
-            <Address
-              type='Billing'
-              id={id as string}
-              address={billingAddress}
-              setAddress={setBillingAddress}
-              selectedAddress={billingAddress}
-              customer={customer}
-              setLoading={setLoading}
-              addressDetails={addressDetails}
-              addNewAddress={false}
-            />
-          );
-          break;
-        case 2:
-          component = isShared ? null : (
-            <Address
-              type='Shipping'
-              id={id as string}
-              address={shippingAddress}
-              setAddress={setShippingAddress}
-              selectedAddress={shippingAddress}
-              customer={customer}
-              setLoading={setLoading}
-              addressDetails={addressDetails}
-              addNewAddress={false}
-            />
-          );
-          break;
-        case 3:
-          component = (
-            <Products
-              totals={totals}
-              label='Search Products'
-              customer={customer}
-              selectedProducts={selectedProducts}
-              setSelectedProducts={setSelectedProducts}
-              specialMargins={specialMargins}
-              order={order}
-              onCheckout={() => setActiveStep((prev) => prev + 1)}
-              isShared={isShared}
-              setSort={setSort}
-            />
-          );
-          break;
-        case 4:
-          component = (
-            <Review
-              totals={totals}
-              customer={customer}
-              products={selectedProducts}
-              shippingAddress={shippingAddress}
-              billingAddress={billingAddress}
-              setSelectedProducts={setSelectedProducts}
-              setActiveStep={setActiveStep}
-              specialMargins={specialMargins}
-              isShared={isShared}
-              order={order}
-              referenceNumber={referenceNumber}
-            />
-          );
-          break;
-      }
-      return { ...meta, component };
-    });
-  }, [
-    isShared,
-    isCustomerUser,
-    customer,
-    billingAddress,
-    shippingAddress,
-    totals,
-    selectedProducts,
-    specialMargins,
-    order,
-    id,
-    referenceNumber,
-    addressDetails,
-  ]);
+  // Count cart "rows": split products with both quantities set contribute 2 rows
+  const cartRowCount = selectedProducts.reduce((n: number, p: any) => {
+    const isSplit = p.pre_order === true && (p.stock ?? 0) > 0;
+    if (isSplit) return n + ((p.quantity ?? 0) > 0 ? 1 : 0) + ((p.pre_order_quantity ?? 0) > 0 ? 1 : 0);
+    return n + 1;
+  }, 0);
 
-  const handleCopyEstimate = () => {
-    if (order?.estimate_number) navigator.clipboard.writeText(order.estimate_number);
+  // Per-step context shown under the stepper labels once a step has data
+  const stepCaptions = useMemo<string[]>(
+    () => [
+      customer ? customer.company_name || customer.contact_name || '' : '',
+      addressCaption(billingAddress),
+      addressCaption(shippingAddress),
+      cartRowCount
+        ? `${cartRowCount} item${cartRowCount !== 1 ? 's' : ''} · ₹${totals.totalAmount.toLocaleString('en-IN')}`
+        : '',
+      '',
+    ],
+    [customer, billingAddress, shippingAddress, cartRowCount, totals.totalAmount]
+  );
+
+  const handleCopyEstimate = async () => {
+    if (order?.estimate_number && (await copyToClipboard(order.estimate_number))) {
+      toast.success('Estimate number copied');
+    }
   };
 
   const updateCart = async () => {
     setLoading(true);
     try {
-      await axios.get(`${process.env.api_url}/orders/update_cart`, {
+      await api.get('/orders/update_cart', {
         params: { order_id: order._id },
       });
       await getOrder();
@@ -679,10 +799,9 @@ const NewOrder: React.FC = () => {
   const handleDownload = async () => {
     setLoading(true);
     try {
-      const { data = {} } = await axios.get(
-        `${process.env.api_url}/orders/download_order_form`,
-        { params: { customer_id: customer._id, order_id: order._id, sort } }
-      );
+      const { data = {} } = await api.get('/orders/download_order_form', {
+        params: { customer_id: customer._id, order_id: order._id, sort },
+      });
       const { google_sheet_url = '', cart_products_added = 0 } = data;
       setLink(google_sheet_url);
       if (cart_products_added > 0) {
@@ -703,13 +822,10 @@ const NewOrder: React.FC = () => {
   const handleDownloadXlsx = async () => {
     setXlsxLoading(true);
     try {
-      const response = await axios.get(
-        `${process.env.api_url}/orders/download_order_xlsx`,
-        {
-          params: { customer_id: customer._id, order_id: order._id, sort },
-          responseType: 'arraybuffer',
-        }
-      );
+      const response = await api.get('/orders/download_order_xlsx', {
+        params: { customer_id: customer._id, order_id: order._id, sort },
+        responseType: 'arraybuffer',
+      });
       const blob = new Blob([response.data], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
@@ -732,11 +848,10 @@ const NewOrder: React.FC = () => {
   const handleRecreateSheet = async () => {
     setLoading(true);
     try {
-      await axios.delete(`${process.env.api_url}/orders/clear_sheet/${order._id}`);
-      const { data = {} } = await axios.get(
-        `${process.env.api_url}/orders/download_order_form`,
-        { params: { customer_id: customer._id, order_id: order._id, sort } }
-      );
+      await api.delete(`/orders/clear_sheet/${order._id}`);
+      const { data = {} } = await api.get('/orders/download_order_form', {
+        params: { customer_id: customer._id, order_id: order._id, sort },
+      });
       const { google_sheet_url = '' } = data;
       setLink(google_sheet_url);
       await getOrder();
@@ -763,17 +878,47 @@ const NewOrder: React.FC = () => {
 
   // Derived: whether the "Submit Order" / "Save As Draft" button is for a retailer
   const isRetailerFlow = isShared || isCustomerUser;
-  const saveDraftLabel = isRetailerFlow ? 'Submit Order' : 'Save As Draft';
-  const saveDraftDisabled =
-    !customer ||
-    !billingAddress ||
-    !shippingAddress ||
-    selectedProducts.length === 0 ||
-    loading ||
-    (!isShared && !['deleted', 'draft', 'sent'].includes(order?.status?.toLowerCase()));
+  const saveDraftLabel = isRetailerFlow
+    ? (order?.estimate_created ? 'Update Order' : 'Submit Order')
+    : 'Save As Draft';
+  const hasStockExceeded = selectedProducts.some(
+    (p) => !p.pre_order && (p.quantity || 1) > (p.stock ?? Infinity)
+  );
+  const _hasStockItems = selectedProducts.some((p: any) => !p.pre_order || ((p.stock ?? 0) > 0 && (p.quantity ?? 0) > 0));
+  const _hasPreOrderItems = selectedProducts.some((p: any) => p.pre_order && ((p.stock ?? 0) > 0 ? (p.pre_order_quantity ?? 0) > 0 : (p.quantity ?? 0) > 0));
+  // Collect every reason the submit button is blocked so the tooltip can say
+  // exactly what's missing instead of leaving a silently disabled button.
+  // For dual-estimate orders, only block when BOTH estimates are finalised.
+  // For single-estimate orders, fall back to checking order.status directly.
+  const allEstimatesFinalised: boolean = (() => {
+    const finalStatuses = ['accepted', 'declined'];
+    if (order?.pre_order_estimate_created) {
+      const stockDone = finalStatuses.includes((order?.estimate_status || '').toLowerCase());
+      const preOrderDone = finalStatuses.includes((order?.pre_order_estimate_status || '').toLowerCase());
+      return stockDone && preOrderDone;
+    }
+    return order?.status ? !['draft', 'sent', 'deleted'].includes(order.status.toLowerCase()) : false;
+  })();
+
+  const saveDraftBlockers: string[] = [];
+  // For shared-link visitors customer is null (unauthenticated) — don't block them
+  if (!customer && !isShared) saveDraftBlockers.push('No customer selected');
+  if (!billingAddress) saveDraftBlockers.push('No billing address selected');
+  if (!shippingAddress) saveDraftBlockers.push('No shipping address selected');
+  if (selectedProducts.length === 0) saveDraftBlockers.push('No products added');
+  if (!isShared && allEstimatesFinalised) {
+    saveDraftBlockers.push(`Order is already ${order?.status?.toLowerCase()}`);
+  }
+  if (hasStockExceeded) saveDraftBlockers.push('One or more products exceed available stock');
+  const saveDraftDisabled = saveDraftBlockers.length > 0 || loading;
 
   // Floating cart bar: show on Products step when items are selected
   const showCartBar = activeStep === 3 && selectedProducts.length > 0;
+
+  // On phones the inline nav buttons sit below a long step card, so for the
+  // Customer/Billing/Shipping steps show a fixed Previous/Next bar instead.
+  // Products (cart bar) and Review (multiple action buttons) keep inline nav.
+  const showMobileNavBar = isMobile && activeStep < 3;
 
   return (
     <Box
@@ -785,8 +930,12 @@ const NewOrder: React.FC = () => {
         gap: { xs: 1.5, sm: 2, md: 3 },
         width: '100%',
         maxWidth: '100%',
-        // Extra bottom padding when cart bar is visible so content isn't hidden behind it
-        paddingBottom: showCartBar ? { xs: '80px', sm: '88px', md: '96px', lg: '96px' } : undefined,
+        // Extra bottom padding when a fixed bottom bar (cart or nav) is visible
+        paddingBottom: showCartBar
+          ? { xs: '80px', sm: '88px', md: '96px', lg: '96px' }
+          : showMobileNavBar
+            ? '80px'
+            : undefined,
       }}
     >
       {/* ── Back navigation (not shown on shared/customer links) ── */}
@@ -809,13 +958,14 @@ const NewOrder: React.FC = () => {
               '&:hover': { color: 'text.primary', backgroundColor: 'action.hover' },
             }}
           >
-            Back to Orders
+            Back 
           </Button>
         </Box>
       )}
 
       {/* ── Header card ── */}
       <Paper
+        data-tour='order-header'
         elevation={0}
         sx={{
           width: '100%',
@@ -917,10 +1067,34 @@ const NewOrder: React.FC = () => {
                   <Tooltip title='Copy estimate number'>
                     <Chip
                       size='small'
-                      label={order.estimate_number}
+                      label={`${order.estimate_number}${order.estimate_status ? ` · ${order.estimate_status.charAt(0).toUpperCase() + order.estimate_status.slice(1)}` : ''}`}
                       icon={<ContentCopy sx={{ fontSize: '12px !important' }} />}
                       onClick={handleCopyEstimate}
                       variant='outlined'
+                      sx={{
+                        fontWeight: 600,
+                        fontSize: '0.7rem',
+                        cursor: 'pointer',
+                        '&:hover': { bgcolor: 'action.hover' },
+                      }}
+                    />
+                  </Tooltip>
+                )}
+
+                {/* Pre-order estimate number */}
+                {order?.pre_order_estimate_created && (
+                  <Tooltip title='Copy pre-order estimate number'>
+                    <Chip
+                      size='small'
+                      label={`${order.pre_order_estimate_number} (Pre Order)${order.pre_order_estimate_status ? ` · ${order.pre_order_estimate_status.charAt(0).toUpperCase() + order.pre_order_estimate_status.slice(1)}` : ''}`}
+                      icon={<ContentCopy sx={{ fontSize: '12px !important' }} />}
+                      onClick={async () => {
+                        if (order?.pre_order_estimate_number && (await copyToClipboard(order.pre_order_estimate_number))) {
+                          toast.success('Pre-order estimate number copied');
+                        }
+                      }}
+                      variant='outlined'
+                      color='warning'
                       sx={{
                         fontWeight: 600,
                         fontSize: '0.7rem',
@@ -935,6 +1109,7 @@ const NewOrder: React.FC = () => {
                 {!isShared && customer && billingAddress && shippingAddress && (
                   <Tooltip title='Copy a link to share this order with the customer'>
                     <NavButton
+                      data-tour='order-share'
                       size='small'
                       variant='outlined'
                       color='info'
@@ -943,6 +1118,22 @@ const NewOrder: React.FC = () => {
                       sx={{ fontSize: '0.75rem', px: 1.5, py: 0.5 }}
                     >
                       Share Link
+                    </NavButton>
+                  </Tooltip>
+                )}
+
+                {/* View Margins — sales/admin roles only */}
+                {canViewMargins && customer && (
+                  <Tooltip title='View customer margins'>
+                    <NavButton
+                      size='small'
+                      variant='outlined'
+                      color='secondary'
+                      startIcon={<Percent sx={{ fontSize: 16 }} />}
+                      onClick={() => setMarginDialogOpen(true)}
+                      sx={{ fontSize: '0.75rem', px: 1.5, py: 0.5 }}
+                    >
+                      Margins
                     </NavButton>
                   </Tooltip>
                 )}
@@ -988,35 +1179,38 @@ const NewOrder: React.FC = () => {
         customer &&
         billingAddress &&
         shippingAddress &&
-        !['accepted', 'declined'].includes(order?.status?.toLowerCase()) &&
-        (link ? (
-          <SheetsDisplay
-            googleSheetsLink={link}
-            updateCart={updateCart}
-            recreateSheet={handleRecreateSheet}
-            downloadXlsx={handleDownloadXlsx}
-            loading={loading}
-            xlsxLoading={xlsxLoading}
-            sort={handleSortText()}
-          />
-        ) : (
-          <Button
-            variant='contained'
-            color='secondary'
-            disabled={loading}
-            onClick={handleDownload}
-            sx={{
-              textTransform: 'none',
-              fontWeight: 'bold',
-              borderRadius: '24px',
-              marginBottom: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.15)' },
-            }}
-          >
-            {loading ? <CircularProgress size={22} /> : 'Download Order Form'}
-          </Button>
-        ))}
+        !['accepted', 'declined'].includes(order?.status?.toLowerCase()) && (
+          <Box data-tour='order-download'>
+            {link ? (
+              <SheetsDisplay
+                googleSheetsLink={link}
+                updateCart={updateCart}
+                recreateSheet={handleRecreateSheet}
+                downloadXlsx={handleDownloadXlsx}
+                loading={loading}
+                xlsxLoading={xlsxLoading}
+                sort={handleSortText()}
+              />
+            ) : (
+              <Button
+                variant='contained'
+                color='secondary'
+                disabled={loading}
+                onClick={handleDownload}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  borderRadius: '24px',
+                  marginBottom: '12px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.15)' },
+                }}
+              >
+                {loading ? <CircularProgress size={22} /> : 'Download Order Form'}
+              </Button>
+            )}
+          </Box>
+        )}
 
       {/* ── Main stepper card ── */}
       <Box
@@ -1029,6 +1223,7 @@ const NewOrder: React.FC = () => {
         }}
       >
         <Card
+          data-tour='order-stepper'
           sx={{
             width: '100%',
             borderRadius: 3,
@@ -1041,8 +1236,43 @@ const NewOrder: React.FC = () => {
           }}
         >
           <CardContent sx={{ padding: { xs: 1.5, sm: 2.5, md: 3.5 }, overflow: 'visible' }}>
+            {/* Auto-save status */}
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                minHeight: 18,
+                mb: 0.5,
+                gap: 0.5,
+              }}
+            >
+              {saveStatus === 'saving' && (
+                <>
+                  <CircularProgress size={11} thickness={5} />
+                  <Typography variant='caption' color='text.secondary' sx={{ fontSize: '0.68rem' }}>
+                    Saving…
+                  </Typography>
+                </>
+              )}
+              {saveStatus === 'saved' && (
+                <>
+                  <CheckCircle sx={{ fontSize: 13, color: 'success.main' }} />
+                  <Typography variant='caption' sx={{ fontSize: '0.68rem', color: 'success.main' }}>
+                    All changes saved
+                  </Typography>
+                </>
+              )}
+              {saveStatus === 'error' && (
+                <Typography variant='caption' sx={{ fontSize: '0.68rem', color: 'error.main', fontWeight: 600 }}>
+                  Save failed — changes will retry on your next edit
+                </Typography>
+              )}
+            </Box>
+
             {/* Stepper */}
             <Stepper
+              data-tour='order-stepper-header'
               activeStep={activeStep}
               alternativeLabel
               sx={{
@@ -1086,7 +1316,7 @@ const NewOrder: React.FC = () => {
                 },
               }}
             >
-              {steps.map((step, index) => {
+              {STEP_HELP.map((step, index) => {
                 const isDisabledForCustomer = isCustomerUser && index === 0;
                 // Customer users: step 0 is always shown as completed "Your Account"
                 const displayName = isMobile ? step.mobileName : step.name;
@@ -1102,6 +1332,26 @@ const NewOrder: React.FC = () => {
                         cursor: isDisabledForCustomer ? 'default' : 'pointer',
                         opacity: isDisabledForCustomer ? 0.7 : 1,
                       }}
+                      optional={
+                        stepCaptions[index] ? (
+                          <Typography
+                            variant='caption'
+                            sx={{
+                              display: { xs: 'none', sm: 'block' },
+                              color: 'text.secondary',
+                              fontSize: '0.65rem',
+                              textAlign: 'center',
+                              maxWidth: 120,
+                              mx: 'auto',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {stepCaptions[index]}
+                          </Typography>
+                        ) : undefined
+                      }
                     >
                       {isDisabledForCustomer ? customerStep0Label : displayName}
                     </StepLabel>
@@ -1111,7 +1361,7 @@ const NewOrder: React.FC = () => {
             </Stepper>
 
             {/* Per-step contextual help text */}
-            {steps[activeStep]?.helpText && (
+            {STEP_HELP[activeStep]?.helpText && (
               <Typography
                 variant='caption'
                 color='text.secondary'
@@ -1128,27 +1378,161 @@ const NewOrder: React.FC = () => {
                   mx: 'auto',
                 }}
               >
-                {steps[activeStep].helpText}
+                {STEP_HELP[activeStep].helpText}
               </Typography>
             )}
 
             {/* Step content */}
-            <Box sx={{ padding: activeStep === 3 ? 0 : { xs: 1.5, sm: 2, md: 3 }, minHeight: '100px' }}>
-              <Suspense
-                fallback={
-                  <Box display='flex' justifyContent='center' alignItems='center' minHeight='300px'>
-                    <CircularProgress />
-                  </Box>
-                }
-              >
-                {steps[activeStep]?.component}
-              </Suspense>
+            <Box sx={{ minHeight: '100px' }}>
+              {/* Steps 0-2: lightweight, mount only when active */}
+              {activeStep === 0 && !isShared && (
+                <Box sx={{ padding: { xs: 1.5, sm: 2, md: 3 } }}>
+                  <CustomerSearchBar
+                    disabled={isCustomerUser || ['declined', 'accepted'].includes(order?.status?.toLowerCase())}
+                    label={isCustomerUser ? 'Your Account' : 'Select Customer'}
+                    onChange={async (value: any) => {
+                      setCustomer(value);
+                      if (value?.addresses && value.addresses.length > 0) {
+                        const defaultAddress = value.addresses[0];
+                        setBillingAddress(defaultAddress);
+                        setShippingAddress(defaultAddress);
+                        await saveOrder({
+                          customer_id: value._id,
+                          billing_address: defaultAddress,
+                          shipping_address: defaultAddress,
+                        });
+                      } else {
+                        setBillingAddress(null);
+                        setShippingAddress(null);
+                        await saveOrder({ customer_id: value?._id });
+                      }
+                    }}
+                    value={customer}
+                    initialValue={customer}
+                    onChangeReference={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setReferenceNumber(e.target.value)
+                    }
+                    reference={referenceNumber}
+                  />
+                </Box>
+              )}
+              {activeStep === 1 && !isShared && (
+                <Box sx={{ padding: { xs: 1.5, sm: 2, md: 3 } }}>
+                  <Address
+                    type='Billing'
+                    id={id as string}
+                    address={billingAddress}
+                    setAddress={setBillingAddress}
+                    selectedAddress={billingAddress}
+                    customer={customer}
+                    setLoading={setLoading}
+                    addressDetails={addressDetails}
+                    addNewAddress={false}
+                  />
+                </Box>
+              )}
+              {activeStep === 2 && !isShared && (
+                <Box sx={{ padding: { xs: 1.5, sm: 2, md: 3 } }}>
+                  {billingAddress && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                      {(() => {
+                        const sameAsBilling =
+                          billingAddress.address_id && shippingAddress?.address_id
+                            ? billingAddress.address_id === shippingAddress.address_id
+                            : JSON.stringify(billingAddress) === JSON.stringify(shippingAddress);
+                        return sameAsBilling ? (
+                          <Chip
+                            icon={<CheckCircle sx={{ fontSize: 16 }} />}
+                            label='Same as billing address'
+                            color='success'
+                            variant='outlined'
+                            size='small'
+                            sx={{ fontWeight: 600 }}
+                          />
+                        ) : (
+                          <Button
+                            size='small'
+                            variant='outlined'
+                            startIcon={<ContentCopy sx={{ fontSize: 16 }} />}
+                            onClick={() => setShippingAddress(billingAddress)}
+                            sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 24 }}
+                          >
+                            Use billing address
+                          </Button>
+                        );
+                      })()}
+                    </Box>
+                  )}
+                  <Address
+                    type='Shipping'
+                    id={id as string}
+                    address={shippingAddress}
+                    setAddress={setShippingAddress}
+                    selectedAddress={shippingAddress}
+                    customer={customer}
+                    setLoading={setLoading}
+                    addressDetails={addressDetails}
+                    addNewAddress={false}
+                  />
+                </Box>
+              )}
+
+              {/* Steps 3-4: kept mounted at all times — prevents re-fetch of products/brands
+                  on every Products↔Review navigation, which was causing the page-unresponsive freeze */}
+              <Box display={activeStep === 3 ? 'block' : 'none'}>
+                <Suspense
+                  fallback={
+                    <Box display='flex' justifyContent='center' alignItems='center' minHeight='300px'>
+                      <CircularProgress />
+                    </Box>
+                  }
+                >
+                  <Products
+                    totals={totals}
+                    label='Search Products'
+                    customer={customer}
+                    selectedProducts={selectedProducts}
+                    setSelectedProducts={setSelectedProducts}
+                    specialMargins={specialMargins}
+                    order={order}
+                    onCheckout={() => setActiveStep((prev) => prev + 1)}
+                    isShared={isShared}
+                    setSort={setSort}
+                  />
+                </Suspense>
+              </Box>
+              <Box display={activeStep === 4 ? 'block' : 'none'}>
+                <Box sx={{ padding: { xs: 1.5, sm: 2, md: 3 } }}>
+                  <Suspense
+                    fallback={
+                      <Box display='flex' justifyContent='center' alignItems='center' minHeight='300px'>
+                        <CircularProgress />
+                      </Box>
+                    }
+                  >
+                    <Review
+                      totals={totals}
+                      customer={customer}
+                      products={selectedProducts}
+                      shippingAddress={shippingAddress}
+                      billingAddress={billingAddress}
+                      setSelectedProducts={setSelectedProducts}
+                      setActiveStep={setActiveStep}
+                      specialMargins={specialMargins}
+                      isShared={isShared}
+                      isCustomerRole={isCustomerUser}
+                      order={order}
+                      referenceNumber={referenceNumber}
+                    />
+                  </Suspense>
+                </Box>
+              </Box>
             </Box>
 
-            {/* Navigation buttons */}
+            {/* Navigation buttons (hidden on phones for steps 0-2 — fixed bar instead) */}
             <Box
               sx={{
-                display: 'flex',
+                display: showMobileNavBar ? { xs: 'none', sm: 'flex' } : 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
                 justifyContent: isMobile ? 'center' : 'space-between',
                 alignItems: isMobile ? 'stretch' : 'center',
@@ -1189,31 +1573,56 @@ const NewOrder: React.FC = () => {
                 }}
               >
                 {/* Save as Draft / Submit Order — last step only */}
-                {activeStep === steps.length - 1 && (
-                  <NavButton
-                    variant='contained'
-                    color='secondary'
-                    fullWidth={isMobile}
-                    onClick={() => {
-                      if (isRetailerFlow) {
-                        setSubmitDialogOpen(true);
-                      } else {
-                        handleEnd('draft');
-                      }
-                    }}
-                    disabled={saveDraftDisabled}
+                {activeStep === STEP_HELP.length - 1 && (
+                  <Tooltip
+                    title={saveDraftBlockers.length > 0 ? saveDraftBlockers.join(' · ') : ''}
+                    arrow
                   >
-                    {loading ? <CircularProgress size={22} color='inherit' /> : saveDraftLabel}
-                  </NavButton>
+                    <span>
+                      <NavButton
+                        variant='contained'
+                        color='secondary'
+                        fullWidth={isMobile}
+                        onClick={() => {
+                          if (isRetailerFlow) {
+                            setSubmitDialogOpen(true);
+                          } else {
+                            const hasStock = selectedProducts.some((p) => !p.pre_order || ((p.stock ?? 0) > 0 && (p.quantity ?? 0) > 0));
+                            const hasPreOrder = selectedProducts.some((p) => p.pre_order && ((p.stock ?? 0) > 0 ? (p.pre_order_quantity ?? 0) > 0 : (p.quantity ?? 0) > 0));
+                            if (hasStock && hasPreOrder) {
+                              setPendingAction('draft');
+                              setEstimateTypes({ stock: !order?.estimate_created, pre_order: !order?.pre_order_estimate_created });
+                              setEstimateSelectOpen(true);
+                            } else {
+                              handleEnd('draft');
+                            }
+                          }
+                        }}
+                        disabled={saveDraftDisabled}
+                      >
+                        {loading ? <CircularProgress size={22} color='inherit' /> : saveDraftLabel}
+                      </NavButton>
+                    </span>
+                  </Tooltip>
                 )}
 
                 {/* Decline — admin only, last step */}
-                {activeStep === steps.length - 1 && !isShared && isAdmin && (
+                {activeStep === STEP_HELP.length - 1 && !isShared && isAdmin && (
                   <NavButton
                     variant='contained'
                     color='error'
                     fullWidth={isMobile}
-                    onClick={() => handleEnd('declined')}
+                    onClick={() => {
+                      const hasStock = selectedProducts.some((p) => !p.pre_order || ((p.stock ?? 0) > 0 && (p.quantity ?? 0) > 0));
+                      const hasPreOrder = selectedProducts.some((p) => p.pre_order && ((p.stock ?? 0) > 0 ? (p.pre_order_quantity ?? 0) > 0 : (p.quantity ?? 0) > 0));
+                      if (hasStock && hasPreOrder) {
+                        setPendingAction('declined');
+                        setEstimateTypes({ stock: !order?.estimate_created, pre_order: !order?.pre_order_estimate_created });
+                        setEstimateSelectOpen(true);
+                      } else {
+                        handleEnd('declined');
+                      }
+                    }}
                     disabled={
                       !customer ||
                       !billingAddress ||
@@ -1221,7 +1630,7 @@ const NewOrder: React.FC = () => {
                       selectedProducts.length === 0 ||
                       !totals.totalAmount ||
                       loading ||
-                      !['draft', 'sent'].includes(order?.status?.toLowerCase())
+                      allEstimatesFinalised
                     }
                   >
                     Decline
@@ -1229,12 +1638,22 @@ const NewOrder: React.FC = () => {
                 )}
 
                 {/* Accept (admin) OR Next */}
-                {activeStep === steps.length - 1 && !isShared && isAdmin ? (
+                {activeStep === STEP_HELP.length - 1 && !isShared && isAdmin ? (
                   <NavButton
                     variant='contained'
                     color='primary'
                     fullWidth={isMobile}
-                    onClick={() => handleEnd('accepted')}
+                    onClick={() => {
+                      const hasStock = selectedProducts.some((p) => !p.pre_order || ((p.stock ?? 0) > 0 && (p.quantity ?? 0) > 0));
+                      const hasPreOrder = selectedProducts.some((p) => p.pre_order && ((p.stock ?? 0) > 0 ? (p.pre_order_quantity ?? 0) > 0 : (p.quantity ?? 0) > 0));
+                      if (hasStock && hasPreOrder) {
+                        setPendingAction('accepted');
+                        setEstimateTypes({ stock: !order?.estimate_created, pre_order: !order?.pre_order_estimate_created });
+                        setEstimateSelectOpen(true);
+                      } else {
+                        handleEnd('accepted');
+                      }
+                    }}
                     disabled={
                       !customer ||
                       !billingAddress ||
@@ -1242,12 +1661,12 @@ const NewOrder: React.FC = () => {
                       selectedProducts.length === 0 ||
                       !totals.totalAmount ||
                       loading ||
-                      !['draft', 'sent'].includes(order?.status?.toLowerCase())
+                      allEstimatesFinalised
                     }
                   >
                     Accept
                   </NavButton>
-                ) : activeStep < steps.length - 1 ? (
+                ) : activeStep < STEP_HELP.length - 1 ? (
                   <NavButton
                     variant='contained'
                     color='primary'
@@ -1262,6 +1681,47 @@ const NewOrder: React.FC = () => {
           </CardContent>
         </Card>
       </Box>
+
+      {/* ── Fixed mobile nav bar (Customer/Billing/Shipping steps) ── */}
+      <Slide direction='up' in={showMobileNavBar} mountOnEnter unmountOnExit>
+        <Paper
+          elevation={8}
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1200,
+            px: 2,
+            py: 1.5,
+            display: 'flex',
+            gap: 1.5,
+            borderTop: `2px solid ${theme.palette.primary.main}40`,
+            background: isDark ? 'rgba(18,18,28,0.96)' : 'rgba(255,255,255,0.97)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          <NavButton
+            variant='outlined'
+            color='secondary'
+            sx={{ flex: 1 }}
+            onClick={() =>
+              activeStep === 0 ? router.push('/') : handleStepClick(activeStep - 1)
+            }
+          >
+            {activeStep === 0 ? 'Cancel' : 'Previous'}
+          </NavButton>
+          <NavButton
+            variant='contained'
+            color='primary'
+            endIcon={<ArrowForward sx={{ fontSize: 18 }} />}
+            sx={{ flex: 1 }}
+            onClick={handleNext}
+          >
+            Next
+          </NavButton>
+        </Paper>
+      </Slide>
 
       {/* ── Floating cart bar (Products step only) ── */}
       <Slide direction='up' in={showCartBar} mountOnEnter unmountOnExit>
@@ -1301,7 +1761,7 @@ const NewOrder: React.FC = () => {
                 color='text.secondary'
                 sx={{ fontSize: { xs: '0.65rem', sm: '0.72rem' } }}
               >
-                {selectedProducts.length} item{selectedProducts.length !== 1 ? 's' : ''} selected
+                {cartRowCount} item{cartRowCount !== 1 ? 's' : ''} selected
               </Typography>
             </Box>
           </Box>
@@ -1311,13 +1771,128 @@ const NewOrder: React.FC = () => {
             variant='contained'
             color='primary'
             endIcon={<ArrowForward />}
-            onClick={() => setActiveStep(steps.length - 1)}
+            onClick={() => setActiveStep(STEP_HELP.length - 1)}
             sx={{ px: { xs: 2, sm: 3 }, py: { xs: 0.75, sm: 1 } }}
           >
             {isMobile ? 'Review' : 'Review Order'}
           </NavButton>
         </Paper>
       </Slide>
+
+      {/* ── Estimate type selection dialog ── */}
+      <Dialog
+        open={estimateSelectOpen}
+        onClose={() => setEstimateSelectOpen(false)}
+        maxWidth='xs'
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+          {pendingAction === 'accepted' ? 'Accept Order' : pendingAction === 'declined' ? 'Decline Order' : 'Save as Draft'} — Select Estimates
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant='body2' color='text.secondary' mb={2}>
+            This order has both in-stock and pre-order items. Choose which estimates to create or update.
+          </Typography>
+          <FormGroup>
+            {/* Select All */}
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={
+                    (_hasStockItems ? estimateTypes.stock : true) &&
+                    (_hasPreOrderItems ? estimateTypes.pre_order : true)
+                  }
+                  indeterminate={
+                    _hasStockItems && _hasPreOrderItems && estimateTypes.stock !== estimateTypes.pre_order
+                  }
+                  onChange={(e) => {
+                    const val = e.target.checked;
+                    setEstimateTypes({
+                      stock: _hasStockItems ? val : estimateTypes.stock,
+                      pre_order: _hasPreOrderItems ? val : estimateTypes.pre_order,
+                    });
+                  }}
+                />
+              }
+              label={<Typography variant='body2' fontWeight={700}>Select All</Typography>}
+            />
+            <Divider sx={{ mb: 1 }} />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={estimateTypes.stock}
+                  onChange={(e) => setEstimateTypes((prev) => ({ ...prev, stock: e.target.checked }))}
+                  disabled={!_hasStockItems}
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant='body2' fontWeight={700}>
+                    In-Stock Estimate
+                    {order?.estimate_number && (
+                      <Chip label={order.estimate_number} size='small' sx={{ ml: 1, fontSize: '0.65rem', height: 18 }} />
+                    )}
+                  </Typography>
+                  <Typography variant='caption' color='text.secondary'>
+                    {selectedProducts.filter((p: any) => !p.pre_order || ((p.stock ?? 0) > 0 && (p.quantity ?? 0) > 0)).length} item{selectedProducts.filter((p: any) => !p.pre_order || ((p.stock ?? 0) > 0 && (p.quantity ?? 0) > 0)).length !== 1 ? 's' : ''}
+                    {order?.estimate_created ? ' · will update existing estimate' : ' · will create new estimate'}
+                  </Typography>
+                </Box>
+              }
+            />
+            <FormControlLabel
+              sx={{ mt: 1 }}
+              control={
+                <Checkbox
+                  checked={estimateTypes.pre_order}
+                  onChange={(e) => setEstimateTypes((prev) => ({ ...prev, pre_order: e.target.checked }))}
+                  disabled={!_hasPreOrderItems}
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant='body2' fontWeight={700} color='warning.main'>
+                    Pre-Order Estimate
+                    {order?.pre_order_estimate_number && (
+                      <Chip label={`${order.pre_order_estimate_number} (Pre Order)`} size='small' color='warning' sx={{ ml: 1, fontSize: '0.65rem', height: 18 }} />
+                    )}
+                  </Typography>
+                  <Typography variant='caption' color='text.secondary'>
+                    {selectedProducts.filter((p: any) => p.pre_order && ((p.stock ?? 0) > 0 ? (p.pre_order_quantity ?? 0) > 0 : (p.quantity ?? 0) > 0)).length} item{selectedProducts.filter((p: any) => p.pre_order && ((p.stock ?? 0) > 0 ? (p.pre_order_quantity ?? 0) > 0 : (p.quantity ?? 0) > 0)).length !== 1 ? 's' : ''}
+                    {order?.pre_order_estimate_created ? ' · will update existing estimate' : ' · will create new estimate'}
+                  </Typography>
+                </Box>
+              }
+            />
+          </FormGroup>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button variant='outlined' onClick={() => setEstimateSelectOpen(false)} disabled={loading} sx={{ textTransform: 'none', borderRadius: 24 }}>
+            Cancel
+          </Button>
+          <Button
+            variant='contained'
+            color={pendingAction === 'declined' ? 'error' : 'primary'}
+            disabled={loading || (!estimateTypes.stock && !estimateTypes.pre_order)}
+            onClick={async () => {
+              setEstimateSelectOpen(false);
+              await handleEnd(pendingAction, false, estimateTypes);
+            }}
+            sx={{ textTransform: 'none', borderRadius: 24, fontWeight: 700 }}
+          >
+            {loading ? (
+              <CircularProgress size={22} color='inherit' />
+            ) : pendingAction === 'accepted' ? (
+              'Accept Order'
+            ) : pendingAction === 'declined' ? (
+              'Decline Order'
+            ) : (
+              'Save as Draft'
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ── Submit Order confirmation dialog (shared / customer users) ── */}
       <Dialog
@@ -1379,6 +1954,197 @@ const NewOrder: React.FC = () => {
           </NavButton>
         </DialogActions>
       </Dialog>
+
+      {/* ── Margins dialog (sales/admin roles only) ── */}
+      {canViewMargins && (
+        <Dialog
+          open={marginDialogOpen}
+          onClose={() => setMarginDialogOpen(false)}
+          maxWidth='sm'
+          fullWidth
+          fullScreen={isMobile}
+          PaperProps={{ sx: { borderRadius: isMobile ? 0 : 3 } }}
+        >
+          <DialogTitle sx={{ fontWeight: 700, pb: 1, pr: 6 }}>
+            Customer Margins
+            {customer && (
+              <Typography variant='body2' color='text.secondary' sx={{ fontWeight: 400, mt: 0.25 }}>
+                {customer.company_name || customer.contact_name}
+              </Typography>
+            )}
+            <IconButton
+              onClick={() => setMarginDialogOpen(false)}
+              size='small'
+              sx={{ position: 'absolute', top: 12, right: 12 }}
+            >
+              <Close fontSize='small' />
+            </IconButton>
+          </DialogTitle>
+
+          <DialogContent>
+            {/* Overall margin + GST treatment */}
+            <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
+              <Box
+                sx={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: 'action.hover',
+                  border: `1px solid ${theme.palette.divider}`,
+                }}
+              >
+                <Typography variant='caption' color='text.secondary' fontWeight={600}>
+                  DEFAULT MARGIN
+                </Typography>
+                <Typography variant='body1' fontWeight={700}>
+                  {customer?.cf_margin || '40%'}
+                </Typography>
+                <Typography variant='caption' color='text.secondary' sx={{ mt: 0.5 }}>
+                  Applied to products without a special margin
+                </Typography>
+              </Box>
+
+              <Box
+                sx={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: 'action.hover',
+                  border: `1px solid ${theme.palette.divider}`,
+                }}
+              >
+                <Typography variant='caption' color='text.secondary' fontWeight={600}>
+                  GST TREATMENT
+                </Typography>
+                <Typography variant='body1' fontWeight={700}>
+                  {customer?.cf_in_ex || 'Exclusive'}
+                </Typography>
+                <Typography variant='caption' color='text.secondary' sx={{ mt: 0.5 }}>
+                  How GST is applied to selling price
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Special margins — grouped by brand */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <Typography variant='subtitle2' fontWeight={700}>
+                Special Margins by Brand
+              </Typography>
+              {Object.keys(specialMarginsByBrand).length > 0 && (
+                <Chip
+                  size='small'
+                  label={`${Object.keys(specialMarginsByBrand).length} brand${Object.keys(specialMarginsByBrand).length !== 1 ? 's' : ''}`}
+                  sx={{ height: 20, fontSize: '0.7rem' }}
+                />
+              )}
+            </Box>
+
+            {specialMarginsList.length === 0 ? (
+              <Typography variant='body2' color='text.secondary' sx={{ py: 2, textAlign: 'center' }}>
+                No special margins set for this customer.
+              </Typography>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {Object.entries(specialMarginsByBrand).map(([brand, { brandMargin, exceptions }]) => (
+                  <Box
+                    key={brand}
+                    sx={{
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderRadius: 2,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {/* Brand header row */}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        px: 2,
+                        py: 1.25,
+                        bgcolor: 'action.hover',
+                      }}
+                    >
+                      <Typography variant='body2' fontWeight={700}>
+                        {brand}
+                      </Typography>
+                      <Chip
+                        size='small'
+                        label={brandMargin}
+                        color='primary'
+                        sx={{ fontSize: '0.75rem', height: 22, fontWeight: 700 }}
+                      />
+                    </Box>
+
+                    {/* Products with a margin different from the brand margin */}
+                    {exceptions.length > 0 && (
+                      <>
+                        <Divider />
+                        <Table size='small'>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ fontSize: '0.72rem', color: 'text.secondary', fontWeight: 600, py: 0.75 }}>
+                                Product (different margin)
+                              </TableCell>
+                              <TableCell align='right' sx={{ fontSize: '0.72rem', color: 'text.secondary', fontWeight: 600, py: 0.75 }}>
+                                Margin
+                              </TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {exceptions.map((item: any) => (
+                              <TableRow key={item.product_id} hover>
+                                <TableCell sx={{ fontSize: '0.8rem', wordBreak: 'break-word' }}>
+                                  {item.name}
+                                </TableCell>
+                                <TableCell align='right'>
+                                  <Chip
+                                    size='small'
+                                    label={item.margin}
+                                    color='warning'
+                                    variant='outlined'
+                                    sx={{ fontSize: '0.75rem', height: 22, fontWeight: 700 }}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </>
+                    )}
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </DialogContent>
+
+          <DialogActions sx={{ px: 3, pb: 2.5 }}>
+            <NavButton variant='contained' color='primary' onClick={() => setMarginDialogOpen(false)}>
+              Close
+            </NavButton>
+          </DialogActions>
+        </Dialog>
+      )}
+
+      {/* ── Order tour (customer users only) ── */}
+      {isCustomerUser && (
+        <CustomerTour
+          tourKey='orders'
+          tourSeen={user?.tour_seen?.orders === true}
+          steps={ORDERS_TOUR_STEPS}
+          onStep={(i) => {
+            // Navigate stepper to the relevant step so the user sees it live
+            if (i === 4) setActiveStep(1); // Billing Address
+            if (i === 5) setActiveStep(2); // Shipping Address
+            if (i === 6) setActiveStep(3); // Products
+            // Step 5 (Review) — don't navigate; cart is empty during tour so just spotlight the stepper
+          }}
+        />
+      )}
 
       {/* ── Snackbars ── */}
       <Snackbar

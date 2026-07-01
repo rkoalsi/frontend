@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import {
     Typography,
     Box,
@@ -16,8 +16,6 @@ import {
     Chip,
     InputAdornment,
     Avatar,
-    Card,
-    CardContent,
     Tooltip,
     Stack,
     Accordion,
@@ -27,20 +25,21 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
-    useTheme,
+    ToggleButtonGroup,
+    ToggleButton,
 } from '@mui/material';
 import {
     Search,
     Clear,
     Download,
     ExpandMore,
-    Person,
     AccessTime,
-    CalendarToday,
     LocationOn,
     CheckCircle,
     Cancel,
     Map,
+    GridView,
+    ViewList,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -79,7 +78,6 @@ interface AuthContextType {
 
 const AttendanceViewing: React.FC = () => {
     const { user } = useContext(AuthContext) as AuthContextType;
-    const theme = useTheme();
 
     // State management
     const [attendanceData, setAttendanceData] = useState<EmployeeAttendance[]>([]);
@@ -94,6 +92,9 @@ const AttendanceViewing: React.FC = () => {
     // Statistics
     const [totalEmployees, setTotalEmployees] = useState<number>(0);
     const [totalRecords, setTotalRecords] = useState<number>(0);
+
+    // View mode
+    const [viewMode, setViewMode] = useState<'list' | 'heatmap'>('list');
 
     // Debounced search effect
     useEffect(() => {
@@ -210,112 +211,64 @@ const AttendanceViewing: React.FC = () => {
         }
     };
 
+    const heatmapData = useMemo(() => {
+        const allDates = new Set<string>();
+        attendanceData.forEach(emp => {
+            emp.attendance_records.forEach(rec => {
+                const d = (rec.date || '').split('T')[0];
+                if (d) allDates.add(d);
+            });
+        });
+        const sortedDates = Array.from(allDates).sort().slice(-21); // up to 21 most recent days
+        return {
+            dates: sortedDates,
+            rows: attendanceData.map(emp => ({
+                name: emp.employee.name,
+                days: sortedDates.map(date =>
+                    emp.attendance_records.some(rec => (rec.date || '').startsWith(date))
+                ),
+            })),
+        };
+    }, [attendanceData]);
+
     return (
-        <Box sx={{ p: { xs: 2, md: 3 }, minHeight: '100vh' }}>
-            {/* Header Section */}
-            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
-                <Box>
-                    <Typography
-                        variant='h4'
-                        sx={{
-                            fontWeight: 700,
-                            color: '#1e293b',
-                            mb: 1,
-                            fontSize: { xs: '1.75rem', md: '2.125rem' }
-                        }}
-                    >
+        <Box sx={{ padding: { xs: 2, sm: 3 } }}>
+            <Paper elevation={3} sx={{ padding: { xs: 2, sm: 3, md: 4 }, borderRadius: 4 }}>
+                {/* Header */}
+                <Box
+                    display='flex'
+                    justifyContent='space-between'
+                    alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    flexDirection={{ xs: 'column', sm: 'row' }}
+                    gap={{ xs: 2, sm: 0 }}
+                    mb={1}
+                >
+                    <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
                         Attendance Records
                     </Typography>
-                    <Typography
-                        variant='body1'
-                        sx={{
-                            color: '#64748b',
-                            fontSize: '1.1rem'
-                        }}
+                    <Button
+                        variant='contained'
+                        startIcon={downloading ? <CircularProgress size={20} color='inherit' /> : <Download />}
+                        onClick={handleDownload}
+                        disabled={downloading || attendanceData.length === 0}
                     >
-                        View and manage employee attendance records with location tracking
-                    </Typography>
+                        {downloading ? 'Downloading...' : 'Download Report'}
+                    </Button>
                 </Box>
+                <Typography variant='body1' color='text.secondary' sx={{ mb: 3 }}>
+                    View and manage employee attendance records with location tracking
+                </Typography>
 
-                <Button
-                    variant='contained'
-                    startIcon={downloading ? <CircularProgress size={20} color='inherit' /> : <Download />}
-                    onClick={handleDownload}
-                    disabled={downloading || attendanceData.length === 0}
-                    sx={{
-                        borderRadius: 2,
-                        px: 3,
-                        py: 1.5,
-                        textTransform: 'none',
-                        fontWeight: 600
-                    }}
-                >
-                    {downloading ? 'Downloading...' : 'Download Report'}
-                </Button>
-            </Box>
-
-            {/* Statistics Cards */}
-            <Box
-                sx={{
-                    display: 'grid',
-                    gridTemplateColumns: {
-                        xs: '1fr',
-                        sm: 'repeat(2, 1fr)',
-                        md: 'repeat(3, 1fr)'
-                    },
-                    gap: 3,
-                    mb: 4
-                }}
-            >
-                <Card elevation={0} sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', borderRadius: 3 }}>
-                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                        <Person sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
-                        <Typography variant='h4' sx={{ fontWeight: 700, mb: 0.5 }}>
-                            {totalEmployees}
-                        </Typography>
-                        <Typography variant='body2' sx={{ opacity: 0.9 }}>
-                            Employees with Records
-                        </Typography>
-                    </CardContent>
-                </Card>
-
-                <Card elevation={0} sx={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white', borderRadius: 3 }}>
-                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                        <AccessTime sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
-                        <Typography variant='h4' sx={{ fontWeight: 700, mb: 0.5 }}>
-                            {totalRecords}
-                        </Typography>
-                        <Typography variant='body2' sx={{ opacity: 0.9 }}>
-                            Total Attendance Records
-                        </Typography>
-                    </CardContent>
-                </Card>
-
-                <Card elevation={0} sx={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white', borderRadius: 3 }}>
-                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                        <CalendarToday sx={{ fontSize: 40, mb: 1, opacity: 0.9 }} />
-                        <Typography variant='h4' sx={{ fontWeight: 700, mb: 0.5 }}>
-                            {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                        </Typography>
-                        <Typography variant='body2' sx={{ opacity: 0.9 }}>
-                            Today's Date
-                        </Typography>
-                    </CardContent>
-                </Card>
-            </Box>
-
-            {/* Search Bar */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: `1px solid ${theme.palette.divider}` }}>
-                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }}>
+                {/* View Toggle + Search */}
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent='space-between' sx={{ mb: 3 }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ flex: 1 }}>
                     <TextField
                         label='Search by Employee Name'
                         variant='outlined'
+                        size='small'
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        sx={{
-                            minWidth: 300,
-                            '& .MuiOutlinedInput-root': { borderRadius: 2 }
-                        }}
+                        sx={{ minWidth: { xs: '100%', sm: 300 } }}
                         InputProps={{
                             startAdornment: (
                                 <InputAdornment position="start">
@@ -332,7 +285,6 @@ const AttendanceViewing: React.FC = () => {
                         }}
                         placeholder="Search by employee name..."
                     />
-
                     {searchTerm && (
                         <Chip
                             label={`Searching: ${searchTerm}`}
@@ -342,162 +294,193 @@ const AttendanceViewing: React.FC = () => {
                         />
                     )}
                 </Stack>
-            </Paper>
+                    <ToggleButtonGroup
+                        value={viewMode}
+                        exclusive
+                        size='small'
+                        onChange={(_, v) => v && setViewMode(v)}
+                    >
+                        <ToggleButton value='list'><ViewList sx={{ mr: 0.5 }} fontSize='small' /> List</ToggleButton>
+                        <ToggleButton value='heatmap'><GridView sx={{ mr: 0.5 }} fontSize='small' /> Heatmap</ToggleButton>
+                    </ToggleButtonGroup>
+                </Stack>
 
-            {/* Main Content */}
-            <Paper elevation={0} sx={{ borderRadius: 3, overflow: 'hidden', border: `1px solid ${theme.palette.divider}` }}>
+                {/* Content */}
                 {loading ? (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '400px', gap: 2 }}>
-                        <CircularProgress size={40} />
-                        <Typography variant="body1" color="text.secondary">
-                            Loading attendance records...
-                        </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+                        <CircularProgress />
                     </Box>
-                ) : attendanceData.length > 0 ? (
-                    <Box sx={{ p: 2 }}>
-                        {attendanceData.map((employeeData) => (
-                            <Accordion
-                                key={employeeData.employee.id}
-                                expanded={expandedEmployee === employeeData.employee.id}
-                                onChange={() => setExpandedEmployee(
-                                    expandedEmployee === employeeData.employee.id ? null : employeeData.employee.id
-                                )}
-                                sx={{ mb: 2, borderRadius: 2, '&:before': { display: 'none' } }}
-                            >
-                                <AccordionSummary expandIcon={<ExpandMore />}>
-                                    <Box display="flex" alignItems="center" gap={2} width="100%">
-                                        <Avatar
-                                            sx={{
-                                                backgroundColor: '#3b82f6',
-                                                width: 48,
-                                                height: 48,
-                                                fontSize: '1.1rem',
-                                                fontWeight: 600
-                                            }}
-                                        >
-                                            {employeeData.employee.name.charAt(0).toUpperCase()}
-                                        </Avatar>
-                                        <Box flex={1}>
-                                            <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                                                {employeeData.employee.name}
+                ) : viewMode === 'heatmap' && heatmapData.dates.length > 0 ? (
+                    <Box sx={{ overflowX: 'auto' }}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: `180px repeat(${heatmapData.dates.length}, 36px)`, gap: '2px', minWidth: 'max-content' }}>
+                            {/* Header row */}
+                            <Box sx={{ p: 0.5 }} />
+                            {heatmapData.dates.map(date => {
+                                const d = new Date(date);
+                                return (
+                                    <Tooltip key={date} title={d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}>
+                                        <Box sx={{ textAlign: 'center', p: 0.25 }}>
+                                            <Typography variant='caption' sx={{ fontSize: '0.6rem', fontWeight: 600, color: 'text.secondary' }}>
+                                                {d.toLocaleDateString('en-IN', { weekday: 'short' }).slice(0, 2)}
                                             </Typography>
-                                            <Typography variant='caption' color='text.secondary'>
-                                                {employeeData.employee.employee_number || 'No ID'} • {employeeData.employee.phone}
+                                            <Typography variant='caption' sx={{ display: 'block', fontSize: '0.6rem', color: 'text.disabled' }}>
+                                                {d.getDate()}
                                             </Typography>
                                         </Box>
-                                        <Chip
-                                            label={`${employeeData.total_records} records`}
-                                            color="primary"
-                                            size="small"
-                                            sx={{ fontWeight: 600 }}
+                                    </Tooltip>
+                                );
+                            })}
+                            {/* Employee rows */}
+                            {heatmapData.rows.map(row => (
+                                <React.Fragment key={row.name}>
+                                    <Tooltip title={row.name}>
+                                        <Typography variant='body2' noWrap sx={{ alignSelf: 'center', pr: 1, fontWeight: 500, maxWidth: 180, fontSize: '0.8rem' }}>
+                                            {row.name}
+                                        </Typography>
+                                    </Tooltip>
+                                    {row.days.map((present, i) => (
+                                        <Box
+                                            key={i}
+                                            sx={{
+                                                width: 34,
+                                                height: 34,
+                                                borderRadius: 1,
+                                                backgroundColor: present ? '#2e7d32' : 'action.hover',
+                                                border: `1px solid`,
+                                                borderColor: present ? '#1b5e2060' : 'divider',
+                                                cursor: 'default',
+                                            }}
                                         />
+                                    ))}
+                                </React.Fragment>
+                            ))}
+                        </Box>
+                        <Stack direction='row' spacing={2} sx={{ mt: 2 }} alignItems='center'>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                <Box sx={{ width: 16, height: 16, borderRadius: 0.5, backgroundColor: '#2e7d32' }} />
+                                <Typography variant='caption'>Present</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                <Box sx={{ width: 16, height: 16, borderRadius: 0.5, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }} />
+                                <Typography variant='caption'>Absent / No record</Typography>
+                            </Box>
+                        </Stack>
+                    </Box>
+                ) : attendanceData.length > 0 ? (
+                    attendanceData.map((employeeData) => (
+                        <Accordion
+                            key={employeeData.employee.id}
+                            expanded={expandedEmployee === employeeData.employee.id}
+                            onChange={() => setExpandedEmployee(
+                                expandedEmployee === employeeData.employee.id ? null : employeeData.employee.id
+                            )}
+                            slotProps={{ transition: { unmountOnExit: true } }}
+                            sx={{ mb: 2, '&:before': { display: 'none' } }}
+                        >
+                            <AccordionSummary expandIcon={<ExpandMore />}>
+                                <Box display="flex" alignItems="center" gap={2} width="100%">
+                                    <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
+                                        {employeeData.employee.name.charAt(0).toUpperCase()}
+                                    </Avatar>
+                                    <Box flex={1}>
+                                        <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
+                                            {employeeData.employee.name}
+                                        </Typography>
+                                        <Typography variant='caption' color='text.secondary'>
+                                            {employeeData.employee.employee_number || 'No ID'} • {employeeData.employee.phone}
+                                        </Typography>
                                     </Box>
-                                </AccordionSummary>
-                                <AccordionDetails>
-                                    <TableContainer>
-                                        <Table size="small">
-                                            <TableHead>
-                                                <TableRow>
-                                                    <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
-                                                    <TableCell sx={{ fontWeight: 600 }}>Check In</TableCell>
-                                                    <TableCell sx={{ fontWeight: 600 }}>Check Out</TableCell>
-                                                    <TableCell sx={{ fontWeight: 600 }}>Location</TableCell>
-                                                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                                                    <TableCell align="center" sx={{ fontWeight: 600 }}>Actions</TableCell>
-                                                </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                                {employeeData.attendance_records.map((record) => (
-                                                    <TableRow key={record._id} hover>
-                                                        <TableCell>{formatDate(record.date)}</TableCell>
-                                                        <TableCell>
+                                    <Chip
+                                        label={`${employeeData.total_records} records`}
+                                        color="primary"
+                                        size="small"
+                                        sx={{ fontWeight: 600, mr: 1 }}
+                                    />
+                                </Box>
+                            </AccordionSummary>
+                            <AccordionDetails sx={{ p: 0 }}>
+                                <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+                                    <Table size="small">
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
+                                                <TableCell sx={{ fontWeight: 'bold' }}>Check In</TableCell>
+                                                <TableCell sx={{ fontWeight: 'bold' }}>Check Out</TableCell>
+                                                <TableCell sx={{ fontWeight: 'bold' }}>Location</TableCell>
+                                                <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {employeeData.attendance_records.map((record) => (
+                                                <TableRow key={record._id} hover>
+                                                    <TableCell>{formatDate(record.date)}</TableCell>
+                                                    <TableCell>
+                                                        <Box display="flex" alignItems="center" gap={0.5}>
+                                                            <AccessTime fontSize="small" color="action" />
+                                                            {formatTime(record.check_in_time)}
+                                                        </Box>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {record.check_out_time ? (
                                                             <Box display="flex" alignItems="center" gap={0.5}>
                                                                 <AccessTime fontSize="small" color="action" />
-                                                                {formatTime(record.check_in_time)}
+                                                                {formatTime(record.check_out_time)}
                                                             </Box>
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {record.check_out_time ? (
-                                                                <Box display="flex" alignItems="center" gap={0.5}>
-                                                                    <AccessTime fontSize="small" color="action" />
-                                                                    {formatTime(record.check_out_time)}
-                                                                </Box>
-                                                            ) : (
-                                                                <Typography variant="body2" color="text.secondary">
-                                                                    Not checked out
-                                                                </Typography>
-                                                            )}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <Typography variant="body2">
-                                                                {record.location}
+                                                        ) : (
+                                                            <Typography variant="body2" color="text.secondary">
+                                                                Not checked out
                                                             </Typography>
-                                                            {record.latitude && record.longitude && (
-                                                                <Typography variant="caption" color="text.secondary" display="flex" alignItems="center" gap={0.5}>
-                                                                    <LocationOn fontSize="inherit" />
-                                                                    GPS: {record.latitude.toFixed(4)}, {record.longitude.toFixed(4)}
-                                                                </Typography>
-                                                            )}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <Chip
-                                                                label={record.status}
-                                                                color={record.status === 'Present' ? 'success' : 'default'}
-                                                                size="small"
-                                                                icon={record.status === 'Present' ? <CheckCircle /> : <Cancel />}
-                                                                sx={{ textTransform: 'capitalize', fontWeight: 600 }}
-                                                            />
-                                                        </TableCell>
-                                                        <TableCell align="center">
-                                                            {record.latitude && record.longitude && (
-                                                                <Tooltip title="View Location on Map">
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        color="primary"
-                                                                        onClick={() => handleViewLocation(record)}
-                                                                    >
-                                                                        <Map fontSize="small" />
-                                                                    </IconButton>
-                                                                </Tooltip>
-                                                            )}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </TableContainer>
-                                </AccordionDetails>
-                            </Accordion>
-                        ))}
-                    </Box>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Typography variant="body2">{record.location}</Typography>
+                                                        {record.latitude && record.longitude && (
+                                                            <Typography variant="caption" color="text.secondary" display="flex" alignItems="center" gap={0.5}>
+                                                                <LocationOn fontSize="inherit" />
+                                                                GPS: {record.latitude.toFixed(4)}, {record.longitude.toFixed(4)}
+                                                            </Typography>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Chip
+                                                            label={record.status}
+                                                            color={record.status === 'Present' ? 'success' : 'default'}
+                                                            size="small"
+                                                            icon={record.status === 'Present' ? <CheckCircle /> : <Cancel />}
+                                                            sx={{ textTransform: 'capitalize', fontWeight: 600 }}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell align="center">
+                                                        {record.latitude && record.longitude && (
+                                                            <Tooltip title="View Location on Map">
+                                                                <IconButton size="small" color="primary" onClick={() => handleViewLocation(record)}>
+                                                                    <Map fontSize="small" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </AccordionDetails>
+                        </Accordion>
+                    ))
                 ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '400px', p: 4 }}>
-                        <AccessTime sx={{ fontSize: 80, color: '#cbd5e1', mb: 2 }} />
-                        <Typography variant='h5' sx={{ fontWeight: 600, mb: 1, color: '#475569' }}>
-                            No Attendance Records Found
-                        </Typography>
-                        <Typography variant='body1' color='text.secondary' textAlign="center">
-                            {debouncedSearch ?
-                                'No attendance records match your search' :
-                                'No attendance records available'
-                            }
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+                        <Typography color='text.secondary'>
+                            {debouncedSearch ? 'No attendance records match your search' : 'No attendance records available'}
                         </Typography>
                     </Box>
                 )}
+
             </Paper>
 
             {/* Location Dialog */}
-            <Dialog
-                open={locationDialogOpen}
-                onClose={() => setLocationDialogOpen(false)}
-                maxWidth="md"
-                fullWidth
-            >
-                <DialogTitle>
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        Attendance Location
-                    </Typography>
-                </DialogTitle>
+            <Dialog open={locationDialogOpen} onClose={() => setLocationDialogOpen(false)} maxWidth="md" fullWidth>
+                <DialogTitle>Attendance Location</DialogTitle>
                 <DialogContent>
                     {selectedLocation && (
                         <Box>
@@ -508,7 +491,6 @@ const AttendanceViewing: React.FC = () => {
                                 variant="contained"
                                 startIcon={<Map />}
                                 onClick={() => window.open(selectedLocation.url, '_blank')}
-                                sx={{ borderRadius: 2 }}
                             >
                                 Open in Google Maps
                             </Button>
@@ -516,9 +498,7 @@ const AttendanceViewing: React.FC = () => {
                     )}
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setLocationDialogOpen(false)} sx={{ borderRadius: 2 }}>
-                        Close
-                    </Button>
+                    <Button onClick={() => setLocationDialogOpen(false)}>Close</Button>
                 </DialogActions>
             </Dialog>
         </Box>

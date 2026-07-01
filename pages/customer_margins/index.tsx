@@ -19,7 +19,10 @@ import {
   CircularProgress,
   capitalize,
   useTheme,
+  Pagination,
 } from '@mui/material';
+
+const PAGE_SIZE = 20;
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Header from '../../src/components/common/Header';
 import axios from 'axios';
@@ -247,6 +250,7 @@ function CustomerMargin() {
   const { user }: any = useContext(AuthContext);
   const [customersMargin, setCustomerMargin] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentCustomer, setCurrentCustomer] = useState<any>(null);
   const [note, setNote] = useState('');
@@ -280,6 +284,7 @@ function CustomerMargin() {
   // Debounce search to prevent excessive API calls
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
+      setPage(1);
       if (searchQuery) {
         fetchCustomerMargin(searchQuery);
       } else {
@@ -302,7 +307,7 @@ function CustomerMargin() {
           mb: 4,
         }}
       >
-        <Header title='Customer Margins' showBackButton />
+        <Header title='Customer Margins' showBackButton useBack />
         <Alert color='info'>
           This is for existing customers and their assigned margins
         </Alert>
@@ -325,19 +330,56 @@ function CustomerMargin() {
         <Alert severity='info' variant='outlined'>
           No Customer Margins found.
         </Alert>
-      ) : (
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: 3,
-          }}
-        >
-          {customersMargin.map((h) => (
-            <ShopHookCard user={user} key={h._id} hookData={h} />
-          ))}
-        </Box>
-      )}
+      ) : (() => {
+        const totalPages = Math.ceil(customersMargin.length / PAGE_SIZE);
+        const paged = customersMargin.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+        return (
+          <>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: 3,
+              }}
+            >
+              {paged.map((h) => (
+                <ShopHookCard user={user} key={h._id} hookData={h} />
+              ))}
+            </Box>
+            {totalPages > 1 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, pt: 2 }}>
+                <Pagination
+                  count={totalPages}
+                  page={page}
+                  onChange={(_, val) => { setPage(val); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  color='primary'
+                  shape='rounded'
+                  siblingCount={1}
+                  boundaryCount={1}
+                />
+                <Box
+                  component='form'
+                  onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
+                    e.preventDefault();
+                    const input = (e.currentTarget.elements.namedItem('jumpPage') as HTMLInputElement).value;
+                    const num = parseInt(input, 10);
+                    if (num >= 1 && num <= totalPages) {
+                      setPage(num);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                      (e.currentTarget.elements.namedItem('jumpPage') as HTMLInputElement).value = '';
+                    }
+                  }}
+                  sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                >
+                  <Typography variant='body2' color='text.secondary'>Go to page</Typography>
+                  <TextField name='jumpPage' size='small' type='number' slotProps={{ htmlInput: { min: 1, max: totalPages } }} sx={{ width: 72 }} />
+                  <Button type='submit' size='small' variant='outlined' sx={{ borderRadius: 2 }}>Go</Button>
+                </Box>
+              </Box>
+            )}
+          </>
+        );
+      })()}
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
         <DialogTitle>Add Notes</DialogTitle>

@@ -2,83 +2,94 @@ import React, { useContext, useEffect, useState } from 'react';
 import {
   Box,
   Typography,
-  List,
-  ListItem,
-  Divider,
   Skeleton,
   Chip,
   IconButton,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  useMediaQuery,
   Paper,
-  styled,
+  TextField,
+  InputAdornment,
+  Tooltip,
+  useMediaQuery,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogContentText,
   DialogActions,
   Button,
+  Pagination,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import SearchIcon from '@mui/icons-material/Search';
+import InboxIcon from '@mui/icons-material/Inbox';
 import { useTheme } from '@mui/material/styles';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import AuthContext from '../../../src/components/Auth';
 import { toast } from 'react-toastify';
-import CustomButton from '../../../src/components/common/Button';
 import Header from '../../../src/components/common/Header';
+
+type OrderProduct = {
+  pre_order?: boolean;
+  pre_order_quantity?: number;
+};
 
 type OrderType = {
   _id: string;
   estimate_created?: boolean;
   estimate_number?: string;
+  pre_order_estimate_created?: boolean;
+  pre_order_estimate_number?: string;
   customer_name: string;
   created_at: string;
   status: string;
   total_amount?: number;
+  spreadsheet_created?: boolean;
+  products?: OrderProduct[];
 };
 
-const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(3),
-  background:
-    'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0))',
-  borderRadius: 18,
-  border: '1px solid rgba(255, 255, 255, 0.2)',
-  boxShadow: '0px 6px 25px rgba(0,0,0,0.3)',
-  width: '100%',
-  maxWidth: '600px',
-  marginBottom: theme.spacing(3),
-}));
+const hasPreOrderProducts = (order: OrderType): boolean =>
+  (order.products ?? []).some(
+    (p) => p?.pre_order === true || Number(p?.pre_order_quantity ?? 0) > 0
+  );
 
-// Container variants for staggered animations
+type FilterType = 'all' | 'draft' | 'accepted' | 'declined' | 'invoiced';
+
+const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'accepted', label: 'Accepted' },
+  { value: 'declined', label: 'Declined' },
+  { value: 'invoiced', label: 'Invoiced' },
+];
+
+const STATUS_COLOR: Record<string, 'warning' | 'info' | 'success' | 'error' | 'default'> = {
+  draft: 'warning',
+  sent: 'info',
+  accepted: 'success',
+  invoiced: 'success',
+  declined: 'error',
+};
+
 const listContainerVariants = {
   hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.12,
-    },
-  },
+  visible: { transition: { staggerChildren: 0.08 } },
 };
 
-// Card motion variants with a slightly larger hover effect
 const cardVariants = {
-  hidden: { opacity: 0, y: 25 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.45 } },
-  hover: { scale: 1.04 },
-  tap: { scale: 0.98 },
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.35 } },
 };
+
+const PAGE_SIZE = 10;
 
 const PastOrders = () => {
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState<OrderType[]>([]);
-  const [filterType, setFilterType] = useState<
-    'all' | 'draft' | 'accepted' | 'declined' | 'invoiced'
-  >('all');
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const theme = useTheme();
@@ -86,18 +97,23 @@ const PastOrders = () => {
   const router = useRouter();
   const { user }: any = useContext(AuthContext);
 
-  // Fetch orders from the backend
+  // When opened from Customer Logins, scope to a single customer's orders
+  // (all orders for that customer, regardless of which salesperson created them).
+  const customerId = (router.query.customer_id as string) || '';
+
   const getData = async () => {
     try {
       setLoading(true);
-      const queryParams = {
+      const queryParams: Record<string, string> = {
         status: filterType === 'all' ? '' : filterType,
-        created_by: user?._id,
       };
+      if (customerId) {
+        queryParams.customer_id = customerId;
+      } else {
+        queryParams.created_by = user?._id;
+      }
       const queryString = new URLSearchParams(queryParams).toString();
-      const resp = await axios.get(
-        `${process.env.api_url}/orders?${queryString}`
-      );
+      const resp = await axios.get(`${process.env.api_url}/orders?${queryString}`);
       setOrders(resp.data || []);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -106,314 +122,393 @@ const PastOrders = () => {
     }
   };
 
-  // Navigate to order details page
-  const handleOrderClick = (id: string) => {
-    router.push(`/orders/past/${id}`);
-  };
-
-  // Open delete confirmation dialog
   const handleDeleteClick = (id: string) => {
     setOrderToDelete(id);
     setDeleteDialogOpen(true);
   };
 
-  // Close delete confirmation dialog
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
     setOrderToDelete(null);
   };
 
-  // Delete a specific order after confirmation
   const handleDeleteConfirm = async () => {
     if (!orderToDelete) return;
-
     try {
       await axios.delete(`${process.env.api_url}/orders/${orderToDelete}`, {
-        params: { deleted_by: user?._id }
+        params: { deleted_by: user?._id },
       });
-      toast.success(`Order Deleted Successfully`);
+      toast.success('Order Deleted Successfully');
       setDeleteDialogOpen(false);
       setOrderToDelete(null);
       getData();
     } catch (error) {
       console.error('Error deleting order:', error);
-      toast.error(`Error Deleting Order`);
+      toast.error('Error Deleting Order');
     }
   };
 
-  // Filter orders based on selected dropdown value
-  const filteredOrders = orders.filter((order) =>
-    filterType === 'all' ? true : order.status.toLowerCase() === filterType
-  );
+  const filteredOrders = orders.filter((order) => {
+    const matchesFilter = filterType === 'all' || order.status.toLowerCase() === filterType;
+    const matchesSearch =
+      !search.trim() ||
+      order.customer_name.toLowerCase().includes(search.trim().toLowerCase()) ||
+      (order.estimate_number || '').toLowerCase().includes(search.trim().toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  const totalPages = Math.ceil(filteredOrders.length / PAGE_SIZE);
+  const pagedOrders = filteredOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   useEffect(() => {
+    if (!router.isReady) return;
     getData();
+    setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterType]);
+  }, [filterType, router.isReady, customerId]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   return (
     <Box
-      display='flex'
-      flexDirection='column'
-      alignItems='center'
       sx={{
         width: '100%',
+        maxWidth: { xs: '100%', sm: 720, md: 960, lg: 1100 },
+        mx: 'auto',
+        px: { xs: 2, sm: 3, md: 4 },
+        py: { xs: 2, sm: 3 },
+        display: 'flex',
+        flexDirection: 'column',
         gap: 2,
-        padding: isMobile ? 2 : 4,
       }}
     >
-      {/* Reusable Header with Back Button */}
-      <Header title='Past Orders' showBackButton />
+      <Header
+        title={customerId && orders[0]?.customer_name ? `Orders — ${orders[0].customer_name}` : 'Past Orders'}
+        showBackButton
+        backUrl={customerId ? '/customer_logins' : '/'}
+      />
 
-      {/* Dropdown for filtering orders */}
-      <FormControl
-        variant='outlined'
-        sx={{ minWidth: isMobile ? 200 : 250 }}
+      {/* Filter chips + search row */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 1.5,
+          alignItems: { xs: 'stretch', sm: 'center' },
+          flexWrap: 'wrap',
+        }}
       >
-        <InputLabel id='order-filter-label'>
-          Filter Orders
-        </InputLabel>
-        <Select
-          labelId='order-filter-label'
-          value={filterType}
-          label='Filter Orders'
-          onChange={(e) =>
-            setFilterType(
-              e.target.value as
-              | 'all'
-              | 'draft'
-              | 'accepted'
-              | 'declined'
-              | 'invoiced'
-            )
-          }
-        >
-          <MenuItem value='all'>All Orders</MenuItem>
-          <MenuItem value='draft'>Draft Orders</MenuItem>
-          <MenuItem value='accepted'>Accepted Orders</MenuItem>
-          <MenuItem value='declined'>Declined Orders</MenuItem>
-          <MenuItem value='invoiced'>Invoiced Orders</MenuItem>
-        </Select>
-      </FormControl>
-
-      {/* Orders List */}
-      {loading ? (
-        <Box sx={{ width: '100%', maxWidth: '600px', mt: 4 }}>
-          <Skeleton variant='rectangular' height={100} sx={{ mb: 2 }} />
-          <Skeleton variant='rectangular' height={100} sx={{ mb: 2 }} />
-          <Skeleton variant='rectangular' height={100} />
+        {/* Filter chips */}
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          {FILTER_OPTIONS.map((opt) => (
+            <Chip
+              key={opt.value}
+              label={opt.label}
+              onClick={() => setFilterType(opt.value)}
+              color={filterType === opt.value ? 'primary' : 'default'}
+              variant={filterType === opt.value ? 'filled' : 'outlined'}
+              sx={{ fontWeight: filterType === opt.value ? 700 : 400, cursor: 'pointer' }}
+            />
+          ))}
         </Box>
-      ) : (
-        <StyledPaper>
-          {filteredOrders.length > 0 ? (
-            <Box
-              component={motion.div}
-              variants={listContainerVariants}
-              initial='hidden'
-              animate='visible'
-            >
-              {filteredOrders.map((order: any, index) => (
-                <motion.div
-                  key={order._id}
-                  variants={cardVariants}
-                  whileHover='hover'
-                  whileTap='tap'
-                >
-                  <ListItem
-                    onClick={() => handleOrderClick(order._id)}
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      padding: 2,
-                      cursor: 'pointer',
-                      bgcolor: 'background.paper',
-                      border: '2px solid',
-                      borderColor: 'divider',
-                      borderRadius: 2,
-                      mb: 2,
-                    }}
-                  >
-                    <Box
-                      display='flex'
-                      flexDirection='row'
-                      alignItems='center'
-                      justifyContent='space-between'
-                      sx={{ width: '100%' }}
-                    >
-                      <Typography variant='h6' fontWeight='bold' color='text.primary'>
-                        {order.estimate_created
-                          ? order.estimate_number
-                          : `Order #${order._id.slice(-6)}`}
-                      </Typography>
-                      {!order.estimate_created && (
-                        <Box display='flex' alignItems='center' gap={2}>
-                          <IconButton
-                            disabled={['declined', 'accepted', 'invoiced'].includes(
-                              order?.status?.toLowerCase()
-                            )}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/orders/new/${order._id}`);
-                            }}
-                            aria-label='edit order'
-                            color='primary'
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteClick(order._id);
-                            }}
-                            aria-label='delete order'
-                            color='error'
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Box>
-                      )}
-                    </Box>
-                    <Typography variant='body2' color='text.primary'>
-                      Customer: {order.customer_name}
-                    </Typography>
-                    <Typography variant='body2' color='text.primary'>
-                      Date: {new Date(order.created_at).toLocaleDateString()}
-                    </Typography>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: isMobile ? 'column' : 'row',
-                        alignItems: isMobile ? 'flex-start' : 'center',
-                        gap: isMobile ? 1 : 1,
-                        mt: 1,
-                        width: '100%',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      {/* Chips Container */}
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          alignItems: 'center',
-                          gap: 0.5,
-                          flex: 1,
-                        }}
-                      >
-                        <Chip
-                          label={
-                            order.status.charAt(0).toUpperCase() +
-                            order.status.slice(1).toLowerCase()
-                          }
-                          color={
-                            order.status.toLowerCase() === 'draft'
-                              ? 'warning'
-                              : order.status.toLowerCase() === 'sent'
-                              ? 'info'
-                              : order.status.toLowerCase() === 'accepted' ||
-                                order.status.toLowerCase() === 'invoiced'
-                              ? 'success'
-                              : 'error'
-                          }
-                          sx={{
-                            fontWeight: 'bold',
-                            fontSize: isMobile ? '0.75rem' : '0.85rem',
-                            height: isMobile ? 24 : 'auto',
-                            '& .MuiChip-label': {
-                              padding: isMobile ? '0 8px' : '0 12px',
-                            },
-                          }}
-                        />
-                        {order?.estimate_created && (
-                          <Chip
-                            label={'Estimate Created'}
-                            color={'success'}
-                            sx={{
-                              fontWeight: 'bold',
-                              fontSize: isMobile ? '0.75rem' : '0.85rem',
-                              height: isMobile ? 24 : 'auto',
-                              '& .MuiChip-label': {
-                                padding: isMobile ? '0 8px' : '0 12px',
-                              },
-                            }}
-                          />
-                        )}
-                        {order?.spreadsheet_created && (
-                          <Chip
-                            label={'XLSX Created'}
-                            color={'primary'}
-                            sx={{
-                              fontWeight: 'bold',
-                              fontSize: isMobile ? '0.75rem' : '0.85rem',
-                              height: isMobile ? 24 : 'auto',
-                              '& .MuiChip-label': {
-                                padding: isMobile ? '0 8px' : '0 12px',
-                              },
-                            }}
-                          />
-                        )}
-                      </Box>
 
-                      {/* Total Amount */}
-                      <Typography
-                        variant='body1'
-                        fontWeight='bold'
-                        sx={{
-                          color: 'text.primary' as any,
-                          fontSize: isMobile ? '0.9rem' : '1rem',
-                          mt: isMobile ? 0.5 : 0,
-                          alignSelf: isMobile ? 'flex-end' : 'center',
-                        }}
-                      >
-                        ₹{order.total_amount || 0}
-                      </Typography>
-                    </Box>
-                  </ListItem>
-                  {index < filteredOrders.length - 1 && <Divider />}
-                </motion.div>
-              ))}
-            </Box>
-          ) : (
-            <Typography
-              variant='body1'
-              align='center'
-              sx={{ p: 2 }}
-            >
-              No past orders available.
-            </Typography>
-          )}
-        </StyledPaper>
-      )}
-
-      {/* Navigation Buttons */}
-      <Box display='flex' justifyContent='center' gap={1} sx={{ mt: 2 }}>
-        <CustomButton
-          color='secondary'
-          onClick={() => router.push('/')}
-          text='Go Back'
+        {/* Search */}
+        <TextField
+          size='small'
+          placeholder='Search by customer…'
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position='start'>
+                <SearchIcon fontSize='small' />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ minWidth: 220, ml: { sm: 'auto' } }}
         />
       </Box>
 
+      {/* Result count */}
+      {!loading && (
+        <Typography variant='body2' color='text.secondary'>
+          {filteredOrders.length} order{filteredOrders.length !== 1 ? 's' : ''}
+        </Typography>
+      )}
+
+      {/* List */}
+      {loading ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} variant='rectangular' height={110} sx={{ borderRadius: 2 }} />
+          ))}
+        </Box>
+      ) : filteredOrders.length === 0 ? (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 1.5,
+            py: 8,
+            color: 'text.secondary',
+          }}
+        >
+          <InboxIcon sx={{ fontSize: 56, opacity: 0.35 }} />
+          <Typography variant='body1'>No orders found.</Typography>
+        </Box>
+      ) : (
+        <>
+        <Box
+          component={motion.div}
+          variants={listContainerVariants}
+          initial='hidden'
+          animate='visible'
+          sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}
+        >
+          {pagedOrders.map((order) => {
+            const statusKey = order.status.toLowerCase();
+            const statusColor = STATUS_COLOR[statusKey] ?? 'default';
+            const isEditable = !['declined', 'accepted', 'invoiced'].includes(statusKey);
+            const title = order.estimate_created
+              ? order.estimate_number
+              : `Order #${order._id.slice(-6)}`;
+            const isPreOrder = hasPreOrderProducts(order);
+
+            return (
+              <motion.div key={order._id} variants={cardVariants}>
+                <Paper
+                  onClick={() => router.push(`/orders/past/${order._id}`)}
+                  elevation={0}
+                  sx={{
+                    p: { xs: 2, sm: 2 },
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderLeft: '4px solid',
+                    borderLeftColor: `${statusColor}.main`,
+                    cursor: 'pointer',
+                    transition: 'box-shadow 0.2s, border-color 0.2s',
+                    '&:hover': { boxShadow: 4, borderColor: 'primary.main' },
+                    // Desktop: single row
+                    display: { sm: 'flex' },
+                    flexDirection: { sm: 'row' },
+                    alignItems: { sm: 'center' },
+                    gap: { sm: 2 },
+                  }}
+                >
+                  {/* ── MOBILE layout ── */}
+                  <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                    {/* Row 1: title + amount */}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                      <Typography variant='h6' fontWeight={700} color='text.primary' sx={{ lineHeight: 1.25, mr: 1 }}>
+                        {title}
+                      </Typography>
+                      <Typography variant='h6' fontWeight={700} color='text.primary' sx={{ whiteSpace: 'nowrap' }}>
+                        ₹{(order.total_amount ?? 0).toLocaleString('en-IN')}
+                      </Typography>
+                    </Box>
+                    {/* Row 2: customer */}
+                    <Typography variant='body1' color='text.secondary' sx={{ mb: 0.5 }}>
+                      {order.customer_name}
+                    </Typography>
+                    {/* Row 3: date + chips + actions */}
+                    <Box
+                      sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 0.5 }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                        <Typography variant='caption' color='text.secondary'>
+                          {new Date(order.created_at).toLocaleDateString('en-IN', {
+                            day: 'numeric', month: 'short', year: 'numeric',
+                          })}
+                        </Typography>
+                        <Chip
+                          label={order.status.charAt(0).toUpperCase() + order.status.slice(1).toLowerCase()}
+                          color={statusColor}
+                          size='small'
+                          sx={{ fontWeight: 600 }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        {isPreOrder && (
+                          <Chip label='Pre Order' color='warning' size='small' sx={{ fontWeight: 600 }} onClick={(e) => e.stopPropagation()} />
+                        )}
+                        {order.estimate_created && (
+                          <Chip label='Estimate' color='success' size='small' variant='outlined' onClick={(e) => e.stopPropagation()} />
+                        )}
+                        {order.pre_order_estimate_created && (
+                          <Chip
+                            label={order.pre_order_estimate_number || 'Pre-Order'}
+                            size='small'
+                            color='warning'
+                            variant='outlined'
+                            sx={{ fontSize: '0.7rem' }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        )}
+                        {order.spreadsheet_created && (
+                          <Chip label='XLSX' color='primary' size='small' variant='outlined' onClick={(e) => e.stopPropagation()} />
+                        )}
+                      </Box>
+                      {!order.estimate_created && !customerId && (
+                        <Box sx={{ display: 'flex', gap: 0.25 }}>
+                          <Tooltip title={isEditable ? 'Edit order' : 'Cannot edit'}>
+                            <span>
+                              <IconButton
+                                size='small'
+                                disabled={!isEditable}
+                                color='primary'
+                                onClick={() => router.push(`/orders/new/${order._id}`)}
+                              >
+                                <EditIcon />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                          <Tooltip title='Delete order'>
+                            <IconButton size='small' color='error' onClick={() => handleDeleteClick(order._id)}>
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      )}
+                    </Box>
+                  </Box>
+
+                  {/* ── DESKTOP layout ── */}
+                  <Box sx={{ display: { xs: 'none', sm: 'contents' } }}>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant='subtitle1' fontWeight={700} noWrap color='text.primary'>
+                        {title}
+                      </Typography>
+                      <Typography variant='body2' color='text.secondary' noWrap>
+                        {order.customer_name}
+                      </Typography>
+                      <Typography variant='caption' color='text.secondary'>
+                        {new Date(order.created_at).toLocaleDateString('en-IN', {
+                          day: 'numeric', month: 'short', year: 'numeric',
+                        })}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
+                      <Chip
+                        label={order.status.charAt(0).toUpperCase() + order.status.slice(1).toLowerCase()}
+                        color={statusColor}
+                        size='small'
+                        sx={{ fontWeight: 600 }}
+                      />
+                      {isPreOrder && (
+                        <Chip label='Pre Order' color='info' size='small' sx={{ fontWeight: 600 }} />
+                      )}
+                      {order.estimate_created && (
+                        <Chip label='Estimate' color='success' size='small' variant='outlined' />
+                      )}
+                      {order.pre_order_estimate_created && (
+                        <Chip
+                          label={order.pre_order_estimate_number || 'Pre-Order'}
+                          size='small'
+                          color='warning'
+                          variant='outlined'
+                          sx={{ fontSize: '0.7rem' }}
+                        />
+                      )}
+                      {order.spreadsheet_created && (
+                        <Chip label='XLSX' color='primary' size='small' variant='outlined' />
+                      )}
+                    </Box>
+                    <Typography
+                      variant='subtitle2'
+                      fontWeight={700}
+                      color='text.primary'
+                      sx={{ minWidth: 80, textAlign: 'right' }}
+                    >
+                      ₹{(order.total_amount ?? 0).toLocaleString('en-IN')}
+                    </Typography>
+                    {!order.estimate_created && !customerId && (
+                      <Box
+                        sx={{ display: 'flex', gap: 0.5 }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Tooltip title={isEditable ? 'Edit order' : 'Cannot edit'}>
+                          <span>
+                            <IconButton
+                              size='small'
+                              disabled={!isEditable}
+                              color='primary'
+                              onClick={() => router.push(`/orders/new/${order._id}`)}
+                            >
+                              <EditIcon fontSize='small' />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title='Delete order'>
+                          <IconButton size='small' color='error' onClick={() => handleDeleteClick(order._id)}>
+                            <DeleteIcon fontSize='small' />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    )}
+                  </Box>
+                </Paper>
+              </motion.div>
+            );
+          })}
+        </Box>
+        {totalPages > 1 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, pt: 1 }}>
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={(_, val) => { setPage(val); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              color='primary'
+              shape='rounded'
+              siblingCount={1}
+              boundaryCount={1}
+            />
+            <Box
+              component='form'
+              onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
+                e.preventDefault();
+                const input = (e.currentTarget.elements.namedItem('jumpPage') as HTMLInputElement).value;
+                const num = parseInt(input, 10);
+                if (num >= 1 && num <= totalPages) {
+                  setPage(num);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  (e.currentTarget.elements.namedItem('jumpPage') as HTMLInputElement).value = '';
+                }
+              }}
+              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+            >
+              <Typography variant='body2' color='text.secondary'>
+                Go to page
+              </Typography>
+              <TextField
+                name='jumpPage'
+                size='small'
+                type='number'
+                slotProps={{ htmlInput: { min: 1, max: totalPages } }}
+                sx={{ width: 72 }}
+              />
+              <Button type='submit' size='small' variant='outlined' sx={{ borderRadius: 2 }}>
+                Go
+              </Button>
+            </Box>
+          </Box>
+        )}
+        </>
+      )}
+
       {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={handleDeleteCancel}
-        aria-labelledby='delete-dialog-title'
-        aria-describedby='delete-dialog-description'
-      >
-        <DialogTitle id='delete-dialog-title'>
-          Confirm Delete
-        </DialogTitle>
+      <Dialog open={deleteDialogOpen} onClose={handleDeleteCancel}>
+        <DialogTitle>Delete Order?</DialogTitle>
         <DialogContent>
-          <DialogContentText id='delete-dialog-description'>
-            Are you sure you want to delete this order? This action is irreversible and cannot be undone.
+          <DialogContentText>
+            This action is permanent and cannot be undone.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDeleteCancel} color='primary'>
-            Cancel
-          </Button>
+          <Button onClick={handleDeleteCancel}>Cancel</Button>
           <Button onClick={handleDeleteConfirm} color='error' variant='contained' autoFocus>
             Delete
           </Button>
