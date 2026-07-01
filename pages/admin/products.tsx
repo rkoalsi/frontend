@@ -253,7 +253,7 @@ const Products = () => {
       await axiosInstance.put(`/admin/products/${product._id}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      toast.success(`Product ${newClearance ? 'added to Clearance' : 'removed from Clearance'}.`);
+      toast.success(`Product ${newClearance ? 'added to Special Offers' : 'removed from Special Offers'}.`);
       await getData();
     } catch (error) {
       console.error(error);

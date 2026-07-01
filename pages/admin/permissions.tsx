@@ -77,6 +77,21 @@ const ROLE_COLORS: Record<string, any> = {
     customer: 'info',
 };
 
+// Sidebar groups a menu item can belong to. Order here matches the sidebar.
+const CATEGORIES = [
+    'Overview',
+    'Sales & Orders',
+    'Existing Customers',
+    'Customer Accounts',
+    'Leads',
+    'Daily Visits',
+    'Catalog & Inventory',
+    'Marketing',
+    'HR',
+    'Team & Admin',
+    'Other',
+];
+
 const EMPTY_USER_FORM = {
     name: '',
     first_name: '',
@@ -158,6 +173,7 @@ const UserManagement = () => {
     const [allPermissions, setAllPermissions] = useState<any[]>([]);
     const [permLoading, setPermLoading] = useState(false);
     const [permMatrix, setPermMatrix] = useState<Record<string, string[]>>({});
+    const [catMatrix, setCatMatrix] = useState<Record<string, string>>({});
     const [permSaving, setPermSaving] = useState(false);
 
     const API = process.env.api_url;
@@ -184,10 +200,13 @@ const UserManagement = () => {
             setAllPermissions(perms);
             // Build local matrix from fetched data
             const matrix: Record<string, string[]> = {};
+            const cats: Record<string, string> = {};
             perms.forEach((p: any) => {
                 matrix[p.id] = [...(p.allowed_roles || [])];
+                cats[p.id] = p.category || 'Other';
             });
             setPermMatrix(matrix);
+            setCatMatrix(cats);
         } catch {
             toast.error('Failed to load permissions');
         } finally {
@@ -430,6 +449,10 @@ const UserManagement = () => {
         });
     };
 
+    const setCategory = (permId: string, category: string) => {
+        setCatMatrix(prev => ({ ...prev, [permId]: category }));
+    };
+
     const handleSavePermissions = async () => {
         try {
             setPermSaving(true);
@@ -437,6 +460,7 @@ const UserManagement = () => {
                 allPermissions.map(p =>
                     axiosInstance.put(`${API}/permissions/admin/permission/${p.id}`, {
                         allowed_roles: permMatrix[p.id] || [],
+                        category: catMatrix[p.id] || 'Other',
                     })
                 )
             );
@@ -751,7 +775,7 @@ const UserManagement = () => {
                         <>
                             <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
                                 <Typography variant="body2" color="text.secondary">
-                                    Toggle which roles can access each feature. Click <strong>Save Permissions</strong> in the header to apply changes.
+                                    Toggle which roles can access each feature and set its <strong>Sidebar Group</strong>. Click <strong>Save Permissions</strong> in the header to apply changes.
                                 </Typography>
                             </Box>
                             <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
@@ -760,6 +784,9 @@ const UserManagement = () => {
                                         <TableRow>
                                             <TableCell sx={{ fontWeight: 'bold', minWidth: 220 }}>
                                                 Feature / Page
+                                            </TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', minWidth: 190 }}>
+                                                Sidebar Group
                                             </TableCell>
                                             {roles.map(role => (
                                                 <TableCell
@@ -785,6 +812,18 @@ const UserManagement = () => {
                                                         <Typography variant="body2" fontWeight="medium">{perm.text}</Typography>
                                                         <Typography variant="caption" color="text.secondary">{perm.path}</Typography>
                                                     </Box>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <FormControl size="small" fullWidth>
+                                                        <Select
+                                                            value={CATEGORIES.includes(catMatrix[perm.id]) ? catMatrix[perm.id] : 'Other'}
+                                                            onChange={e => setCategory(perm.id, e.target.value)}
+                                                        >
+                                                            {CATEGORIES.map(cat => (
+                                                                <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                                                            ))}
+                                                        </Select>
+                                                    </FormControl>
                                                 </TableCell>
                                                 {roles.map(role => {
                                                     const checked = (permMatrix[perm.id] || []).includes(role.value);

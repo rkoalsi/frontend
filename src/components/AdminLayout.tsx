@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect } from 'react';
+import { useContext, useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import {
   Box,
@@ -18,6 +18,9 @@ import {
   CircularProgress,
   Tooltip,
   Divider,
+  InputBase,
+  Avatar,
+  Collapse,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -58,6 +61,9 @@ import {
   DarkMode,
   LightMode,
   ReceiptLong,
+  Search as SearchIcon,
+  ExpandLess,
+  ExpandMore,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -100,15 +106,63 @@ const iconMap: { [key: string]: React.ReactElement } = {
   Receipt: <OrdersIcon />,
 };
 
+// Display order of sidebar groups. The `category` itself lives on each menu
+// item in the DB (editable in /admin/permissions); this only controls the
+// order sections appear in. Any category not listed here is appended last.
+const CATEGORY_ORDER = [
+  'Overview',
+  'Sales & Orders',
+  'Existing Customers',
+  'Customer Accounts',
+  'Leads',
+  'Daily Visits',
+  'Catalog & Inventory',
+  'Marketing',
+  'HR',
+  'Team & Admin',
+  'Other',
+];
+
 const AdminLayout = ({ children }: any) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
+  const [search, setSearch] = useState('');
   const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user, loading, logout, permissions, checkRouteAccess }: any = useContext(AuthContext);
   const { mode, toggleColorMode } = useColorMode();
   const isDark = mode === 'dark';
+
+  // Group the user's menu items into ordered, collapsible sections.
+  const groupedMenu = useMemo(() => {
+    const items = [...(permissions?.menu_items ?? [])].sort((a: any, b: any) =>
+      a.text.localeCompare(b.text)
+    );
+    const q = search.trim().toLowerCase();
+    const visible = q
+      ? items.filter((item: any) => item.text.toLowerCase().includes(q))
+      : items;
+
+    const buckets: { [category: string]: any[] } = {};
+    visible.forEach((item: any) => {
+      const category = item.category || 'Other';
+      (buckets[category] ||= []).push(item);
+    });
+
+    const ordered = [...CATEGORY_ORDER];
+    Object.keys(buckets).forEach((c) => {
+      if (!ordered.includes(c)) ordered.push(c);
+    });
+
+    return ordered
+      .filter((category) => buckets[category]?.length)
+      .map((category) => ({ category, items: buckets[category] }));
+  }, [permissions, search]);
+
+  const [collapsed, setCollapsed] = useState<{ [category: string]: boolean }>({});
+  const toggleCategory = (category: string) =>
+    setCollapsed((prev) => ({ ...prev, [category]: !prev[category] }));
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -250,17 +304,25 @@ const AdminLayout = ({ children }: any) => {
                 </Tooltip>
               ) : (
                 <Button
-                  variant='text'
+                  size='small'
                   onClick={() => router.push('/')}
                   startIcon={<HomeIcon fontSize='small' />}
                   sx={{
-                    textTransform: 'none',
-                    color: 'rgba(255,255,255,0.75)',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
+                    color: 'rgba(255,255,255,0.85)',
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(255,255,255,0.14)',
                     borderRadius: '8px',
+                    textTransform: 'none',
+                    fontWeight: 600,
                     px: 1.5,
-                    '&:hover': { backgroundColor: 'rgba(255,255,255,0.08)', color: '#fff' },
+                    boxShadow: 'none',
+                    '& .MuiButton-startIcon': { mr: 0.5 },
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.16)',
+                      color: '#fff',
+                      borderColor: 'rgba(255,255,255,0.24)',
+                      boxShadow: 'none',
+                    },
                   }}
                 >
                   Home
@@ -329,54 +391,221 @@ const AdminLayout = ({ children }: any) => {
         }}
       >
         <Toolbar />
+
+        {/* Search */}
+        <Box sx={{ px: 2, pt: 1, pb: 0.5 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              px: 1.25,
+              py: 0.75,
+              borderRadius: 2,
+              backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+              transition: 'border-color 0.2s, background-color 0.2s',
+              '&:focus-within': {
+                borderColor: activeItemText,
+                backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.6)',
+              },
+            }}
+          >
+            <SearchIcon sx={{ fontSize: 18, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)' }} />
+            <InputBase
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder='Search menu…'
+              sx={{
+                flex: 1,
+                fontSize: 14,
+                color: sidebarText,
+                '& input::placeholder': { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)', opacity: 1 },
+              }}
+            />
+          </Box>
+        </Box>
+
         <Box
           sx={{
             flexGrow: 1,
             overflowY: 'auto',
-            height: 'calc(100vh - 64px)',
+            height: 'calc(100vh - 140px)',
             '&::-webkit-scrollbar': { width: 0, background: 'transparent' },
             scrollbarWidth: 'none',
           }}
         >
-          <List>
-            {permissions.menu_items
-              .sort((a: any, b: any) => a.text.localeCompare(b.text))
-              .map(({ text, icon, path }: any, index: number) => (
-                <ListItem
-                  component='a'
-                  key={index}
-                  onClick={() => handleMenuItemClick(path)}
+          {groupedMenu.length === 0 && (
+            <Typography
+              variant='body2'
+              sx={{ px: 3, py: 2, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)' }}
+            >
+              No matches
+            </Typography>
+          )}
+          {groupedMenu.map(({ category, items }) => {
+            const isSearching = search.trim().length > 0;
+            const isOpen = isSearching || !collapsed[category];
+            return (
+              <Box key={category} sx={{ mb: 0.5 }}>
+                <Box
+                  onClick={() => !isSearching && toggleCategory(category)}
                   sx={{
-                    marginY: 0.5,
-                    paddingX: 2,
-                    paddingY: 1.5,
-                    borderRadius: 2,
-                    cursor: 'pointer',
-                    backgroundColor: router.pathname === path ? activeItemBg : sidebarBg,
-                    color: router.pathname === path ? activeItemText : sidebarText,
-                    transition: 'background-color 0.3s, color 0.3s',
-                    '&:hover': {
-                      backgroundColor: hoverItemBg,
-                      color: activeItemText,
-                    },
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    px: 2.5,
+                    pt: 1.5,
+                    pb: 0.5,
+                    cursor: isSearching ? 'default' : 'pointer',
+                    userSelect: 'none',
                   }}
                 >
-                  <ListItemIcon sx={{ color: 'inherit', minWidth: 40, marginRight: 1 }}>
-                    {iconMap[icon] || <Dashboard />}
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={text}
-                    primaryTypographyProps={{
-                      color: 'inherit',
-                      fontSize: 16,
-                      fontWeight: '500',
-                      fontFamily: 'Roboto, sans-serif',
+                  <Typography
+                    variant='caption'
+                    sx={{
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
                     }}
-                  />
-                </ListItem>
-              ))}
-          </List>
+                  >
+                    {category}
+                  </Typography>
+                  {!isSearching &&
+                    (isOpen ? (
+                      <ExpandLess sx={{ fontSize: 16, color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)' }} />
+                    ) : (
+                      <ExpandMore sx={{ fontSize: 16, color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)' }} />
+                    ))}
+                </Box>
+                <Collapse in={isOpen} timeout='auto' unmountOnExit>
+                  <List sx={{ px: 1, py: 0 }}>
+                    {items.map(({ text, icon, path }: any, index: number) => {
+                      const isActive = router.pathname === path;
+                      return (
+                        <ListItem
+                          component='a'
+                          key={index}
+                          onClick={() => handleMenuItemClick(path)}
+                          sx={{
+                            position: 'relative',
+                            marginY: 0.25,
+                            paddingX: 1.75,
+                            paddingY: 1.1,
+                            borderRadius: 2,
+                            cursor: 'pointer',
+                            overflow: 'hidden',
+                            backgroundColor: isActive ? activeItemBg : 'transparent',
+                            color: isActive ? activeItemText : sidebarText,
+                            transition: 'background-color 0.2s, color 0.2s',
+                            '&::before': {
+                              content: '""',
+                              position: 'absolute',
+                              left: 0,
+                              top: '50%',
+                              transform: isActive ? 'translateY(-50%) scaleY(1)' : 'translateY(-50%) scaleY(0)',
+                              width: 3,
+                              height: '60%',
+                              borderRadius: '0 4px 4px 0',
+                              backgroundColor: activeItemText,
+                              transition: 'transform 0.2s',
+                            },
+                            '&:hover': {
+                              backgroundColor: hoverItemBg,
+                              color: activeItemText,
+                            },
+                          }}
+                        >
+                          <ListItemIcon
+                            sx={{
+                              color: 'inherit',
+                              minWidth: 38,
+                              marginRight: 0.5,
+                              '& .MuiSvgIcon-root': { fontSize: 21 },
+                            }}
+                          >
+                            {iconMap[icon] || <Dashboard />}
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={text}
+                            primaryTypographyProps={{
+                              color: 'inherit',
+                              fontSize: 14.5,
+                              fontWeight: isActive ? 600 : 500,
+                              fontFamily: 'Roboto, sans-serif',
+                            }}
+                          />
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                </Collapse>
+              </Box>
+            );
+          })}
         </Box>
+
+        {/* User footer */}
+        {user && (
+          <Box
+            sx={{
+              borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+              p: 1.5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+            }}
+          >
+            <Avatar
+              sx={{
+                width: 36,
+                height: 36,
+                fontSize: 15,
+                fontWeight: 700,
+                background: 'linear-gradient(135deg, #4E8098, #2B4864)',
+                color: '#fff',
+              }}
+            >
+              {(user.name || user.email || 'A').charAt(0).toUpperCase()}
+            </Avatar>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography
+                variant='body2'
+                noWrap
+                sx={{ fontWeight: 600, color: sidebarText, lineHeight: 1.2 }}
+              >
+                {user.name || user.email || 'Admin'}
+              </Typography>
+              {user.role && (
+                <Typography
+                  variant='caption'
+                  noWrap
+                  sx={{
+                    display: 'block',
+                    color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {String(user.role).replace(/_/g, ' ')}
+                </Typography>
+              )}
+            </Box>
+            <Tooltip title='Logout' arrow>
+              <IconButton
+                onClick={logout}
+                size='small'
+                sx={{
+                  color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
+                  '&:hover': { color: '#ff6b6b', backgroundColor: 'rgba(217,83,79,0.12)' },
+                }}
+              >
+                <Logout fontSize='small' />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
       </Drawer>
 
       {/* Main Content */}
