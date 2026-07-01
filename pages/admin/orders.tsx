@@ -345,6 +345,39 @@ const Orders = () => {
     }
   };
 
+  const getPaymentChipColor = (
+    status?: string
+  ): 'default' | 'warning' | 'success' | 'error' => {
+    switch (status?.toLowerCase()) {
+      case 'paid': return 'success';
+      case 'failed': return 'error';
+      case 'pending':
+      case 'created': return 'warning';
+      default: return 'default';
+    }
+  };
+
+  // Resolve a human name for who created the order. Self-registered B2B
+  // customers place their own orders and may not have a `name` on their user
+  // record (it's only their shop/contact), so fall back to first/last name,
+  // the order's customer name, and finally a "Self-Registered Customer" label
+  // instead of the misleading "Unknown".
+  const getCreatedByLabel = (order: any): string => {
+    const info = order?.created_by_info || {};
+    const fullName = [info.first_name, info.last_name]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    if (info.name) return info.name;
+    if (fullName) return fullName;
+    if (info.self_registered || info.role === 'customer') {
+      return order?.customer_name
+        ? `${order.customer_name} (Self-Registered)`
+        : 'Self-Registered Customer';
+    }
+    return order?.customer_name || 'Unknown';
+  };
+
   const triggerSearch = () => {
     setPage(0);
     setSearchKey(k => k + 1);
@@ -528,6 +561,7 @@ const Orders = () => {
                         <TableCell>Order ID</TableCell>
                         <TableCell>Customer Name</TableCell>
                         <TableCell>Status</TableCell>
+                        <TableCell>Payment Status</TableCell>
                         <TableCell>Created By</TableCell>
                         <TableCell>Total Amount</TableCell>
                         <TableCell>Actions</TableCell>
@@ -583,8 +617,20 @@ const Orders = () => {
                             />
                           </TableCell>
                           <TableCell>
-                            {order.created_by_info?.name || 'Unknown'}
+                            {order?.payment?.status ? (
+                              <Chip
+                                label={capitalize(order.payment.status)}
+                                color={getPaymentChipColor(order.payment.status)}
+                                size='small'
+                                sx={{ fontWeight: 600, textTransform: 'capitalize' }}
+                              />
+                            ) : (
+                              <Typography variant='body2' color='text.secondary'>
+                                —
+                              </Typography>
+                            )}
                           </TableCell>
+                          <TableCell>{getCreatedByLabel(order)}</TableCell>
                           <TableCell>₹{order.total_amount || 0}</TableCell>
                           <TableCell>
                             <Box
