@@ -288,6 +288,8 @@ const CustomerOrders = () => {
                   <TableHead>
                     <TableRow sx={{ backgroundColor: 'grey.50' }}>
                       <TableCell sx={{ fontWeight: 'bold' }}>Order Number</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Estimate Number</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Invoice Number</TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>Items</TableCell>
@@ -307,6 +309,8 @@ const CustomerOrders = () => {
                             #{order.order_number || order._id.slice(-6)}
                           </Typography>
                         </TableCell>
+                        <TableCell>{order.estimate_number || '—'}</TableCell>
+                        <TableCell>{order.zoho_flow?.invoice_number || '—'}</TableCell>
                         <TableCell>
                           {order.created_at
                             ? format(new Date(order.created_at), 'PP')
@@ -393,6 +397,16 @@ const CustomerOrders = () => {
                               ? format(new Date(order.created_at), 'PP')
                               : 'N/A'}
                           </Typography>
+                          {order.estimate_number && (
+                            <Typography variant='caption' color='text.secondary' sx={{ display: 'block' }}>
+                              Est: {order.estimate_number}
+                            </Typography>
+                          )}
+                          {order.zoho_flow?.invoice_number && (
+                            <Typography variant='caption' color='text.secondary' sx={{ display: 'block' }}>
+                              Inv: {order.zoho_flow.invoice_number}
+                            </Typography>
+                          )}
                         </Box>
                         <Chip
                           label={order.status}

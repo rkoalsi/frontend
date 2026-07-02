@@ -11,7 +11,9 @@ import { keyframes } from '@mui/system';
  * screen after Razorpay Checkout returns.
  */
 
-export type PaymentResult = 'processing' | 'success' | 'failure';
+// 'placed' = order submitted without an online payment (e.g. cash/cheque on
+// delivery) — success styling, but no "Payment Successful" wording.
+export type PaymentResult = 'processing' | 'success' | 'placed' | 'failure';
 
 // Circle outline draws itself, then the tick/cross strokes in.
 const drawCircle = keyframes`
@@ -43,17 +45,22 @@ export default function PaymentResultDialog({
   onClose: () => void;
 }) {
   const isProcessing = result === 'processing';
-  const isSuccess = result === 'success';
+  const isPlaced = result === 'placed';
+  const isSuccess = result === 'success' || isPlaced;
   const color = isSuccess ? '#16a34a' : '#dc2626';
 
   const heading = isProcessing
     ? 'Processing Payment'
+    : isPlaced
+    ? 'Order Placed'
     : isSuccess
     ? 'Payment Successful'
     : 'Payment Failed';
 
   const defaultMessage = isProcessing
     ? 'Please wait while we confirm your payment and create your order. This can take a few moments — don’t close this window.'
+    : isPlaced
+    ? 'Your order has been relayed to our team and will be confirmed shortly.'
     : isSuccess
     ? 'Your payment was received and the order has been confirmed.'
     : 'Your payment could not be completed. Please try again.';

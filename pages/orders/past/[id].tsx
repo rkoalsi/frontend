@@ -509,6 +509,16 @@ const OrderDetails = () => {
                 </Box>
               </Box>
             )}
+            {orderData.zoho_flow?.invoice_number && (
+              <Box sx={{ gridColumn: 'span 2' }}>
+                <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>
+                  Invoice Number
+                </Typography>
+                <Typography variant='body1' fontWeight={500}>
+                  {orderData.zoho_flow.invoice_number}
+                </Typography>
+              </Box>
+            )}
             {orderData.spreadsheet_created && (
               <Box sx={{ gridColumn: 'span 2' }}>
                 <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>

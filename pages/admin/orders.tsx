@@ -53,8 +53,42 @@ const Orders = () => {
   const router = useRouter();
   const theme: any = useTheme();
   const { user }: any = useContext(AuthContext);
+  const isAdmin = user?.role === 'admin';
   // Orders data
   const [orders, setOrders] = useState([]);
+
+  // App settings — minimum order value for self-registered customers
+  const [minOrderValue, setMinOrderValue] = useState<string>('');
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    axiosInstance
+      .get('/admin/settings')
+      .then((r) =>
+        setMinOrderValue(String(r.data?.min_order_value_self_registered ?? ''))
+      )
+      .catch(() => {});
+  }, [isAdmin]);
+
+  const handleSaveSettings = async () => {
+    const val = parseFloat(minOrderValue);
+    if (isNaN(val) || val < 0) {
+      toast.error('Enter a valid amount');
+      return;
+    }
+    setSettingsSaving(true);
+    try {
+      await axiosInstance.put('/admin/settings', {
+        min_order_value_self_registered: val,
+      });
+      toast.success('Settings saved');
+    } catch {
+      toast.error('Failed to save settings');
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   // Pagination states
   const [page, setPage] = useState(0); // 0-based current page
@@ -539,6 +573,53 @@ const Orders = () => {
         <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           View and manage all orders below.
         </Typography>
+
+        {/* Order settings — minimum order value for self-registered customers */}
+        {isAdmin && (
+          <Paper
+            variant='outlined'
+            sx={{
+              p: { xs: 2, sm: 2.5 },
+              borderRadius: 2,
+              mb: 3,
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { sm: 'center' },
+              gap: 2,
+            }}
+          >
+            <Box sx={{ flex: 1 }}>
+              <Typography variant='subtitle1' fontWeight={600}>
+                Order Settings
+              </Typography>
+              <Typography variant='body2' color='text.secondary'>
+                Minimum cart value before a self-registered customer can place
+                an order (online payment or cash/cheque on delivery).
+              </Typography>
+            </Box>
+            <TextField
+              label='Min order value (₹)'
+              type='number'
+              size='small'
+              value={minOrderValue}
+              onChange={(e) => setMinOrderValue(e.target.value)}
+              sx={{ width: { xs: '100%', sm: 200 } }}
+            />
+            <Button
+              variant='contained'
+              onClick={handleSaveSettings}
+              disabled={settingsSaving}
+              startIcon={
+                settingsSaving ? (
+                  <CircularProgress size={16} color='inherit' />
+                ) : undefined
+              }
+            >
+              {settingsSaving ? 'Saving…' : 'Save'}
+            </Button>
+          </Paper>
+        )}
+
         {loading ? (
           <Box
             sx={{
