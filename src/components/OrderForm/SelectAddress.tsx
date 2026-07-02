@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useContext } from 'react';
 import {
   Box,
   Typography,
@@ -14,6 +14,8 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import NewAddress from './NewAddress';
 import { LocationOn, Add, ArrowBack } from '@mui/icons-material';
+import AuthContext from '../Auth';
+import { dedupeAddressesByContent } from '../../util/addresses';
 
 interface Props {
   address: any;
@@ -74,6 +76,23 @@ function Address(props: Props) {
   const isDark = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const hasSetInitialAddress = useRef(false);
+  const { user }: any = useContext(AuthContext);
+  const isCustomerUser = user?.role === 'customer';
+
+  // Unique by address_id always; customers additionally get content-level
+  // dedup so two copies of the same address (different address_id's, a common
+  // Zoho billing/shipping artefact) don't show as confusing duplicates.
+  const listedAddresses = (() => {
+    let list: any[] = Array.from(
+      new Map(
+        (customer?.addresses || []).map((addr: any) => [addr.address_id, addr])
+      ).values()
+    );
+    if (isCustomerUser) list = dedupeAddressesByContent(list);
+    return list.filter(
+      (addr: any) => addressDetails[addr.address_id]?.status !== 'closed'
+    );
+  })();
 
   useEffect(() => {
     if (
@@ -243,14 +262,7 @@ function Address(props: Props) {
           >
             {customer && customer.addresses && customer.addresses.length > 0 ? (
               <CheckList
-                values={Array.from(
-                  new Map(
-                    customer.addresses.map((addr: any) => [addr.address_id, addr])
-                  ).values()
-                ).filter(
-                  (addr: any) =>
-                    addressDetails[addr.address_id]?.status !== 'closed'
-                )}
+                values={listedAddresses}
                 selectedValue={selectedAddress}
                 setSelectedValue={setAddress}
                 addressDetails={addressDetails}

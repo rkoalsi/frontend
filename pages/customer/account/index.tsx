@@ -242,7 +242,7 @@ const CustomerAccount = () => {
     <Container maxWidth='lg' sx={{ py: { xs: 1.5, md: 4 }, px: { xs: 1.5, sm: 2, md: 3 } }}>
       <Paper
         elevation={0}
-        sx={{ backgroundColor: 'background.paper', borderRadius: { xs: 3, md: 4 }, overflow: 'hidden', minHeight: '80vh', border: `1px solid ${theme.palette.divider}` }}
+        sx={{ backgroundColor: 'background.paper', borderRadius: { xs: 3, md: 4 }, overflow: 'hidden', border: `1px solid ${theme.palette.divider}` }}
       >
         {/* Header */}
         <Box

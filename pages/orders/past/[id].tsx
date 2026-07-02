@@ -14,10 +14,11 @@ import {
 } from '@mui/material';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import { AddToPhotos, ContentCopy, Download, Edit } from '@mui/icons-material';
+import { AddToPhotos, AssignmentReturn, ContentCopy, Download, Edit } from '@mui/icons-material';
 import AuthContext from '../../../src/components/Auth';
 import { toast } from 'react-toastify';
 import Header from '../../../src/components/common/Header';
+import OrderReturnDialog from '../../../src/components/common/OrderReturnDialog';
 import { parseMarginPct, getEffectiveMarginPct } from '../../../src/util/margin';
 
 const STATUS_COLOR: Record<string, 'warning' | 'info' | 'success' | 'error' | 'default'> = {
@@ -49,6 +50,8 @@ const OrderDetails = () => {
   const [error, setError] = useState('');
   const [invoices, setInvoices] = useState<any[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [eligibility, setEligibility] = useState<any>(null);
+  const [returnOpen, setReturnOpen] = useState(false);
   const router = useRouter();
   const { id } = router.query;
   const { user }: any = useContext(AuthContext);
@@ -156,9 +159,21 @@ const OrderDetails = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Returns need the order to be invoiced and its shipment created — ask the
+  // backend, which also reports an already-existing return for this order.
+  const fetchEligibility = async () => {
+    try {
+      const resp = await axios.get(`${process.env.api_url}/orders/${id}/return_eligibility`);
+      setEligibility(resp.data);
+    } catch (err) {
+      console.error('Failed to check return eligibility', err);
+    }
+  };
+
   useEffect(() => {
     if (id && orderData?.status?.toLowerCase() === 'invoiced') {
       fetchInvoices();
+      fetchEligibility();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, orderData?.status]);
@@ -344,6 +359,28 @@ const OrderDetails = () => {
                 Download Invoice
               </Button>
             ))}
+            {eligibility?.eligible && (
+              <Button
+                size='small'
+                variant='contained'
+                color='success'
+                startIcon={<AssignmentReturn fontSize='small' />}
+                onClick={() => setReturnOpen(true)}
+                sx={{ borderRadius: 2 }}
+              >
+                Return Order
+              </Button>
+            )}
+            {eligibility?.existing_return_order && (
+              <Chip
+                icon={<AssignmentReturn />}
+                label={`Return ${eligibility.existing_return_order.status}`}
+                color='success'
+                variant='outlined'
+                size='small'
+                sx={{ fontWeight: 600, textTransform: 'capitalize', alignSelf: 'center' }}
+              />
+            )}
           </Box>
         </Box>
 
@@ -699,6 +736,14 @@ const OrderDetails = () => {
           Back to Orders
         </Button>
       </Box>
+
+      {/* Return order flow for this order */}
+      <OrderReturnDialog
+        open={returnOpen}
+        onClose={() => setReturnOpen(false)}
+        order={orderData}
+        onSaved={() => fetchEligibility()}
+      />
     </Box>
   );
 };

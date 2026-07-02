@@ -33,6 +33,7 @@ import {
   ShoppingCartOutlined,
   Add,
   Visibility,
+  AssignmentReturn,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../../src/util/axios';
@@ -170,7 +171,6 @@ const CustomerOrders = () => {
           backgroundColor: 'background.paper',
           borderRadius: { xs: 2, md: 4 },
           overflow: 'hidden',
-          minHeight: '80vh',
           border: `1px solid ${theme.palette.divider}`,
         }}
       >
@@ -322,17 +322,33 @@ const CustomerOrders = () => {
                         </TableCell>
                         <TableCell>{order.products?.length || 0} items</TableCell>
                         <TableCell>
-                          <Button
-                            size='small'
-                            startIcon={<Visibility />}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/orders/new/${order._id}`);
-                            }}
-                            sx={{ textTransform: 'none' }}
-                          >
-                            View
-                          </Button>
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <Button
+                              size='small'
+                              startIcon={<Visibility />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/customer/orders/${order._id}`);
+                              }}
+                              sx={{ textTransform: 'none' }}
+                            >
+                              View
+                            </Button>
+                            {order.status?.toLowerCase() === 'invoiced' && (
+                              <Button
+                                size='small'
+                                color='success'
+                                startIcon={<AssignmentReturn />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(`/customer/orders/${order._id}?return=1`);
+                                }}
+                                sx={{ textTransform: 'none' }}
+                              >
+                                Return
+                              </Button>
+                            )}
+                          </Box>
                         </TableCell>
                       </TableRow>
                     ))}

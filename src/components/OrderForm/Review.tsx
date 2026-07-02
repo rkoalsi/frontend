@@ -30,6 +30,7 @@ import {
   Inventory2,
   ShoppingCartCheckout,
   Payment,
+  LocalAtm,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -201,6 +202,8 @@ const Review: React.FC<Props> = React.memo((props) => {
   const [popupImageIndex, setPopupImageIndex] = useState(0);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
+  const [codLoading, setCodLoading] = useState(false);
+  const [codLocally, setCodLocally] = useState(false);
   const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
   const [paymentResultMsg, setPaymentResultMsg] = useState<string>('');
   const [paidLocally, setPaidLocally] = useState(false);
@@ -403,6 +406,30 @@ const Review: React.FC<Props> = React.memo((props) => {
     }
   };
 
+  // Cash / Cheque on delivery — places the order (estimate in draft) without
+  // an online payment. The customer can still Pay Now afterwards if they wish.
+  const handleCashOnDelivery = async () => {
+    if (!order?._id) {
+      toast.error('Save the order before placing it');
+      return;
+    }
+    setCodLoading(true);
+    try {
+      await axiosInstance.post(`/payments/order/${order._id}/cod`);
+      setCodLocally(true);
+      setPaymentResultMsg(
+        'Your order has been placed. Please pay by cash or cheque on delivery.'
+      );
+      setPaymentResult('success');
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.detail || error.message || 'Failed to place the order'
+      );
+    } finally {
+      setCodLoading(false);
+    }
+  };
+
   const handlePaymentResultClose = () => {
     const wasSuccess = paymentResult === 'success';
     setPaymentResult(null);
@@ -555,9 +582,12 @@ const Review: React.FC<Props> = React.memo((props) => {
   }
 
   // A paid order is accepted on the backend; treat paidLocally as locked too so
-  // the buttons disable immediately without waiting for a refetch.
+  // the buttons disable immediately without waiting for a refetch. COD orders
+  // stay in draft but are equally committed — the customer confirmed them.
   const isOrderLocked =
     paidLocally ||
+    codLocally ||
+    ['paid', 'cod'].includes((order?.payment?.status || '').toLowerCase()) ||
     ['accepted', 'declined', 'invoiced'].includes(order?.status?.toLowerCase());
 
   // Aggregate everything blocking submission so it's visible as a banner
@@ -1323,6 +1353,15 @@ const Review: React.FC<Props> = React.memo((props) => {
                 sx={{ fontWeight: 700, px: 1, py: 2.2, borderRadius: 24 }}
               />
             </Box>
+          ) : order?.payment?.status === 'cod' || codLocally ? (
+            <Box display='flex' justifyContent='center' mt={2}>
+              <Chip
+                icon={<LocalAtm />}
+                label='Order Placed — Pay on Delivery'
+                color='info'
+                sx={{ fontWeight: 700, px: 1, py: 2.2, borderRadius: 24 }}
+              />
+            </Box>
           ) : isSelfRegistered ? (
             <>
               <Button
@@ -1330,11 +1369,22 @@ const Review: React.FC<Props> = React.memo((props) => {
                 variant='contained'
                 color='success'
                 startIcon={payLoading ? <CircularProgress size={16} color='inherit' /> : <Payment />}
-                disabled={payLoading || isOrderLocked || totals.totalAmount <= 0 || belowMinOrder}
+                disabled={payLoading || codLoading || isOrderLocked || totals.totalAmount <= 0 || belowMinOrder}
                 onClick={handlePayNow}
                 sx={{ mt: 2, textTransform: 'none', fontWeight: 700, borderRadius: 24, py: 1.1 }}
               >
                 {payLoading ? 'Generating payment link…' : `Pay Now ₹${totals.totalAmount.toLocaleString('en-IN')}`}
+              </Button>
+              <Button
+                fullWidth
+                variant='outlined'
+                color='success'
+                startIcon={codLoading ? <CircularProgress size={16} color='inherit' /> : <LocalAtm />}
+                disabled={payLoading || codLoading || isOrderLocked || totals.totalAmount <= 0 || belowMinOrder}
+                onClick={handleCashOnDelivery}
+                sx={{ mt: 1.5, textTransform: 'none', fontWeight: 700, borderRadius: 24, py: 1.1 }}
+              >
+                {codLoading ? 'Placing order…' : 'Cash / Cheque on Delivery'}
               </Button>
               {belowMinOrder && (
                 <Typography variant='caption' color='error' sx={{ display: 'block', textAlign: 'center', mt: 1 }}>

@@ -405,7 +405,6 @@ const CustomerDashboard = () => {
           backgroundColor: 'background.paper',
           borderRadius: { xs: 2, md: 4 },
           overflow: 'hidden',
-          minHeight: '80vh',
           border: `1px solid ${theme.palette.divider}`,
         }}
       >

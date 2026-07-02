@@ -59,6 +59,7 @@ import {
 } from '@mui/icons-material';
 import useDebounce from '../../../src/util/useDebounce';
 import { getEffectiveMarginPct } from '../../../src/util/margin';
+import { dedupeAddressesByContent } from '../../../src/util/addresses';
 import SheetsDisplay from '../../../src/components/OrderForm/SheetDisplay';
 import AuthContext from '../../../src/components/Auth';
 import CustomerTour, { TourStep } from '../../../src/components/common/CustomerTour';
@@ -615,7 +616,9 @@ const NewOrder: React.FC = () => {
             } else {
               await saveOrder({ customer_id: customerData._id });
             }
-            setActiveStep(1);
+            // Single-address customers: billing = shipping is already set, so
+            // land straight on Products instead of the address steps.
+            setActiveStep(dedupeAddressesByContent(customerData.addresses).length === 1 ? 3 : 1);
           }
         } catch (error) {
           console.error('Error fetching customer for user:', error);
@@ -629,6 +632,34 @@ const NewOrder: React.FC = () => {
     if (isCustomerUser && !isShared && activeStep === 0) setActiveStep(1);
   }, [isCustomerUser, isShared, activeStep]);
 
+  // Step visibility:
+  //  • unauthenticated shared-link visitors see only Products + Review
+  //  • customer users (incl. self-registered) never see "Select Customer"
+  //  • any other authenticated role sees all steps (even via a shared link)
+  // The stepper renders STEP_HELP.slice(stepOffset), so all rendered indices
+  // are shifted by this offset while activeStep keeps the real step index.
+  const isSharedGuest = isShared && !user;
+  const stepOffset = isSharedGuest ? 3 : isCustomerUser ? 1 : 0;
+
+  // Customers with a single address (billing = shipping already defaulted)
+  // skip the address steps and land straight on Products. Only auto-jump once
+  // on initial load so manual navigation back to the address steps still works.
+  const autoJumpedToProductsRef = useRef(false);
+  useEffect(() => {
+    if (autoJumpedToProductsRef.current) return;
+    if (!isCustomerUser || isShared || !customer) return;
+    if (
+      dedupeAddressesByContent(customer.addresses || []).length === 1 &&
+      billingAddress &&
+      shippingAddress &&
+      activeStep > 0 &&
+      activeStep < 3
+    ) {
+      autoJumpedToProductsRef.current = true;
+      setActiveStep(3);
+    }
+  }, [customer, billingAddress, shippingAddress, isCustomerUser, isShared, activeStep]);
+
   // Load payment config (self-registered? minimum order value?) for this order.
   useEffect(() => {
     if (!id) return;
@@ -639,12 +670,13 @@ const NewOrder: React.FC = () => {
   }, [id]);
 
   // router.query is empty on the first SSR render so isShared starts false and
-  // activeStep initialises to 0. Once the router hydrates and isShared becomes
-  // true, jump straight to the Products step (3) so shared-link visitors land
-  // on the right step and can proceed to Review.
+  // activeStep initialises to 0. Once the router hydrates and the visitor turns
+  // out to be an unauthenticated shared-link guest, jump straight to Products
+  // (3) — guests only get Products and Review. Authenticated non-customer
+  // roles keep full access to all steps even on a shared link.
   useEffect(() => {
-    if (isShared && activeStep < 3) setActiveStep(3);
-  }, [isShared]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (isSharedGuest && activeStep < 3) setActiveStep(3);
+  }, [isSharedGuest]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ------------------ Navigation & Finalization ---------------------
   const handleNext = useCallback(async () => {
@@ -719,7 +751,7 @@ const NewOrder: React.FC = () => {
   const handleStepClick = useCallback(
     async (index: number) => {
       if (isCustomerUser && index === 0) return;
-      if (isShared) {
+      if (isSharedGuest) {
         if (index < 3 || index > 4) {
           setError({
             message: 'You can only navigate between Products and Review steps.',
@@ -728,8 +760,13 @@ const NewOrder: React.FC = () => {
           setOpen(true);
           return;
         }
-        if (index === 3 && selectedProducts.length === 0) {
-          setError({ message: 'Cannot proceed as no products are selected.', status: 'error' });
+        // Review requires products in the cart; going (back) to Products is
+        // always allowed.
+        if (index === 4 && selectedProducts.length === 0) {
+          setError({
+            message: 'Add products to the cart before reviewing the order.',
+            status: 'error',
+          });
           setOpen(true);
           return;
         }
@@ -755,7 +792,7 @@ const NewOrder: React.FC = () => {
       const saved = await saveOrder(mergedBody);
       if (saved) setActiveStep(index);
     },
-    [activeStep, isShared, selectedProducts, validateAndCollectData, saveOrder, isCustomerUser]
+    [activeStep, isSharedGuest, selectedProducts, validateAndCollectData, saveOrder, isCustomerUser]
   );
 
   const handleClose = useCallback((reason: any) => {
@@ -773,13 +810,17 @@ const NewOrder: React.FC = () => {
     }
   }, [order, isShared, router]);
 
-  // A paid order is locked — customers can no longer edit it. Send them to the
-  // read-only order details view. (Admins/sales can still open it if needed.)
+  // A paid or COD-confirmed order is locked — customers can no longer edit it.
+  // Send them to the read-only order details view. (Admins/sales can still
+  // open it if needed.)
   useEffect(() => {
     if (!order || !isCustomerUser) return;
-    const paid = (order?.payment?.status || '').toLowerCase() === 'paid';
-    if (paid) {
+    const paymentStatus = (order?.payment?.status || '').toLowerCase();
+    if (paymentStatus === 'paid') {
       toast.info('This order has been paid and can no longer be edited.');
+      router.push(`/orders/past/${order._id}`);
+    } else if (paymentStatus === 'cod') {
+      toast.info('This order has been placed (pay on delivery) and can no longer be edited.');
       router.push(`/orders/past/${order._id}`);
     }
   }, [order, isCustomerUser, router]);
@@ -1319,7 +1360,7 @@ const NewOrder: React.FC = () => {
             {/* Stepper */}
             <Stepper
               data-tour='order-stepper-header'
-              activeStep={activeStep}
+              activeStep={activeStep - stepOffset}
               alternativeLabel
               sx={{
                 marginTop: { xs: 1, md: 0 },
@@ -1369,22 +1410,15 @@ const NewOrder: React.FC = () => {
                 },
               }}
             >
-              {STEP_HELP.map((step, index) => {
-                const isDisabledForCustomer = isCustomerUser && index === 0;
-                // Customer users: step 0 is always shown as completed "Your Account"
+              {STEP_HELP.slice(stepOffset).map((step, visibleIndex) => {
+                // Customer users don't see the "Select Customer" step at all,
+                // so map the rendered position back to the real step index.
+                const index = visibleIndex + stepOffset;
                 const displayName = isMobile ? step.mobileName : step.name;
-                const customerStep0Label = isMobile ? 'Account ✓' : 'Your Account';
                 return (
-                  <Step
-                    key={index}
-                    onClick={() => handleStepClick(index)}
-                    completed={isDisabledForCustomer ? true : undefined}
-                  >
+                  <Step key={index} onClick={() => handleStepClick(index)}>
                     <StepLabel
-                      sx={{
-                        cursor: isDisabledForCustomer ? 'default' : 'pointer',
-                        opacity: isDisabledForCustomer ? 0.7 : 1,
-                      }}
+                      sx={{ cursor: 'pointer' }}
                       optional={
                         stepCaptions[index] ? (
                           <Typography
@@ -1406,7 +1440,7 @@ const NewOrder: React.FC = () => {
                         ) : undefined
                       }
                     >
-                      {isDisabledForCustomer ? customerStep0Label : displayName}
+                      {displayName}
                     </StepLabel>
                   </Step>
                 );
@@ -1438,7 +1472,7 @@ const NewOrder: React.FC = () => {
             {/* Step content */}
             <Box sx={{ minHeight: '100px' }}>
               {/* Steps 0-2: lightweight, mount only when active */}
-              {activeStep === 0 && !isShared && (
+              {activeStep === 0 && !isSharedGuest && (
                 <Box sx={{ padding: { xs: 1.5, sm: 2, md: 3 } }}>
                   <CustomerSearchBar
                     disabled={isCustomerUser || ['declined', 'accepted'].includes(order?.status?.toLowerCase())}
@@ -1469,7 +1503,7 @@ const NewOrder: React.FC = () => {
                   />
                 </Box>
               )}
-              {activeStep === 1 && !isShared && (
+              {activeStep === 1 && !isSharedGuest && (
                 <Box sx={{ padding: { xs: 1.5, sm: 2, md: 3 } }}>
                   <Address
                     type='Billing'
@@ -1484,7 +1518,7 @@ const NewOrder: React.FC = () => {
                   />
                 </Box>
               )}
-              {activeStep === 2 && !isShared && (
+              {activeStep === 2 && !isSharedGuest && (
                 <Box sx={{ padding: { xs: 1.5, sm: 2, md: 3 } }}>
                   {billingAddress && (
                     <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
@@ -1611,11 +1645,13 @@ const NewOrder: React.FC = () => {
                   color='secondary'
                   fullWidth={isMobile}
                   onClick={() =>
-                    activeStep === 0 ? router.push('/') : handleStepClick(activeStep - 1)
+                    activeStep <= stepOffset
+                      ? router.push(isCustomerUser ? '/customer/orders' : '/')
+                      : handleStepClick(activeStep - 1)
                   }
-                  disabled={isShared && activeStep === 3}
+                  disabled={isSharedGuest && activeStep === 3}
                 >
-                  {activeStep === 0 ? 'Cancel' : 'Previous'}
+                  {activeStep <= stepOffset ? 'Cancel' : 'Previous'}
                 </NavButton>
               </Box>
 
@@ -1765,10 +1801,12 @@ const NewOrder: React.FC = () => {
             color='secondary'
             sx={{ flex: 1 }}
             onClick={() =>
-              activeStep === 0 ? router.push('/') : handleStepClick(activeStep - 1)
+              activeStep <= stepOffset
+                ? router.push(isCustomerUser ? '/customer/orders' : '/')
+                : handleStepClick(activeStep - 1)
             }
           >
-            {activeStep === 0 ? 'Cancel' : 'Previous'}
+            {activeStep <= stepOffset ? 'Cancel' : 'Previous'}
           </NavButton>
           <NavButton
             variant='contained'
