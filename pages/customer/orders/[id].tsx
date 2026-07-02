@@ -297,7 +297,7 @@ const CustomerOrderDetail = () => {
         )}
 
         {/* Main content */}
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: { xs: 2, sm: 3 } }}>
           {/* Order Summary */}
           <Typography variant='h6' fontWeight={600} sx={{ mb: 2 }}>
             Order Details
@@ -323,7 +323,7 @@ const CustomerOrderDetail = () => {
                 <Typography variant='body2' color='text.secondary'>
                   Order ID
                 </Typography>
-                <Typography fontWeight={500}>{order._id}</Typography>
+                <Typography fontWeight={500} sx={{ wordBreak: 'break-all' }}>{order._id}</Typography>
               </Box>
               <Box>
                 <Typography variant='body2' color='text.secondary'>
@@ -383,10 +383,40 @@ const CustomerOrderDetail = () => {
           </Typography>
 
           {order.products && order.products.length > 0 ? (
+            <>
+            {/* Mobile: stacked product cards */}
+            <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexDirection: 'column', gap: 1.5, mb: 3 }}>
+              {order.products.map((product, index) => (
+                <Paper
+                  key={product._id || index}
+                  elevation={0}
+                  sx={{
+                    p: 1.75,
+                    border: `1px solid ${theme.palette.divider}`,
+                    borderRadius: 2,
+                  }}
+                >
+                  <Typography fontWeight={600} sx={{ fontSize: '0.9rem', mb: 0.75 }}>
+                    {product.name || 'Product'}
+                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant='body2' color='text.secondary'>
+                      {product.quantity} × ₹{product.price?.toFixed(2) || '0.00'}
+                    </Typography>
+                    <Typography fontWeight={700} sx={{ fontSize: '0.95rem' }}>
+                      ₹{(product.total ?? (product.price ?? 0) * (product.quantity ?? 0)).toFixed(2)}
+                    </Typography>
+                  </Box>
+                </Paper>
+              ))}
+            </Box>
+
+            {/* Tablet/desktop: table */}
             <TableContainer
               component={Paper}
               elevation={0}
               sx={{
+                display: { xs: 'none', sm: 'block' },
                 border: `1px solid ${theme.palette.divider}`,
                 borderRadius: 2,
                 mb: 3,
@@ -427,6 +457,7 @@ const CustomerOrderDetail = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+            </>
           ) : (
             <Paper
               elevation={0}

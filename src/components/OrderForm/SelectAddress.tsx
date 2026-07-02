@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import CheckList from './CheckList';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import NewAddress from './NewAddress';
 import { LocationOn, Add, ArrowBack } from '@mui/icons-material';
 
@@ -94,27 +95,32 @@ function Address(props: Props) {
 
   const handleSave = async () => {
     setLoading(true);
-    const resp = await axios.post(`${process.env.api_url}/customers/address`, {
-      order_id: id,
-      address: newAddress,
-    });
-    console.log(resp.data);
-    setAddress(newAddress);
-    setNewAddress({
-      type,
-      attention: '',
-      address: '',
-      street2: '',
-      city: '',
-      state: '',
-      state_code: '',
-      zip: '',
-      country: '',
-      country_code: '',
-      phone: '',
-    });
-    setIsAddingNew(false);
-    setLoading(false);
+    try {
+      await axios.post(`${process.env.api_url}/customers/address`, {
+        order_id: id,
+        address: newAddress,
+      });
+      setAddress(newAddress);
+      setNewAddress({
+        type,
+        attention: '',
+        address: '',
+        street2: '',
+        city: '',
+        state: '',
+        state_code: '',
+        zip: '',
+        country: '',
+        country_code: '',
+        phone: '',
+      });
+      setIsAddingNew(false);
+    } catch (error) {
+      console.error('Error saving address:', error);
+      toast.error('Failed to save address. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {

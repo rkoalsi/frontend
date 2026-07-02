@@ -176,6 +176,10 @@ const copyToClipboard = async (text: string): Promise<boolean> => {
 const addressCaption = (addr: any) =>
   addr ? [addr.city, addr.state].filter(Boolean).join(', ') || addr.address || '' : '';
 
+// One max width shared by every section (back button, header, sheet download,
+// stepper card) so they all align on large screens.
+const PAGE_MAX_WIDTH = { xs: '100%', sm: '700px', md: '900px', lg: '1200px' };
+
 // Per-step contextual help shown below the stepper
 const STEP_HELP: { name: string; mobileName: string; helpText: string }[] = [
   {
@@ -957,11 +961,16 @@ const NewOrder: React.FC = () => {
         gap: { xs: 1.5, sm: 2, md: 3 },
         width: '100%',
         maxWidth: '100%',
-        // Extra bottom padding when a fixed bottom bar (cart or nav) is visible
+        // Extra bottom padding when a fixed bottom bar (cart or nav) is visible.
+        // env(safe-area-inset-bottom) keeps the bars clear of the iOS home indicator.
         paddingBottom: showCartBar
-          ? { xs: '80px', sm: '88px', md: '96px', lg: '96px' }
+          ? {
+              xs: 'calc(80px + env(safe-area-inset-bottom))',
+              sm: 'calc(88px + env(safe-area-inset-bottom))',
+              md: 'calc(96px + env(safe-area-inset-bottom))',
+            }
           : showMobileNavBar
-            ? '80px'
+            ? 'calc(80px + env(safe-area-inset-bottom))'
             : undefined,
       }}
     >
@@ -970,7 +979,7 @@ const NewOrder: React.FC = () => {
         <Box
           sx={{
             width: '100%',
-            maxWidth: { xs: '100%', sm: '700px', md: '900px' },
+            maxWidth: PAGE_MAX_WIDTH,
             alignSelf: 'center',
           }}
         >
@@ -996,7 +1005,7 @@ const NewOrder: React.FC = () => {
         elevation={0}
         sx={{
           width: '100%',
-          maxWidth: { xs: '100%', sm: '700px', md: '900px' },
+          maxWidth: PAGE_MAX_WIDTH,
           padding: { xs: 2.5, sm: 3, md: 4 },
           borderRadius: 3,
           alignSelf: 'center',
@@ -1207,7 +1216,16 @@ const NewOrder: React.FC = () => {
         billingAddress &&
         shippingAddress &&
         !['accepted', 'declined'].includes(order?.status?.toLowerCase()) && (
-          <Box data-tour='order-download'>
+          <Box
+            data-tour='order-download'
+            sx={{
+              width: '100%',
+              maxWidth: PAGE_MAX_WIDTH,
+              alignSelf: 'center',
+              display: 'flex',
+              justifyContent: 'center',
+            }}
+          >
             {link ? (
               <SheetsDisplay
                 googleSheetsLink={link}
@@ -1244,9 +1262,8 @@ const NewOrder: React.FC = () => {
         sx={{
           flexGrow: 1,
           width: '100%',
-          maxWidth: { xs: '100%', lg: '90%', xl: '95%' },
+          maxWidth: PAGE_MAX_WIDTH,
           alignSelf: 'center',
-          paddingX: { xs: 0, md: 2 },
         }}
       >
         <Card
@@ -1254,7 +1271,9 @@ const NewOrder: React.FC = () => {
           sx={{
             width: '100%',
             borderRadius: 3,
-            overflow: 'hidden',
+            // 'visible' (not MUI Card's default 'hidden') so the sticky product
+            // search bar inside can stick to the viewport while scrolling
+            overflow: 'visible',
             border: `1px solid ${theme.palette.divider}`,
             boxShadow: isDark
               ? '0 4px 20px rgba(0,0,0,0.3)'
@@ -1306,11 +1325,18 @@ const NewOrder: React.FC = () => {
                 marginTop: { xs: 1, md: 0 },
                 marginBottom: { xs: 1.5, md: 2.5 },
                 '& .MuiStepLabel-label': {
-                  fontSize: { xs: '0.65rem', sm: '0.8rem', md: '0.9rem' },
+                  fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.9rem' },
                   marginTop: { xs: '4px', md: '8px' },
                   fontWeight: 600,
                   color: isDark ? 'rgba(255,255,255,0.45)' : 'text.secondary',
-                  '&.Mui-active': { color: 'primary.main', fontWeight: 700 },
+                  // Phones: five labels don't fit legibly, so show only the
+                  // active step's label; the icons still convey progress.
+                  display: { xs: 'none', sm: 'block' },
+                  '&.Mui-active': {
+                    color: 'primary.main',
+                    fontWeight: 700,
+                    display: 'block',
+                  },
                   '&.Mui-completed': { color: 'success.main', fontWeight: 600 },
                 },
                 '& .MuiStepConnector-root': {
@@ -1725,7 +1751,8 @@ const NewOrder: React.FC = () => {
             right: 0,
             zIndex: 1200,
             px: 2,
-            py: 1.5,
+            pt: 1.5,
+            pb: 'calc(12px + env(safe-area-inset-bottom))',
             display: 'flex',
             gap: 1.5,
             borderTop: `2px solid ${theme.palette.primary.main}40`,
@@ -1766,7 +1793,11 @@ const NewOrder: React.FC = () => {
             right: 0,
             zIndex: 1200,
             px: { xs: 2, sm: 4, md: 6 },
-            py: { xs: 1.5, sm: 2 },
+            pt: { xs: 1.5, sm: 2 },
+            pb: {
+              xs: 'calc(12px + env(safe-area-inset-bottom))',
+              sm: 'calc(16px + env(safe-area-inset-bottom))',
+            },
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -2015,7 +2046,7 @@ const NewOrder: React.FC = () => {
 
           <DialogContent>
             {/* Overall margin + GST treatment */}
-            <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.5, mb: 2 }}>
               <Box
                 sx={{
                   flex: 1,
@@ -2183,7 +2214,9 @@ const NewOrder: React.FC = () => {
         open={linkCopied}
         autoHideDuration={3000}
         onClose={() => setLinkCopied(false)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        // Clear the fixed cart/nav bars when one is showing
+        sx={{ mb: showCartBar || showMobileNavBar ? 9 : 1 }}
       >
         <Alert onClose={() => setLinkCopied(false)} severity='success'>
           Link copied to clipboard!
@@ -2195,7 +2228,8 @@ const NewOrder: React.FC = () => {
           open={open}
           autoHideDuration={6000}
           onClose={handleClose}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          sx={{ mb: showCartBar || showMobileNavBar ? 9 : 1 }}
         >
           <Alert onClose={handleClose} severity={error.status} sx={{ width: '100%' }}>
             {error.message}
