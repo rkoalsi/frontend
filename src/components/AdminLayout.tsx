@@ -228,7 +228,7 @@ const AdminLayout = ({ children }: any) => {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          height: '100vh',
+          height: '100dvh',
         }}
       >
         <CircularProgress />
@@ -255,7 +255,7 @@ const AdminLayout = ({ children }: any) => {
   const hoverItemBg = isDark ? '#78354f' : 'rgba(120, 53, 79, 0.1)';
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', background: mainBg }}>
+    <Box sx={{ display: 'flex', minHeight: '100dvh', background: mainBg }}>
       <CssBaseline />
 
       {/* App Bar */}
@@ -466,7 +466,7 @@ const AdminLayout = ({ children }: any) => {
           sx={{
             flexGrow: 1,
             overflowY: 'auto',
-            height: 'calc(100vh - 140px)',
+            height: 'calc(100dvh - 140px)',
             '&::-webkit-scrollbar': { width: 0, background: 'transparent' },
             scrollbarWidth: 'none',
           }}
@@ -650,7 +650,7 @@ const AdminLayout = ({ children }: any) => {
         sx={{
           flexGrow: 1,
           background: mainBg,
-          minHeight: '100vh',
+          minHeight: '100dvh',
           padding: { xs: 1, sm: 2, md: 3 },
           transition: 'margin-left 0.3s',
         }}

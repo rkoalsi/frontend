@@ -88,7 +88,7 @@ const Layout = ({ children }: any) => {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          minHeight: '100vh',
+          minHeight: '100dvh',
           backgroundColor: theme.palette.background.default,
         }}
       >
@@ -127,7 +127,7 @@ const Layout = ({ children }: any) => {
     <Box
       sx={{
         display: 'flex',
-        minHeight: '100vh',
+        minHeight: '100dvh',
         flexDirection: 'column',
         background: mainBg,
       }}

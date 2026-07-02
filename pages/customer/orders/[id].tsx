@@ -30,11 +30,14 @@ import {
   CheckCircle,
   Schedule,
   Cancel,
+  Edit,
+  AssignmentReturn,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../../src/util/axios';
 import { format } from 'date-fns';
 import { trackActivity } from '../../../src/util/trackActivity';
+import OrderReturnDialog from '../../../src/components/common/OrderReturnDialog';
 
 interface OrderProduct {
   _id: string;
@@ -42,6 +45,9 @@ interface OrderProduct {
   quantity: number;
   price: number;
   total: number;
+  product_id?: string;
+  product_code?: string;
+  image_url?: string;
 }
 
 interface Order {
@@ -53,6 +59,7 @@ interface Order {
   updated_at?: string;
   products?: OrderProduct[];
   customer?: any;
+  customer_id?: string;
   shipping_address?: any;
   notes?: string;
   total_amount?: number;
@@ -60,6 +67,15 @@ interface Order {
   estimate_number?: string;
   pre_order_estimate_created?: boolean;
   pre_order_estimate_number?: string;
+  payment?: { status?: string };
+}
+
+interface ReturnEligibility {
+  eligible: boolean;
+  invoiced: boolean;
+  shipped: boolean;
+  shipped_status: string;
+  existing_return_order?: { _id: string; status: string } | null;
 }
 
 const orderSteps = ['Draft', 'Sent', 'Accepted', 'Invoiced'];
@@ -83,6 +99,8 @@ const CustomerOrderDetail = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [eligibility, setEligibility] = useState<ReturnEligibility | null>(null);
+  const [returnOpen, setReturnOpen] = useState(false);
 
   // Fetch order details
   const fetchOrder = useCallback(async () => {
@@ -106,6 +124,31 @@ const CustomerOrderDetail = () => {
       trackActivity({ action: 'view_order_detail', category: 'orders', metadata: { order_id: String(id) } });
     }
   }, [id, fetchOrder]);
+
+  // Returns are only possible once the order is invoiced and shipped —
+  // check eligibility (which also reports an already-created return).
+  const fetchEligibility = useCallback(async () => {
+    if (!id) return;
+    try {
+      const { data } = await axiosInstance.get(`/orders/${id}/return_eligibility`);
+      setEligibility(data);
+    } catch (err) {
+      console.error('Error checking return eligibility:', err);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (id && (order?.status || '').toLowerCase() === 'invoiced') {
+      fetchEligibility();
+    }
+  }, [id, order?.status, fetchEligibility]);
+
+  // Deep link (?return=1 from the orders list) opens the return flow directly.
+  useEffect(() => {
+    if (router.query.return === '1' && eligibility?.eligible) {
+      setReturnOpen(true);
+    }
+  }, [router.query.return, eligibility?.eligible]);
 
   const getStatusColor = (rawStatus: string) => {
     const status = (rawStatus || '').toLowerCase();
@@ -161,6 +204,12 @@ const CustomerOrderDetail = () => {
   };
 
   const isDeclined = (order?.status || '').toLowerCase() === 'declined';
+  // Paid or already-processed orders are locked for editing (same rule as the
+  // salesperson order detail page).
+  const statusKey = (order?.status || '').toLowerCase();
+  const isPaid = (order?.payment?.status || '').toLowerCase() === 'paid';
+  const isEditable =
+    !!order && !['declined', 'accepted', 'invoiced'].includes(statusKey) && !isPaid;
 
   if (loading) {
     return (
@@ -204,7 +253,6 @@ const CustomerOrderDetail = () => {
           backgroundColor: 'background.paper',
           borderRadius: 4,
           overflow: 'hidden',
-          minHeight: '80vh',
           border: `1px solid ${theme.palette.divider}`,
         }}
       >
@@ -268,6 +316,56 @@ const CustomerOrderDetail = () => {
               />
             </Box>
           </Box>
+
+          {/* Actions: edit while still editable, return once invoiced + shipped */}
+          {(isEditable || eligibility?.eligible || eligibility?.existing_return_order) && (
+            <Box sx={{ display: 'flex', gap: 1.5, mt: 2, flexWrap: 'wrap' }}>
+              {isEditable && (
+                <Button
+                  variant='outlined'
+                  size='small'
+                  startIcon={<Edit />}
+                  onClick={() => router.push(`/orders/new/${order._id}`)}
+                  sx={{
+                    color: 'white',
+                    borderColor: 'rgba(255,255,255,0.5)',
+                    textTransform: 'none',
+                    '&:hover': { borderColor: 'white', backgroundColor: 'rgba(255,255,255,0.1)' },
+                  }}
+                >
+                  Edit Order
+                </Button>
+              )}
+              {eligibility?.eligible && (
+                <Button
+                  variant='contained'
+                  size='small'
+                  startIcon={<AssignmentReturn />}
+                  onClick={() => setReturnOpen(true)}
+                  sx={{
+                    backgroundColor: '#38a169',
+                    '&:hover': { backgroundColor: '#2f855a' },
+                    textTransform: 'none',
+                    fontWeight: 600,
+                  }}
+                >
+                  Return Items
+                </Button>
+              )}
+              {eligibility?.existing_return_order && (
+                <Chip
+                  icon={<AssignmentReturn sx={{ color: 'white !important' }} />}
+                  label={`Return order ${eligibility.existing_return_order.status}`}
+                  sx={{
+                    color: 'white',
+                    backgroundColor: 'rgba(255,255,255,0.15)',
+                    textTransform: 'capitalize',
+                    fontWeight: 600,
+                  }}
+                />
+              )}
+            </Box>
+          )}
         </Box>
 
         {/* Order Progress Stepper */}
@@ -537,6 +635,14 @@ const CustomerOrderDetail = () => {
           )}
         </Box>
       </Paper>
+
+      {/* Return order flow for this order */}
+      <OrderReturnDialog
+        open={returnOpen}
+        onClose={() => setReturnOpen(false)}
+        order={order}
+        onSaved={() => fetchEligibility()}
+      />
     </Container>
   );
 };

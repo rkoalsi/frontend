@@ -347,15 +347,19 @@ const Orders = () => {
 
   const getPaymentChipColor = (
     status?: string
-  ): 'default' | 'warning' | 'success' | 'error' => {
+  ): 'default' | 'warning' | 'success' | 'error' | 'info' => {
     switch (status?.toLowerCase()) {
       case 'paid': return 'success';
       case 'failed': return 'error';
+      case 'cod': return 'info';
       case 'pending':
       case 'created': return 'warning';
       default: return 'default';
     }
   };
+
+  const getPaymentChipLabel = (status: string): string =>
+    status.toLowerCase() === 'cod' ? 'COD' : capitalize(status);
 
   // Resolve a human name for who created the order. Self-registered B2B
   // customers place their own orders and may not have a `name` on their user
@@ -619,7 +623,7 @@ const Orders = () => {
                           <TableCell>
                             {order?.payment?.status ? (
                               <Chip
-                                label={capitalize(order.payment.status)}
+                                label={getPaymentChipLabel(order.payment.status)}
                                 color={getPaymentChipColor(order.payment.status)}
                                 size='small'
                                 sx={{ fontWeight: 600, textTransform: 'capitalize' }}
@@ -950,16 +954,12 @@ const Orders = () => {
                       <strong>Status:</strong>{' '}
                       <Chip
                         size='small'
-                        label={capitalize(
+                        label={getPaymentChipLabel(
                           selectedOrder.payment.status || 'pending'
                         )}
-                        color={
-                          selectedOrder.payment.status === 'paid'
-                            ? 'success'
-                            : selectedOrder.payment.status === 'failed'
-                            ? 'error'
-                            : 'warning'
-                        }
+                        color={getPaymentChipColor(
+                          selectedOrder.payment.status || 'pending'
+                        )}
                       />
                     </Typography>
                     {selectedOrder.payment.provider && (
@@ -1002,12 +1002,82 @@ const Orders = () => {
                         )}
                       </Typography>
                     )}
+                    {selectedOrder.payment.method && (
+                      <Typography>
+                        <strong>Method:</strong>{' '}
+                        {String(selectedOrder.payment.method).toUpperCase()}
+                        {selectedOrder.payment.card_network &&
+                          ` — ${selectedOrder.payment.card_network}${
+                            selectedOrder.payment.card_last4
+                              ? ` •••• ${selectedOrder.payment.card_last4}`
+                              : ''
+                          }`}
+                        {selectedOrder.payment.bank &&
+                          ` — ${selectedOrder.payment.bank}`}
+                        {selectedOrder.payment.wallet &&
+                          ` — ${selectedOrder.payment.wallet}`}
+                        {selectedOrder.payment.vpa &&
+                          ` — ${selectedOrder.payment.vpa}`}
+                      </Typography>
+                    )}
+                    {selectedOrder.payment.amount_paid != null && (
+                      <Typography>
+                        <strong>Amount Paid:</strong> ₹
+                        {Number(selectedOrder.payment.amount_paid).toLocaleString(
+                          'en-IN'
+                        )}
+                        {selectedOrder.payment.fee != null &&
+                          ` (gateway fee ₹${selectedOrder.payment.fee})`}
+                      </Typography>
+                    )}
+                    {(selectedOrder.payment.email ||
+                      selectedOrder.payment.contact) && (
+                      <Typography>
+                        <strong>Payer:</strong>{' '}
+                        {[
+                          selectedOrder.payment.email,
+                          selectedOrder.payment.contact,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </Typography>
+                    )}
+                    {selectedOrder.payment.paid_at && (
+                      <Typography>
+                        <strong>Paid At:</strong>{' '}
+                        {new Date(selectedOrder.payment.paid_at).toLocaleString()}
+                      </Typography>
+                    )}
+                    {selectedOrder.payment.terms && (
+                      <Typography>
+                        <strong>Payment Terms:</strong>{' '}
+                        {selectedOrder.payment.terms}
+                      </Typography>
+                    )}
                     {selectedOrder.payment.updated_at && (
                       <Typography>
                         <strong>Payment Updated:</strong>{' '}
                         {new Date(
                           selectedOrder.payment.updated_at
                         ).toLocaleString()}
+                      </Typography>
+                    )}
+                    {selectedOrder.zoho_flow?.salesorder_number && (
+                      <Typography>
+                        <strong>Sales Order:</strong>{' '}
+                        {selectedOrder.zoho_flow.salesorder_number}
+                      </Typography>
+                    )}
+                    {selectedOrder.zoho_flow?.invoice_number && (
+                      <Typography>
+                        <strong>Invoice:</strong>{' '}
+                        {selectedOrder.zoho_flow.invoice_number}
+                      </Typography>
+                    )}
+                    {selectedOrder.zoho_flow?.customerpayment_number && (
+                      <Typography>
+                        <strong>Payment Received:</strong>{' '}
+                        {selectedOrder.zoho_flow.customerpayment_number}
                       </Typography>
                     )}
                   </Box>
