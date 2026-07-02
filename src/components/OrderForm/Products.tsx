@@ -18,12 +18,6 @@ import {
   Autocomplete,
   CircularProgress,
   InputAdornment,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Paper,
   IconButton,
   Typography,
@@ -67,13 +61,11 @@ import {
 import debounce from "lodash.debounce";
 import { toast } from "react-toastify";
 import { useRouter } from "next/router";
-import ProductRow from "./products/ProductRow";
 import ProductCard from "./products/ProductCard";
 import ProductGroupCard from "./products/ProductGroupCard";
 import CartDrawer from "./products/Cart";
 import ImagePopupDialog from "../common/ImagePopUp";
 import Image from "next/image";
-import DoubleScrollTable, { DoubleScrollTableRef } from "./DoubleScrollTable";
 import ImageCarousel from "./products/ImageCarousel";
 import QuantitySelector from "./QuantitySelector";
 import { groupProductsByName, ProductGroup, GroupedProducts, getPackStep } from "../../util/groupProducts";
@@ -569,7 +561,6 @@ const Products: React.FC<ProductsProps> = ({
     [key: string]: number;
   }>({});
   const [openImagePopup, setOpenImagePopup] = useState<boolean>(false);
-  const [showUPC, setShowUPC] = useState<boolean>(true);
   const [popupImageSrc, setPopupImageSrc]: any = useState([]);
   const [popupImageIndex, setPopupImageIndex]: any = useState(0);
   const [options, setOptions] = useState<SearchResult[]>([]);
@@ -626,7 +617,6 @@ const Products: React.FC<ProductsProps> = ({
     order?.spreadsheet_created ? order?.spreadsheet_url : ""
   );
   const isFetching = useRef<{ [key: string]: boolean }>({});
-  const tableScrollRef = useRef<DoubleScrollTableRef>(null);
   const cardScrollRef = useRef<HTMLDivElement>(null);
   const pageTopRef = useRef<HTMLDivElement>(null);
   const pageBottomRef = useRef<HTMLDivElement>(null);
@@ -656,50 +646,6 @@ const Products: React.FC<ProductsProps> = ({
     window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
   }, []);
 
-  const COLUMNS = useMemo(() => {
-    const baseColumns = isShared
-      ? [
-        "Image",
-        "Name",
-        "Sub Category",
-        "Series",
-        "SKU",
-        "MRP",
-        "Stock",
-        "Selling Price",
-        "GST",
-        "Quantity",
-        "Total",
-        "Action",
-      ]
-      : [
-        "Image",
-        "Name",
-        "Sub Category",
-        "Series",
-        "SKU",
-        "MRP",
-        "Stock",
-        "Margin",
-        "Selling Price",
-        "GST",
-        "Quantity",
-        "Total",
-        "Action",
-      ];
-
-    // Add UPC/EAN Code column if showUPC/EAN is true
-    if (showUPC) {
-      // Insert UPC/EAN Code after SKU
-      const newColumns = [...baseColumns];
-      newColumns.push("UPC/EAN Code");
-      return newColumns;
-    }
-
-    return baseColumns;
-  }, [isShared, showUPC]);
-
-  const upcHeaderRef = useRef<HTMLTableCellElement>(null);
 
   useEffect(() => {
     return () => {
@@ -1723,25 +1669,54 @@ const Products: React.FC<ProductsProps> = ({
         <Box
           display="flex"
           justifyContent="space-between"
-          flexDirection={isMobile ? "column" : "row"}
-          gap={isMobile ? "16px" : "8px"}
-          alignItems="center"
+          flexDirection={{ xs: "column", sm: "row" }}
+          gap={{ xs: 1.5, sm: 1 }}
+          alignItems={{ xs: "stretch", sm: "center" }}
           sx={{ mb: 2 }}
         >
           <Typography variant="h5" sx={{ fontWeight: "bold" }}>
             Add Products
           </Typography>
+          {/* Toolbar: out-of-stock toggle + clear cart share one row */}
           <Box
             display="flex"
-            justifyContent="flex-end"
+            justifyContent={{ xs: "stretch", sm: "flex-end" }}
             alignItems="center"
-            sx={{ mb: 2 }}
+            flexWrap="wrap"
+            gap={1}
           >
+            <Tooltip
+              title={hideOutOfStock
+                ? "Show products that are currently out of stock at the bottom of the list"
+                : "Hide products that are currently unavailable to simplify browsing"
+              }
+              arrow
+            >
+              <Button
+                variant={hideOutOfStock ? "outlined" : "contained"}
+                color="secondary"
+                size="small"
+                onClick={() => setHideOutOfStock(!hideOutOfStock)}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: '24px',
+                  px: 2.5,
+                  flex: { xs: 1, sm: 'none' },
+                }}
+              >
+                {hideOutOfStock ? "Show Out of Stock" : "Hide Out of Stock"}
+              </Button>
+            </Tooltip>
             <Tooltip title="Remove all products from your cart and start fresh" arrow>
-              <span>
+              <Box
+                component="span"
+                sx={{ display: 'flex', flex: { xs: 1, sm: '0 0 auto' } }}
+              >
                 <Button
                   variant="contained"
                   color="primary"
+                  size="small"
                   onClick={handleOpenConfirmModal} // Changed to open modal instead
                   disabled={
                     selectedProducts.length === 0 ||
@@ -1753,11 +1728,13 @@ const Products: React.FC<ProductsProps> = ({
                     textTransform: "none",
                     fontWeight: "bold",
                     borderRadius: "24px",
+                    px: 2.5,
+                    flex: 1,
                   }}
                 >
                   Clear Cart
                 </Button>
-              </span>
+              </Box>
             </Tooltip>
           </Box>
           <Dialog
@@ -1803,6 +1780,20 @@ const Products: React.FC<ProductsProps> = ({
             </DialogActions>
           </Dialog>
         </Box>
+        {/* Sticky on phones/tablets so users deep in a long product list can
+            search or clear without scrolling back up. Requires the parent
+            Card's overflow to be 'visible' (set in orders/new/[id].tsx). */}
+        <Box
+          sx={{
+            position: { xs: 'sticky', md: 'static' },
+            top: 0,
+            zIndex: 5,
+            bgcolor: 'background.paper',
+            py: { xs: 1, md: 0 },
+            mx: { xs: -0.5, md: 0 },
+            px: { xs: 0.5, md: 0 },
+          }}
+        >
         <TextField
           label={label}
           variant="outlined"
@@ -1842,37 +1833,13 @@ const Products: React.FC<ProductsProps> = ({
               borderRadius: 2,
               fontSize: { xs: '1rem', sm: '0.95rem' },
               transition: 'box-shadow 0.2s ease',
+              backgroundColor: 'background.paper',
               '&:focus-within': {
                 boxShadow: `0 0 0 3px ${theme.palette.primary.main}20`,
               },
             },
           }}
         />
-
-        {/* Hide/Show Out of Stock Toggle */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-          <Tooltip
-            title={hideOutOfStock
-              ? "Show products that are currently out of stock at the bottom of the list"
-              : "Hide products that are currently unavailable to simplify browsing"
-            }
-            arrow
-          >
-            <Button
-              variant={hideOutOfStock ? "outlined" : "contained"}
-              color="secondary"
-              size="small"
-              onClick={() => setHideOutOfStock(!hideOutOfStock)}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 600,
-                borderRadius: '24px',
-                px: 3,
-              }}
-            >
-              {hideOutOfStock ? "Show Out of Stock Products" : "Hide Out of Stock Products"}
-            </Button>
-          </Tooltip>
         </Box>
 
         {/* Tabs and Sorting Controls */}
@@ -2509,7 +2476,7 @@ const Products: React.FC<ProductsProps> = ({
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
                   gap: 2,
                   width: '100%',
                 }}
@@ -2522,7 +2489,7 @@ const Products: React.FC<ProductsProps> = ({
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
                   gap: 2,
                   width: '100%',
                   alignItems: 'stretch',
@@ -2598,7 +2565,7 @@ const Products: React.FC<ProductsProps> = ({
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
                   gap: 2,
                   width: '100%',
                   alignItems: 'stretch',
@@ -2686,7 +2653,7 @@ const Products: React.FC<ProductsProps> = ({
                 <Box
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr',
+                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
                     gap: 2,
                     width: '100%',
                     alignItems: 'stretch',
@@ -2891,135 +2858,6 @@ const Products: React.FC<ProductsProps> = ({
             <div ref={intersectionRef} style={{ height: '20px', margin: '20px 0' }} />
           </Box>
           </Fade>
-        ) : isMobile ? (
-          <DoubleScrollTable ref={tableScrollRef} tableWidth={3200}>
-            <Box sx={{ minWidth: "3200px", width: "3200px" }}>
-              <Table stickyHeader sx={{ width: "100%", tableLayout: "auto" }}>
-                <TableHead>
-                  <TableRow
-                    sx={{
-                      '& .MuiTableCell-root': {
-                        borderBottom: '2px solid',
-                        borderBottomColor: 'primary.main',
-                      },
-                    }}
-                  >
-                    {COLUMNS.map((header) => (
-                      <TableCell
-                        key={header}
-                        ref={header === "UPC/EAN Code" ? upcHeaderRef : undefined}
-                        sx={{
-                          position: "sticky",
-                          top: 0,
-                          zIndex: 1000,
-                          backgroundColor: "background.paper",
-                          minWidth:
-                            header === "Name"
-                              ? 300
-                              : header === "Sub Category" || header === "Series"
-                                ? 220
-                                : header === "Image"
-                                  ? 150
-                                  : header === "SKU" || header === "UPC/EAN Code"
-                                    ? 180
-                                    : header === "MRP" || header === "Selling Price" || header === "Total"
-                                      ? 150
-                                      : header === "Quantity"
-                                        ? 180
-                                        : 140,
-                          fontWeight: "bold",
-                          fontSize: "0.95rem",
-                          whiteSpace: "nowrap",
-                          color: "text.primary",
-                          paddingY: 2,
-                          paddingX: 2.5,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.5px",
-                        }}
-                      >
-                        {header}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {displayedProducts.length > 0 ? (
-                    <>
-                      {displayedProducts.map((product: any) => (
-                        <ProductRow
-                          key={product._id}
-                          product={product}
-                          selectedProducts={selectedProducts}
-                          temporaryQuantities={temporaryQuantities}
-                          specialMargins={specialMargins}
-                          customerMargin={customer?.cf_margin || "40%"}
-                          orderStatus={order?.status}
-                          getSellingPrice={getSellingPrice}
-                          handleImageClick={handleImageClick}
-                          handleQuantityChange={handleQuantityChange}
-                          handleAddOrRemove={(prod: any) => {
-                            const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
-                            const _inCart = selectedProducts.find((p) => p._id === prod._id);
-                            if (_isPreCtx) {
-                              (_inCart?.pre_order_quantity ?? 0) > 0
-                                ? handleRemoveProduct(prod._id, true)
-                                : handleAddProducts(prod, true);
-                            } else {
-                              _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
-                            }
-                          }}
-                          isShared={isShared}
-                          showUPC={showUPC}
-                        />
-                      ))}
-                      {!loadingMore && noMoreProducts[productsKey] && (
-                        <TableRow>
-                          <TableCell colSpan={COLUMNS.length} align="center">
-                            <Typography variant="body2" color="textSecondary">
-                              No more products for{" "}
-                              {searchTerm
-                                ? searchTerm
-                                : groupByCategory
-                                  ? activeCategory
-                                  : activeBrand}{" "}
-                              {searchTerm ? "" : activeCategory}.
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </>
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={COLUMNS.length} align="center">
-                        <Typography variant="body1">
-                          {loading ? "Loading products..." : "No products found."}
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {loadingMore && (
-                    <TableRow>
-                      <TableCell colSpan={COLUMNS.length} align="center">
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            padding: 2,
-                          }}
-                        >
-                          <CircularProgress color="primary" />
-                          <Typography variant="body2" sx={{ mt: 1 }}>
-                            Loading more products...
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </Box>
-          </DoubleScrollTable>
         ) : (
           // Desktop Card Grid View
           <Fade in key={productsKey} timeout={250}>
