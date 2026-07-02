@@ -56,6 +56,10 @@ interface Order {
   shipping_address?: any;
   notes?: string;
   total_amount?: number;
+  estimate_created?: boolean;
+  estimate_number?: string;
+  pre_order_estimate_created?: boolean;
+  pre_order_estimate_number?: string;
 }
 
 const orderSteps = ['Draft', 'Sent', 'Accepted', 'Invoiced'];
@@ -349,6 +353,27 @@ const CustomerOrderDetail = () => {
                   </Typography>
                 </Box>
               )}
+              {order.estimate_created && order.estimate_number && (
+                <Box>
+                  <Typography variant='body2' color='text.secondary'>
+                    Estimate Number
+                  </Typography>
+                  <Typography fontWeight={500}>
+                    {order.estimate_number}
+                  </Typography>
+                </Box>
+              )}
+              {order.pre_order_estimate_created &&
+                order.pre_order_estimate_number && (
+                  <Box>
+                    <Typography variant='body2' color='text.secondary'>
+                      Pre-Order Estimate Number
+                    </Typography>
+                    <Typography fontWeight={500}>
+                      {order.pre_order_estimate_number}
+                    </Typography>
+                  </Box>
+                )}
             </Box>
           </Paper>
 
