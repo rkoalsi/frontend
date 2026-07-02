@@ -205,7 +205,7 @@ const OrderDetails = () => {
   const statusColor = STATUS_COLOR[statusKey] ?? 'default';
   // Payment (Razorpay) info stored on the order once the customer pays online.
   const payment = orderData.payment || null;
-  const isPaid = (payment?.status || '').toLowerCase() === 'paid';
+  const isPaid = (payment?.status || '').toLowerCase() === 'paid' || (payment?.status || '').toLowerCase() === 'cod';
   // A paid order is locked — it can no longer be edited.
   const isEditable = !['declined', 'accepted', 'invoiced'].includes(statusKey) && !isPaid;
   const title = orderData.estimate_created
