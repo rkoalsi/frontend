@@ -306,25 +306,35 @@ const Review: React.FC<Props> = React.memo((props) => {
 
       setPaidLocally(true);
 
-      // Wait for the backgrounded Zoho estimate to be created.
-      let estimateStatus = '';
+      // Wait for the backgrounded Zoho chain (accepted estimate -> sales order
+      // -> invoice -> customer payment) to finish so the confirmation shows the
+      // final documents, not a transient draft estimate.
+      let statusData: any = null;
       if (verifyResp.data?.estimate_pending) {
-        const status = await pollOrderStatus(order._id);
-        if (status?.payment_status === 'failed') {
+        statusData = await pollOrderStatus(order._id, { tries: 60, interval: 2000 });
+        if (statusData?.payment_status === 'failed') {
           setPaymentResultMsg(
             'We received your payment but could not confirm it. Please contact support.'
           );
           setPaymentResult('failure');
           return;
         }
-        estimateStatus = status?.estimate_status || '';
       }
 
-      const statusSuffix = estimateStatus
-        ? ` Estimate status: ${estimateStatus.replace(/_/g, ' ')}.`
-        : '';
+      const parts: string[] = [];
+      if (statusData?.estimate_number) {
+        const estStatus = (statusData.estimate_status || '').replace(/_/g, ' ');
+        parts.push(
+          `Estimate ${statusData.estimate_number}${estStatus ? ` (${estStatus})` : ''}`
+        );
+      }
+      if (statusData?.salesorder_number)
+        parts.push(`Sales Order ${statusData.salesorder_number}`);
+      if (statusData?.invoice_number)
+        parts.push(`Invoice ${statusData.invoice_number} (paid)`);
+      const docsSuffix = parts.length ? ` ${parts.join(' · ')}` : '';
       setPaymentResultMsg(
-        `Your payment was received and your order has been confirmed.${statusSuffix}`
+        `Your payment was received and your order has been confirmed.${docsSuffix}`
       );
       setPaymentResult('success');
     } catch (error: any) {
@@ -418,9 +428,9 @@ const Review: React.FC<Props> = React.memo((props) => {
       await axiosInstance.post(`/payments/order/${order._id}/cod`);
       setCodLocally(true);
       setPaymentResultMsg(
-        'Your order has been placed. Please pay by cash or cheque on delivery.'
+        'Your order has been relayed to our team and will be confirmed shortly. Please pay by cash or cheque on delivery.'
       );
-      setPaymentResult('success');
+      setPaymentResult('placed');
     } catch (error: any) {
       toast.error(
         error?.response?.data?.detail || error.message || 'Failed to place the order'
@@ -431,7 +441,7 @@ const Review: React.FC<Props> = React.memo((props) => {
   };
 
   const handlePaymentResultClose = () => {
-    const wasSuccess = paymentResult === 'success';
+    const wasSuccess = paymentResult === 'success' || paymentResult === 'placed';
     setPaymentResult(null);
     // Refetch the order so its status (now "accepted") propagates to the whole
     // page and locks the Submit / edit buttons.
