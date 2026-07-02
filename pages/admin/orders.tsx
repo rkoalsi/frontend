@@ -420,6 +420,28 @@ const Orders = () => {
     setPage(0);
     setSearchKey(k => k + 1);
   };
+  // Re-run the post-payment Zoho chain (idempotent — finishes failed steps,
+  // e.g. a customer payment that hit a number conflict).
+  const [retryingChain, setRetryingChain] = useState(false);
+  const handleRetryChain = async () => {
+    if (!selectedOrder?._id) return;
+    setRetryingChain(true);
+    try {
+      const resp = await axiosInstance.post(
+        `/admin/orders/${selectedOrder._id}/retry_payment_chain`
+      );
+      toast.success(resp.data?.message || 'Zoho payment chain completed');
+      setDrawerOpen(false);
+      fetchOrders();
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.detail || 'Failed to re-run the Zoho payment chain'
+      );
+    } finally {
+      setRetryingChain(false);
+    }
+  };
+
   const handleDelete = async (order: any) => {
     setOrderLoading(true);
     try {
@@ -695,8 +717,8 @@ const Orders = () => {
                           <TableCell>{order.customer_name}</TableCell>
                           <TableCell>
                             <Chip
-                              label={capitalize(order.status)}
-                              color={getStatusChipColor(order.status)}
+                              label={capitalize(order.estimate_status || order.status)}
+                              color={getStatusChipColor(order.estimate_status || order.status)}
                               size='small'
                               sx={{ fontWeight: 600, textTransform: 'capitalize' }}
                             />
@@ -998,9 +1020,11 @@ const Orders = () => {
                     </Typography>
                   )}
                   <Typography>
-                    <strong>Status:</strong>
-                    {selectedOrder.status
-                      ? capitalize(selectedOrder.status)
+                    <strong>Status:</strong>{' '}
+                    {selectedOrder.estimate_status || selectedOrder.status
+                      ? capitalize(
+                          selectedOrder.estimate_status || selectedOrder.status
+                        )
                       : ''}
                   </Typography>
                   <Typography>
@@ -1126,7 +1150,7 @@ const Orders = () => {
                     {selectedOrder.payment.paid_at && (
                       <Typography>
                         <strong>Paid At:</strong>{' '}
-                        {new Date(selectedOrder.payment.paid_at).toLocaleString()}
+                        {selectedOrder.payment.paid_at} IST
                       </Typography>
                     )}
                     {selectedOrder.payment.terms && (
@@ -1138,9 +1162,7 @@ const Orders = () => {
                     {selectedOrder.payment.updated_at && (
                       <Typography>
                         <strong>Payment Updated:</strong>{' '}
-                        {new Date(
-                          selectedOrder.payment.updated_at
-                        ).toLocaleString()}
+                        {selectedOrder.payment.updated_at} IST
                       </Typography>
                     )}
                     {selectedOrder.zoho_flow?.salesorder_number && (
@@ -1161,6 +1183,29 @@ const Orders = () => {
                         {selectedOrder.zoho_flow.customerpayment_number}
                       </Typography>
                     )}
+                    {selectedOrder.payment?.status === 'paid' &&
+                      !selectedOrder.zoho_flow?.chain_completed_at && (
+                        <>
+                          {selectedOrder.zoho_flow?.last_error && (
+                            <Typography sx={{ color: theme.palette.error.main }}>
+                              <strong>Chain Error:</strong>{' '}
+                              {selectedOrder.zoho_flow.last_error}
+                            </Typography>
+                          )}
+                          <Button
+                            variant='outlined'
+                            color='warning'
+                            size='small'
+                            disabled={retryingChain}
+                            onClick={handleRetryChain}
+                            sx={{ mt: 1 }}
+                          >
+                            {retryingChain
+                              ? 'Re-running Zoho chain…'
+                              : 'Retry Zoho Chain (SO / Invoice / Payment)'}
+                          </Button>
+                        </>
+                      )}
                   </Box>
                 )}
 
