@@ -103,7 +103,8 @@ const CustomerOrderDetail = () => {
     }
   }, [id, fetchOrder]);
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (rawStatus: string) => {
+    const status = (rawStatus || '').toLowerCase();
     switch (status) {
       case 'draft':
         return 'default';
@@ -120,7 +121,8 @@ const CustomerOrderDetail = () => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (rawStatus: string) => {
+    const status = (rawStatus || '').toLowerCase();
     switch (status) {
       case 'draft':
         return <Schedule />;
@@ -137,7 +139,8 @@ const CustomerOrderDetail = () => {
     }
   };
 
-  const getActiveStep = (status: string) => {
+  const getActiveStep = (rawStatus: string) => {
+    const status = (rawStatus || '').toLowerCase();
     switch (status) {
       case 'draft':
         return 0;
@@ -146,11 +149,14 @@ const CustomerOrderDetail = () => {
       case 'accepted':
         return 2;
       case 'invoiced':
+      case 'delivered':
         return 3;
       default:
         return 0;
     }
   };
+
+  const isDeclined = (order?.status || '').toLowerCase() === 'declined';
 
   if (loading) {
     return (
@@ -261,7 +267,7 @@ const CustomerOrderDetail = () => {
         </Box>
 
         {/* Order Progress Stepper */}
-        {order.status !== 'declined' && (
+        {!isDeclined && (
           <Box sx={{ p: 3, borderBottom: `1px solid ${theme.palette.divider}` }}>
             <Typography variant='h6' fontWeight={600} sx={{ mb: 3 }}>
               Order Progress
@@ -277,7 +283,7 @@ const CustomerOrderDetail = () => {
         )}
 
         {/* Declined Notice */}
-        {order.status === 'declined' && (
+        {isDeclined && (
           <Box sx={{ p: 3 }}>
             <Alert severity='error' icon={<Cancel />}>
               This order has been declined. Please contact support for more
