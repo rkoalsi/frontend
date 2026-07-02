@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 import { Close, ExpandMore } from "@mui/icons-material";
 import ImageCarousel from "./ImageCarousel";
+import { getTaxPercentage } from "../../../util/tax";
 
 interface Product {
   _id: string;
@@ -338,7 +339,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                     color="text.secondary"
                     sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }, mt: { xs: 0.25, sm: 0.5 }, display: 'block', mb: { xs: 1, sm: 1.5, md: 2 } }}
                   >
-                    GST: {currentProduct?.item_tax_preferences[currentProduct?.item_tax_preferences.length - 1].tax_percentage}%
+                    GST: {getTaxPercentage(currentProduct)}%
                   </Typography>
                 </Box>
 

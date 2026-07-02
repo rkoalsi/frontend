@@ -33,12 +33,14 @@ import {
   ShoppingCartOutlined,
   Add,
   Visibility,
+  AssignmentReturn,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../../src/util/axios';
 import { format } from 'date-fns';
 import axios from 'axios';
 import { trackActivity } from '../../../src/util/trackActivity';
+import { toast } from 'react-toastify';
 
 interface Order {
   _id: string;
@@ -99,6 +101,12 @@ const CustomerOrders = () => {
   }, [user]);
 
   const handleNewOrder = async () => {
+    // Self-registered B2B customers must finish onboarding before ordering.
+    if (user?.self_registered && !user?.customer_id) {
+      toast.info('Please complete your business details in your profile to start ordering');
+      router.push('/customer/account');
+      return;
+    }
     try {
       const resp = await axios.post(`${process.env.api_url}/orders/`, {
         created_by: user?._id,
@@ -163,7 +171,6 @@ const CustomerOrders = () => {
           backgroundColor: 'background.paper',
           borderRadius: { xs: 2, md: 4 },
           overflow: 'hidden',
-          minHeight: '80vh',
           border: `1px solid ${theme.palette.divider}`,
         }}
       >
@@ -281,6 +288,8 @@ const CustomerOrders = () => {
                   <TableHead>
                     <TableRow sx={{ backgroundColor: 'grey.50' }}>
                       <TableCell sx={{ fontWeight: 'bold' }}>Order Number</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Estimate Number</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Invoice Number</TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>Items</TableCell>
@@ -300,6 +309,8 @@ const CustomerOrders = () => {
                             #{order.order_number || order._id.slice(-6)}
                           </Typography>
                         </TableCell>
+                        <TableCell>{order.estimate_number || '—'}</TableCell>
+                        <TableCell>{order.zoho_flow?.invoice_number || '—'}</TableCell>
                         <TableCell>
                           {order.created_at
                             ? format(new Date(order.created_at), 'PP')
@@ -315,17 +326,33 @@ const CustomerOrders = () => {
                         </TableCell>
                         <TableCell>{order.products?.length || 0} items</TableCell>
                         <TableCell>
-                          <Button
-                            size='small'
-                            startIcon={<Visibility />}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/orders/new/${order._id}`);
-                            }}
-                            sx={{ textTransform: 'none' }}
-                          >
-                            View
-                          </Button>
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <Button
+                              size='small'
+                              startIcon={<Visibility />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/customer/orders/${order._id}`);
+                              }}
+                              sx={{ textTransform: 'none' }}
+                            >
+                              View
+                            </Button>
+                            {order.status?.toLowerCase() === 'invoiced' && (
+                              <Button
+                                size='small'
+                                color='success'
+                                startIcon={<AssignmentReturn />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(`/customer/orders/${order._id}?return=1`);
+                                }}
+                                sx={{ textTransform: 'none' }}
+                              >
+                                Return
+                              </Button>
+                            )}
+                          </Box>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -370,6 +397,16 @@ const CustomerOrders = () => {
                               ? format(new Date(order.created_at), 'PP')
                               : 'N/A'}
                           </Typography>
+                          {order.estimate_number && (
+                            <Typography variant='caption' color='text.secondary' sx={{ display: 'block' }}>
+                              Est: {order.estimate_number}
+                            </Typography>
+                          )}
+                          {order.zoho_flow?.invoice_number && (
+                            <Typography variant='caption' color='text.secondary' sx={{ display: 'block' }}>
+                              Inv: {order.zoho_flow.invoice_number}
+                            </Typography>
+                          )}
                         </Box>
                         <Chip
                           label={order.status}

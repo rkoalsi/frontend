@@ -53,8 +53,42 @@ const Orders = () => {
   const router = useRouter();
   const theme: any = useTheme();
   const { user }: any = useContext(AuthContext);
+  const isAdmin = user?.role === 'admin';
   // Orders data
   const [orders, setOrders] = useState([]);
+
+  // App settings — minimum order value for self-registered customers
+  const [minOrderValue, setMinOrderValue] = useState<string>('');
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    axiosInstance
+      .get('/admin/settings')
+      .then((r) =>
+        setMinOrderValue(String(r.data?.min_order_value_self_registered ?? ''))
+      )
+      .catch(() => {});
+  }, [isAdmin]);
+
+  const handleSaveSettings = async () => {
+    const val = parseFloat(minOrderValue);
+    if (isNaN(val) || val < 0) {
+      toast.error('Enter a valid amount');
+      return;
+    }
+    setSettingsSaving(true);
+    try {
+      await axiosInstance.put('/admin/settings', {
+        min_order_value_self_registered: val,
+      });
+      toast.success('Settings saved');
+    } catch {
+      toast.error('Failed to save settings');
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   // Pagination states
   const [page, setPage] = useState(0); // 0-based current page
@@ -345,6 +379,43 @@ const Orders = () => {
     }
   };
 
+  const getPaymentChipColor = (
+    status?: string
+  ): 'default' | 'warning' | 'success' | 'error' | 'info' => {
+    switch (status?.toLowerCase()) {
+      case 'paid': return 'success';
+      case 'failed': return 'error';
+      case 'cod': return 'info';
+      case 'pending':
+      case 'created': return 'warning';
+      default: return 'default';
+    }
+  };
+
+  const getPaymentChipLabel = (status: string): string =>
+    status.toLowerCase() === 'cod' ? 'COD' : capitalize(status);
+
+  // Resolve a human name for who created the order. Self-registered B2B
+  // customers place their own orders and may not have a `name` on their user
+  // record (it's only their shop/contact), so fall back to first/last name,
+  // the order's customer name, and finally a "Self-Registered Customer" label
+  // instead of the misleading "Unknown".
+  const getCreatedByLabel = (order: any): string => {
+    const info = order?.created_by_info || {};
+    const fullName = [info.first_name, info.last_name]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    if (info.name) return info.name;
+    if (fullName) return fullName;
+    if (info.self_registered || info.role === 'customer') {
+      return order?.customer_name
+        ? `${order.customer_name} (Self-Registered)`
+        : 'Self-Registered Customer';
+    }
+    return order?.customer_name || 'Unknown';
+  };
+
   const triggerSearch = () => {
     setPage(0);
     setSearchKey(k => k + 1);
@@ -502,6 +573,53 @@ const Orders = () => {
         <Typography variant='body1' sx={{ marginBottom: 3 }} color='text.secondary'>
           View and manage all orders below.
         </Typography>
+
+        {/* Order settings — minimum order value for self-registered customers */}
+        {isAdmin && (
+          <Paper
+            variant='outlined'
+            sx={{
+              p: { xs: 2, sm: 2.5 },
+              borderRadius: 2,
+              mb: 3,
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { sm: 'center' },
+              gap: 2,
+            }}
+          >
+            <Box sx={{ flex: 1 }}>
+              <Typography variant='subtitle1' fontWeight={600}>
+                Order Settings
+              </Typography>
+              <Typography variant='body2' color='text.secondary'>
+                Minimum cart value before a self-registered customer can place
+                an order (online payment or cash/cheque on delivery).
+              </Typography>
+            </Box>
+            <TextField
+              label='Min order value (₹)'
+              type='number'
+              size='small'
+              value={minOrderValue}
+              onChange={(e) => setMinOrderValue(e.target.value)}
+              sx={{ width: { xs: '100%', sm: 200 } }}
+            />
+            <Button
+              variant='contained'
+              onClick={handleSaveSettings}
+              disabled={settingsSaving}
+              startIcon={
+                settingsSaving ? (
+                  <CircularProgress size={16} color='inherit' />
+                ) : undefined
+              }
+            >
+              {settingsSaving ? 'Saving…' : 'Save'}
+            </Button>
+          </Paper>
+        )}
+
         {loading ? (
           <Box
             sx={{
@@ -528,6 +646,7 @@ const Orders = () => {
                         <TableCell>Order ID</TableCell>
                         <TableCell>Customer Name</TableCell>
                         <TableCell>Status</TableCell>
+                        <TableCell>Payment Status</TableCell>
                         <TableCell>Created By</TableCell>
                         <TableCell>Total Amount</TableCell>
                         <TableCell>Actions</TableCell>
@@ -583,8 +702,20 @@ const Orders = () => {
                             />
                           </TableCell>
                           <TableCell>
-                            {order.created_by_info?.name || 'Unknown'}
+                            {order?.payment?.status ? (
+                              <Chip
+                                label={getPaymentChipLabel(order.payment.status)}
+                                color={getPaymentChipColor(order.payment.status)}
+                                size='small'
+                                sx={{ fontWeight: 600, textTransform: 'capitalize' }}
+                              />
+                            ) : (
+                              <Typography variant='body2' color='text.secondary'>
+                                —
+                              </Typography>
+                            )}
                           </TableCell>
+                          <TableCell>{getCreatedByLabel(order)}</TableCell>
                           <TableCell>₹{order.total_amount || 0}</TableCell>
                           <TableCell>
                             <Box
@@ -893,6 +1024,145 @@ const Orders = () => {
                     {new Date(selectedOrder.updated_at).toLocaleString()}
                   </Typography>
                 </Box>
+
+                {/* Payment (Razorpay) — shown when a payment link/gateway payment exists */}
+                {selectedOrder?.payment && (
+                  <Box sx={{ marginBottom: 3 }}>
+                    <Typography sx={{ mb: 1 }}>
+                      <strong>Payment</strong>
+                    </Typography>
+                    <Typography sx={{ mb: 1 }}>
+                      <strong>Status:</strong>{' '}
+                      <Chip
+                        size='small'
+                        label={getPaymentChipLabel(
+                          selectedOrder.payment.status || 'pending'
+                        )}
+                        color={getPaymentChipColor(
+                          selectedOrder.payment.status || 'pending'
+                        )}
+                      />
+                    </Typography>
+                    {selectedOrder.payment.provider && (
+                      <Typography>
+                        <strong>Provider:</strong>{' '}
+                        {capitalize(selectedOrder.payment.provider)}
+                      </Typography>
+                    )}
+                    {selectedOrder.payment.razorpay_payment_id && (
+                      <Typography>
+                        <strong>Payment ID:</strong>{' '}
+                        {selectedOrder.payment.razorpay_payment_id}
+                      </Typography>
+                    )}
+                    {selectedOrder.payment.razorpay_order_id && (
+                      <Typography>
+                        <strong>Razorpay Order ID:</strong>{' '}
+                        {selectedOrder.payment.razorpay_order_id}
+                      </Typography>
+                    )}
+                    {selectedOrder.payment.payment_link_id && (
+                      <Typography>
+                        <strong>Payment Link ID:</strong>{' '}
+                        {selectedOrder.payment.payment_link_id}
+                        {selectedOrder.payment.short_url && (
+                          <>
+                            {' '}
+                            <a
+                              href={selectedOrder.payment.short_url}
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              style={{
+                                color: theme.palette.primary.main,
+                                textDecoration: 'none',
+                              }}
+                            >
+                              Open ↗
+                            </a>
+                          </>
+                        )}
+                      </Typography>
+                    )}
+                    {selectedOrder.payment.method && (
+                      <Typography>
+                        <strong>Method:</strong>{' '}
+                        {String(selectedOrder.payment.method).toUpperCase()}
+                        {selectedOrder.payment.card_network &&
+                          ` — ${selectedOrder.payment.card_network}${
+                            selectedOrder.payment.card_last4
+                              ? ` •••• ${selectedOrder.payment.card_last4}`
+                              : ''
+                          }`}
+                        {selectedOrder.payment.bank &&
+                          ` — ${selectedOrder.payment.bank}`}
+                        {selectedOrder.payment.wallet &&
+                          ` — ${selectedOrder.payment.wallet}`}
+                        {selectedOrder.payment.vpa &&
+                          ` — ${selectedOrder.payment.vpa}`}
+                      </Typography>
+                    )}
+                    {selectedOrder.payment.amount_paid != null && (
+                      <Typography>
+                        <strong>Amount Paid:</strong> ₹
+                        {Number(selectedOrder.payment.amount_paid).toLocaleString(
+                          'en-IN'
+                        )}
+                        {selectedOrder.payment.fee != null &&
+                          ` (gateway fee ₹${selectedOrder.payment.fee})`}
+                      </Typography>
+                    )}
+                    {(selectedOrder.payment.email ||
+                      selectedOrder.payment.contact) && (
+                      <Typography>
+                        <strong>Payer:</strong>{' '}
+                        {[
+                          selectedOrder.payment.email,
+                          selectedOrder.payment.contact,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </Typography>
+                    )}
+                    {selectedOrder.payment.paid_at && (
+                      <Typography>
+                        <strong>Paid At:</strong>{' '}
+                        {new Date(selectedOrder.payment.paid_at).toLocaleString()}
+                      </Typography>
+                    )}
+                    {selectedOrder.payment.terms && (
+                      <Typography>
+                        <strong>Payment Terms:</strong>{' '}
+                        {selectedOrder.payment.terms}
+                      </Typography>
+                    )}
+                    {selectedOrder.payment.updated_at && (
+                      <Typography>
+                        <strong>Payment Updated:</strong>{' '}
+                        {new Date(
+                          selectedOrder.payment.updated_at
+                        ).toLocaleString()}
+                      </Typography>
+                    )}
+                    {selectedOrder.zoho_flow?.salesorder_number && (
+                      <Typography>
+                        <strong>Sales Order:</strong>{' '}
+                        {selectedOrder.zoho_flow.salesorder_number}
+                      </Typography>
+                    )}
+                    {selectedOrder.zoho_flow?.invoice_number && (
+                      <Typography>
+                        <strong>Invoice:</strong>{' '}
+                        {selectedOrder.zoho_flow.invoice_number}
+                      </Typography>
+                    )}
+                    {selectedOrder.zoho_flow?.customerpayment_number && (
+                      <Typography>
+                        <strong>Payment Received:</strong>{' '}
+                        {selectedOrder.zoho_flow.customerpayment_number}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
 
                 <Box sx={{ marginBottom: 3 }}>
                   <Typography>

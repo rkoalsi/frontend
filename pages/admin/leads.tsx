@@ -952,19 +952,173 @@ const PotentialCustomersTab = () => {
   );
 };
 
+// ─── B2B Registrations Tab ────────────────────────────────────────────────────
+
+const ACCOUNT_STATUS_META: Record<string, { label: string; color: 'default' | 'warning' | 'success' | 'error' }> = {
+  active: { label: 'Active', color: 'success' },
+  inactive: { label: 'Inactive', color: 'error' },
+};
+
+const B2BRegistrationsTab = () => {
+  const [rows, setRows] = useState<any[]>([]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [skipPage, setSkipPage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('');
+
+  const fetchRows = async () => {
+    setLoading(true);
+    try {
+      const params: Record<string, unknown> = { page, limit: rowsPerPage };
+      if (statusFilter) params.status = statusFilter;
+      const response = await axiosInstance.get('/admin/b2b_registrations', { params });
+      const { b2b_registrations, total_count, total_pages } = response.data;
+      setRows(b2b_registrations);
+      setTotalCount(total_count);
+      setTotalPages(total_pages);
+    } catch {
+      toast.error('Error fetching B2B registrations.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchRows(); }, [page, rowsPerPage, statusFilter]); // eslint-disable-line
+
+  const handleSkipPage = () => {
+    const p = parseInt(skipPage, 10);
+    if (isNaN(p) || p < 1) { toast.error('Invalid page number'); return; }
+    setPage(p - 1); setSkipPage('');
+  };
+
+  const handleSaveNotes = async (id: string, notes: string) => {
+    try {
+      await axiosInstance.patch(`/admin/b2b_registrations/${id}`, { notes });
+      setRows((prev) => prev.map((r) => r._id === id ? { ...r, notes } : r));
+    } catch {
+      toast.error('Failed to save notes.');
+      throw new Error('save failed');
+    }
+  };
+
+  return (
+    <>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+        <Typography variant='body2' color='text.secondary'>
+          Mobile numbers that started B2B self-registration on the order form. A row
+          is captured the moment an OTP is requested; "Verified" means the account
+          was created.
+        </Typography>
+        <FormControl size='small' sx={{ minWidth: 200 }}>
+          <InputLabel>Status</InputLabel>
+          <Select
+            value={statusFilter}
+            label='Status'
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
+          >
+            <MenuItem value=''>All</MenuItem>
+            <MenuItem value='lead'>Not verified (drop-off)</MenuItem>
+            <MenuItem value='verified'>Verified (account created)</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
+      ) : rows.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Typography variant='h6' color='text.secondary'>No B2B registrations found.</Typography>
+        </Box>
+      ) : (
+        <>
+          <Box sx={{ overflowX: 'auto' }}>
+            <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', minWidth: 900 }}>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: 'action.hover' }}>
+                    <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Shop / Business</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Verified</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Account</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Profile</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Requested At (IST)</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Verified At (IST)</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Notes</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {rows.map((row) => {
+                    const acct = ACCOUNT_STATUS_META[row.account_status as string];
+                    return (
+                      <TableRow key={row._id} hover>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.phone || '-'}</TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.shop_name || '-'}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={row.verified ? 'Verified' : 'Not verified'}
+                            color={row.verified ? 'success' : 'default'}
+                            size='small'
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {acct ? (
+                            <Chip label={acct.label} color={acct.color} size='small' />
+                          ) : (
+                            <Chip label='No account' color='default' variant='outlined' size='small' />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={row.profile_completed ? 'Complete' : 'Incomplete'}
+                            color={row.profile_completed ? 'success' : 'warning'}
+                            size='small'
+                          />
+                        </TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatIST(row.created_at)}</TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatIST(row.verified_at)}</TableCell>
+                        <TableCell>
+                          <NotesCell value={row.notes} onSave={(notes) => handleSaveNotes(row._id, notes)} />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+          <PaginationFooter
+            totalCount={totalCount}
+            totalPages={totalPages}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            skipPage={skipPage}
+            setSkipPage={setSkipPage}
+            onPageChange={(_, p) => { setPage(p); setSkipPage(''); }}
+            onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); setSkipPage(''); }}
+            onSkipPage={handleSkipPage}
+          />
+        </>
+      )}
+    </>
+  );
+};
+
 // ─── Main Leads Page ──────────────────────────────────────────────────────────
 
-const TAB_LABELS = ['Pupscribe.in Brand Leads', 'Pupscribe.in Catalogue Leads', 'Pupscribe.in Contact Form Leads', 'Potential Customers'];
+const TAB_LABELS = ['Pupscribe.in Brand Leads', 'Pupscribe.in Catalogue Leads', 'Pupscribe.in Contact Form Leads', 'Potential Customers', 'B2B Registrations'];
 
 const LeadsPage = () => {
   const router = useRouter();
   const { tab: tabParam } = router.query;
   const [downloading, setDownloading] = useState(false);
 
-  const tabIndex = tabParam === 'catalogue' ? 1 : tabParam === 'contact' ? 2 : tabParam === 'potential' ? 3 : 0;
+  const tabIndex = tabParam === 'catalogue' ? 1 : tabParam === 'contact' ? 2 : tabParam === 'potential' ? 3 : tabParam === 'b2b' ? 4 : 0;
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
-    const tabMap = ['brand', 'catalogue', 'contact', 'potential'];
+    const tabMap = ['brand', 'catalogue', 'contact', 'potential', 'b2b'];
     router.replace({ pathname: router.pathname, query: { tab: tabMap[newValue] } }, undefined, { shallow: true });
   };
 
@@ -1021,6 +1175,7 @@ const LeadsPage = () => {
         {tabIndex === 1 && <CatalogueLeadsTab />}
         {tabIndex === 2 && <ContactFormLeadsTab />}
         {tabIndex === 3 && <PotentialCustomersTab />}
+        {tabIndex === 4 && <B2BRegistrationsTab />}
       </Paper>
     </Box>
   );

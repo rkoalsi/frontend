@@ -25,6 +25,8 @@ import {
 import QuantitySelector from "../QuantitySelector";
 import ImageCarousel from "./ImageCarousel";
 import { extractSize, extractWeight, getPackStep } from "../../../util/groupProducts";
+import { getEffectiveMarginPct } from "../../../util/margin";
+import { getTaxPercentage } from "../../../util/tax";
 
 interface SearchResult {
   _id: string;
@@ -268,7 +270,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
               }}
             />
           ) : (
-            currentVariant.new && (
+            currentVariant.new && !(currentVariant as any).clearance && (
               <Badge
                 badgeContent="New"
                 color="secondary"
@@ -288,6 +290,27 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                 }}
               />
             )
+          )}
+
+          {(currentVariant as any).clearance && (
+            <Chip
+              label={((currentVariant as any).clearance_margin ?? 0) > 0 ? `Sale +${(currentVariant as any).clearance_margin}%` : 'Sale'}
+              size="small"
+              sx={{
+                position: "absolute",
+                top: 20,
+                right: 24,
+                zIndex: 11,
+                fontWeight: 700,
+                fontSize: "0.65rem",
+                textTransform: 'uppercase',
+                borderRadius: '12px',
+                padding: "6px 8px",
+                backgroundColor: 'error.main',
+                color: 'white',
+                boxShadow: 2,
+              }}
+            />
           )}
 
           <ImageCarousel
@@ -613,16 +636,27 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                   >
                     ₹{sellingPrice?.toLocaleString('en-IN')}
                   </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontSize: '0.65rem',
-                      color: 'text.secondary',
-                      fontStyle: 'italic',
-                    }}
-                  >
-                    {specialMargins[productId] || customerMargin} margin
-                  </Typography>
+                  {(() => {
+                    const baseMarginStr = specialMargins[productId] || customerMargin || '40%';
+                    const basePct = parseInt(String(baseMarginStr).replace('%', ''), 10) || 40;
+                    const totalPct = getEffectiveMarginPct(baseMarginStr, currentVariant);
+                    const hasClearance = (currentVariant as any).clearance && totalPct > basePct;
+                    return (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontSize: '0.65rem',
+                          color: hasClearance ? 'error.main' : 'text.secondary',
+                          fontWeight: hasClearance ? 700 : 400,
+                          fontStyle: 'italic',
+                        }}
+                      >
+                        {hasClearance
+                          ? `${basePct}% + ${totalPct - basePct}% sale = ${totalPct}% margin`
+                          : `${totalPct}% margin`}
+                      </Typography>
+                    );
+                  })()}
                 </Box>
               )}
 
@@ -652,7 +686,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                     letterSpacing: '-0.3px',
                   }}
                 >
-                  {currentVariant?.item_tax_preferences[currentVariant?.item_tax_preferences.length - 1].tax_percentage}%
+                  {getTaxPercentage(currentVariant)}%
                 </Typography>
               </Box>
             </Box>

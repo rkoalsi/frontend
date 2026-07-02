@@ -114,7 +114,7 @@ const CustomerLayout = ({ children }: any) => {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          height: '100vh',
+          height: '100dvh',
           background: isDark
             ? 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 50%, #1a365d 100%)'
             : '#f0f4f8',
@@ -157,7 +157,7 @@ const CustomerLayout = ({ children }: any) => {
   const hoverItemBg = isDark ? '#38a169' : 'rgba(56, 161, 105, 0.1)';
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', background: mainBg }}>
+    <Box sx={{ display: 'flex', minHeight: '100dvh', background: mainBg }}>
       <CssBaseline />
 
       {/* App Bar */}
@@ -243,17 +243,25 @@ const CustomerLayout = ({ children }: any) => {
                 </Tooltip>
               ) : (
                 <Button
-                  variant='text'
+                  size='small'
                   onClick={() => router.push('/')}
                   startIcon={<HomeIcon fontSize='small' />}
                   sx={{
-                    textTransform: 'none',
-                    color: 'rgba(255,255,255,0.75)',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
+                    color: 'rgba(255,255,255,0.85)',
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(255,255,255,0.14)',
                     borderRadius: '8px',
+                    textTransform: 'none',
+                    fontWeight: 600,
                     px: 1.5,
-                    '&:hover': { backgroundColor: 'rgba(255,255,255,0.08)', color: '#fff' },
+                    boxShadow: 'none',
+                    '& .MuiButton-startIcon': { mr: 0.5 },
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.16)',
+                      color: '#fff',
+                      borderColor: 'rgba(255,255,255,0.24)',
+                      boxShadow: 'none',
+                    },
                   }}
                 >
                   Home
@@ -322,7 +330,7 @@ const CustomerLayout = ({ children }: any) => {
           sx={{
             flexGrow: 1,
             overflowY: 'auto',
-            height: 'calc(100vh - 64px)',
+            height: 'calc(100dvh - 64px)',
             '&::-webkit-scrollbar': { width: 0, background: 'transparent' },
             scrollbarWidth: 'none',
           }}
@@ -374,7 +382,7 @@ const CustomerLayout = ({ children }: any) => {
         sx={{
           flexGrow: 1,
           background: mainBg,
-          minHeight: '100vh',
+          minHeight: '100dvh',
           padding: { xs: 1.5, sm: 2, md: 3 },
           transition: 'margin-left 0.3s',
         }}

@@ -18,12 +18,6 @@ import {
   Autocomplete,
   CircularProgress,
   InputAdornment,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Paper,
   IconButton,
   Typography,
@@ -67,17 +61,23 @@ import {
 import debounce from "lodash.debounce";
 import { toast } from "react-toastify";
 import { useRouter } from "next/router";
-import ProductRow from "./products/ProductRow";
 import ProductCard from "./products/ProductCard";
 import ProductGroupCard from "./products/ProductGroupCard";
 import CartDrawer from "./products/Cart";
 import ImagePopupDialog from "../common/ImagePopUp";
 import Image from "next/image";
-import DoubleScrollTable, { DoubleScrollTableRef } from "./DoubleScrollTable";
 import ImageCarousel from "./products/ImageCarousel";
 import QuantitySelector from "./QuantitySelector";
 import { groupProductsByName, ProductGroup, GroupedProducts, getPackStep } from "../../util/groupProducts";
+import { getEffectiveMarginPct } from "../../util/margin";
+import { getTaxPercentage } from "../../util/tax";
 import AuthContext from "../Auth";
+
+// The "Clearance" brand is an internal routing/counts key (see backend
+// /products counts). It is surfaced to users as "Special Offers".
+const SPECIAL_OFFERS_ICON = "https://assets.pupscribe.in/assets/special_offers.png";
+const brandDisplayName = (brand?: string) =>
+  brand === "Clearance" ? "Special Offers" : brand;
 
 interface SearchResult {
   id?: number;
@@ -92,6 +92,8 @@ interface SearchResult {
   stock: number;
   new?: boolean;
   pre_order?: boolean;
+  clearance?: boolean;
+  clearance_margin?: number;
   upcoming_stock?: number;
   inward_date?: string;
   eta_port_date?: string;
@@ -208,13 +210,33 @@ const MemoizedDesktopProductCard = memo(({
               }}
             />
           )}
+          {product.clearance && (
+            <Chip
+              label={(product.clearance_margin ?? 0) > 0 ? `Sale +${product.clearance_margin}%` : 'Sale'}
+              size="small"
+              sx={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                zIndex: 2,
+                fontFamily: 'Poppins, sans-serif',
+                fontWeight: 700,
+                fontSize: '0.75rem',
+                backgroundColor: 'error.main',
+                color: 'white',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              }}
+            />
+          )}
           {product.new && (
             <Chip
               label="New Arrivals"
               size="small"
               sx={{
                 position: 'absolute',
-                top: 8,
+                top: product.clearance ? 44 : 8,
                 right: 8,
                 zIndex: 1,
                 fontFamily: 'Poppins, sans-serif',
@@ -368,19 +390,32 @@ const MemoizedDesktopProductCard = memo(({
               </>
             ))}
 
-            {!isShared && (
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body2" color="text.secondary" fontWeight={600}>
-                  Margin:
-                </Typography>
-                <Chip
-                  label={specialMargins[productId] || customer?.cf_margin || "40%"}
-                  size="small"
-                  color="warning"
-                  sx={{ fontWeight: 700 }}
-                />
-              </Box>
-            )}
+            {!isShared && (() => {
+              const baseMarginStr = specialMargins[productId] || customer?.cf_margin || "40%";
+              const basePct = parseInt(String(baseMarginStr).replace('%', ''), 10) || 40;
+              const totalPct = getEffectiveMarginPct(baseMarginStr, product);
+              const hasClearance = product.clearance && totalPct > basePct;
+              return (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                    Margin:
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    {hasClearance && (
+                      <Typography variant="caption" color="text.secondary">
+                        {basePct}% + {totalPct - basePct}% sale =
+                      </Typography>
+                    )}
+                    <Chip
+                      label={`${totalPct}%`}
+                      size="small"
+                      color={hasClearance ? "error" : "warning"}
+                      sx={{ fontWeight: 700 }}
+                    />
+                  </Box>
+                </Box>
+              );
+            })()}
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="body2" color="text.secondary">
@@ -396,7 +431,7 @@ const MemoizedDesktopProductCard = memo(({
                 GST:
               </Typography>
               <Typography variant="body2" fontWeight={500}>
-                {product.item_tax_preferences[product?.item_tax_preferences.length - 1].tax_percentage}%
+                {getTaxPercentage(product)}%
               </Typography>
             </Box>
           </Box>
@@ -526,13 +561,18 @@ const Products: React.FC<ProductsProps> = ({
     [key: string]: number;
   }>({});
   const [openImagePopup, setOpenImagePopup] = useState<boolean>(false);
-  const [showUPC, setShowUPC] = useState<boolean>(true);
   const [popupImageSrc, setPopupImageSrc]: any = useState([]);
   const [popupImageIndex, setPopupImageIndex]: any = useState(0);
   const [options, setOptions] = useState<SearchResult[]>([]);
   // Lookup of every rendered product by id so handleQuantityChange can auto-add
   // an item to the cart the moment a quantity is entered (no separate "Add" click).
   const productLookupRef = useRef<Map<string, any>>(new Map());
+  // Guards against the live-commit auto-add (fired on blur) and the "Add to
+  // Cart" button click racing within the same tap gesture off stale closures —
+  // without this the trailing click re-runs handleAddProducts on a stale cart
+  // and overwrites the typed quantity back to the pack default (e.g. 1).
+  const recentAddRef = useRef<Record<string, number>>({});
+  const RECENT_ADD_MS = 900;
   const [loading, setLoading] = useState<boolean>(false);
   const [paginationState, setPaginationState] = useState<{
     [key: string]: { page: number; hasMore: boolean };
@@ -577,7 +617,6 @@ const Products: React.FC<ProductsProps> = ({
     order?.spreadsheet_created ? order?.spreadsheet_url : ""
   );
   const isFetching = useRef<{ [key: string]: boolean }>({});
-  const tableScrollRef = useRef<DoubleScrollTableRef>(null);
   const cardScrollRef = useRef<HTMLDivElement>(null);
   const pageTopRef = useRef<HTMLDivElement>(null);
   const pageBottomRef = useRef<HTMLDivElement>(null);
@@ -607,50 +646,6 @@ const Products: React.FC<ProductsProps> = ({
     window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
   }, []);
 
-  const COLUMNS = useMemo(() => {
-    const baseColumns = isShared
-      ? [
-        "Image",
-        "Name",
-        "Sub Category",
-        "Series",
-        "SKU",
-        "MRP",
-        "Stock",
-        "Selling Price",
-        "GST",
-        "Quantity",
-        "Total",
-        "Action",
-      ]
-      : [
-        "Image",
-        "Name",
-        "Sub Category",
-        "Series",
-        "SKU",
-        "MRP",
-        "Stock",
-        "Margin",
-        "Selling Price",
-        "GST",
-        "Quantity",
-        "Total",
-        "Action",
-      ];
-
-    // Add UPC/EAN Code column if showUPC/EAN is true
-    if (showUPC) {
-      // Insert UPC/EAN Code after SKU
-      const newColumns = [...baseColumns];
-      newColumns.push("UPC/EAN Code");
-      return newColumns;
-    }
-
-    return baseColumns;
-  }, [isShared, showUPC]);
-
-  const upcHeaderRef = useRef<HTMLTableCellElement>(null);
 
   useEffect(() => {
     return () => {
@@ -696,7 +691,10 @@ const Products: React.FC<ProductsProps> = ({
         // Margin stored on the order line when added — last-resort fallback
         marginPercent = parseInt(String((product as any).margin).replace("%", ""));
       }
-      const margin = isNaN(marginPercent) ? 0.4 : marginPercent / 100;
+      if (isNaN(marginPercent)) marginPercent = 40;
+      // Clearance items add their bonus margin on top of the base margin.
+      const effectivePercent = getEffectiveMarginPct(marginPercent, product);
+      const margin = effectivePercent / 100;
       return parseFloat((product.rate - product.rate * margin).toFixed(2));
     },
     [specialMargins, customer?.cf_margin, order?.customer_margin]
@@ -719,11 +717,13 @@ const Products: React.FC<ProductsProps> = ({
         setLoadingMore(true);
         const sortToUse = sortOverride || sortOrder;
 
-        // Handle "New Arrivals" and "Pre Orders" brands specially
-        const brandParam = (brand === "New Arrivals" || brand === "Pre Orders") ? undefined : brand;
-        const categoryParam = (brand === "New Arrivals" || brand === "Pre Orders" || category === "All Products") ? undefined : category;
+        // Handle "New Arrivals", "Pre Orders" and "Clearance" brands specially
+        const isSpecialBrand = brand === "New Arrivals" || brand === "Pre Orders" || brand === "Clearance";
+        const brandParam = isSpecialBrand ? undefined : brand;
+        const categoryParam = (isSpecialBrand || category === "All Products") ? undefined : category;
         const newOnly = brand === "New Arrivals" ? true : undefined;
         const preOrder = brand === "Pre Orders" ? true : undefined;
+        const clearance = brand === "Clearance" ? true : undefined;
 
         const response = await axios.get(`${process.env.api_url}/products`, {
           params: {
@@ -740,6 +740,7 @@ const Products: React.FC<ProductsProps> = ({
             group_by_name: groupByProductName,
             new_only: newOnly,
             pre_order: preOrder,
+            clearance: clearance,
           },
           signal: controller.signal,
         });
@@ -802,9 +803,10 @@ const Products: React.FC<ProductsProps> = ({
     try {
       setLoadingOutOfStock(true);
 
-      // Handle "New Arrivals" and "Pre Orders" brands specially - don't pass brand parameter
-      const brandParam = (activeBrand === "New Arrivals" || activeBrand === "Pre Orders") ? undefined : activeBrand;
-      const categoryParam = (activeBrand === "New Arrivals" || activeBrand === "Pre Orders" || activeCategory === "All Products") ? undefined : activeCategory;
+      // Handle "New Arrivals", "Pre Orders" and "Clearance" brands specially - don't pass brand parameter
+      const isSpecialBrand = activeBrand === "New Arrivals" || activeBrand === "Pre Orders" || activeBrand === "Clearance";
+      const brandParam = isSpecialBrand ? undefined : activeBrand;
+      const categoryParam = (isSpecialBrand || activeCategory === "All Products") ? undefined : activeCategory;
       const preOrder = activeBrand === "Pre Orders" ? true : undefined;
 
       const response = await axios.get(`${process.env.api_url}/products/out-of-stock`, {
@@ -868,7 +870,8 @@ const Products: React.FC<ProductsProps> = ({
       const allBrands: { brand: string; url: string | null }[] =
         response.data.brands || [];
 
-      // Add "New Arrivals" and "Pre Orders" as the first two brands
+      // Add "New Arrivals", "Pre Orders" and "Clearance" as the first brands.
+      // Pre Orders / Clearance are filtered out by filteredBrandList when empty.
       const newArrivalsBrand = {
         brand: "New Arrivals",
         url: "https://assets.pupscribe.in/brands/new-arrivals.svg"
@@ -877,7 +880,11 @@ const Products: React.FC<ProductsProps> = ({
         brand: "Pre Orders",
         url: null
       };
-      const brandsWithNewArrivals = [newArrivalsBrand, preOrdersBrand, ...allBrands];
+      const clearanceBrand = {
+        brand: "Clearance",
+        url: null
+      };
+      const brandsWithNewArrivals = [newArrivalsBrand, preOrdersBrand, clearanceBrand, ...allBrands];
 
       setBrandList(brandsWithNewArrivals);
       if (!activeBrand && brandsWithNewArrivals[0]) {
@@ -930,8 +937,8 @@ const Products: React.FC<ProductsProps> = ({
   const fetchCategories = useCallback(
     async (brand: string) => {
       try {
-        // Handle "New Arrivals" and "Pre Orders" brands specially — no category sub-navigation
-        if (brand === "New Arrivals" || brand === "Pre Orders") {
+        // Handle "New Arrivals", "Pre Orders" and "Clearance" brands specially — no category sub-navigation
+        if (brand === "New Arrivals" || brand === "Pre Orders" || brand === "Clearance") {
           const categories = ["All Products"];
           setCategoriesByBrand((prev) => ({
             ...prev,
@@ -1136,10 +1143,17 @@ const Products: React.FC<ProductsProps> = ({
       if (isPreOrder && splitProd) {
         // Adding the pre-order portion for a split product
         const existing = selectedProducts.find((p) => p._id === productId);
+        // A button click with no explicit qty landing right after a live-commit
+        // auto-add is the tail of one gesture — ignore it so it can't clobber
+        // the just-typed quantity with a stale closure.
+        if (!explicitQty && Date.now() - (recentAddRef.current[`${productId}-pre`] || 0) < RECENT_ADD_MS) {
+          return;
+        }
         if (existing && (existing.pre_order_quantity ?? 0) > 0) {
           debouncedWarn(`${product.name} pre-order is already in the cart.`);
           return;
         }
+        recentAddRef.current[`${productId}-pre`] = Date.now();
         const qty = (explicitQty && explicitQty > 0 ? explicitQty : 0) || temporaryQuantities[`${productId}-pre`] || packStep;
         startTransition(() => {
           if (existing) {
@@ -1171,10 +1185,16 @@ const Products: React.FC<ProductsProps> = ({
 
       // Normal (in-stock) add
       const existing = selectedProducts.find((p) => p._id === productId);
+      // Same-gesture guard: a no-explicit-qty click trailing a live-commit
+      // auto-add would otherwise re-add on a stale cart and reset the quantity.
+      if (!explicitQty && Date.now() - (recentAddRef.current[productId] || 0) < RECENT_ADD_MS) {
+        return;
+      }
       if (existing && ((existing.quantity ?? 0) > 0 || !splitProd)) {
         debouncedWarn(`${product.name} is already in the cart.`);
         return;
       }
+      recentAddRef.current[productId] = Date.now();
       const quantity = (explicitQty && explicitQty > 0 ? explicitQty : 0) || temporaryQuantities[productId] || product.quantity || packStep;
       const isSharedParam = new URLSearchParams(window.location.search).has("shared");
       const updatedProducts: any = existing
@@ -1216,6 +1236,8 @@ const Products: React.FC<ProductsProps> = ({
 
   const handleRemoveProduct = useCallback(
     (id: string, isPreOrder = false) => {
+      // Clear the same-gesture add guard so a quick remove → re-add isn't blocked.
+      delete recentAddRef.current[isPreOrder ? `${id}-pre` : id];
       if (isPreOrder) {
         // Clear only pre_order_quantity; remove item entirely if no stock qty remains
         const item = selectedProducts.find((p) => p._id === id);
@@ -1255,7 +1277,8 @@ const Products: React.FC<ProductsProps> = ({
               if (p._id !== id) return p;
               const minQty = getPackStep(p.name);
               const sanitized = Math.max(minQty, Math.min(newQuantity, p.upcoming_stock || Infinity));
-              debouncedSuccess(`Updated ${p.name} pre-order to quantity ${sanitized}`);
+              // No toast on in-place quantity edits — the card/cart totals update
+              // live, so a toast per keystroke-commit would just be noise.
               return { ...p, pre_order_quantity: sanitized };
             }));
           });
@@ -1285,7 +1308,7 @@ const Products: React.FC<ProductsProps> = ({
         startTransition(() => {
           setSelectedProducts(updated);
         });
-        debouncedSuccess(`Updated ${productInCart.name} to quantity ${sanitized}`);
+        // No toast on in-place quantity edits (see pre-order branch above).
       } else {
         // Not in cart yet — entering a quantity adds it straight to the cart
         // instead of requiring a separate "Add to Cart" click.
@@ -1590,7 +1613,14 @@ const Products: React.FC<ProductsProps> = ({
     const preOrderCount = productCounts["Pre Orders"]
       ? Object.values(productCounts["Pre Orders"]).reduce((a, b) => a + b, 0)
       : 0;
-    return brandList.filter((b) => b.brand !== "Pre Orders" || preOrderCount > 0);
+    const clearanceCount = productCounts["Clearance"]
+      ? Object.values(productCounts["Clearance"]).reduce((a, b) => a + b, 0)
+      : 0;
+    return brandList.filter((b) => {
+      if (b.brand === "Pre Orders") return preOrderCount > 0;
+      if (b.brand === "Clearance") return clearanceCount > 0;
+      return true;
+    });
   }, [brandList, productCounts]);
 
   const allCategoryCounts = useMemo(() => {
@@ -1639,25 +1669,54 @@ const Products: React.FC<ProductsProps> = ({
         <Box
           display="flex"
           justifyContent="space-between"
-          flexDirection={isMobile ? "column" : "row"}
-          gap={isMobile ? "16px" : "8px"}
-          alignItems="center"
+          flexDirection={{ xs: "column", sm: "row" }}
+          gap={{ xs: 1.5, sm: 1 }}
+          alignItems={{ xs: "stretch", sm: "center" }}
           sx={{ mb: 2 }}
         >
           <Typography variant="h5" sx={{ fontWeight: "bold" }}>
             Add Products
           </Typography>
+          {/* Toolbar: out-of-stock toggle + clear cart share one row */}
           <Box
             display="flex"
-            justifyContent="flex-end"
+            justifyContent={{ xs: "stretch", sm: "flex-end" }}
             alignItems="center"
-            sx={{ mb: 2 }}
+            flexWrap="wrap"
+            gap={1}
           >
+            <Tooltip
+              title={hideOutOfStock
+                ? "Show products that are currently out of stock at the bottom of the list"
+                : "Hide products that are currently unavailable to simplify browsing"
+              }
+              arrow
+            >
+              <Button
+                variant={hideOutOfStock ? "outlined" : "contained"}
+                color="secondary"
+                size="small"
+                onClick={() => setHideOutOfStock(!hideOutOfStock)}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: '24px',
+                  px: 2.5,
+                  flex: { xs: 1, sm: 'none' },
+                }}
+              >
+                {hideOutOfStock ? "Show Out of Stock" : "Hide Out of Stock"}
+              </Button>
+            </Tooltip>
             <Tooltip title="Remove all products from your cart and start fresh" arrow>
-              <span>
+              <Box
+                component="span"
+                sx={{ display: 'flex', flex: { xs: 1, sm: '0 0 auto' } }}
+              >
                 <Button
                   variant="contained"
                   color="primary"
+                  size="small"
                   onClick={handleOpenConfirmModal} // Changed to open modal instead
                   disabled={
                     selectedProducts.length === 0 ||
@@ -1669,11 +1728,13 @@ const Products: React.FC<ProductsProps> = ({
                     textTransform: "none",
                     fontWeight: "bold",
                     borderRadius: "24px",
+                    px: 2.5,
+                    flex: 1,
                   }}
                 >
                   Clear Cart
                 </Button>
-              </span>
+              </Box>
             </Tooltip>
           </Box>
           <Dialog
@@ -1719,6 +1780,20 @@ const Products: React.FC<ProductsProps> = ({
             </DialogActions>
           </Dialog>
         </Box>
+        {/* Sticky on phones/tablets so users deep in a long product list can
+            search or clear without scrolling back up. Requires the parent
+            Card's overflow to be 'visible' (set in orders/new/[id].tsx). */}
+        <Box
+          sx={{
+            position: { xs: 'sticky', md: 'static' },
+            top: 0,
+            zIndex: 5,
+            bgcolor: 'background.paper',
+            py: { xs: 1, md: 0 },
+            mx: { xs: -0.5, md: 0 },
+            px: { xs: 0.5, md: 0 },
+          }}
+        >
         <TextField
           label={label}
           variant="outlined"
@@ -1758,37 +1833,13 @@ const Products: React.FC<ProductsProps> = ({
               borderRadius: 2,
               fontSize: { xs: '1rem', sm: '0.95rem' },
               transition: 'box-shadow 0.2s ease',
+              backgroundColor: 'background.paper',
               '&:focus-within': {
                 boxShadow: `0 0 0 3px ${theme.palette.primary.main}20`,
               },
             },
           }}
         />
-
-        {/* Hide/Show Out of Stock Toggle */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-          <Tooltip
-            title={hideOutOfStock
-              ? "Show products that are currently out of stock at the bottom of the list"
-              : "Hide products that are currently unavailable to simplify browsing"
-            }
-            arrow
-          >
-            <Button
-              variant={hideOutOfStock ? "outlined" : "contained"}
-              color="secondary"
-              size="small"
-              onClick={() => setHideOutOfStock(!hideOutOfStock)}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 600,
-                borderRadius: '24px',
-                px: 3,
-              }}
-            >
-              {hideOutOfStock ? "Show Out of Stock Products" : "Hide Out of Stock Products"}
-            </Button>
-          </Tooltip>
         </Box>
 
         {/* Tabs and Sorting Controls */}
@@ -1809,24 +1860,36 @@ const Products: React.FC<ProductsProps> = ({
                       const selectedBrand: any = brandList.find(
                         (b) => b.brand === selected
                       );
+                      const iconBoxSx = {
+                        width: 64,
+                        height: 64,
+                        borderRadius: '4px',
+                        backgroundColor: '#ffffff',
+                        border: '1px solid rgba(0,0,0,0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        overflow: 'hidden',
+                        p: '2px',
+                      } as const;
                       return (
                         <Box display="flex" alignItems="center" gap={1}>
-                          {(selectedBrand?.image || selectedBrand?.url) && (
-                            <Box
-                              sx={{
-                                width: 64,
-                                height: 64,
-                                borderRadius: '4px',
-                                backgroundColor: '#ffffff',
-                                border: '1px solid rgba(0,0,0,0.1)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                flexShrink: 0,
-                                overflow: 'hidden',
-                                p: '2px',
-                              }}
-                            >
+                          {selectedBrand?.brand === "Pre Orders" ? (
+                            <Box sx={iconBoxSx}>
+                              <ShoppingCartCheckoutIcon sx={{ fontSize: 34, color: '#d97706' }} />
+                            </Box>
+                          ) : selectedBrand?.brand === "Clearance" ? (
+                            <Box sx={iconBoxSx}>
+                              <Box
+                                component="img"
+                                src={SPECIAL_OFFERS_ICON}
+                                alt="Special Offers"
+                                sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              />
+                            </Box>
+                          ) : (selectedBrand?.image || selectedBrand?.url) && (
+                            <Box sx={iconBoxSx}>
                               <Box
                                 component="img"
                                 src={selectedBrand.image || selectedBrand.url}
@@ -1836,7 +1899,7 @@ const Products: React.FC<ProductsProps> = ({
                             </Box>
                           )}
                           <Typography variant="h6">
-                            {selectedBrand?.brand}
+                            {brandDisplayName(selectedBrand?.brand)}
                           </Typography>
                         </Box>
                       );
@@ -1873,6 +1936,27 @@ const Products: React.FC<ProductsProps> = ({
                               >
                                 <ShoppingCartCheckoutIcon sx={{ fontSize: 30, color: '#d97706' }} />
                               </Box>
+                            ) : b.brand === "Clearance" ? (
+                              <Box
+                                sx={{
+                                  width: 56,
+                                  height: 56,
+                                  borderRadius: '6px',
+                                  backgroundColor: '#ffffff',
+                                  border: '1px solid rgba(0,0,0,0.1)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <Box
+                                  component="img"
+                                  src={SPECIAL_OFFERS_ICON}
+                                  alt="Special Offers"
+                                  sx={{ width: '100%', height: '100%', objectFit: 'contain', p: '6px' }}
+                                />
+                              </Box>
                             ) : (b.image || b.url) && (
                               <Box
                                 sx={{
@@ -1900,7 +1984,7 @@ const Products: React.FC<ProductsProps> = ({
                             )}
                             <Box display="flex" flexDirection="column" flex={1}>
                               <Typography variant="h6" fontWeight="medium">
-                                {b.brand}
+                                {brandDisplayName(b.brand)}
                               </Typography>
                               <Typography
                                 variant="caption"
@@ -1991,6 +2075,29 @@ const Products: React.FC<ProductsProps> = ({
                                 >
                                   <ShoppingCartCheckoutIcon sx={{ fontSize: 40, color: '#d97706' }} />
                                 </Box>
+                              ) : b.brand === "Clearance" ? (
+                                <Box
+                                  className="brand-image"
+                                  sx={{
+                                    width: 80,
+                                    height: 80,
+                                    borderRadius: '8px',
+                                    backgroundColor: '#ffffff',
+                                    border: '2px solid transparent',
+                                    transition: 'all 0.2s ease-in-out',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <Box
+                                    component="img"
+                                    src={SPECIAL_OFFERS_ICON}
+                                    alt="Special Offers"
+                                    sx={{ width: '100%', height: '100%', objectFit: 'contain', p: '6px' }}
+                                  />
+                                </Box>
                               ) : (b.image || b.url) && (
                                 <Box
                                   className="brand-image"
@@ -2026,7 +2133,7 @@ const Products: React.FC<ProductsProps> = ({
                                     lineHeight: 1.2,
                                   }}
                                 >
-                                  {b.brand}
+                                  {brandDisplayName(b.brand)}
                                 </Typography>
                                 <Typography
                                   variant="caption"
@@ -2369,7 +2476,7 @@ const Products: React.FC<ProductsProps> = ({
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
                   gap: 2,
                   width: '100%',
                 }}
@@ -2382,7 +2489,7 @@ const Products: React.FC<ProductsProps> = ({
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
                   gap: 2,
                   width: '100%',
                   alignItems: 'stretch',
@@ -2458,7 +2565,7 @@ const Products: React.FC<ProductsProps> = ({
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
                   gap: 2,
                   width: '100%',
                   alignItems: 'stretch',
@@ -2538,7 +2645,7 @@ const Products: React.FC<ProductsProps> = ({
             )}
 
             {/* Out of Stock Products Section - exclude from New Arrivals and Pre Orders */}
-            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && activeBrand !== "Pre Orders" && (
+            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && activeBrand !== "Pre Orders" && activeBrand !== "Clearance" && (
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
                   Out of Stock Products
@@ -2546,7 +2653,7 @@ const Products: React.FC<ProductsProps> = ({
                 <Box
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr',
+                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
                     gap: 2,
                     width: '100%',
                     alignItems: 'stretch',
@@ -2751,135 +2858,6 @@ const Products: React.FC<ProductsProps> = ({
             <div ref={intersectionRef} style={{ height: '20px', margin: '20px 0' }} />
           </Box>
           </Fade>
-        ) : isMobile ? (
-          <DoubleScrollTable ref={tableScrollRef} tableWidth={3200}>
-            <Box sx={{ minWidth: "3200px", width: "3200px" }}>
-              <Table stickyHeader sx={{ width: "100%", tableLayout: "auto" }}>
-                <TableHead>
-                  <TableRow
-                    sx={{
-                      '& .MuiTableCell-root': {
-                        borderBottom: '2px solid',
-                        borderBottomColor: 'primary.main',
-                      },
-                    }}
-                  >
-                    {COLUMNS.map((header) => (
-                      <TableCell
-                        key={header}
-                        ref={header === "UPC/EAN Code" ? upcHeaderRef : undefined}
-                        sx={{
-                          position: "sticky",
-                          top: 0,
-                          zIndex: 1000,
-                          backgroundColor: "background.paper",
-                          minWidth:
-                            header === "Name"
-                              ? 300
-                              : header === "Sub Category" || header === "Series"
-                                ? 220
-                                : header === "Image"
-                                  ? 150
-                                  : header === "SKU" || header === "UPC/EAN Code"
-                                    ? 180
-                                    : header === "MRP" || header === "Selling Price" || header === "Total"
-                                      ? 150
-                                      : header === "Quantity"
-                                        ? 180
-                                        : 140,
-                          fontWeight: "bold",
-                          fontSize: "0.95rem",
-                          whiteSpace: "nowrap",
-                          color: "text.primary",
-                          paddingY: 2,
-                          paddingX: 2.5,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.5px",
-                        }}
-                      >
-                        {header}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {displayedProducts.length > 0 ? (
-                    <>
-                      {displayedProducts.map((product: any) => (
-                        <ProductRow
-                          key={product._id}
-                          product={product}
-                          selectedProducts={selectedProducts}
-                          temporaryQuantities={temporaryQuantities}
-                          specialMargins={specialMargins}
-                          customerMargin={customer?.cf_margin || "40%"}
-                          orderStatus={order?.status}
-                          getSellingPrice={getSellingPrice}
-                          handleImageClick={handleImageClick}
-                          handleQuantityChange={handleQuantityChange}
-                          handleAddOrRemove={(prod: any) => {
-                            const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
-                            const _inCart = selectedProducts.find((p) => p._id === prod._id);
-                            if (_isPreCtx) {
-                              (_inCart?.pre_order_quantity ?? 0) > 0
-                                ? handleRemoveProduct(prod._id, true)
-                                : handleAddProducts(prod, true);
-                            } else {
-                              _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
-                            }
-                          }}
-                          isShared={isShared}
-                          showUPC={showUPC}
-                        />
-                      ))}
-                      {!loadingMore && noMoreProducts[productsKey] && (
-                        <TableRow>
-                          <TableCell colSpan={COLUMNS.length} align="center">
-                            <Typography variant="body2" color="textSecondary">
-                              No more products for{" "}
-                              {searchTerm
-                                ? searchTerm
-                                : groupByCategory
-                                  ? activeCategory
-                                  : activeBrand}{" "}
-                              {searchTerm ? "" : activeCategory}.
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </>
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={COLUMNS.length} align="center">
-                        <Typography variant="body1">
-                          {loading ? "Loading products..." : "No products found."}
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {loadingMore && (
-                    <TableRow>
-                      <TableCell colSpan={COLUMNS.length} align="center">
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            padding: 2,
-                          }}
-                        >
-                          <CircularProgress color="primary" />
-                          <Typography variant="body2" sx={{ mt: 1 }}>
-                            Loading more products...
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </Box>
-          </DoubleScrollTable>
         ) : (
           // Desktop Card Grid View
           <Fade in key={productsKey} timeout={250}>
@@ -2894,6 +2872,7 @@ const Products: React.FC<ProductsProps> = ({
                     sm: 'repeat(2, 1fr)',
                     md: 'repeat(3, 1fr)',
                     lg: 'repeat(3, 1fr)',
+                    xl: 'repeat(4, 1fr)',
                   },
                   gap: 2,
                   width: '100%',
@@ -2913,6 +2892,7 @@ const Products: React.FC<ProductsProps> = ({
                     sm: 'repeat(2, 1fr)',
                     md: 'repeat(3, 1fr)',
                     lg: 'repeat(3, 1fr)',
+                    xl: 'repeat(4, 1fr)',
                   },
                   gap: 2,
                   width: '100%',
@@ -2995,6 +2975,7 @@ const Products: React.FC<ProductsProps> = ({
                     sm: 'repeat(2, 1fr)',
                     md: 'repeat(3, 1fr)',
                     lg: 'repeat(3, 1fr)',
+                    xl: 'repeat(4, 1fr)',
                   },
                   gap: 2,
                   width: '100%',
@@ -3058,7 +3039,7 @@ const Products: React.FC<ProductsProps> = ({
             )}
 
             {/* Out of Stock Products Section - exclude from New Arrivals and Pre Orders */}
-            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && activeBrand !== "Pre Orders" && (
+            {!hideOutOfStock && outOfStockProducts.length > 0 && activeBrand !== "New Arrivals" && activeBrand !== "Pre Orders" && activeBrand !== "Clearance" && (
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
                   Out of Stock Products
@@ -3071,6 +3052,7 @@ const Products: React.FC<ProductsProps> = ({
                       sm: 'repeat(2, 1fr)',
                       md: 'repeat(3, 1fr)',
                       lg: 'repeat(3, 1fr)',
+                      xl: 'repeat(4, 1fr)',
                     },
                     gap: 2,
                     width: '100%',

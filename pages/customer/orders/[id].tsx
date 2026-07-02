@@ -30,11 +30,14 @@ import {
   CheckCircle,
   Schedule,
   Cancel,
+  Edit,
+  AssignmentReturn,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import axiosInstance from '../../../src/util/axios';
 import { format } from 'date-fns';
 import { trackActivity } from '../../../src/util/trackActivity';
+import OrderReturnDialog from '../../../src/components/common/OrderReturnDialog';
 
 interface OrderProduct {
   _id: string;
@@ -42,6 +45,9 @@ interface OrderProduct {
   quantity: number;
   price: number;
   total: number;
+  product_id?: string;
+  product_code?: string;
+  image_url?: string;
 }
 
 interface Order {
@@ -53,11 +59,36 @@ interface Order {
   updated_at?: string;
   products?: OrderProduct[];
   customer?: any;
-  shipping_address?: string;
+  customer_id?: string;
+  shipping_address?: any;
   notes?: string;
+  total_amount?: number;
+  estimate_created?: boolean;
+  estimate_number?: string;
+  pre_order_estimate_created?: boolean;
+  pre_order_estimate_number?: string;
+  payment?: { status?: string };
+}
+
+interface ReturnEligibility {
+  eligible: boolean;
+  invoiced: boolean;
+  shipped: boolean;
+  shipped_status: string;
+  existing_return_order?: { _id: string; status: string } | null;
 }
 
 const orderSteps = ['Draft', 'Sent', 'Accepted', 'Invoiced'];
+
+// Order addresses are stored as objects ({ attention, address, city, state, zip }),
+// so render them as text instead of dropping the raw object into JSX.
+const formatAddress = (addr: any): string => {
+  if (!addr) return '';
+  if (typeof addr === 'string') return addr;
+  return [addr.attention, addr.address, addr.city, addr.state, addr.zip]
+    .filter(Boolean)
+    .join(', ');
+};
 
 const CustomerOrderDetail = () => {
   const { user }: any = useContext(AuthContext);
@@ -68,6 +99,8 @@ const CustomerOrderDetail = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [eligibility, setEligibility] = useState<ReturnEligibility | null>(null);
+  const [returnOpen, setReturnOpen] = useState(false);
 
   // Fetch order details
   const fetchOrder = useCallback(async () => {
@@ -92,7 +125,33 @@ const CustomerOrderDetail = () => {
     }
   }, [id, fetchOrder]);
 
-  const getStatusColor = (status: string) => {
+  // Returns are only possible once the order is invoiced and shipped —
+  // check eligibility (which also reports an already-created return).
+  const fetchEligibility = useCallback(async () => {
+    if (!id) return;
+    try {
+      const { data } = await axiosInstance.get(`/orders/${id}/return_eligibility`);
+      setEligibility(data);
+    } catch (err) {
+      console.error('Error checking return eligibility:', err);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (id && (order?.status || '').toLowerCase() === 'invoiced') {
+      fetchEligibility();
+    }
+  }, [id, order?.status, fetchEligibility]);
+
+  // Deep link (?return=1 from the orders list) opens the return flow directly.
+  useEffect(() => {
+    if (router.query.return === '1' && eligibility?.eligible) {
+      setReturnOpen(true);
+    }
+  }, [router.query.return, eligibility?.eligible]);
+
+  const getStatusColor = (rawStatus: string) => {
+    const status = (rawStatus || '').toLowerCase();
     switch (status) {
       case 'draft':
         return 'default';
@@ -109,7 +168,8 @@ const CustomerOrderDetail = () => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (rawStatus: string) => {
+    const status = (rawStatus || '').toLowerCase();
     switch (status) {
       case 'draft':
         return <Schedule />;
@@ -126,7 +186,8 @@ const CustomerOrderDetail = () => {
     }
   };
 
-  const getActiveStep = (status: string) => {
+  const getActiveStep = (rawStatus: string) => {
+    const status = (rawStatus || '').toLowerCase();
     switch (status) {
       case 'draft':
         return 0;
@@ -135,11 +196,20 @@ const CustomerOrderDetail = () => {
       case 'accepted':
         return 2;
       case 'invoiced':
+      case 'delivered':
         return 3;
       default:
         return 0;
     }
   };
+
+  const isDeclined = (order?.status || '').toLowerCase() === 'declined';
+  // Paid or already-processed orders are locked for editing (same rule as the
+  // salesperson order detail page).
+  const statusKey = (order?.status || '').toLowerCase();
+  const isPaid = (order?.payment?.status || '').toLowerCase() === 'paid';
+  const isEditable =
+    !!order && !['declined', 'accepted', 'invoiced'].includes(statusKey) && !isPaid;
 
   if (loading) {
     return (
@@ -183,7 +253,6 @@ const CustomerOrderDetail = () => {
           backgroundColor: 'background.paper',
           borderRadius: 4,
           overflow: 'hidden',
-          minHeight: '80vh',
           border: `1px solid ${theme.palette.divider}`,
         }}
       >
@@ -247,10 +316,60 @@ const CustomerOrderDetail = () => {
               />
             </Box>
           </Box>
+
+          {/* Actions: edit while still editable, return once invoiced + shipped */}
+          {(isEditable || eligibility?.eligible || eligibility?.existing_return_order) && (
+            <Box sx={{ display: 'flex', gap: 1.5, mt: 2, flexWrap: 'wrap' }}>
+              {isEditable && (
+                <Button
+                  variant='outlined'
+                  size='small'
+                  startIcon={<Edit />}
+                  onClick={() => router.push(`/orders/new/${order._id}`)}
+                  sx={{
+                    color: 'white',
+                    borderColor: 'rgba(255,255,255,0.5)',
+                    textTransform: 'none',
+                    '&:hover': { borderColor: 'white', backgroundColor: 'rgba(255,255,255,0.1)' },
+                  }}
+                >
+                  Edit Order
+                </Button>
+              )}
+              {eligibility?.eligible && (
+                <Button
+                  variant='contained'
+                  size='small'
+                  startIcon={<AssignmentReturn />}
+                  onClick={() => setReturnOpen(true)}
+                  sx={{
+                    backgroundColor: '#38a169',
+                    '&:hover': { backgroundColor: '#2f855a' },
+                    textTransform: 'none',
+                    fontWeight: 600,
+                  }}
+                >
+                  Return Items
+                </Button>
+              )}
+              {eligibility?.existing_return_order && (
+                <Chip
+                  icon={<AssignmentReturn sx={{ color: 'white !important' }} />}
+                  label={`Return order ${eligibility.existing_return_order.status}`}
+                  sx={{
+                    color: 'white',
+                    backgroundColor: 'rgba(255,255,255,0.15)',
+                    textTransform: 'capitalize',
+                    fontWeight: 600,
+                  }}
+                />
+              )}
+            </Box>
+          )}
         </Box>
 
         {/* Order Progress Stepper */}
-        {order.status !== 'declined' && (
+        {!isDeclined && (
           <Box sx={{ p: 3, borderBottom: `1px solid ${theme.palette.divider}` }}>
             <Typography variant='h6' fontWeight={600} sx={{ mb: 3 }}>
               Order Progress
@@ -266,7 +385,7 @@ const CustomerOrderDetail = () => {
         )}
 
         {/* Declined Notice */}
-        {order.status === 'declined' && (
+        {isDeclined && (
           <Box sx={{ p: 3 }}>
             <Alert severity='error' icon={<Cancel />}>
               This order has been declined. Please contact support for more
@@ -276,7 +395,7 @@ const CustomerOrderDetail = () => {
         )}
 
         {/* Main content */}
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: { xs: 2, sm: 3 } }}>
           {/* Order Summary */}
           <Typography variant='h6' fontWeight={600} sx={{ mb: 2 }}>
             Order Details
@@ -302,7 +421,7 @@ const CustomerOrderDetail = () => {
                 <Typography variant='body2' color='text.secondary'>
                   Order ID
                 </Typography>
-                <Typography fontWeight={500}>{order._id}</Typography>
+                <Typography fontWeight={500} sx={{ wordBreak: 'break-all' }}>{order._id}</Typography>
               </Box>
               <Box>
                 <Typography variant='body2' color='text.secondary'>
@@ -332,6 +451,27 @@ const CustomerOrderDetail = () => {
                   </Typography>
                 </Box>
               )}
+              {order.estimate_created && order.estimate_number && (
+                <Box>
+                  <Typography variant='body2' color='text.secondary'>
+                    Estimate Number
+                  </Typography>
+                  <Typography fontWeight={500}>
+                    {order.estimate_number}
+                  </Typography>
+                </Box>
+              )}
+              {order.pre_order_estimate_created &&
+                order.pre_order_estimate_number && (
+                  <Box>
+                    <Typography variant='body2' color='text.secondary'>
+                      Pre-Order Estimate Number
+                    </Typography>
+                    <Typography fontWeight={500}>
+                      {order.pre_order_estimate_number}
+                    </Typography>
+                  </Box>
+                )}
             </Box>
           </Paper>
 
@@ -341,10 +481,40 @@ const CustomerOrderDetail = () => {
           </Typography>
 
           {order.products && order.products.length > 0 ? (
+            <>
+            {/* Mobile: stacked product cards */}
+            <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexDirection: 'column', gap: 1.5, mb: 3 }}>
+              {order.products.map((product, index) => (
+                <Paper
+                  key={product._id || index}
+                  elevation={0}
+                  sx={{
+                    p: 1.75,
+                    border: `1px solid ${theme.palette.divider}`,
+                    borderRadius: 2,
+                  }}
+                >
+                  <Typography fontWeight={600} sx={{ fontSize: '0.9rem', mb: 0.75 }}>
+                    {product.name || 'Product'}
+                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant='body2' color='text.secondary'>
+                      {product.quantity} × ₹{product.price?.toFixed(2) || '0.00'}
+                    </Typography>
+                    <Typography fontWeight={700} sx={{ fontSize: '0.95rem' }}>
+                      ₹{(product.total ?? (product.price ?? 0) * (product.quantity ?? 0)).toFixed(2)}
+                    </Typography>
+                  </Box>
+                </Paper>
+              ))}
+            </Box>
+
+            {/* Tablet/desktop: table */}
             <TableContainer
               component={Paper}
               elevation={0}
               sx={{
+                display: { xs: 'none', sm: 'block' },
                 border: `1px solid ${theme.palette.divider}`,
                 borderRadius: 2,
                 mb: 3,
@@ -378,13 +548,14 @@ const CustomerOrderDetail = () => {
                         ₹{product.price?.toFixed(2) || '0.00'}
                       </TableCell>
                       <TableCell align='right'>
-                        ₹{product.total?.toFixed(2) || '0.00'}
+                        ₹{(product.total ?? (product.price ?? 0) * (product.quantity ?? 0)).toFixed(2)}
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </TableContainer>
+            </>
           ) : (
             <Paper
               elevation={0}
@@ -403,7 +574,7 @@ const CustomerOrderDetail = () => {
           )}
 
           {/* Order Total */}
-          {order.total && (
+          {(order.total ?? order.total_amount) != null && (
             <Paper
               elevation={0}
               sx={{
@@ -419,13 +590,13 @@ const CustomerOrderDetail = () => {
                 Order Total
               </Typography>
               <Typography variant='h5' fontWeight={700} color='primary'>
-                ₹{order.total?.toFixed(2)}
+                ₹{(order.total ?? order.total_amount ?? 0).toLocaleString('en-IN')}
               </Typography>
             </Paper>
           )}
 
           {/* Shipping Info */}
-          {order.shipping_address && (
+          {formatAddress(order.shipping_address) && (
             <Box sx={{ mt: 3 }}>
               <Typography variant='h6' fontWeight={600} sx={{ mb: 2 }}>
                 <LocalShipping sx={{ mr: 1, verticalAlign: 'middle' }} />
@@ -439,7 +610,7 @@ const CustomerOrderDetail = () => {
                   borderRadius: 2,
                 }}
               >
-                <Typography>{order.shipping_address}</Typography>
+                <Typography>{formatAddress(order.shipping_address)}</Typography>
               </Paper>
             </Box>
           )}
@@ -464,6 +635,14 @@ const CustomerOrderDetail = () => {
           )}
         </Box>
       </Paper>
+
+      {/* Return order flow for this order */}
+      <OrderReturnDialog
+        open={returnOpen}
+        onClose={() => setReturnOpen(false)}
+        order={order}
+        onSaved={() => fetchEligibility()}
+      />
     </Container>
   );
 };

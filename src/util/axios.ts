@@ -31,6 +31,7 @@ axiosInstance.interceptors.response.use(
     const status = error.response?.status;
     const PUBLIC_PATHS = [
       '/login',
+      '/register',
       '/forgot_password',
       '/reset_password',
       '/catalogues',

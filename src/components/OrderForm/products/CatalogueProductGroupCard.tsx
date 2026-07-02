@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { ZoomIn } from "@mui/icons-material";
 import ImageCarousel from "./ImageCarousel";
+import { getTaxPercentage } from "../../../util/tax";
 
 interface Product {
   _id: string;
@@ -464,7 +465,7 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
                   display: 'block',
                 }}
               >
-                GST: {currentVariant?.item_tax_preferences[currentVariant?.item_tax_preferences.length - 1].tax_percentage}%
+                GST: {getTaxPercentage(currentVariant)}%
               </Typography>
             )}
 

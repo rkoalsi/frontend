@@ -320,10 +320,22 @@ const ReturnOrderStepper = ({
   initialData = null,
   customer,
   setCustomer,
+  // Order-based return flow (customer / salesperson returning a specific
+  // order): the customer is fixed, only that order's products can be
+  // returned, and a Zoho credit note is created on submit.
+  lockCustomer = false,
+  orderProducts = null,
+  orderId = null,
+  createCreditNote = false,
 }: any) => {
   const { user }: any = useContext(AuthContext);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  // In lockCustomer mode the "Select Customer" step is hidden entirely, so
+  // rendered step positions are shifted by one from the real step indices.
+  const stepOffset = lockCustomer ? 1 : 0;
+  const visibleSteps = steps.slice(stepOffset);
 
   const [activeStep, setActiveStep] = useState(0);
   const [referenceNumber, setReferenceNumber] = useState(
@@ -359,7 +371,7 @@ const ReturnOrderStepper = ({
   };
 
   const canProceedToNext = () => {
-    switch (activeStep) {
+    switch (activeStep + stepOffset) {
       case 0: // Customer selection
         return customer !== null;
       case 1: // Address selection
@@ -404,15 +416,19 @@ const ReturnOrderStepper = ({
     }
 
     setReturnItems(
-      returnItems.map((item: any) =>
-        item._id === itemId
-          ? {
-              ...item,
-              quantity: newQuantity,
-              returnAmount: item.price * newQuantity,
-            }
-          : item
-      )
+      returnItems.map((item: any) => {
+        if (item._id !== itemId) return item;
+        // Order-based returns can't exceed the ordered quantity.
+        if (item.max_quantity && newQuantity > item.max_quantity) {
+          toast.info(`Only ${item.max_quantity} of this item were ordered`);
+          newQuantity = item.max_quantity;
+        }
+        return {
+          ...item,
+          quantity: newQuantity,
+          returnAmount: item.price * newQuantity,
+        };
+      })
     );
   };
 
@@ -449,6 +465,8 @@ const ReturnOrderStepper = ({
         })),
         status: 'draft',
         created_by: user._id,
+        ...(orderId ? { order_id: orderId } : {}),
+        ...(createCreditNote ? { create_credit_note: true } : {}),
       };
 
       let returnOrderId = initialData?._id;
@@ -466,6 +484,11 @@ const ReturnOrderStepper = ({
         );
         returnOrderId = response.data.return_order._id;
         toast.success('Return order created successfully');
+        if (response.data.credit_note_warning) {
+          toast.warn(
+            `Credit note could not be created automatically: ${response.data.credit_note_warning}`
+          );
+        }
       }
 
       // Upload files if any were selected
@@ -496,16 +519,18 @@ const ReturnOrderStepper = ({
       }
 
       onSave?.();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving return order:', error);
-      toast.error('Failed to save return order');
+      toast.error(
+        error?.response?.data?.detail || 'Failed to save return order'
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const renderStepContent = () => {
-    switch (activeStep) {
+    switch (activeStep + stepOffset) {
       case 0:
         return (
           <Card>
@@ -591,13 +616,86 @@ const ReturnOrderStepper = ({
                 Return Items
               </Typography>
               <Typography variant='body2' color='textSecondary' sx={{ mb: 3 }}>
-                Add products that need to be returned
+                {orderProducts
+                  ? 'Select the products from this order that you want to return'
+                  : 'Add products that need to be returned'}
               </Typography>
 
-              <ProductSearchBar
-                onProductSelect={handleProductSelect}
-                disabled={loading}
-              />
+              {orderProducts ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {orderProducts.map((product: any) => {
+                    const added = returnItems.some(
+                      (item: any) => item._id === product._id
+                    );
+                    return (
+                      <Paper
+                        key={product._id}
+                        variant='outlined'
+                        onClick={() => {
+                          if (!added) handleProductSelect(product);
+                        }}
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 2,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.5,
+                          cursor: added ? 'default' : 'pointer',
+                          opacity: added ? 0.55 : 1,
+                          '&:hover': added
+                            ? undefined
+                            : { borderColor: 'primary.main', boxShadow: 1 },
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: 1,
+                            overflow: 'hidden',
+                            flexShrink: 0,
+                            bgcolor: 'background.paper',
+                            border: '1px solid',
+                            borderColor: 'divider',
+                          }}
+                        >
+                          <Image
+                            src={product.image_url || '/placeholder.png'}
+                            alt={product.name}
+                            width={48}
+                            height={48}
+                            style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                          />
+                        </Box>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography variant='body2' fontWeight={600} sx={{ wordBreak: 'break-word' }}>
+                            {product.name}
+                          </Typography>
+                          <Typography variant='caption' color='textSecondary'>
+                            Ordered qty: {product.max_quantity}
+                          </Typography>
+                        </Box>
+                        {added ? (
+                          <Chip label='Added' color='success' size='small' />
+                        ) : (
+                          <Chip
+                            label='Add'
+                            color='primary'
+                            size='small'
+                            variant='outlined'
+                            onClick={() => handleProductSelect(product)}
+                          />
+                        )}
+                      </Paper>
+                    );
+                  })}
+                </Box>
+              ) : (
+                <ProductSearchBar
+                  onProductSelect={handleProductSelect}
+                  disabled={loading}
+                />
+              )}
 
               {returnItems.length > 0 && (
                 <Box sx={{ mt: 3 }}>
@@ -1586,7 +1684,7 @@ const ReturnOrderStepper = ({
           orientation={isMobile ? 'vertical' : 'horizontal'}
           sx={{ mb: 4 }}
         >
-          {steps.map((step, index) => (
+          {visibleSteps.map((step, index) => (
             <Step key={step.label}>
               <StepLabel
                 icon={
@@ -1636,7 +1734,7 @@ const ReturnOrderStepper = ({
               justifyContent: 'space-between',
             }}
           >
-            {activeStep === steps.length - 1 ? (
+            {activeStep === visibleSteps.length - 1 ? (
               <Button
                 variant='contained'
                 onClick={handleSaveReturnOrder}
@@ -1668,7 +1766,7 @@ const ReturnOrderStepper = ({
         {/* Progress indicator */}
         <Box sx={{ mt: 3 }}>
           <Typography variant='caption' color='textSecondary'>
-            Step {activeStep + 1} of {steps.length}
+            Step {activeStep + 1} of {visibleSteps.length}
           </Typography>
           <Box
             sx={{
@@ -1681,7 +1779,7 @@ const ReturnOrderStepper = ({
           >
             <Box
               sx={{
-                width: `${((activeStep + 1) / steps.length) * 100}%`,
+                width: `${((activeStep + 1) / visibleSteps.length) * 100}%`,
                 height: '100%',
                 backgroundColor: 'primary.main',
                 borderRadius: 2,

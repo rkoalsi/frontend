@@ -12,6 +12,7 @@ import {
   Tooltip,
   IconButton,
   Divider,
+  Button,
 } from '@mui/material';
 import {
   Pets,
@@ -20,8 +21,8 @@ import {
   LineAxisOutlined,
   DarkMode,
   LightMode,
+  PersonAddAlt,
 } from '@mui/icons-material';
-import CustomButton from '../components/common/Button';
 import { useColorMode } from '../context/ColorModeContext';
 import NotificationBell from '../components/common/NotificationBell';
 
@@ -38,7 +39,7 @@ const Layout = ({ children }: any) => {
 
   const [originalPath, setOriginalPath] = useState(null);
 
-  const publicPaths = ['/login', '/forgot_password', '/reset_password', '/catalogues/all_products', '/catalogues'];
+  const publicPaths = ['/login', '/register', '/forgot_password', '/reset_password', '/catalogues/all_products', '/catalogues'];
 
   useEffect(() => {
     if (router.isReady) {
@@ -87,7 +88,7 @@ const Layout = ({ children }: any) => {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          minHeight: '100vh',
+          minHeight: '100dvh',
           backgroundColor: theme.palette.background.default,
         }}
       >
@@ -102,11 +103,31 @@ const Layout = ({ children }: any) => {
 
   const mainBg = theme.palette.background.default;
 
+  // Shared ghost-pill style so labeled header actions (Admin / Dashboard) match
+  // the translucent icon buttons (theme toggle, notifications, logout) on the bar.
+  const headerActionSx = {
+    color: 'rgba(255,255,255,0.85)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.14)',
+    borderRadius: '8px',
+    textTransform: 'none',
+    fontWeight: 600,
+    px: 1.5,
+    boxShadow: 'none',
+    '& .MuiButton-startIcon': { mr: 0.5 },
+    '&:hover': {
+      backgroundColor: 'rgba(255,255,255,0.16)',
+      color: '#fff',
+      borderColor: 'rgba(255,255,255,0.24)',
+      boxShadow: 'none',
+    },
+  } as const;
+
   return (
     <Box
       sx={{
         display: 'flex',
-        minHeight: '100vh',
+        minHeight: '100dvh',
         flexDirection: 'column',
         background: mainBg,
       }}
@@ -166,6 +187,36 @@ const Layout = ({ children }: any) => {
 
           {/* Right Side Actions */}
           <Box display='flex' alignItems='center' gap={1}>
+            {/* Register — shown to logged-out visitors on public pages */}
+            {!loading &&
+              !user &&
+              !['/register', '/login'].includes(router.pathname) && (
+                isMobileOrTablet ? (
+                  <Tooltip title='Register' arrow>
+                    <IconButton
+                      onClick={() => router.push('/register')}
+                      size='small'
+                      sx={{
+                        color: 'rgba(255,255,255,0.8)',
+                        backgroundColor: 'rgba(255,255,255,0.08)',
+                        borderRadius: '8px',
+                        '&:hover': { backgroundColor: 'rgba(255,255,255,0.15)' },
+                      }}
+                    >
+                      <PersonAddAlt fontSize='small' />
+                    </IconButton>
+                  </Tooltip>
+                ) : (
+                  <Button
+                    size='small'
+                    startIcon={<PersonAddAlt fontSize='small' />}
+                    onClick={() => router.push('/register')}
+                    sx={headerActionSx}
+                  >
+                    Register
+                  </Button>
+                )
+              )}
             {user && (
               user.role?.includes('admin') ||
               user.role?.includes('catalogue_manager') ||
@@ -188,7 +239,14 @@ const Layout = ({ children }: any) => {
                   </IconButton>
                 </Tooltip>
               ) : (
-                <CustomButton color='primary' onClick={() => router.push('/admin')} text='Admin' />
+                <Button
+                  size='small'
+                  startIcon={<AdminPanelSettings fontSize='small' />}
+                  onClick={() => router.push('/admin')}
+                  sx={headerActionSx}
+                >
+                  Admin
+                </Button>
               )
             )}
             {user && user.role === 'customer' && !router.pathname.includes('customer') && (
@@ -208,7 +266,14 @@ const Layout = ({ children }: any) => {
                   </IconButton>
                 </Tooltip>
               ) : (
-                <CustomButton color='secondary' onClick={() => router.push('/customer')} text='Dashboard' />
+                <Button
+                  size='small'
+                  startIcon={<LineAxisOutlined fontSize='small' />}
+                  onClick={() => router.push('/customer')}
+                  sx={headerActionSx}
+                >
+                  Dashboard
+                </Button>
               )
             )}
 

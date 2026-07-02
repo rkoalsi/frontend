@@ -45,7 +45,6 @@ const SheetsDisplay = ({
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg'));
   const [copied, setCopied] = useState(false);
 
   const handleCopyToClipboard = () => {
@@ -59,23 +58,10 @@ const SheetsDisplay = ({
     window.open(googleSheetsLink, '_blank');
   };
 
-  // Responsive width logic
-  const getResponsiveWidth = () => {
-    if (isMobile) return '100%';
-    if (isTablet) return '100%';
-    return '800px';
-  };
-
-  const getResponsiveMaxWidth = () => {
-    if (isMobile) return '100%';
-    if (isTablet) return '600px';
-    return '800px';
-  };
-
   return (
     <Accordion
       sx={{
-        m: 2,
+        width: '100%',
         borderRadius: 3,
         border: '1px solid',
         borderColor: 'divider',
@@ -106,10 +92,14 @@ const SheetsDisplay = ({
           },
         }}
       >
-        <Box display='flex' alignItems='center' gap={1.5}>
-          <InsertDriveFileIcon sx={{ fontSize: 32, color: '#4CAF50' }} />
-          <Typography variant='h6' fontWeight={700}>
-            Order Form Google Sheet Template
+        <Box display='flex' alignItems='center' gap={1.5} minWidth={0}>
+          <InsertDriveFileIcon sx={{ fontSize: { xs: 26, sm: 32 }, color: '#4CAF50', flexShrink: 0 }} />
+          <Typography
+            variant='h6'
+            fontWeight={700}
+            sx={{ fontSize: { xs: '0.95rem', sm: '1.15rem' }, lineHeight: 1.3 }}
+          >
+            {isMobile ? 'Order Form Sheet' : 'Order Form Google Sheet Template'}
           </Typography>
         </Box>
       </AccordionSummary>
@@ -117,10 +107,8 @@ const SheetsDisplay = ({
         <Paper
           elevation={0}
           sx={{
-            p: { xs: 2.5, sm: 3, md: 3.5 },
-            width: getResponsiveWidth(),
-            maxWidth: getResponsiveMaxWidth(),
-            mx: 'auto',
+            p: { xs: 2, sm: 3, md: 3.5 },
+            width: '100%',
             borderRadius: 3,
             border: '1px solid',
             borderColor: 'divider',
@@ -165,18 +153,17 @@ const SheetsDisplay = ({
               }}
             />
             <Box
-              display='flex'
-              flexDirection={isMobile ? 'column' : 'row'}
-              gap={2}
-              flexWrap='wrap'
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: { xs: 1.5, sm: 2 },
+              }}
             >
               <StyledButton
                 variant='contained'
                 startIcon={<ContentCopyIcon />}
                 onClick={handleCopyToClipboard}
                 sx={{
-                  flexGrow: 1,
-                  flexBasis: isMobile ? '100%' : 'calc(50% - 8px)',
                   bgcolor: theme.palette.primary.main,
                   color: 'white',
                   '&:hover': {
@@ -191,8 +178,6 @@ const SheetsDisplay = ({
                 variant='outlined'
                 onClick={openGoogleSheet}
                 sx={{
-                  flexGrow: 1,
-                  flexBasis: isMobile ? '100%' : 'calc(50% - 8px)',
                   borderColor: theme.palette.primary.main,
                   color: theme.palette.primary.main,
                   borderWidth: 2,
@@ -211,10 +196,6 @@ const SheetsDisplay = ({
                 startIcon={<ShoppingCart />}
                 onClick={updateCart}
                 disabled={loading}
-                sx={{
-                  flexGrow: 1,
-                  flexBasis: isMobile ? '100%' : 'calc(50% - 8px)',
-                }}
               >
                 Update Cart
               </StyledButton>
@@ -225,10 +206,6 @@ const SheetsDisplay = ({
                 startIcon={<Refresh />}
                 onClick={recreateSheet}
                 disabled={loading}
-                sx={{
-                  flexGrow: 1,
-                  flexBasis: isMobile ? '100%' : 'calc(50% - 8px)',
-                }}
               >
                 Recreate Sheet
               </StyledButton>
@@ -239,8 +216,6 @@ const SheetsDisplay = ({
                 onClick={downloadXlsx}
                 disabled={xlsxLoading}
                 sx={{
-                  flexGrow: 1,
-                  flexBasis: isMobile ? '100%' : 'calc(50% - 8px)',
                   bgcolor: '#2e7d32',
                   color: 'white',
                   '&:hover': { bgcolor: '#1b5e20' },

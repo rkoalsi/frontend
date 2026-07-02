@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { useContext, useState, useEffect, useCallback } from 'react';
 import AuthContext from '../src/components/Auth';
+import ProfileIncompleteBanner from '../src/components/ProfileIncompleteBanner';
 import { useRouter } from 'next/router';
 import {
   CalendarMonth,
@@ -553,6 +554,12 @@ const Home = () => {
   const filteredMenuSections = getFilteredMenuSections();
 
   const handleNewOrder = async () => {
+    // Self-registered B2B customers must finish onboarding before ordering.
+    if (user?.self_registered && !user?.customer_id) {
+      toast.info('Please complete your business details in your profile to start ordering');
+      router.push('/customer/account');
+      return;
+    }
     try {
       const resp = await axios.post(`${process.env.api_url}/orders/`, {
         created_by: user?._id,
@@ -657,12 +664,16 @@ const Home = () => {
         width: '100%',
       }}
     >
-      <Container maxWidth='sm' disableGutters>
+      {/* Customers have a short menu — keep the focused phone-width column.
+          Staff roles have ~20 action cards, so give them room on desktop. */}
+      <Container maxWidth={isCustomer ? 'sm' : 'md'} disableGutters>
         <motion.div
           variants={containerVariants}
           initial='hidden'
           animate='visible'
         >
+          <ProfileIncompleteBanner />
+
           {/* Header */}
           <Box
             data-tour='home-greeting'
@@ -778,7 +789,7 @@ const Home = () => {
               </SectionTitle>
               <Grid container spacing={1.5}>
                 {section.items.map((item, index) => (
-                  <Grid size={{ xs: 6, sm: 4 }} key={index}>
+                  <Grid size={{ xs: 6, sm: 4, md: isCustomer ? 4 : 3 }} key={index}>
                     <motion.div
                       variants={itemVariants}
                       whileTap={{ scale: 0.95 }}
@@ -839,28 +850,28 @@ const Home = () => {
                   {[1, 2, 3].map((i) => (
                     <Paper
                       key={i}
+                      elevation={0}
                       sx={{
-                        p: 2,
-                        borderRadius: 4,
+                        p: { xs: 1.25, sm: 1.5 },
+                        px: { xs: 1.5, sm: 2 },
+                        borderRadius: 3,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 2,
-                        background: alpha(theme.palette.primary.main, 0.2),
+                        gap: 1.5,
+                        bgcolor: 'background.paper',
+                        border: '1px solid',
+                        borderColor: 'divider',
                       }}
                     >
                       <Skeleton
                         variant='rounded'
-                        width={48}
-                        height={48}
-                        sx={{ bgcolor: alpha('#fff', 0.1), borderRadius: 2.5 }}
+                        width={44}
+                        height={44}
+                        sx={{ borderRadius: 2.5, flexShrink: 0 }}
                       />
                       <Box flex={1}>
-                        <Skeleton
-                          variant='text'
-                          width='60%'
-                          height={24}
-                          sx={{ bgcolor: alpha('#fff', 0.1) }}
-                        />
+                        <Skeleton variant='text' width='60%' height={24} />
+                        <Skeleton variant='text' width='40%' height={16} />
                       </Box>
                     </Paper>
                   ))}

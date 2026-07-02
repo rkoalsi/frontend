@@ -14,10 +14,12 @@ import {
 } from '@mui/material';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import { AddToPhotos, ContentCopy, Download, Edit } from '@mui/icons-material';
+import { AddToPhotos, AssignmentReturn, ContentCopy, Download, Edit } from '@mui/icons-material';
 import AuthContext from '../../../src/components/Auth';
 import { toast } from 'react-toastify';
 import Header from '../../../src/components/common/Header';
+import OrderReturnDialog from '../../../src/components/common/OrderReturnDialog';
+import { parseMarginPct, getEffectiveMarginPct } from '../../../src/util/margin';
 
 const STATUS_COLOR: Record<string, 'warning' | 'info' | 'success' | 'error' | 'default'> = {
   draft: 'warning',
@@ -48,6 +50,8 @@ const OrderDetails = () => {
   const [error, setError] = useState('');
   const [invoices, setInvoices] = useState<any[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [eligibility, setEligibility] = useState<any>(null);
+  const [returnOpen, setReturnOpen] = useState(false);
   const router = useRouter();
   const { id } = router.query;
   const { user }: any = useContext(AuthContext);
@@ -155,9 +159,21 @@ const OrderDetails = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Returns need the order to be invoiced and its shipment created — ask the
+  // backend, which also reports an already-existing return for this order.
+  const fetchEligibility = async () => {
+    try {
+      const resp = await axios.get(`${process.env.api_url}/orders/${id}/return_eligibility`);
+      setEligibility(resp.data);
+    } catch (err) {
+      console.error('Failed to check return eligibility', err);
+    }
+  };
+
   useEffect(() => {
     if (id && orderData?.status?.toLowerCase() === 'invoiced') {
       fetchInvoices();
+      fetchEligibility();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, orderData?.status]);
@@ -187,10 +203,34 @@ const OrderDetails = () => {
 
   const statusKey = orderData.status?.toLowerCase() ?? '';
   const statusColor = STATUS_COLOR[statusKey] ?? 'default';
-  const isEditable = !['declined', 'accepted', 'invoiced'].includes(statusKey);
+  // Payment (Razorpay) info stored on the order once the customer pays online.
+  const payment = orderData.payment || null;
+  const isPaid = (payment?.status || '').toLowerCase() === 'paid';
+  // A paid order is locked — it can no longer be edited.
+  const isEditable = !['declined', 'accepted', 'invoiced'].includes(statusKey) && !isPaid;
   const title = orderData.estimate_created
     ? orderData.estimate_number
     : `Order #${orderData._id.slice(-6)}`;
+
+  const estimateCreated = Boolean(
+    orderData.estimate_created || orderData.pre_order_estimate_created
+  );
+
+  // Margin shown per item:
+  //  • If an estimate exists, show the live per-line discount embedded from the
+  //    Zoho estimate (`estimate_margin`). That value already bakes in any
+  //    clearance bonus, so it's used as-is.
+  //  • Otherwise derive it from the customer's special margin for that product
+  //    (then their default margin) and add the clearance bonus on top.
+  const getItemMarginPct = (item: any): number => {
+    const pid = item.product_id;
+    const special = orderData.special_margins?.[pid];
+    if (estimateCreated && item.estimate_margin != null && item.estimate_margin !== '') {
+      return parseMarginPct(item.estimate_margin);
+    }
+    const base = special || orderData.customer_margin || item.margin || '40%';
+    return getEffectiveMarginPct(base, item);
+  };
 
   return (
     <Box
@@ -270,17 +310,19 @@ const OrderDetails = () => {
             >
               Duplicate Order
             </Button>
-            <Button
-              size='small'
-              variant='outlined'
-              color='primary'
-              startIcon={<Edit fontSize='small' />}
-              disabled={!isEditable}
-              onClick={() => router.push(`/orders/new/${orderData._id || id}`)}
-              sx={{ borderRadius: 2 }}
-            >
-              Edit
-            </Button>
+            {!isPaid && (
+              <Button
+                size='small'
+                variant='outlined'
+                color='primary'
+                startIcon={<Edit fontSize='small' />}
+                disabled={!isEditable}
+                onClick={() => router.push(`/orders/new/${orderData._id || id}`)}
+                sx={{ borderRadius: 2 }}
+              >
+                Edit
+              </Button>
+            )}
             {orderData.estimate_created && (
               <Button
                 size='small'
@@ -317,6 +359,28 @@ const OrderDetails = () => {
                 Download Invoice
               </Button>
             ))}
+            {eligibility?.eligible && (
+              <Button
+                size='small'
+                variant='contained'
+                color='success'
+                startIcon={<AssignmentReturn fontSize='small' />}
+                onClick={() => setReturnOpen(true)}
+                sx={{ borderRadius: 2 }}
+              >
+                Return Order
+              </Button>
+            )}
+            {eligibility?.existing_return_order && (
+              <Chip
+                icon={<AssignmentReturn />}
+                label={`Return ${eligibility.existing_return_order.status}`}
+                color='success'
+                variant='outlined'
+                size='small'
+                sx={{ fontWeight: 600, textTransform: 'capitalize', alignSelf: 'center' }}
+              />
+            )}
           </Box>
         </Box>
 
@@ -359,6 +423,48 @@ const OrderDetails = () => {
                 ₹{(orderData.total_gst ?? 0).toLocaleString('en-IN')}
               </Typography>
             </Box>
+            {payment && (
+              <Box sx={{ gridColumn: 'span 2' }}>
+                <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>
+                  Payment
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 0.25 }}>
+                  <Chip
+                    label={isPaid ? 'Paid' : (payment.status || 'Pending').charAt(0).toUpperCase() + (payment.status || 'pending').slice(1)}
+                    color={isPaid ? 'success' : payment.status === 'failed' ? 'error' : 'warning'}
+                    size='small'
+                    sx={{ fontWeight: 700 }}
+                  />
+                  {payment.amount != null && (
+                    <Typography variant='body1' fontWeight={600} color='text.primary'>
+                      ₹{(payment.amount / 100).toLocaleString('en-IN')}
+                    </Typography>
+                  )}
+                  {payment.provider && (
+                    <Typography variant='body2' color='text.secondary' sx={{ textTransform: 'capitalize' }}>
+                      via {payment.provider}
+                    </Typography>
+                  )}
+                </Box>
+                {payment.razorpay_payment_id && (
+                  <Typography variant='body2' color='text.secondary' sx={{ mt: 0.25 }}>
+                    Payment ID: {payment.razorpay_payment_id}
+                  </Typography>
+                )}
+                {payment.updated_at && (
+                  <Typography variant='body2' color='text.secondary'>
+                    {isPaid ? 'Paid on ' : 'Updated '}
+                    {new Date(payment.updated_at).toLocaleString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </Typography>
+                )}
+              </Box>
+            )}
             {orderData.estimate_created && (
               <Box sx={{ gridColumn: 'span 2' }}>
                 <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>
@@ -401,6 +507,16 @@ const OrderDetails = () => {
                     </Typography>
                   )}
                 </Box>
+              </Box>
+            )}
+            {orderData.zoho_flow?.invoice_number && (
+              <Box sx={{ gridColumn: 'span 2' }}>
+                <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ lineHeight: 1.4, fontSize: '0.7rem' }}>
+                  Invoice Number
+                </Typography>
+                <Typography variant='body1' fontWeight={500}>
+                  {orderData.zoho_flow.invoice_number}
+                </Typography>
               </Box>
             )}
             {orderData.spreadsheet_created && (
@@ -479,6 +595,16 @@ const OrderDetails = () => {
         <Box sx={{ px: { xs: 2, sm: 3 }, py: 2.5 }}>
           <Typography variant='h6' fontWeight={700} gutterBottom>
             Ordered Items
+            {estimateCreated && (
+              <Typography
+                component='span'
+                variant='body2'
+                color='text.secondary'
+                sx={{ fontWeight: 500, ml: 1 }}
+              >
+                (margins from estimate)
+              </Typography>
+            )}
           </Typography>
           {(orderData.products?.filter(
             (p: any) => Number(p.quantity) > 0
@@ -556,10 +682,18 @@ const OrderDetails = () => {
                           />
                         )}
                       </Box>
-                      <Typography variant='body2' color='text.secondary'>
-                        Qty: {item.quantity}
-                        {isMobile && ` × ₹${(item.price ?? 0).toLocaleString('en-IN')}`}
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 0.25 }}>
+                        <Typography variant='body2' color='text.secondary'>
+                          Qty: {item.quantity}
+                          {isMobile && ` × ₹${(item.price ?? 0).toLocaleString('en-IN')}`}
+                        </Typography>
+                        <Chip
+                          label={`${getItemMarginPct(item)}% margin`}
+                          size='small'
+                          color='success'
+                          sx={{ fontWeight: 700, height: 20, fontSize: '0.65rem' }}
+                        />
+                      </Box>
                     </Box>
                     {!isMobile && (
                       <Typography
@@ -612,6 +746,14 @@ const OrderDetails = () => {
           Back to Orders
         </Button>
       </Box>
+
+      {/* Return order flow for this order */}
+      <OrderReturnDialog
+        open={returnOpen}
+        onClose={() => setReturnOpen(false)}
+        order={orderData}
+        onSaved={() => fetchEligibility()}
+      />
     </Box>
   );
 };

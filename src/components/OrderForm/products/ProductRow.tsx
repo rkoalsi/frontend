@@ -14,6 +14,8 @@ import {
 import { AddShoppingCart, LocalOffer, RemoveShoppingCart } from "@mui/icons-material";
 import QuantitySelector from "../QuantitySelector";
 import ImageCarousel from "./ImageCarousel";
+import { getEffectiveMarginPct } from "../../../util/margin";
+import { getTaxPercentage } from "../../../util/tax";
 
 interface SearchResult {
   _id: string;
@@ -249,21 +251,27 @@ const ProductRow: React.FC<ProductRowProps> = memo(
         </TableCell>
 
         {/* Margin (if not shared) */}
-        {!isShared && (
-          <TableCell>
-            <Chip
-              label={specialMargins[productId] || customerMargin}
-              size="small"
-              variant="filled"
-              sx={{
-                fontWeight: 600,
-                backgroundColor: 'info.light',
-                color: 'info.contrastText',
-                minWidth: 50,
-              }}
-            />
-          </TableCell>
-        )}
+        {!isShared && (() => {
+          const baseMarginStr = specialMargins[productId] || customerMargin || '40%';
+          const basePct = parseInt(String(baseMarginStr).replace('%', ''), 10) || 40;
+          const totalPct = getEffectiveMarginPct(baseMarginStr, product);
+          const hasClearance = (product as any).clearance && totalPct > basePct;
+          return (
+            <TableCell>
+              <Chip
+                label={hasClearance ? `${basePct}+${totalPct - basePct}=${totalPct}%` : `${totalPct}%`}
+                size="small"
+                variant="filled"
+                sx={{
+                  fontWeight: 600,
+                  backgroundColor: hasClearance ? 'error.light' : 'info.light',
+                  color: hasClearance ? 'error.contrastText' : 'info.contrastText',
+                  minWidth: 50,
+                }}
+              />
+            </TableCell>
+          );
+        })()}
 
         {/* Selling Price */}
         <TableCell>
@@ -286,7 +294,7 @@ const ProductRow: React.FC<ProductRowProps> = memo(
               variant="body1"
               sx={{ fontWeight: 500 }}
             >
-              {product.item_tax_preferences[product?.item_tax_preferences.length - 1].tax_percentage}%
+              {getTaxPercentage(product)}%
             </Typography>
           </Box>
         </TableCell>
