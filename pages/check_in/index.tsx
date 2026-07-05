@@ -252,6 +252,33 @@ const Checkin = () => {
     day: 'numeric',
   });
 
+  if (userData.role === 'sales_person') {
+    return (
+      <Container
+        maxWidth='md'
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          py: 4,
+        }}
+      >
+        <Card elevation={5} sx={{ width: '100%', borderRadius: 3, p: 4 }}>
+          <Stack spacing={2} alignItems='center'>
+            <Typography variant='h6' fontWeight='bold' align='center'>
+              Check-in has been disabled
+            </Typography>
+            <Button variant='contained' onClick={() => router.back()}>
+              Go Back
+            </Button>
+          </Stack>
+        </Card>
+      </Container>
+    );
+  }
+
   return (
     <Container
       maxWidth='md'
