@@ -118,7 +118,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/announcements': 'Announcements',
   '/catalogues': 'Catalogues',
   '/catalogues/all_products': 'All Products',
-  '/check_in': 'Check In',
+  // '/check_in': 'Check In',
   '/customer_analytics': 'Customer Analytics',
   '/customer_analytics/[id]': 'Customer Analytics',
   '/customer_margins': 'Customer Margins',

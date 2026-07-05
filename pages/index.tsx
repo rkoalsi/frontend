@@ -317,12 +317,12 @@ const menuSections = [
         color: '#06b6d4',
         action: 'dailyVisits',
       },
-      {
-        icon: <Check />,
-        text: 'Greythr Login',
-        color: '#10b981',
-        action: 'check_in',
-      },
+      // {
+      //   icon: <Check />,
+      //   text: 'Greythr Login',
+      //   color: '#10b981',
+      //   action: 'check_in',
+      // },
       {
         icon: <ReceiptLong />,
         text: 'Expense Estimates',
@@ -638,9 +638,9 @@ const Home = () => {
       case 'customer_orders':
         router.push('/customer_orders');
         break;
-      case 'check_in':
-        router.push('/check_in');
-        break;
+      // case 'check_in':
+      //   router.push('/check_in');
+      //   break;
       case 'shipments':
         router.push('/shipments');
         break;
