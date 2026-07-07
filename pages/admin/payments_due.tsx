@@ -31,6 +31,9 @@ import axiosInstance from '../../src/util/axios';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
 import axios from 'axios';
 import SingleImagePopupDialog from '../../src/components/common/SingleImagePopUp';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 
 interface SortConfig {
   key: string;
@@ -53,6 +56,13 @@ const PaymentsDue = () => {
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [openImagePopup, setOpenImagePopup] = useState<boolean>(false);
   const [popupImageSrc, setPopupImageSrc] = useState<string>('');
+
+  // Follow-up fields edited in the drawer
+  const [spRemarks, setSpRemarks] = useState('');
+  const [paymentClearedDetails, setPaymentClearedDetails] = useState('');
+  const [expectedPaymentDate, setExpectedPaymentDate]: any = useState(null);
+  const [officeTeamRemarks, setOfficeTeamRemarks] = useState('');
+  const [savingFollowUp, setSavingFollowUp] = useState(false);
   const [agingStats, setAgingStats] = useState<{
     current: { count: number; balance: number };
     overdue30: { count: number; balance: number };
@@ -189,6 +199,13 @@ const PaymentsDue = () => {
   // Drawer logic
   const handleViewDetails = (order: any) => {
     setSelectedOrder(order);
+    const notes = order.invoice_notes || {};
+    setSpRemarks(notes.sp_remarks || '');
+    setPaymentClearedDetails(notes.payment_cleared_details || '');
+    setExpectedPaymentDate(
+      notes.expected_payment_date ? new Date(notes.expected_payment_date) : null
+    );
+    setOfficeTeamRemarks(notes.office_team_remarks || '');
     setDrawerOpen(true);
   };
 
@@ -197,10 +214,33 @@ const PaymentsDue = () => {
     setSelectedOrder(null);
   };
 
-  // Handler to download CSV of all payments due
-  const handleDownloadCSV = async () => {
+  const handleSaveFollowUp = async () => {
+    if (!selectedOrder) return;
     try {
-      let url = `/admin/payments_due/download_csv?sales_person=${encodeURIComponent(
+      setSavingFollowUp(true);
+      await axiosInstance.patch('/invoices/notes/fields', {
+        invoice_number: selectedOrder.invoice_number,
+        sp_remarks: spRemarks,
+        payment_cleared_details: paymentClearedDetails,
+        expected_payment_date: expectedPaymentDate
+          ? expectedPaymentDate.toISOString()
+          : '',
+        office_team_remarks: officeTeamRemarks,
+      });
+      toast.success('Follow-up details saved');
+      fetchData();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error saving follow-up details');
+    } finally {
+      setSavingFollowUp(false);
+    }
+  };
+
+  // Handler to download XLSX of all payments due
+  const handleDownloadXLSX = async () => {
+    try {
+      let url = `/admin/payments_due/download_xlsx?sales_person=${encodeURIComponent(
         appliedSalesPersonFilter
       )}`;
       const response = await axiosInstance.get(url, {
@@ -209,13 +249,13 @@ const PaymentsDue = () => {
       const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.setAttribute('download', 'payments_due.csv');
+      link.setAttribute('download', 'payments_due.xlsx');
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (error) {
       console.error(error);
-      toast.error('Error downloading CSV');
+      toast.error('Error downloading XLSX');
     }
   };
 
@@ -353,8 +393,8 @@ const PaymentsDue = () => {
                 })}
               </Select>
             </FormControl>
-            <Button variant='contained' onClick={handleDownloadCSV}>
-              Download CSV
+            <Button variant='contained' onClick={handleDownloadXLSX}>
+              Download XLSX
             </Button>
           </Box>
         </Box>
@@ -476,6 +516,14 @@ const PaymentsDue = () => {
                         >
                           Image Uploaded{renderSortIndicator('images')}
                         </TableCell>
+                        <TableCell>Follow-up</TableCell>
+                        <TableCell
+                          onClick={() => handleSort('open_credit_note_amt')}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          Open Credit Note Amt.
+                          {renderSortIndicator('open_credit_note_amt')}
+                        </TableCell>
                         <TableCell>Actions</TableCell>
                       </TableRow>
                     </TableHead>
@@ -494,12 +542,18 @@ const PaymentsDue = () => {
                           total = 0,
                           balance = 0,
                           overdue_by_days = 0,
+                          open_credit_note_amt = 0,
                         } = invoice;
                         const invoiceDueDate = new Date(due_date);
                         invoiceDueDate.setHours(0, 0, 0, 0);
                         const invoiceNotes = invoice.invoice_notes || {};
-                        const { additional_info = '', images = [] } =
-                          invoiceNotes;
+                        const {
+                          additional_info = '',
+                          images = [],
+                          sp_remarks = '',
+                          expected_payment_date = '',
+                          office_team_remarks = '',
+                        } = invoiceNotes;
                         return (
                           <TableRow key={_id} sx={getRowStyle(parseInt(overdue_by_days) || 0)}>
                             <TableCell>
@@ -530,6 +584,39 @@ const PaymentsDue = () => {
                             </TableCell>
                             <TableCell>
                               <Checkbox checked={images.length > 0} disabled />
+                            </TableCell>
+                            <TableCell>
+                              {sp_remarks || expected_payment_date ? (
+                                <Chip
+                                  size='small'
+                                  label={
+                                    expected_payment_date
+                                      ? new Date(
+                                          expected_payment_date
+                                        ).toLocaleDateString()
+                                      : 'Added'
+                                  }
+                                  color='info'
+                                  variant='outlined'
+                                />
+                              ) : (
+                                '-'
+                              )}
+                              {office_team_remarks && (
+                                <Chip
+                                  size='small'
+                                  label='Office note'
+                                  sx={{ ml: 0.5 }}
+                                />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {open_credit_note_amt > 0
+                                ? `₹${Number(open_credit_note_amt).toLocaleString(
+                                    'en-IN',
+                                    { maximumFractionDigits: 0 }
+                                  )}`
+                                : '-'}
                             </TableCell>
                             <TableCell>
                               <Box
@@ -724,6 +811,73 @@ const PaymentsDue = () => {
                     </Typography>
                   </Box>
                 )}
+                <Box sx={{ marginBottom: 3 }}>
+                  <Typography
+                    variant='h6'
+                    sx={{
+                      fontWeight: 'bold',
+                      marginBottom: 1,
+                      fontFamily: 'Roboto, sans-serif',
+                    }}
+                  >
+                    Payment Follow-up
+                  </Typography>
+                  {selectedOrder?.open_credit_note_amt > 0 && (
+                    <Chip
+                      size='small'
+                      color='success'
+                      variant='outlined'
+                      sx={{ mb: 2, fontWeight: 600 }}
+                      label={`Open Credit Note Amt.: ₹${Number(
+                        selectedOrder.open_credit_note_amt
+                      ).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                    />
+                  )}
+                  <Box display='flex' flexDirection='column' gap={2}>
+                    <TextField
+                      label='SP Remarks'
+                      multiline
+                      minRows={2}
+                      fullWidth
+                      value={spRemarks}
+                      onChange={(e) => setSpRemarks(e.target.value)}
+                    />
+                    <TextField
+                      label='Payment Cleared - Details'
+                      multiline
+                      minRows={2}
+                      fullWidth
+                      value={paymentClearedDetails}
+                      onChange={(e) => setPaymentClearedDetails(e.target.value)}
+                    />
+                    <LocalizationProvider dateAdapter={AdapterDateFns}>
+                      <DatePicker
+                        label='Expected Payment Date'
+                        format='dd-MM-yyyy'
+                        value={expectedPaymentDate}
+                        onChange={(date) => setExpectedPaymentDate(date)}
+                        enableAccessibleFieldDOMStructure={false}
+                        slots={{ textField: TextField }}
+                        slotProps={{ textField: { fullWidth: true } }}
+                      />
+                    </LocalizationProvider>
+                    <TextField
+                      label='Office Team Remarks'
+                      multiline
+                      minRows={2}
+                      fullWidth
+                      value={officeTeamRemarks}
+                      onChange={(e) => setOfficeTeamRemarks(e.target.value)}
+                    />
+                    <Button
+                      variant='contained'
+                      onClick={handleSaveFollowUp}
+                      disabled={savingFollowUp}
+                    >
+                      {savingFollowUp ? 'Saving...' : 'Save Follow-up'}
+                    </Button>
+                  </Box>
+                </Box>
                 <Typography
                   variant='h6'
                   sx={{
