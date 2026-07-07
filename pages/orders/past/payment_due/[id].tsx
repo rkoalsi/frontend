@@ -28,9 +28,13 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import axiosInstance from '../../../../src/util/axios';
 import ImagePopupDialog from '../../../../src/components/common/ImagePopUp';
 import AuthContext from '../../../../src/components/Auth';
 import SingleImagePopupDialog from '../../../../src/components/common/SingleImagePopUp';
@@ -52,6 +56,13 @@ const OrderDetails = () => {
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
   const [itemsExpanded, setItemsExpanded] = useState(false);
+
+  // Payment follow-up fields
+  const [spRemarks, setSpRemarks] = useState('');
+  const [paymentClearedDetails, setPaymentClearedDetails] = useState('');
+  const [expectedPaymentDate, setExpectedPaymentDate]: any = useState(null);
+  const [officeTeamRemarks, setOfficeTeamRemarks] = useState('');
+  const [savingFollowUp, setSavingFollowUp] = useState(false);
 
   const router = useRouter();
   const { id } = router.query;
@@ -106,6 +117,14 @@ const OrderDetails = () => {
           setAdditionalInfo(response.data.additional_info || '');
           // Assume the backend returns an array of image identifiers/URLs.
           setExistingImages(response.data.images || []);
+          setSpRemarks(response.data.sp_remarks || '');
+          setPaymentClearedDetails(response.data.payment_cleared_details || '');
+          setExpectedPaymentDate(
+            response.data.expected_payment_date
+              ? new Date(response.data.expected_payment_date)
+              : null
+          );
+          setOfficeTeamRemarks(response.data.office_team_remarks || '');
         }
       }
     } catch (err) {
@@ -224,6 +243,27 @@ const OrderDetails = () => {
       toast.error('Error submitting invoice note. Please try again.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSaveFollowUp = async () => {
+    try {
+      setSavingFollowUp(true);
+      await axiosInstance.patch('/invoices/notes/fields', {
+        invoice_number: invoiceData.invoice_number,
+        sp_remarks: spRemarks,
+        payment_cleared_details: paymentClearedDetails,
+        expected_payment_date: expectedPaymentDate
+          ? expectedPaymentDate.toISOString()
+          : '',
+      });
+      toast.success('Follow-up details saved');
+      fetchInvoiceNote(invoiceData.invoice_number);
+    } catch (err) {
+      console.error(err);
+      toast.error('Error saving follow-up details');
+    } finally {
+      setSavingFollowUp(false);
     }
   };
 
@@ -385,6 +425,20 @@ const OrderDetails = () => {
           <Typography variant='body1' sx={{ mb: 1 }}>
             <strong>Balance:</strong> ₹{invoiceData?.balance || '0'}
           </Typography>
+          {invoiceData?.open_credit_note_amt > 0 && (
+            <Typography variant='body1' sx={{ mb: 1 }}>
+              <strong>Open Credit Note Amt.:</strong>{' '}
+              <Chip
+                size='small'
+                color='success'
+                variant='outlined'
+                label={`₹${Number(
+                  invoiceData.open_credit_note_amt
+                ).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                sx={{ ml: 1, fontWeight: 600 }}
+              />
+            </Typography>
+          )}
         </Box>
 
         {/* Collapsible Product List */}
@@ -690,6 +744,81 @@ const OrderDetails = () => {
               </Box>
             )}
           </Box>
+        </Paper>
+
+        {/* Payment Follow-up Section */}
+        <Paper
+          elevation={1}
+          sx={{
+            p: 2,
+            backgroundColor: theme.palette.background.default,
+            borderRadius: '8px',
+            mb: 2,
+          }}
+        >
+          <Typography variant='h6' fontWeight='bold' gutterBottom>
+            Payment Follow-up
+          </Typography>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+              gap: 2,
+              mb: 2,
+            }}
+          >
+            <TextField
+              label='SP Remarks'
+              multiline
+              minRows={2}
+              variant='outlined'
+              fullWidth
+              value={spRemarks}
+              onChange={(e) => setSpRemarks(e.target.value)}
+            />
+            <TextField
+              label='Payment Cleared - Details'
+              multiline
+              minRows={2}
+              variant='outlined'
+              fullWidth
+              value={paymentClearedDetails}
+              onChange={(e) => setPaymentClearedDetails(e.target.value)}
+            />
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label='Expected Payment Date'
+                format='dd-MM-yyyy'
+                value={expectedPaymentDate}
+                onChange={(date) => setExpectedPaymentDate(date)}
+                enableAccessibleFieldDOMStructure={false}
+                slots={{ textField: TextField }}
+                slotProps={{ textField: { fullWidth: true } }}
+              />
+            </LocalizationProvider>
+            {officeTeamRemarks && (
+              <TextField
+                label='Office Team Remarks'
+                multiline
+                minRows={2}
+                variant='outlined'
+                fullWidth
+                value={officeTeamRemarks}
+                InputProps={{ readOnly: true }}
+                sx={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}
+              />
+            )}
+          </Box>
+          <Button
+            variant='contained'
+            color='primary'
+            onClick={handleSaveFollowUp}
+            disabled={savingFollowUp}
+            fullWidth={isMobile}
+            sx={{ borderRadius: '8px' }}
+          >
+            {savingFollowUp ? 'Saving...' : 'Save Follow-up'}
+          </Button>
         </Paper>
 
         {/* Footer Navigation */}
