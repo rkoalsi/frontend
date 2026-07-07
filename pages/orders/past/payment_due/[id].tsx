@@ -39,6 +39,23 @@ import ImagePopupDialog from '../../../../src/components/common/ImagePopUp';
 import AuthContext from '../../../../src/components/Auth';
 import SingleImagePopupDialog from '../../../../src/components/common/SingleImagePopUp';
 
+const creditNoteStatusColor = (
+  status: string
+): 'default' | 'success' | 'warning' | 'error' | 'info' => {
+  switch ((status || '').toLowerCase()) {
+    case 'open':
+      return 'warning';
+    case 'closed':
+      return 'success';
+    case 'void':
+      return 'error';
+    case 'draft':
+      return 'info';
+    default:
+      return 'default';
+  }
+};
+
 const OrderDetails = () => {
   const [invoiceData, setInvoiceData]: any = useState(null);
   const [loading, setLoading] = useState(true);
@@ -440,6 +457,62 @@ const OrderDetails = () => {
             </Typography>
           )}
         </Box>
+
+        {/* Associated Credit Notes */}
+        {invoiceData?.associated_credit_notes?.length > 0 && (
+          <Paper
+            elevation={1}
+            sx={{
+              p: 2,
+              mb: 2,
+              borderRadius: '8px',
+              backgroundColor: theme.palette.background.default,
+            }}
+          >
+            <Typography variant='h6' fontWeight='bold' gutterBottom>
+              Associated Credit Notes
+            </Typography>
+            <Box display='flex' flexDirection='column' gap={1}>
+              {invoiceData.associated_credit_notes.map((cn: any) => (
+                <Box
+                  key={cn.creditnote_id}
+                  display='flex'
+                  alignItems='center'
+                  justifyContent='space-between'
+                  gap={1}
+                  sx={{
+                    p: 1,
+                    borderRadius: 1,
+                    border: `1px solid ${theme.palette.divider}`,
+                    backgroundColor: theme.palette.background.paper,
+                  }}
+                >
+                  <Box>
+                    <Typography variant='body2' fontWeight={600}>
+                      {cn.creditnote_number}
+                    </Typography>
+                    <Typography variant='caption' color='text.secondary'>
+                      {cn.date ? new Date(cn.date).toLocaleDateString('en-IN') : ''}{' '}
+                      · Open ₹
+                      {Number(cn.balance ?? 0).toLocaleString('en-IN', {
+                        maximumFractionDigits: 2,
+                      })}{' '}
+                      of ₹
+                      {Number(cn.total ?? 0).toLocaleString('en-IN', {
+                        maximumFractionDigits: 2,
+                      })}
+                    </Typography>
+                  </Box>
+                  <Chip
+                    size='small'
+                    color={creditNoteStatusColor(cn.status)}
+                    label={(cn.status || '').charAt(0).toUpperCase() + (cn.status || '').slice(1)}
+                  />
+                </Box>
+              ))}
+            </Box>
+          </Paper>
+        )}
 
         {/* Collapsible Product List */}
         <Card

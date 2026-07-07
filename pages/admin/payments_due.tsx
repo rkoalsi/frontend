@@ -40,6 +40,24 @@ interface SortConfig {
   direction: 'asc' | 'desc';
 }
 
+// Colour for a credit note status chip
+const creditNoteStatusColor = (
+  status: string
+): 'default' | 'success' | 'warning' | 'error' | 'info' => {
+  switch ((status || '').toLowerCase()) {
+    case 'open':
+      return 'warning';
+    case 'closed':
+      return 'success';
+    case 'void':
+      return 'error';
+    case 'draft':
+      return 'info';
+    default:
+      return 'default';
+  }
+};
+
 const PaymentsDue = () => {
   const theme = useTheme();
   const [data, setData] = useState<any[]>([]);
@@ -524,6 +542,7 @@ const PaymentsDue = () => {
                           Open Credit Note Amt.
                           {renderSortIndicator('open_credit_note_amt')}
                         </TableCell>
+                        <TableCell>Credit Notes</TableCell>
                         <TableCell>Actions</TableCell>
                       </TableRow>
                     </TableHead>
@@ -543,6 +562,7 @@ const PaymentsDue = () => {
                           balance = 0,
                           overdue_by_days = 0,
                           open_credit_note_amt = 0,
+                          associated_credit_notes = [],
                         } = invoice;
                         const invoiceDueDate = new Date(due_date);
                         invoiceDueDate.setHours(0, 0, 0, 0);
@@ -617,6 +637,33 @@ const PaymentsDue = () => {
                                     { maximumFractionDigits: 0 }
                                   )}`
                                 : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {associated_credit_notes.length > 0 ? (
+                                <Box
+                                  display='flex'
+                                  flexDirection='column'
+                                  gap={0.5}
+                                  sx={{ minWidth: 140 }}
+                                >
+                                  {associated_credit_notes.map((cn: any) => (
+                                    <Chip
+                                      key={cn.creditnote_id}
+                                      size='small'
+                                      color={creditNoteStatusColor(cn.status)}
+                                      variant='outlined'
+                                      label={`${cn.creditnote_number} · ₹${Number(
+                                        cn.balance ?? cn.total ?? 0
+                                      ).toLocaleString('en-IN', {
+                                        maximumFractionDigits: 0,
+                                      })} · ${cn.status}`}
+                                      sx={{ fontSize: '0.68rem', justifyContent: 'flex-start' }}
+                                    />
+                                  ))}
+                                </Box>
+                              ) : (
+                                '-'
+                              )}
                             </TableCell>
                             <TableCell>
                               <Box
@@ -809,6 +856,60 @@ const PaymentsDue = () => {
                       Invoice Note Created By:{' '}
                       {selectedOrder?.note_created_by_name}
                     </Typography>
+                  </Box>
+                )}
+                {selectedOrder?.associated_credit_notes?.length > 0 && (
+                  <Box sx={{ marginBottom: 3 }}>
+                    <Typography
+                      variant='h6'
+                      sx={{
+                        fontWeight: 'bold',
+                        marginBottom: 1,
+                        fontFamily: 'Roboto, sans-serif',
+                      }}
+                    >
+                      Associated Credit Notes
+                    </Typography>
+                    <Box display='flex' flexDirection='column' gap={1}>
+                      {selectedOrder.associated_credit_notes.map((cn: any) => (
+                        <Box
+                          key={cn.creditnote_id}
+                          display='flex'
+                          alignItems='center'
+                          justifyContent='space-between'
+                          gap={1}
+                          sx={{
+                            p: 1,
+                            borderRadius: 1,
+                            border: `1px solid ${theme.palette.divider}`,
+                          }}
+                        >
+                          <Box>
+                            <Typography variant='body2' fontWeight={600}>
+                              {cn.creditnote_number}
+                            </Typography>
+                            <Typography variant='caption' color='text.secondary'>
+                              {cn.date
+                                ? new Date(cn.date).toLocaleDateString()
+                                : ''}{' '}
+                              · Open ₹
+                              {Number(cn.balance ?? 0).toLocaleString('en-IN', {
+                                maximumFractionDigits: 2,
+                              })}{' '}
+                              of ₹
+                              {Number(cn.total ?? 0).toLocaleString('en-IN', {
+                                maximumFractionDigits: 2,
+                              })}
+                            </Typography>
+                          </Box>
+                          <Chip
+                            size='small'
+                            color={creditNoteStatusColor(cn.status)}
+                            label={capitalize(cn.status || '')}
+                          />
+                        </Box>
+                      ))}
+                    </Box>
                   </Box>
                 )}
                 <Box sx={{ marginBottom: 3 }}>

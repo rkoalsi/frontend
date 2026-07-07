@@ -47,6 +47,23 @@ const agingBucketColor = (maxDays: number) => {
   return 'default' as const;
 };
 
+const creditNoteStatusColor = (
+  status: string
+): 'default' | 'success' | 'warning' | 'error' | 'info' => {
+  switch ((status || '').toLowerCase()) {
+    case 'open':
+      return 'warning';
+    case 'closed':
+      return 'success';
+    case 'void':
+      return 'error';
+    case 'draft':
+      return 'info';
+    default:
+      return 'default';
+  }
+};
+
 const PaymentDue = () => {
   const [loading, setLoading] = useState(false);
   const [invoices, setInvoices] = useState([]);
@@ -245,6 +262,11 @@ const PaymentDue = () => {
                           (i: any) => parseFloat(i.open_credit_note_amt) || 0
                         )
                       );
+                      const associatedCreditNoteCount = custInvoices.reduce(
+                        (sum: number, i: any) =>
+                          sum + (i.associated_credit_notes?.length || 0),
+                        0
+                      );
 
                       return (
                         <Accordion
@@ -329,6 +351,15 @@ const PaymentDue = () => {
                                   sx={{ fontWeight: 600, fontSize: '0.72rem' }}
                                 />
                               )}
+                              {associatedCreditNoteCount > 0 && (
+                                <Chip
+                                  size='small'
+                                  label={`${associatedCreditNoteCount} linked credit note${associatedCreditNoteCount > 1 ? 's' : ''}`}
+                                  color='info'
+                                  variant='outlined'
+                                  sx={{ fontWeight: 600, fontSize: '0.72rem' }}
+                                />
+                              )}
                             </Box>
                           </AccordionSummary>
 
@@ -352,6 +383,8 @@ const PaymentDue = () => {
                                   } = invoice;
                                   const invoice_notes = invoice.invoice_notes || {};
                                   const { images = [] }: any = invoice_notes;
+                                  const associatedCreditNotes: any[] =
+                                    invoice.associated_credit_notes || [];
                                   const hasFollowUp = Boolean(
                                     invoice_notes?.sp_remarks ||
                                       invoice_notes?.expected_payment_date
@@ -442,6 +475,20 @@ const PaymentDue = () => {
                                             sx={{ fontSize: '0.7rem' }}
                                           />
                                         )}
+                                        {associatedCreditNotes.map((cn: any) => (
+                                          <Chip
+                                            key={cn.creditnote_id}
+                                            size='small'
+                                            variant='outlined'
+                                            color={creditNoteStatusColor(cn.status)}
+                                            label={`${cn.creditnote_number} · ₹${Number(
+                                              cn.balance ?? cn.total ?? 0
+                                            ).toLocaleString('en-IN', {
+                                              maximumFractionDigits: 0,
+                                            })} · ${cn.status}`}
+                                            sx={{ fontSize: '0.7rem' }}
+                                          />
+                                        ))}
                                         <Box
                                           sx={{
                                             textAlign: isMobile ? 'left' : 'right',
