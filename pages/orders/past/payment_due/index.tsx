@@ -64,7 +64,7 @@ const PaymentDue = () => {
       setLoading(true);
       let resp;
       if (user.role.includes('admin')) {
-        resp = await axiosInstance.get(`/admin/payments_due?limit=500`);
+        resp = await axiosInstance.get(`/admin/payments_due?limit=25`);
       } else {
         resp = await axios.get(
           `${process.env.api_url}/invoices?created_by=${user?._id}`
@@ -86,9 +86,9 @@ const PaymentDue = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleDownloadCSV = async () => {
+  const handleDownloadXLSX = async () => {
     try {
-      let url = '/admin/payments_due/download_csv';
+      let url = '/admin/payments_due/download_xlsx';
       url += `?sales_person=${encodeURIComponent(
         user?.role?.includes('admin') ? '' : user?.code
       )}`;
@@ -98,14 +98,14 @@ const PaymentDue = () => {
       const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.setAttribute('download', 'payments_due.csv');
+      link.setAttribute('download', 'payments_due.xlsx');
       document.body.appendChild(link);
       link.click();
       link.remove();
-      toast.success('CSV downloaded successfully');
+      toast.success('XLSX downloaded successfully');
     } catch (error) {
       console.error(error);
-      toast.error('Error downloading CSV');
+      toast.error('Error downloading XLSX');
     }
   };
 
@@ -198,7 +198,7 @@ const PaymentDue = () => {
             <Button
               variant='contained'
               startIcon={<GetApp />}
-              onClick={handleDownloadCSV}
+              onClick={handleDownloadXLSX}
               sx={{
                 borderRadius: '8px',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -206,7 +206,7 @@ const PaymentDue = () => {
                 px: 3,
               }}
             >
-              Export CSV
+              Export XLSX
             </Button>
           </Paper>
 
@@ -239,6 +239,11 @@ const PaymentDue = () => {
                       const bucketColor = agingBucketColor(maxOverdue);
                       const hasAttachments = custInvoices.some(
                         (i: any) => i.invoice_notes?.images?.length > 0
+                      );
+                      const openCreditNoteAmt = Math.max(
+                        ...custInvoices.map(
+                          (i: any) => parseFloat(i.open_credit_note_amt) || 0
+                        )
                       );
 
                       return (
@@ -315,6 +320,15 @@ const PaymentDue = () => {
                                   sx={{ fontSize: '0.72rem' }}
                                 />
                               )}
+                              {openCreditNoteAmt > 0 && (
+                                <Chip
+                                  size='small'
+                                  label={`₹${openCreditNoteAmt.toLocaleString('en-IN', { maximumFractionDigits: 0 })} credit note`}
+                                  color='success'
+                                  variant='outlined'
+                                  sx={{ fontWeight: 600, fontSize: '0.72rem' }}
+                                />
+                              )}
                             </Box>
                           </AccordionSummary>
 
@@ -335,9 +349,13 @@ const PaymentDue = () => {
                                     balance,
                                     total,
                                     overdue_by_days,
-                                    invoice_notes = {},
                                   } = invoice;
+                                  const invoice_notes = invoice.invoice_notes || {};
                                   const { images = [] }: any = invoice_notes;
+                                  const hasFollowUp = Boolean(
+                                    invoice_notes?.sp_remarks ||
+                                      invoice_notes?.expected_payment_date
+                                  );
                                   const days = parseInt(overdue_by_days) || 0;
                                   const aging = agingLabel(days);
                                   const accentColor =
@@ -412,6 +430,15 @@ const PaymentDue = () => {
                                             size='small'
                                             icon={<Visibility fontSize='small' />}
                                             label='Attachment'
+                                            sx={{ fontSize: '0.7rem' }}
+                                          />
+                                        )}
+                                        {hasFollowUp && (
+                                          <Chip
+                                            size='small'
+                                            label='Follow-up added'
+                                            color='info'
+                                            variant='outlined'
                                             sx={{ fontSize: '0.7rem' }}
                                           />
                                         )}
