@@ -12,13 +12,13 @@ export default function MyDocument(props: DocumentProps & DocumentHeadTagsProps)
     <Html lang="en" className={roboto.className}>
       <Head>
         {/* Google tag (gtag.js) */}
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZQCK1YFZRQ" />
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-B3B84C0Y76" />
         <script
           dangerouslySetInnerHTML={{
             __html: `window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
-gtag('config', 'G-ZQCK1YFZRQ');`,
+gtag('config', 'G-B3B84C0Y76');`,
           }}
         />
         {/* End Google tag (gtag.js) */}
