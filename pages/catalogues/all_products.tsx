@@ -28,6 +28,7 @@ import {
   type Product as GroupProduct,
 } from '../../src/util/groupProducts';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
+import { event as trackEvent } from '../../src/util/gtag';
 import Image from 'next/image';
 import { toast } from 'react-toastify';
 import debounce from 'lodash.debounce';
@@ -468,6 +469,11 @@ export default function AllProductsCatalouge() {
 
   // Catalogue handlers
   const handleQuickView = useCallback((product: Product, variants: Product[] = []) => {
+    trackEvent('view_item', {
+      item_name: product?.name,
+      item_brand: product?.brand,
+      item_category: product?.category,
+    });
     setQuickViewProduct(product);
     setQuickViewVariants(variants);
     setShowQuickView(true);

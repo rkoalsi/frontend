@@ -17,6 +17,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import 'react-quill/dist/quill.snow.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ColorModeProvider, useColorMode } from '../src/context/ColorModeContext';
+import { event, isPublicPath, pageview } from '../src/util/gtag';
 import axios from 'axios';
 
 // Global axios defaults: send cookies and Authorization header on every request
@@ -149,6 +150,37 @@ export default function MyApp(props: AppProps) {
   useNetworkStatus();
   const { Component, pageProps } = props;
   const router = useRouter();
+
+  // GA4: report a page_view only on public pages (initial load + client-side nav).
+  React.useEffect(() => {
+    if (!router.isReady || !isPublicPath(router.pathname)) return;
+    pageview(router.asPath);
+  }, [router.isReady, router.pathname, router.asPath]);
+
+  // GA4: scroll-depth tracking on public pages — fires once per page as the
+  // user passes each threshold.
+  React.useEffect(() => {
+    if (!isPublicPath(router.pathname)) return;
+    const thresholds = [25, 50, 75, 100];
+    const fired = new Set<number>();
+    const onScroll = () => {
+      const el = document.documentElement;
+      const scrollable = el.scrollHeight - el.clientHeight;
+      if (scrollable <= 0) return;
+      const percent = Math.min(
+        100,
+        Math.round((el.scrollTop / scrollable) * 100)
+      );
+      thresholds.forEach((t) => {
+        if (percent >= t && !fired.has(t)) {
+          fired.add(t);
+          event('scroll_depth', { percent: t, page_path: router.asPath });
+        }
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [router.pathname, router.asPath]);
 
   const isAdminRoute = props.router?.pathname.startsWith('/admin');
   const isCustomerRoute =

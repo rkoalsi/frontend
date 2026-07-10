@@ -16,6 +16,7 @@ import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useRouter } from 'next/router';
 import AuthContext from '../src/components/Auth';
+import { event as trackEvent } from '../src/util/gtag';
 
 const STEPS = ['Mobile number', 'Verify OTP'];
 
@@ -39,6 +40,7 @@ const RegisterPage = () => {
     setLoading(true);
     try {
       await axios.post(`${apiBase}/users/otp/request`, { phone, purpose: 'register' });
+      trackEvent('sign_up_start', { method: 'otp' });
       toast.success('OTP sent to your WhatsApp');
       setStep(1);
     } catch (err: any) {
@@ -56,6 +58,7 @@ const RegisterPage = () => {
       // Verifying creates the account and logs the user straight in — the
       // AuthContext handles the redirect to the home page on success.
       await registerWithOtp(phone, otp);
+      trackEvent('sign_up', { method: 'otp' });
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Invalid or expired OTP');
       setLoading(false);

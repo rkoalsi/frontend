@@ -22,6 +22,7 @@ import { toast } from 'react-toastify';
 import axios from 'axios';
 import AuthContext from '../src/components/Auth';
 import { useRouter } from 'next/router';
+import { event as trackEvent } from '../src/util/gtag';
 
 const FEATURES = ['Order management', 'Customer portal', 'Sales analytics'];
 
@@ -47,6 +48,7 @@ const LoginPage = () => {
     setLoading(true);
     try {
       await login(email, password);
+      trackEvent('login', { method: 'password' });
     } catch (error) {
       console.log(error);
     } finally {
@@ -78,6 +80,7 @@ const LoginPage = () => {
     setLoading(true);
     try {
       await loginWithOtp(phone, otp);
+      trackEvent('login', { method: 'otp' });
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'Invalid or expired OTP');
     } finally {
