@@ -15,10 +15,12 @@ export default function MyDocument(props: DocumentProps & DocumentHeadTagsProps)
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-B3B84C0Y76" />
         <script
           dangerouslySetInnerHTML={{
+            // send_page_view is disabled so that only the public pages
+            // (tracked manually via src/util/gtag) are ever reported to GA.
             __html: `window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
-gtag('config', 'G-B3B84C0Y76');`,
+gtag('config', 'G-B3B84C0Y76', { send_page_view: false });`,
           }}
         />
         {/* End Google tag (gtag.js) */}
