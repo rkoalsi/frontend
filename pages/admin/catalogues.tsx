@@ -22,7 +22,11 @@ import {
   Switch,
 } from '@mui/material';
 import { toast } from 'react-toastify';
-import { Campaign, Edit } from '@mui/icons-material';
+import { Campaign, Edit, Delete } from '@mui/icons-material';
+import {
+  DialogActions,
+  DialogContentText,
+} from '@mui/material';
 import axiosInstance from '../../src/util/axios';
 
 const Catalogues = () => {
@@ -42,6 +46,10 @@ const Catalogues = () => {
   // When editing, selectedCatalogue is non-null.
   const [selectedCatalogue, setSelectedCatalogue]: any = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // State for delete confirmation dialog
+  const [catalogueToDelete, setCatalogueToDelete]: any = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     image_url: '', // will hold the catalogue file link
@@ -177,6 +185,27 @@ const Catalogues = () => {
     }
   };
 
+  // Handler for soft deleting a catalogue
+  const handleConfirmDelete = async () => {
+    if (!catalogueToDelete) return;
+    setDeleting(true);
+    try {
+      await axiosInstance.delete(
+        `/admin/catalogues/${catalogueToDelete._id}/soft_delete`
+      );
+      toast.success('Catalogue deleted successfully');
+      setCatalogueToDelete(null);
+      fetchCatalogues();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(
+        error.response?.data?.detail || 'Error deleting catalogue'
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // Opens dialog for adding a new catalogue.
   const handleAddCatalogue = () => {
     setSelectedCatalogue(null);
@@ -288,7 +317,12 @@ const Catalogues = () => {
                               >
                                 <Campaign />
                               </IconButton>
-                              {/* You could add a delete icon if needed */}
+                              <IconButton
+                                color='error'
+                                onClick={() => setCatalogueToDelete(catalog)}
+                              >
+                                <Delete />
+                              </IconButton>
                             </Box>
                           </TableCell>
                         </TableRow>
@@ -431,6 +465,42 @@ const Catalogues = () => {
             </Button>
           </Box>
         </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={Boolean(catalogueToDelete)}
+        onClose={() => !deleting && setCatalogueToDelete(null)}
+        maxWidth='xs'
+        fullWidth
+      >
+        <DialogTitle>Delete Catalogue</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete{' '}
+            <strong>{catalogueToDelete?.name}</strong>? This action will remove
+            it from the list.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setCatalogueToDelete(null)}
+            disabled={deleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant='contained'
+            color='error'
+            onClick={handleConfirmDelete}
+            disabled={deleting}
+            startIcon={
+              deleting ? <CircularProgress size={16} color='inherit' /> : null
+            }
+          >
+            Delete
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );
