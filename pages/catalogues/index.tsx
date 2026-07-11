@@ -18,6 +18,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import Header from '../../src/components/common/Header';
+import { event as trackEvent } from '../../src/util/gtag';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   ContentCopy,
@@ -266,6 +267,7 @@ function Catalogue(_props: Props) {
   }, []);
 
   const handleOpenCatalogue = useCallback((url: string, name: string) => {
+    trackEvent('select_catalogue', { catalogue_name: name, link_url: url });
     window.open(url, '_blank', 'noopener,noreferrer');
     toast.success(`Opening ${name} catalogue`);
   }, []);
