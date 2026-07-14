@@ -37,6 +37,8 @@ export const TYPE_LABELS: Record<string, string> = {
   draft_sales_order: 'Sales Order',
   draft_invoice: 'Invoice',
   new_product: 'Product',
+  b2b_user_verified: 'B2B Signup',
+  new_lead: 'Lead',
 };
 
 export const TYPE_CHIP_COLORS: Record<
@@ -63,6 +65,8 @@ export const TYPE_CHIP_COLORS: Record<
   draft_sales_order: 'info',
   draft_invoice: 'secondary',
   new_product: 'primary',
+  b2b_user_verified: 'success',
+  new_lead: 'info',
 };
 
 export const TYPE_ACCENT_COLORS: Record<string, string> = {
@@ -86,6 +90,8 @@ export const TYPE_ACCENT_COLORS: Record<string, string> = {
   draft_sales_order: '#64b5f6',
   draft_invoice: '#9a85c9',
   new_product: '#7c6fcd',
+  b2b_user_verified: '#66bb6a',
+  new_lead: '#64b5f6',
 };
 
 const ICONS: Record<string, React.ReactElement> = {
@@ -109,6 +115,8 @@ const ICONS: Record<string, React.ReactElement> = {
   draft_sales_order: <ReceiptOutlined fontSize='small' />,
   draft_invoice: <ReceiptOutlined fontSize='small' />,
   new_product: <AddBoxOutlined fontSize='small' />,
+  b2b_user_verified: <PersonAddOutlined fontSize='small' />,
+  new_lead: <PersonAddOutlined fontSize='small' />,
 };
 
 export function NotificationIcon({ type }: { type: string }) {
