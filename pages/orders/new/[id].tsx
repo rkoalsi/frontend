@@ -29,6 +29,7 @@ import {
   DialogContent,
   DialogActions,
   Chip,
+  ButtonBase,
   Tooltip,
   Slide,
   Divider,
@@ -57,6 +58,7 @@ import {
   CheckCircle,
   Percent,
   Close,
+  PictureAsPdf,
 } from '@mui/icons-material';
 import useDebounce from '../../../src/util/useDebounce';
 import { getEffectiveMarginPct } from '../../../src/util/margin';
@@ -127,6 +129,74 @@ const NavButton = styled(Button)(() => ({
   fontWeight: 700,
   borderRadius: 24,
 }));
+
+// Combined estimate pill: the estimate number (tap to copy) and a Download PDF
+// action joined into one segmented control so they read as a single unit rather
+// than two loose chips. `accent` tints the whole pill (primary for stock,
+// warning for pre-order).
+const EstimatePill = ({
+  numberLabel,
+  accent,
+  onCopy,
+  onDownload,
+  copyTitle,
+}: {
+  numberLabel: string;
+  accent: string;
+  onCopy: () => void;
+  onDownload: () => void;
+  copyTitle: string;
+}) => (
+  <Box
+    sx={{
+      display: 'inline-flex',
+      alignItems: 'stretch',
+      borderRadius: '16px',
+      border: `1.5px solid ${accent}80`,
+      overflow: 'hidden',
+      height: 26,
+    }}
+  >
+    <Tooltip title={copyTitle}>
+      <ButtonBase
+        onClick={onCopy}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.5,
+          px: 1.25,
+          fontWeight: 600,
+          fontSize: '0.7rem',
+          color: accent,
+          '&:hover': { bgcolor: 'action.hover' },
+        }}
+      >
+        <ContentCopy sx={{ fontSize: 12 }} />
+        {numberLabel}
+      </ButtonBase>
+    </Tooltip>
+    <Tooltip title='Download estimate PDF'>
+      <ButtonBase
+        onClick={onDownload}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.5,
+          px: 1.25,
+          fontWeight: 700,
+          fontSize: '0.7rem',
+          color: accent,
+          borderLeft: `1.5px solid ${accent}80`,
+          bgcolor: `${accent}14`,
+          '&:hover': { bgcolor: `${accent}26` },
+        }}
+      >
+        <PictureAsPdf sx={{ fontSize: 14 }} />
+        PDF
+      </ButtonBase>
+    </Tooltip>
+  </Box>
+);
 
 // Create an Axios instance
 const api = axios.create({
@@ -510,28 +580,26 @@ const NewOrder: React.FC = () => {
   const customerRef = useRef<any>(null);
   const getOrder = useCallback(async () => {
     try {
-      // Single bootstrap request: returns the order plus (for authenticated
-      // users) the customer, special-margins list, address details, and
-      // hydrated product details — collapsing what used to be a 3–4 hop
-      // waterfall (order → customer → margins/addresses + product batch) into
-      // one round trip. Shared-link guests get order + product_details only;
-      // customer PII stays server-gated behind auth exactly as before.
-      const resp = await api.get(`/orders/${id}/bootstrap`);
+      // Two-stage load, tuned for perceived speed on slow networks:
+      //   1. Fetch the order alone and paint immediately — header, status,
+      //      addresses and the pricing (special_margins) map all come from the
+      //      order document, so the page stops looking empty right away.
+      //   2. Fetch the supplementary data (customer, product details, margins
+      //      list, address details) in ONE parallel batch. These only need the
+      //      order's customer_id / product ids, so firing them together removes
+      //      the old customer→(margins+addresses) 3rd hop without gating the
+      //      fast order payload behind the slowest query (which is what made a
+      //      single all-in-one request feel slower).
+      const resp = await api.get(`/orders/${id}`);
       const orderData = resp.data;
 
-      if (orderData.customer && orderData.customer_id && customerRef.current !== orderData.customer_id) {
-        customerRef.current = orderData.customer_id;
-        setCustomer(orderData.customer);
-        setReferenceNumber(orderData?.reference_number);
-      }
-
+      // ---- Stage 1: paint from the order ----
       if (orderData.billing_address) setBillingAddress(orderData.billing_address);
       if (orderData.shipping_address) setShippingAddress(orderData.shipping_address);
       if (orderData.spreadsheet_created) setLink(orderData.spreadsheet_url);
-
       // Seed special margins from the order itself — this is what shared-link
       // visitors price with; authenticated users get the same data refreshed
-      // by the customer effect once the customer loads.
+      // by the supplementary fetch below.
       if (
         orderData.special_margins &&
         Object.keys(orderData.special_margins).length > 0
@@ -540,39 +608,70 @@ const NewOrder: React.FC = () => {
           Object.keys(prev).length > 0 ? prev : orderData.special_margins
         );
       }
+      setOrder(orderData);
+      hasOrderLoaded.current = true;
 
-      // Seed the special-margins list + address details from the bootstrap
-      // payload (authenticated users only — empty arrays for guests) so the
-      // customer effect below can skip its initial fetch. This is what removes
-      // the customer→(margins + addresses) sequential hop.
-      if (orderData.customer_id) {
-        if (Array.isArray(orderData.special_margins_list) && orderData.special_margins_list.length > 0) {
-          const products = orderData.special_margins_list;
-          setSpecialMarginsList(products);
-          setSpecialMargins((prev) =>
-            Object.keys(prev).length > 0
-              ? prev
-              : products.reduce((acc: any, item: any) => {
-                  acc[item.product_id] = item.margin;
-                  return acc;
-                }, {})
-          );
+      // ---- Stage 2: supplementary data, all in parallel (one hop) ----
+      // customer / margins / addresses are JWT-only endpoints → they resolve to
+      // null for unauthenticated shared-link guests (caught below), exactly as
+      // before. /products/batch is public.
+      const hasCustomer = !!orderData.customer_id;
+      const isNewCustomer = hasCustomer && customerRef.current !== orderData.customer_id;
+      const productIds = (orderData.products || [])
+        .map((p: any) => p.product_id)
+        .filter(Boolean)
+        .join(',');
+
+      const [customerRes, batchRes, marginsRes, addressRes] = await Promise.all([
+        isNewCustomer
+          ? api.get(`/customers/${orderData.customer_id}`).catch(() => null)
+          : Promise.resolve(null),
+        productIds
+          ? api.get(`/products/batch?ids=${productIds}`).catch(() => null)
+          : Promise.resolve(null),
+        hasCustomer
+          ? api.get(`/customers/special_margins/${orderData.customer_id}`).catch(() => null)
+          : Promise.resolve(null),
+        hasCustomer
+          ? api.get(`/customer_address_details/${orderData.customer_id}`).catch(() => null)
+          : Promise.resolve(null),
+      ]);
+
+      if (customerRes && isNewCustomer) {
+        customerRef.current = orderData.customer_id;
+        setCustomer(customerRes.data.customer);
+        setReferenceNumber(orderData?.reference_number);
+        // Margins + address details are already loaded here, so tell the
+        // customer effect to skip its (now redundant) initial fetch.
+        if (customerRes.data.customer?._id) {
+          bootstrapSeededCustomerId.current = customerRes.data.customer._id;
         }
-        if (Array.isArray(orderData.address_details)) {
-          setAddressDetails(
-            orderData.address_details.reduce((acc: Record<string, any>, item: any) => {
-              acc[item.address_id] = item;
-              return acc;
-            }, {})
-          );
-        }
-        // Tell the customer effect its data is already loaded for this customer
-        // so it doesn't immediately re-fetch what bootstrap just delivered.
-        if (orderData.customer?._id) bootstrapSeededCustomerId.current = orderData.customer._id;
       }
 
-      if (orderData.products && orderData.products.length > 0) {
-        const productMap: Record<string, any> = orderData.product_details || {};
+      if (marginsRes?.data?.products?.length) {
+        const products = marginsRes.data.products;
+        setSpecialMarginsList(products);
+        setSpecialMargins((prev) =>
+          Object.keys(prev).length > 0
+            ? prev
+            : products.reduce((acc: any, item: any) => {
+                acc[item.product_id] = item.margin;
+                return acc;
+              }, {})
+        );
+      }
+
+      if (Array.isArray(addressRes?.data?.address_details)) {
+        setAddressDetails(
+          addressRes.data.address_details.reduce((acc: Record<string, any>, item: any) => {
+            acc[item.address_id] = item;
+            return acc;
+          }, {})
+        );
+      }
+
+      if (batchRes && orderData.products && orderData.products.length > 0) {
+        const productMap: Record<string, any> = batchRes.data.products || {};
         const removedPreOrderNames: string[] = [];
         const detailedProducts = orderData.products.reduce((acc: any[], p: any) => {
           const currentProduct = productMap[p.product_id] || {};
@@ -595,9 +694,6 @@ const NewOrder: React.FC = () => {
           }, 500);
         }
       }
-
-      setOrder(orderData);
-      hasOrderLoaded.current = true;
     } catch (error) {
       console.error('Error fetching order:', error);
     }
@@ -890,6 +986,44 @@ const NewOrder: React.FC = () => {
     }
   };
 
+  // Download the finalised estimate PDF. Uses plain axios against the public
+  // /orders/download_pdf endpoint so it works for logged-in sales/admin users
+  // AND unauthenticated shared-link guests alike.
+  const handleDownloadEstimate = async (type: 'stock' | 'pre_order' = 'stock') => {
+    if (!order?._id) return;
+    try {
+      const apiUrl =
+        type === 'pre_order'
+          ? `${process.env.api_url}/orders/download_pdf/${order._id}?type=pre_order`
+          : `${process.env.api_url}/orders/download_pdf/${order._id}`;
+      const resp = await axios.get(apiUrl, { responseType: 'blob' });
+      if (resp.data.type !== 'application/pdf') {
+        toast.error('Estimate Not Created');
+        return;
+      }
+      let fileName =
+        type === 'pre_order'
+          ? `${order.pre_order_estimate_number}.pdf`
+          : `${order.estimate_number}.pdf`;
+      const contentDisposition = resp.headers['content-disposition'];
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match?.[1]) fileName = match[1];
+      }
+      const blob = new Blob([resp.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to download PDF');
+    }
+  };
+
   const updateCart = async () => {
     setLoading(true);
     try {
@@ -1177,47 +1311,31 @@ const NewOrder: React.FC = () => {
                   />
                 )}
 
-                {/* Estimate number */}
+                {/* Estimate — number (tap to copy) + Download combined into one
+                    segmented pill so the two actions read as a single unit. */}
                 {order?.estimate_created && (
-                  <Tooltip title='Copy estimate number'>
-                    <Chip
-                      size='small'
-                      label={`${order.estimate_number}${order.estimate_status ? ` · ${order.estimate_status.charAt(0).toUpperCase() + order.estimate_status.slice(1)}` : ''}`}
-                      icon={<ContentCopy sx={{ fontSize: '12px !important' }} />}
-                      onClick={handleCopyEstimate}
-                      variant='outlined'
-                      sx={{
-                        fontWeight: 600,
-                        fontSize: '0.7rem',
-                        cursor: 'pointer',
-                        '&:hover': { bgcolor: 'action.hover' },
-                      }}
-                    />
-                  </Tooltip>
+                  <EstimatePill
+                    numberLabel={`${order.estimate_number}${order.estimate_status ? ` · ${order.estimate_status.charAt(0).toUpperCase() + order.estimate_status.slice(1)}` : ''}`}
+                    accent={theme.palette.primary.main}
+                    onCopy={handleCopyEstimate}
+                    onDownload={() => handleDownloadEstimate('stock')}
+                    copyTitle='Copy estimate number'
+                  />
                 )}
 
-                {/* Pre-order estimate number */}
+                {/* Pre-order estimate — same combined pill, warning accent. */}
                 {order?.pre_order_estimate_created && (
-                  <Tooltip title='Copy pre-order estimate number'>
-                    <Chip
-                      size='small'
-                      label={`${order.pre_order_estimate_number} (Pre Order)${order.pre_order_estimate_status ? ` · ${order.pre_order_estimate_status.charAt(0).toUpperCase() + order.pre_order_estimate_status.slice(1)}` : ''}`}
-                      icon={<ContentCopy sx={{ fontSize: '12px !important' }} />}
-                      onClick={async () => {
-                        if (order?.pre_order_estimate_number && (await copyToClipboard(order.pre_order_estimate_number))) {
-                          toast.success('Pre-order estimate number copied');
-                        }
-                      }}
-                      variant='outlined'
-                      color='warning'
-                      sx={{
-                        fontWeight: 600,
-                        fontSize: '0.7rem',
-                        cursor: 'pointer',
-                        '&:hover': { bgcolor: 'action.hover' },
-                      }}
-                    />
-                  </Tooltip>
+                  <EstimatePill
+                    numberLabel={`${order.pre_order_estimate_number} (Pre Order)${order.pre_order_estimate_status ? ` · ${order.pre_order_estimate_status.charAt(0).toUpperCase() + order.pre_order_estimate_status.slice(1)}` : ''}`}
+                    accent={theme.palette.warning.main}
+                    onCopy={async () => {
+                      if (order?.pre_order_estimate_number && (await copyToClipboard(order.pre_order_estimate_number))) {
+                        toast.success('Pre-order estimate number copied');
+                      }
+                    }}
+                    onDownload={() => handleDownloadEstimate('pre_order')}
+                    copyTitle='Copy pre-order estimate number'
+                  />
                 )}
 
                 {/* Generate Shared Link — moved here from footer */}
@@ -1255,10 +1373,13 @@ const NewOrder: React.FC = () => {
               </Box>
             </Box>
           </Box>
-        ) : !order && id ? (
-          /* Order still loading — show a skeleton instead of the (misleading)
-             "select a customer" empty state so the page reads as populating
-             rather than empty on slow networks. */
+        ) : !isSharedGuest && ((!order && id) || order?.customer_id) ? (
+          /* Still loading the customer for this order — keep the skeleton up
+             instead of briefly flashing the "Create New Order" empty state
+             between the order arriving (stage 1) and the customer arriving
+             (stage 2). The empty state is only correct for a genuinely
+             customer-less new order (order loaded, no customer_id). Shared
+             guests never get a customer, so they skip the skeleton. */
           <Box display='flex' flexDirection='column' gap={1.5}>
             <Skeleton variant='text' width={90} height={16} />
             <Skeleton variant='text' width='55%' height={36} />
@@ -1711,6 +1832,32 @@ const NewOrder: React.FC = () => {
                   width: isMobile ? '100%' : 'auto',
                 }}
               >
+                {/* Download estimate PDF — last step, once an estimate exists.
+                    Visible to every role (logged-in AND shared-link guests) since
+                    the header download button only renders for authenticated users. */}
+                {activeStep === STEP_HELP.length - 1 && order?.estimate_created && (
+                  <NavButton
+                    variant='outlined'
+                    color='primary'
+                    fullWidth={isMobile}
+                    startIcon={<PictureAsPdf sx={{ fontSize: 18 }} />}
+                    onClick={() => handleDownloadEstimate('stock')}
+                  >
+                    Download Estimate
+                  </NavButton>
+                )}
+                {activeStep === STEP_HELP.length - 1 && order?.pre_order_estimate_created && (
+                  <NavButton
+                    variant='outlined'
+                    color='warning'
+                    fullWidth={isMobile}
+                    startIcon={<PictureAsPdf sx={{ fontSize: 18 }} />}
+                    onClick={() => handleDownloadEstimate('pre_order')}
+                  >
+                    Download Pre-Order Estimate
+                  </NavButton>
+                )}
+
                 {/* Save as Draft / Submit Order — last step only.
                     Self-registered customers pay online instead (Pay Now in Review),
                     so the submit button is hidden for them. */}
