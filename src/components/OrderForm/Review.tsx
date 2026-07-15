@@ -15,6 +15,9 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  TextField,
+  InputAdornment,
+  Pagination,
 } from '@mui/material';
 import {
   Edit,
@@ -31,6 +34,9 @@ import {
   ShoppingCartCheckout,
   Payment,
   LocalAtm,
+  Search,
+  WarningAmber,
+  Clear,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -209,6 +215,22 @@ const Review: React.FC<Props> = React.memo((props) => {
   const [paidLocally, setPaidLocally] = useState(false);
   const [isScrollButtonDisabled, setIsScrollButtonDisabled] = useState(false);
   const [downloadMenuAnchor, setDownloadMenuAnchor] = useState<null | HTMLElement>(null);
+
+  // ── Product list controls (search / issues filter / pagination) ──
+  // Search + issues filter are shared, but each section paginates on its own.
+  const PRODUCTS_PER_PAGE = 5;
+  const [productSearch, setProductSearch] = useState('');
+  const [issuesOnly, setIssuesOnly] = useState(false);
+  const [inStockPage, setInStockPage] = useState(1);
+  const [preOrderPage, setPreOrderPage] = useState(1);
+  const [inStockJump, setInStockJump] = useState('');
+  const [preOrderJump, setPreOrderJump] = useState('');
+
+  // Reset both pagers to the first page whenever the active filters change.
+  useEffect(() => {
+    setInStockPage(1);
+    setPreOrderPage(1);
+  }, [productSearch, issuesOnly]);
 
   const scrollToTop = useCallback(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -624,6 +646,131 @@ const Review: React.FC<Props> = React.memo((props) => {
     }
   });
 
+  // ── Search / issues filter / pagination ──────────────────────────
+  // A product has an "issue" when its quantity exceeds available stock
+  // (pre-order items with no stock are excluded — they're fulfilled later).
+  const productHasIssue = (p: any) =>
+    (p.quantity || 1) > (p.stock ?? Infinity) &&
+    !((p.pre_order === true) && (p.stock ?? 0) <= 0);
+
+  const productMatchesSearch = (p: any) => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return true;
+    return [p.name, p.brand, p.cf_sku_code, p.sub_category]
+      .filter(Boolean)
+      .some((v: any) => String(v).toLowerCase().includes(q));
+  };
+
+  const issueCount = products.filter(productHasIssue).length;
+
+  const passesFilters = (p: any) =>
+    productMatchesSearch(p) && (!issuesOnly || productHasIssue(p));
+
+  const filteredInStock = inStockProducts.filter(passesFilters);
+  const filteredPreOrder = preOrderProducts.filter(passesFilters);
+  const totalFiltered = filteredInStock.length + filteredPreOrder.length;
+
+  // Paginate a section independently, returning the current page's slice
+  // (with a continuous 1-based display index) alongside page metadata.
+  const paginate = (list: any[], pageNum: number) => {
+    const total = list.length;
+    const pageCount = Math.max(1, Math.ceil(total / PRODUCTS_PER_PAGE));
+    const safePage = Math.min(pageNum, pageCount);
+    const start = (safePage - 1) * PRODUCTS_PER_PAGE;
+    const slice = list
+      .slice(start, start + PRODUCTS_PER_PAGE)
+      .map((p, i) => ({ p, displayIndex: start + i }));
+    return { total, pageCount, safePage, start, slice };
+  };
+
+  const inStockPaged = paginate(filteredInStock, inStockPage);
+  const preOrderPaged = paginate(filteredPreOrder, preOrderPage);
+
+  const filtersActive = productSearch.trim().length > 0 || issuesOnly;
+
+  const clearFilters = () => {
+    setProductSearch('');
+    setIssuesOnly(false);
+  };
+
+  // Shared renderer for a section's result-count + pagination footer.
+  const renderPaginationBar = (
+    paged: ReturnType<typeof paginate>,
+    setPageFn: (v: number) => void,
+    jumpVal: string,
+    setJumpVal: (v: string) => void,
+    color: 'primary' | 'standard'
+  ) => {
+    const applyJump = () => {
+      const target = parseInt(jumpVal, 10);
+      if (!isNaN(target)) setPageFn(Math.min(Math.max(target, 1), paged.pageCount));
+      setJumpVal('');
+    };
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
+          justifyContent: 'space-between',
+          gap: 1.5,
+          mt: 2,
+          pt: 1.5,
+          borderTop: `1px solid ${theme.palette.divider}`,
+        }}
+      >
+        <Typography variant='caption' color='text.secondary' sx={{ flexShrink: 0 }}>
+          {paged.total === 0
+            ? 'No items'
+            : `Showing ${paged.start + 1}–${Math.min(paged.start + PRODUCTS_PER_PAGE, paged.total)} of ${paged.total} · Page ${paged.safePage} / ${paged.pageCount}`}
+        </Typography>
+        {paged.pageCount > 1 && (
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: { xs: 'center', sm: 'flex-end' },
+              gap: 1,
+            }}
+          >
+            <Pagination
+              count={paged.pageCount}
+              page={paged.safePage}
+              onChange={(_e, value) => setPageFn(value)}
+              color={color}
+              size={isMobile ? 'small' : 'medium'}
+              siblingCount={isMobile ? 0 : 1}
+              boundaryCount={1}
+            />
+            <Box display='flex' alignItems='center' gap={0.75}>
+              <Typography variant='caption' color='text.secondary'>
+                Jump to
+              </Typography>
+              <TextField
+                size='small'
+                type='number'
+                value={jumpVal}
+                onChange={(e) => setJumpVal(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') applyJump();
+                }}
+                onBlur={applyJump}
+                inputProps={{
+                  min: 1,
+                  max: paged.pageCount,
+                  'aria-label': 'Jump to page',
+                  style: { textAlign: 'center', padding: '6px 8px', fontSize: '16px' },
+                }}
+                sx={{ width: 64, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              />
+            </Box>
+          </Box>
+        )}
+      </Box>
+    );
+  };
+
   return (
     <Box sx={{ p: { xs: 0, sm: 1 }, width: '100%', position: 'relative' }}>
       {/* ── Header ── */}
@@ -722,6 +869,20 @@ const Review: React.FC<Props> = React.memo((props) => {
               </Typography>
             ))}
           </Box>
+          {issueCount > 0 && (
+            <Button
+              size='small'
+              variant={issuesOnly ? 'contained' : 'outlined'}
+              color='warning'
+              startIcon={<WarningAmber />}
+              onClick={() => setIssuesOnly((v) => !v)}
+              sx={{ mt: 1, textTransform: 'none', fontWeight: 700, borderRadius: 24 }}
+            >
+              {issuesOnly
+                ? `Showing ${issueCount} product${issueCount !== 1 ? 's' : ''} with issues — Show all`
+                : `Show ${issueCount} product${issueCount !== 1 ? 's' : ''} with issues`}
+            </Button>
+          )}
         </Alert>
       )}
 
@@ -922,8 +1083,106 @@ const Review: React.FC<Props> = React.memo((props) => {
         </Paper>
       </Stack>
 
+      {/* ── Product list controls: search · issues filter ── */}
+      {products.length > 0 && (
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 1.5, sm: 2 },
+            mb: 2,
+            borderRadius: 2,
+            border: `1px solid ${theme.palette.divider}`,
+            bgcolor: 'background.paper',
+            position: { md: 'sticky' },
+            top: { md: 8 },
+            zIndex: 2,
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' },
+              alignItems: { xs: 'stretch', md: 'center' },
+              gap: 1.5,
+            }}
+          >
+            <TextField
+              size='small'
+              fullWidth
+              placeholder='Search products by name, brand or SKU…'
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position='start'>
+                    <Search sx={{ fontSize: 20, color: 'text.disabled' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: productSearch ? (
+                  <InputAdornment position='end'>
+                    <IconButton size='small' onClick={() => setProductSearch('')} edge='end'>
+                      <Clear sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </InputAdornment>
+                ) : undefined,
+                sx: { borderRadius: 24, fontSize: '0.9rem' },
+              }}
+              sx={{ flex: 1, minWidth: 0 }}
+            />
+            {issueCount > 0 && (
+              <Button
+                size='small'
+                variant={issuesOnly ? 'contained' : 'outlined'}
+                color='error'
+                startIcon={<WarningAmber />}
+                onClick={() => setIssuesOnly((v) => !v)}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  borderRadius: 24,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                {issuesOnly ? 'Issues only ✓' : `${issueCount} with issues`}
+              </Button>
+            )}
+          </Box>
+        </Paper>
+      )}
+
+      {/* ── No results (search / filter matched nothing) ── */}
+      {products.length > 0 && totalFiltered === 0 && (
+        <Paper
+          elevation={0}
+          sx={{
+            py: 5,
+            px: 3,
+            mb: 2,
+            textAlign: 'center',
+            borderRadius: 2,
+            border: `1px dashed ${theme.palette.divider}`,
+          }}
+        >
+          <Search sx={{ fontSize: 36, color: 'text.disabled', mb: 1 }} />
+          <Typography variant='body2' color='text.secondary' fontWeight={600}>
+            {issuesOnly
+              ? 'No products with stock issues match your search'
+              : 'No products match your search'}
+          </Typography>
+          <Button
+            variant='text'
+            size='small'
+            onClick={clearFilters}
+            sx={{ mt: 1, textTransform: 'none', fontWeight: 700 }}
+          >
+            Clear filters
+          </Button>
+        </Paper>
+      )}
+
       {/* ── In-Stock Products ── */}
-      {(inStockProducts.length > 0 || products.length === 0) && (
+      {(inStockPaged.slice.length > 0 || (products.length === 0)) && (
         <Paper
           elevation={0}
           sx={{
@@ -938,7 +1197,7 @@ const Review: React.FC<Props> = React.memo((props) => {
             icon={<ShoppingCart sx={{ color: primaryColor, fontSize: 18 }} />}
             title='In Stock Items'
             color={primaryColor}
-            badge={inStockProducts.length}
+            badge={filtersActive ? filteredInStock.length : inStockProducts.length}
             onEdit={!isShared ? () => setActiveStep(3) : undefined}
           />
 
@@ -956,12 +1215,12 @@ const Review: React.FC<Props> = React.memo((props) => {
           )}
 
           <Box display='flex' flexDirection='column' gap={1.5}>
-            {inStockProducts.length === 0 ? (
+            {inStockPaged.slice.length === 0 ? (
               <Typography variant='body2' color='text.disabled' textAlign='center' py={4}>
                 No in-stock products added
               </Typography>
             ) : (
-              inStockProducts.map((product, index) => {
+              inStockPaged.slice.map(({ p: product, displayIndex: index }) => {
                 const { sellingPrice, itemTotal, marginPercent } = calculatePrices(product);
                 const isActive = product.status !== 'inactive';
                 const productId = product._id;
@@ -1090,9 +1349,25 @@ const Review: React.FC<Props> = React.memo((props) => {
                         </Box>
                       </Box>
                       {!product.pre_order && product.quantity > product.stock && (
-                        <Typography variant='caption' color='error.main' sx={{ display: 'block', px: { xs: 1.75, sm: 2 }, pb: 1, mt: -0.5 }}>
-                          ⚠ Exceeds stock ({product.stock} available)
-                        </Typography>
+                        <Box sx={{ px: { xs: 1.75, sm: 2 }, pb: 1.25, pt: 0.25 }}>
+                          <Box
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              px: 1,
+                              py: 0.4,
+                              borderRadius: 1,
+                              bgcolor: isDark ? 'rgba(244,67,54,0.18)' : 'rgba(244,67,54,0.1)',
+                              border: `1px solid ${theme.palette.error.main}`,
+                            }}
+                          >
+                            <WarningAmber sx={{ fontSize: 15, color: 'error.main' }} />
+                            <Typography variant='caption' color='error.main' fontWeight={700}>
+                              Exceeds stock — only {product.stock} available
+                            </Typography>
+                          </Box>
+                        </Box>
                       )}
                     </Box>
                   </Box>
@@ -1101,15 +1376,35 @@ const Review: React.FC<Props> = React.memo((props) => {
             )}
           </Box>
 
+          {/* Pagination */}
+          {renderPaginationBar(inStockPaged, setInStockPage, inStockJump, setInStockJump, 'primary')}
+
           {/* Section footer */}
           {inStockProducts.length > 0 && (
-            <Box display='flex' justifyContent='space-between' alignItems='center' mt={2} pt={1.5} borderTop={`1px solid ${theme.palette.divider}`}>
-              <Box display='flex' alignItems='center' gap={1}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between',
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                gap: { xs: 1, sm: 2 },
+                mt: 2,
+                pt: 1.5,
+                borderTop: `1px solid ${theme.palette.divider}`,
+              }}
+            >
+              <Box display='flex' alignItems='center' gap={1} sx={{ minWidth: 0, maxWidth: '100%' }}>
                 {order?.estimate_number && (
-                  <Chip label={`Estimate: ${order.estimate_number}`} size='small' color='success' variant='outlined' sx={{ fontSize: '0.7rem' }} />
+                  <Chip
+                    label={`Estimate: ${order.estimate_number}`}
+                    size='small'
+                    color='success'
+                    variant='outlined'
+                    sx={{ fontSize: '0.7rem', maxWidth: '100%', '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' } }}
+                  />
                 )}
               </Box>
-              <Typography variant='body2' fontWeight={700} color='text.primary'>
+              <Typography variant='body2' fontWeight={700} color='text.primary' sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
                 Subtotal: ₹{inStockProducts.reduce((acc, p) => { const { sellingPrice } = calculatePrices(p); return acc + sellingPrice * (p.quantity || 1); }, 0).toLocaleString('en-IN')}
               </Typography>
             </Box>
@@ -1118,7 +1413,7 @@ const Review: React.FC<Props> = React.memo((props) => {
       )}
 
       {/* ── Pre-Order Products ── */}
-      {preOrderProducts.length > 0 && (
+      {preOrderPaged.slice.length > 0 && (
         <Paper
           elevation={0}
           sx={{
@@ -1133,7 +1428,7 @@ const Review: React.FC<Props> = React.memo((props) => {
             icon={<ShoppingCart sx={{ color: theme.palette.warning.main, fontSize: 18 }} />}
             title='Pre-Order Items'
             color={theme.palette.warning.main}
-            badge={preOrderProducts.length}
+            badge={filtersActive ? filteredPreOrder.length : preOrderProducts.length}
             onEdit={!isShared ? () => setActiveStep(3) : undefined}
           />
 
@@ -1149,7 +1444,7 @@ const Review: React.FC<Props> = React.memo((props) => {
           </Box>
 
           <Box display='flex' flexDirection='column' gap={1.5}>
-            {preOrderProducts.map((product, index) => {
+            {preOrderPaged.slice.map(({ p: product, displayIndex: index }) => {
               const { sellingPrice, itemTotal, marginPercent } = calculatePrices(product);
               const isActive = product.status !== 'inactive';
               const productId = product._id;
@@ -1289,14 +1584,34 @@ const Review: React.FC<Props> = React.memo((props) => {
             })}
           </Box>
 
+          {/* Pagination */}
+          {renderPaginationBar(preOrderPaged, setPreOrderPage, preOrderJump, setPreOrderJump, 'standard')}
+
           {/* Section footer */}
-          <Box display='flex' justifyContent='space-between' alignItems='center' mt={2} pt={1.5} borderTop={`1px solid ${theme.palette.divider}`}>
-            <Box display='flex' alignItems='center' gap={1}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              gap: { xs: 1, sm: 2 },
+              mt: 2,
+              pt: 1.5,
+              borderTop: `1px solid ${theme.palette.divider}`,
+            }}
+          >
+            <Box display='flex' alignItems='center' gap={1} sx={{ minWidth: 0, maxWidth: '100%' }}>
               {order?.pre_order_estimate_number && (
-                <Chip label={`Pre-Order Estimate: ${order.pre_order_estimate_number}`} size='small' color='warning' variant='outlined' sx={{ fontSize: '0.7rem' }} />
+                <Chip
+                  label={`Pre-Order Estimate: ${order.pre_order_estimate_number}`}
+                  size='small'
+                  color='warning'
+                  variant='outlined'
+                  sx={{ fontSize: '0.7rem', maxWidth: '100%', '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' } }}
+                />
               )}
             </Box>
-            <Typography variant='body2' fontWeight={700} color='text.primary'>
+            <Typography variant='body2' fontWeight={700} color='text.primary' sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
               Subtotal: ₹{preOrderProducts.reduce((acc, p) => { const { sellingPrice } = calculatePrices(p); return acc + sellingPrice * (p.quantity || 1); }, 0).toLocaleString('en-IN')}
             </Typography>
           </Box>
