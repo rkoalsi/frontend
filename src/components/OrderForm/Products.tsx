@@ -79,6 +79,40 @@ const SPECIAL_OFFERS_ICON = "https://assets.pupscribe.in/assets/special_offers.p
 const brandDisplayName = (brand?: string) =>
   brand === "Clearance" ? "Special Offers" : brand;
 
+// ── Stale-while-revalidate cache for the default catalogue init payload ──
+// Brands/counts/categories/first-page-of-New-Arrivals change rarely, so we
+// persist the last /products/catalogue/init response and paint from it
+// instantly on the next load while revalidating in the background. This is the
+// big perceived-speed win for repeat visits on slow networks.
+const CATALOGUE_INIT_CACHE_KEY = "of_catalogue_init_v1";
+const CATALOGUE_INIT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+const readCatalogueInitCache = (): any | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(CATALOGUE_INIT_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.data || !parsed?.ts) return null;
+    if (Date.now() - parsed.ts > CATALOGUE_INIT_CACHE_TTL) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+};
+
+const writeCatalogueInitCache = (data: any): void => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      CATALOGUE_INIT_CACHE_KEY,
+      JSON.stringify({ ts: Date.now(), data })
+    );
+  } catch {
+    /* quota / private-mode — cache is best-effort */
+  }
+};
+
 interface SearchResult {
   id?: number;
   _id: string;
@@ -617,6 +651,9 @@ const Products: React.FC<ProductsProps> = ({
     order?.spreadsheet_created ? order?.spreadsheet_url : ""
   );
   const isFetching = useRef<{ [key: string]: boolean }>({});
+  // One-time marker: the productsKey that catalogue/init already seeded, so the
+  // trigger effect can skip the immediate redundant refetch of that view.
+  const initSeededKeyRef = useRef<string | null>(null);
   const cardScrollRef = useRef<HTMLDivElement>(null);
   const pageTopRef = useRef<HTMLDivElement>(null);
   const pageBottomRef = useRef<HTMLDivElement>(null);
@@ -1023,6 +1060,78 @@ const Products: React.FC<ProductsProps> = ({
       showError("Failed to fetch product counts.");
     }
   }, [showError]);
+
+  // Seed component state from a /products/catalogue/init payload for the default
+  // (New Arrivals) landing view. Used both for the SWR cache paint and the live
+  // network response. Only handles the New Arrivals default — for that view the
+  // init endpoint's category=None / grouped items map exactly to the
+  // "New Arrivals-All Products" key, so we can seed products with no mismatch.
+  const applyNewArrivalsInit = useCallback((data: any) => {
+    const allBrands: { brand: string; url: string | null }[] = (data.brands || []).map(
+      (b: any) => ({ brand: b.brand, url: b.image ?? b.url ?? null })
+    );
+    const newArrivalsBrand = {
+      brand: "New Arrivals",
+      url: "https://assets.pupscribe.in/brands/new-arrivals.svg",
+    };
+    const preOrdersBrand = { brand: "Pre Orders", url: null };
+    const clearanceBrand = { brand: "Clearance", url: null };
+    const brandsWithNewArrivals = [newArrivalsBrand, preOrdersBrand, clearanceBrand, ...allBrands];
+
+    setBrandList(brandsWithNewArrivals);
+    if (data.counts) setProductCounts(data.counts);
+    setActiveBrand((prev) => prev || "New Arrivals");
+    setActiveCategory((prev) => prev || "All Products");
+    setCategoriesByBrand((prev) => ({ ...prev, "New Arrivals": ["All Products"] }));
+
+    const items = data.items || [];
+    const key = "New Arrivals-All Products";
+    setProductsByBrandCategory((prev: any) =>
+      brandsWithNewArrivals.reduce(
+        (acc: any, b) => ({ ...acc, [b.brand]: prev[b.brand] ?? [] }),
+        { ...prev, [key]: { items } }
+      )
+    );
+    setPaginationState((prev) => ({
+      ...prev,
+      [key]: { page: 1, hasMore: items.length >= 200 },
+    }));
+    // Tell the trigger effect this key is already loaded — skip the immediate refetch.
+    initSeededKeyRef.current = key;
+  }, []);
+
+  // Combined initial load: one request for brands + counts + categories +
+  // first page of products, replacing the brands→categories→products waterfall.
+  // Only used for the default landing (no URL brand/search); any preselected
+  // brand/search falls back to the original independent fetches so their
+  // (different) default-category logic is untouched.
+  const fetchCatalogueInit = useCallback(async () => {
+    const urlBrand = getUrlParam("brand");
+    const urlSearch = getUrlParam("search");
+    if (urlBrand || urlSearch) {
+      fetchAllBrands();
+      fetchProductCounts();
+      return;
+    }
+    try {
+      setLoading(true);
+      // Paint instantly from cache (stale-while-revalidate).
+      const cached = readCatalogueInitCache();
+      if (cached) applyNewArrivalsInit(cached);
+      const response = await axios.get(
+        `${process.env.api_url}/products/catalogue/init`,
+        { params: { brand: "New Arrivals" } }
+      );
+      writeCatalogueInitCache(response.data);
+      applyNewArrivalsInit(response.data);
+    } catch (error) {
+      // Fall back to the original independent calls on failure.
+      fetchAllBrands();
+      fetchProductCounts();
+    } finally {
+      setLoading(false);
+    }
+  }, [applyNewArrivalsInit, fetchAllBrands, fetchProductCounts]);
 
 
 
@@ -1476,6 +1585,15 @@ const Products: React.FC<ProductsProps> = ({
   ]);
 
   useEffect(() => {
+    // Consume the one-time catalogue/init seed: if this exact view was just
+    // seeded, skip the immediate refetch that would overwrite it. Once the user
+    // navigates to a different view the seed is spent.
+    if (initSeededKeyRef.current) {
+      if (initSeededKeyRef.current === productsKey && productsByBrandCategory[productsKey]) {
+        return;
+      }
+      initSeededKeyRef.current = null;
+    }
     if (groupByCategory) {
       fetchAllCategories();
     } else if (activeBrand && !categoriesByBrand[activeBrand]) {
@@ -1484,6 +1602,10 @@ const Products: React.FC<ProductsProps> = ({
       // Only call this if we have both brand and category set, and categories are already loaded
       resetPaginationAndFetch(activeBrand, activeCategory);
     }
+    // productsKey is read for the init-seed guard only; intentionally not a dep
+    // so this effect keeps its original brand/category-driven trigger cadence
+    // (adding it would also fire on search/sort changes — a regression).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeBrand,
     activeCategory,
@@ -1495,9 +1617,11 @@ const Products: React.FC<ProductsProps> = ({
   ]);
 
   useEffect(() => {
-    fetchAllBrands();
-    fetchProductCounts();
-  }, [fetchAllBrands, fetchProductCounts]);
+    // One combined request (brands + counts + categories + first page) for the
+    // default landing view; falls back to independent fetches for preselected
+    // brand/search inside fetchCatalogueInit.
+    fetchCatalogueInit();
+  }, [fetchCatalogueInit]);
 
   // Keep URL in sync with active brand, category, and search (combined into one effect)
   useEffect(() => {
