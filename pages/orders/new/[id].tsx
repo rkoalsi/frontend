@@ -40,6 +40,7 @@ import {
   FormGroup,
   FormControlLabel,
   Checkbox,
+  Skeleton,
 } from '@mui/material';
 import { useTheme, styled } from '@mui/material/styles';
 import CustomerSearchBar from '../../../src/components/OrderForm/CustomerSearchBar';
@@ -111,13 +112,14 @@ const ORDERS_TOUR_STEPS: TourStep[] = [
   },
 ];
 
-// Lazy load heavy components
-const Products = lazy(() =>
-  import('../../../src/components/OrderForm/Products').then(module => ({ default: module.default }))
-);
-const Review = lazy(() =>
-  import('../../../src/components/OrderForm/Review').then(module => ({ default: module.default }))
-);
+// Lazy load heavy components. The import factories are hoisted so we can also
+// *preload* them on mount (see effect below) — customer/shared users land
+// straight on the Products step, so downloading the chunk in parallel with the
+// bootstrap request instead of after it removes a serial delay on slow networks.
+const importProducts = () => import('../../../src/components/OrderForm/Products');
+const importReview = () => import('../../../src/components/OrderForm/Review');
+const Products = lazy(() => importProducts().then(module => ({ default: module.default })));
+const Review = lazy(() => importReview().then(module => ({ default: module.default })));
 
 // Shared styled button — removes repetition across all nav buttons
 const NavButton = styled(Button)(() => ({
@@ -300,9 +302,20 @@ const NewOrder: React.FC = () => {
   const isDark = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // Set by getOrder() when the bootstrap payload already delivered this
+  // customer's margins + address details, so the effect below can skip its
+  // initial (redundant) fetch. Consumed once, then cleared.
+  const bootstrapSeededCustomerId = useRef<string | null>(null);
+
   // ------------------ Fetch Special Margins + Address Details (parallel) --------
   useEffect(() => {
     if (!customer?._id) return;
+    // Bootstrap already seeded margins + address details for this customer —
+    // skip the redundant round trip this once (manual customer changes still fetch).
+    if (bootstrapSeededCustomerId.current === customer._id) {
+      bootstrapSeededCustomerId.current = null;
+      return;
+    }
     const controller = new AbortController();
     const signal = controller.signal;
 
@@ -497,32 +510,18 @@ const NewOrder: React.FC = () => {
   const customerRef = useRef<any>(null);
   const getOrder = useCallback(async () => {
     try {
-      const resp = await api.get(`/orders/${id}`);
-
-      // Kick off customer fetch and product batch fetch in parallel
+      // Single bootstrap request: returns the order plus (for authenticated
+      // users) the customer, special-margins list, address details, and
+      // hydrated product details — collapsing what used to be a 3–4 hop
+      // waterfall (order → customer → margins/addresses + product batch) into
+      // one round trip. Shared-link guests get order + product_details only;
+      // customer PII stays server-gated behind auth exactly as before.
+      const resp = await api.get(`/orders/${id}/bootstrap`);
       const orderData = resp.data;
 
-      const customerPromise =
-        orderData.customer_id && customerRef.current !== orderData.customer_id
-          ? api.get(`/customers/${orderData.customer_id}`).catch(() => null)
-          : Promise.resolve(null);
-
-      const productsPromise =
-        orderData.products && orderData.products.length > 0
-          ? (() => {
-              const ids = orderData.products
-                .map((p: any) => p.product_id)
-                .filter(Boolean)
-                .join(',');
-              return api.get(`/products/batch?ids=${ids}`).catch(() => null);
-            })()
-          : Promise.resolve(null);
-
-      const [customerRes, batchRes] = await Promise.all([customerPromise, productsPromise]);
-
-      if (customerRes && orderData.customer_id && customerRef.current !== orderData.customer_id) {
+      if (orderData.customer && orderData.customer_id && customerRef.current !== orderData.customer_id) {
         customerRef.current = orderData.customer_id;
-        setCustomer(customerRes.data.customer);
+        setCustomer(orderData.customer);
         setReferenceNumber(orderData?.reference_number);
       }
 
@@ -542,8 +541,38 @@ const NewOrder: React.FC = () => {
         );
       }
 
-      if (batchRes && orderData.products && orderData.products.length > 0) {
-        const productMap: Record<string, any> = batchRes.data.products || {};
+      // Seed the special-margins list + address details from the bootstrap
+      // payload (authenticated users only — empty arrays for guests) so the
+      // customer effect below can skip its initial fetch. This is what removes
+      // the customer→(margins + addresses) sequential hop.
+      if (orderData.customer_id) {
+        if (Array.isArray(orderData.special_margins_list) && orderData.special_margins_list.length > 0) {
+          const products = orderData.special_margins_list;
+          setSpecialMarginsList(products);
+          setSpecialMargins((prev) =>
+            Object.keys(prev).length > 0
+              ? prev
+              : products.reduce((acc: any, item: any) => {
+                  acc[item.product_id] = item.margin;
+                  return acc;
+                }, {})
+          );
+        }
+        if (Array.isArray(orderData.address_details)) {
+          setAddressDetails(
+            orderData.address_details.reduce((acc: Record<string, any>, item: any) => {
+              acc[item.address_id] = item;
+              return acc;
+            }, {})
+          );
+        }
+        // Tell the customer effect its data is already loaded for this customer
+        // so it doesn't immediately re-fetch what bootstrap just delivered.
+        if (orderData.customer?._id) bootstrapSeededCustomerId.current = orderData.customer._id;
+      }
+
+      if (orderData.products && orderData.products.length > 0) {
+        const productMap: Record<string, any> = orderData.product_details || {};
         const removedPreOrderNames: string[] = [];
         const detailedProducts = orderData.products.reduce((acc: any[], p: any) => {
           const currentProduct = productMap[p.product_id] || {};
@@ -577,6 +606,15 @@ const NewOrder: React.FC = () => {
   useEffect(() => {
     if (id) getOrder();
   }, [id, getOrder]);
+
+  // Preload the heavy Products/Review chunks on mount so they download in
+  // parallel with the bootstrap fetch rather than serially once the user
+  // reaches the Products step (which is the landing step for customer/shared
+  // users). Failures are non-fatal — Suspense still loads them on demand.
+  useEffect(() => {
+    importProducts();
+    importReview();
+  }, []);
 
   // Auto-fetch and pre-select customer for customer users
   useEffect(() => {
@@ -1216,6 +1254,15 @@ const NewOrder: React.FC = () => {
                 )}
               </Box>
             </Box>
+          </Box>
+        ) : !order && id ? (
+          /* Order still loading — show a skeleton instead of the (misleading)
+             "select a customer" empty state so the page reads as populating
+             rather than empty on slow networks. */
+          <Box display='flex' flexDirection='column' gap={1.5}>
+            <Skeleton variant='text' width={90} height={16} />
+            <Skeleton variant='text' width='55%' height={36} />
+            <Skeleton variant='text' width={120} height={18} />
           </Box>
         ) : (
           /* No customer selected yet */
