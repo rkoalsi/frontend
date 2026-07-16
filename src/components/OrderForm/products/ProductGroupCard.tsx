@@ -40,6 +40,8 @@ interface SearchResult {
   stock: number;
   pre_order?: boolean;
   upcoming_stock?: number;
+  inward_date?: string;
+  eta_port_date?: string;
   new?: boolean;
   item_tax_preferences: any;
   upc_code?: string;
@@ -120,6 +122,26 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
     );
     const isSplitVariant = currentVariant.pre_order === true && (currentVariant.stock ?? 0) > 0;
     const isPreOrderCartGroup = isPreOrderTab && isSplitVariant;
+    // Admin/internal-only logistics dates for pre-order variants
+    const fmtDate = (v?: string) => {
+      if (!v) return '';
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? v : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+    const preOrderDates = (!isShared && currentVariant.pre_order && (currentVariant.inward_date || currentVariant.eta_port_date)) ? (
+      <Box sx={{ mt: 0.5 }}>
+        {currentVariant.eta_port_date && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.6rem', fontWeight: 600 }}>
+            ETA Port: {fmtDate(currentVariant.eta_port_date)}
+          </Typography>
+        )}
+        {currentVariant.inward_date && (
+          <Typography variant="caption" color="warning.main" sx={{ display: 'block', fontSize: '0.6rem', fontWeight: 700 }}>
+            Inward: {fmtDate(currentVariant.inward_date)}
+          </Typography>
+        )}
+      </Box>
+    ) : null;
     const quantity = isPreOrderCartGroup
       ? (selectedProduct?.pre_order_quantity || temporaryQuantities[`${productId}-pre`] || "")
       : (selectedProduct?.quantity || temporaryQuantities[productId] || "");
@@ -605,6 +627,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                     <Typography variant="body1" sx={{ fontWeight: 700, fontSize: '0.95rem', fontFamily: 'system-ui', color: 'warning.main', letterSpacing: '-0.3px' }}>
                       {currentVariant.upcoming_stock ?? '—'}
                     </Typography>
+                    {preOrderDates}
                   </Box>
                 ) : (
                   <Box sx={{ textAlign: 'right' }}>
@@ -640,6 +663,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                           : currentVariant.stock.toLocaleString('en-IN')}
                       </Typography>
                     </Box>
+                    {(isPreOrderTab || (currentVariant.pre_order && (currentVariant.stock ?? 0) <= 0)) && preOrderDates}
                   </Box>
                 )
               )}
