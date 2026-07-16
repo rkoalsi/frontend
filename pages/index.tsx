@@ -14,8 +14,12 @@ import {
   IconButton,
   Skeleton,
   Stack,
+  Avatar,
+  Dialog,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
-import { useContext, useState, useEffect, useCallback } from 'react';
+import { useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import AuthContext from '../src/components/Auth';
 import ProfileIncompleteBanner from '../src/components/ProfileIncompleteBanner';
 import { useRouter } from 'next/router';
@@ -51,7 +55,10 @@ import {
   ReceiptLong,
   Receipt,
   Key,
+  Download,
+  Badge,
 } from '@mui/icons-material';
+import { QRCodeCanvas } from 'qrcode.react';
 import axiosInstance from '../src/util/axios';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -88,6 +95,9 @@ const CUSTOMER_TOUR_STEPS: TourStep[] = [
     content: 'Browse and open catalogues for all our brands right from here. Tap the copy icon to share a link.',
   },
 ];
+
+const BLOG_URL = (process.env.blog_url || 'https://barkbutler.in').replace(/\/$/, '');
+const cardPublicUrl = (slug?: string) => (slug ? `${BLOG_URL}/card/${slug}` : '');
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -450,6 +460,43 @@ const Home = () => {
   const isSalesPerson = user?.role === 'sales_person' || user?.role === 'sales_admin';
 
   const [perfData, setPerfData] = useState<any>(null);
+  const [myCard, setMyCard] = useState<any>(null);
+  const [cardModalOpen, setCardModalOpen] = useState(false);
+
+  // Digital business card linked to this staff account (managed in /admin/cards).
+  useEffect(() => {
+    if (isCustomer || !user?._id) return;
+    let cancelled = false;
+    axiosInstance
+      .get('/cards/mine')
+      .then((res) => {
+        if (!cancelled) setMyCard(res.data?.card || null);
+      })
+      .catch(() => {
+        /* non-critical */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isCustomer, user?._id]);
+
+  const copyCardLink = useCallback((slug?: string) => {
+    const url = cardPublicUrl(slug);
+    if (!url) return;
+    navigator.clipboard
+      .writeText(url)
+      .then(() => toast.success('Card link copied!'))
+      .catch(() => toast.error('Failed to copy link'));
+  }, []);
+
+  const downloadCardQr = useCallback((slug?: string) => {
+    const canvas = document.getElementById('home-card-qr') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const link = document.createElement('a');
+    link.download = `${slug || 'card'}-qr.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }, []);
 
   const fetchPerformance = useCallback(async () => {
     if (!user?._id) return;
@@ -551,7 +598,25 @@ const Home = () => {
       .filter((section) => section.items.length > 0);
   };
 
-  const filteredMenuSections = getFilteredMenuSections();
+  // Inject a "My Digital Card" card into Resources once one exists for this
+  // staff account. Opens the card in a modal (see below) rather than navigating.
+  const filteredMenuSections = useMemo(() => {
+    const sections = getFilteredMenuSections();
+    if (isCustomer || !myCard?.slug) return sections;
+    const cardItem = {
+      icon: <Badge />,
+      text: 'My Digital Card',
+      color: '#0ea5e9',
+      action: 'my_digital_card',
+    };
+    const resources = sections.find((s) => s.title === 'Resources');
+    if (resources) {
+      resources.items = [...resources.items, cardItem as any];
+      return sections;
+    }
+    return [...sections, { title: 'Resources', items: [cardItem as any] }];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.role, myCard?.slug, isCustomer]);
 
   const handleNewOrder = async () => {
     // Self-registered B2B customers must finish onboarding before ordering.
@@ -646,6 +711,9 @@ const Home = () => {
         break;
       case 'new_arrivals':
         router.push('/catalogues/all_products');
+        break;
+      case 'my_digital_card':
+        setCardModalOpen(true);
         break;
       default:
         router.push(action);
@@ -1015,6 +1083,75 @@ const Home = () => {
           )}
         </motion.div>
       </Container>
+
+      {/* My Digital Card modal */}
+      <Dialog open={cardModalOpen} onClose={() => setCardModalOpen(false)} maxWidth='xs' fullWidth>
+        <DialogContent sx={{ textAlign: 'center', pt: 3 }}>
+          <Avatar
+            src={myCard?.photo_url}
+            sx={{ width: 64, height: 64, mx: 'auto', mb: 1.25 }}
+          >
+            {myCard?.name?.[0]}
+          </Avatar>
+          <Box display='flex' alignItems='center' justifyContent='center' gap={0.75}>
+            <Typography fontWeight={700}>{myCard?.name || 'My card'}</Typography>
+            {myCard?.is_active === false && (
+              <Chip size='small' label='Hidden' sx={{ height: 20 }} />
+            )}
+          </Box>
+          {(myCard?.title || myCard?.company) && (
+            <Typography variant='caption' color='text.secondary' sx={{ display: 'block' }}>
+              {[myCard?.title, myCard?.company].filter(Boolean).join(' · ')}
+            </Typography>
+          )}
+          <Typography variant='caption' color='text.secondary' sx={{ display: 'block', mt: 2, mb: 1.5 }}>
+            Scan to open this card
+          </Typography>
+          {myCard?.slug && (
+            <Box
+              sx={{
+                p: 2,
+                display: 'inline-block',
+                bgcolor: '#fff',
+                borderRadius: 2.5,
+                boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
+              }}
+            >
+              <QRCodeCanvas
+                id='home-card-qr'
+                value={`${cardPublicUrl(myCard.slug)}?src=qr`}
+                size={200}
+                level='M'
+              />
+            </Box>
+          )}
+          <Typography
+            variant='caption'
+            color='text.secondary'
+            sx={{ display: 'block', mt: 1.5, wordBreak: 'break-all' }}
+          >
+            {cardPublicUrl(myCard?.slug).replace(/^https?:\/\//, '')}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
+          <Button
+            variant='contained'
+            startIcon={<OpenInNew />}
+            component='a'
+            href={cardPublicUrl(myCard?.slug)}
+            target='_blank'
+            rel='noopener noreferrer'
+          >
+            View card
+          </Button>
+          <Button variant='outlined' startIcon={<ContentCopy />} onClick={() => copyCardLink(myCard?.slug)}>
+            Copy link
+          </Button>
+          <Button variant='outlined' startIcon={<Download />} onClick={() => downloadCardQr(myCard?.slug)}>
+            QR
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Customer Creation Request Form Dialog */}
       <CustomerCreationRequestForm
