@@ -86,6 +86,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/expected_reorders': 'Expected Reorders',
   '/admin/external_links': 'External Links',
   '/admin/linktree': 'Link Tree',
+  '/admin/cards': 'Business Cards',
   '/admin/hooks': 'Hooks',
   '/admin/hooks_categories': 'Hook Categories',
   '/admin/inventory_aging': 'Slow Movers & Dead Stock',
