@@ -591,36 +591,57 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
 
               {/* Stock - Hidden when isShared or isOutOfStock */}
               {!isShared && !isOutOfStock && (
-                <Box sx={{ textAlign: 'right' }}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{
-                      fontSize: '0.65rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.3px',
-                      display: 'block',
-                      mb: 0.5,
-                    }}
-                  >
-                    Stock
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'end', gap: 0.5, justifyContent: 'flex-end' }}>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        fontWeight: 700,
-                        fontSize: '0.95rem',
-                        fontFamily: 'system-ui',
-                        color: currentVariant.stock > 10 ? 'success.main' : currentVariant.stock > 0 ? 'error.main' : 'error.main',
-                        letterSpacing: '-0.3px',
-                      }}
-                    >
+                isSplitVariant && !isPreOrderTab ? (
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', display: 'block', mb: 0.5 }}>
+                      Stock
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 700, fontSize: '0.95rem', fontFamily: 'system-ui', color: currentVariant.stock > 10 ? 'success.main' : 'error.main', letterSpacing: '-0.3px' }}>
                       {currentVariant.stock.toLocaleString('en-IN')}
                     </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', display: 'block', mb: 0.5, mt: 0.5 }}>
+                      Upcoming
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 700, fontSize: '0.95rem', fontFamily: 'system-ui', color: 'warning.main', letterSpacing: '-0.3px' }}>
+                      {currentVariant.upcoming_stock ?? '—'}
+                    </Typography>
                   </Box>
-                </Box>
+                ) : (
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.3px',
+                        display: 'block',
+                        mb: 0.5,
+                      }}
+                    >
+                      {(isPreOrderTab || (currentVariant.pre_order && (currentVariant.stock ?? 0) <= 0)) ? 'Upcoming' : 'Stock'}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'end', gap: 0.5, justifyContent: 'flex-end' }}>
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: '0.95rem',
+                          fontFamily: 'system-ui',
+                          color: (isPreOrderTab || (currentVariant.pre_order && (currentVariant.stock ?? 0) <= 0))
+                            ? 'warning.main'
+                            : currentVariant.stock > 10 ? 'success.main' : 'error.main',
+                          letterSpacing: '-0.3px',
+                        }}
+                      >
+                        {(isPreOrderTab || (currentVariant.pre_order && (currentVariant.stock ?? 0) <= 0))
+                          ? (currentVariant.upcoming_stock ?? '—')
+                          : currentVariant.stock.toLocaleString('en-IN')}
+                      </Typography>
+                    </Box>
+                  </Box>
+                )
               )}
 
               {/* Selling Price - Hidden when isShared or isOutOfStock */}
