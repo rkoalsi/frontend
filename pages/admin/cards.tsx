@@ -45,6 +45,8 @@ interface Card {
   name: string;
   title: string;
   company: string;
+  city: string;
+  country: string;
   photo_url: string;
   cover_url: string;
   phone: string;
@@ -60,7 +62,9 @@ interface Card {
 const emptyCard = (): Card => ({
   name: '',
   title: '',
-  company: '',
+  company: 'Pupscribe Enterprises Pvt. Ltd.',
+  city: 'Mumbai',
+  country: 'India',
   photo_url: '',
   cover_url: '',
   phone: '',
@@ -435,6 +439,22 @@ const BusinessCardsAdmin: React.FC = () => {
                 label='Company'
                 value={draft.company}
                 onChange={(e) => setField('company', e.target.value)}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label='City'
+                value={draft.city}
+                onChange={(e) => setField('city', e.target.value)}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label='Country'
+                value={draft.country}
+                onChange={(e) => setField('country', e.target.value)}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
