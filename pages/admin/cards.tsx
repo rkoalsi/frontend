@@ -19,6 +19,8 @@ import {
   Grid,
   Chip,
   InputAdornment,
+  Autocomplete,
+  Alert,
 } from '@mui/material';
 import {
   Add,
@@ -59,7 +61,41 @@ interface Card {
   socials: Record<string, string>;
   is_active: boolean;
   scan_count?: number;
+  user_id?: string;
 }
+
+interface CardableUser {
+  _id: string;
+  name: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  role: string;
+  designation: string;
+  department: string;
+  code: string;
+  photo_url: string;
+  city: string;
+  country: string;
+  whatsapp: string;
+  socials: Record<string, string>;
+  has_card: boolean;
+  card_slug: string | null;
+}
+
+// Human-friendly labels for the roles that can hold a card.
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin',
+  sales_admin: 'Sales Head',
+  sales_person: 'Sales Person',
+  warehouse: 'Warehouse',
+  catalogue_manager: 'Catalogue Manager',
+  hr: 'HR',
+  marketing_manager: 'Marketing',
+};
+const roleLabel = (r: string) =>
+  ROLE_LABELS[r] || (r ? r.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : '');
 
 interface Scan {
   _id: string;
@@ -99,6 +135,10 @@ const BusinessCardsAdmin: React.FC = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [draft, setDraft] = useState<Card>(emptyCard());
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+
+  // Users available to have a card (everyone except customers).
+  const [users, setUsers] = useState<CardableUser[]>([]);
+  const [selectedUser, setSelectedUser] = useState<CardableUser | null>(null);
 
   // QR dialog state
   const [qrCard, setQrCard] = useState<Card | null>(null);
@@ -149,8 +189,18 @@ const BusinessCardsAdmin: React.FC = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const res = await axiosInstance.get('/admin/cards/users');
+      setUsers(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchCards();
+    fetchUsers();
   }, []);
 
   const filtered = useMemo(() => {
@@ -189,13 +239,37 @@ const BusinessCardsAdmin: React.FC = () => {
   };
 
   const openCreate = () => {
+    setSelectedUser(null);
     setDraft(emptyCard());
     setEditOpen(true);
   };
 
   const openEdit = (card: Card) => {
+    setSelectedUser(null);
     setDraft({ ...emptyCard(), ...card, socials: { ...(card.socials || {}) } });
     setEditOpen(true);
+  };
+
+  // Pull every data point straight from the selected user's account.
+  const applyUser = (user: CardableUser | null) => {
+    setSelectedUser(user);
+    if (!user) {
+      setDraft((d) => ({ ...d, user_id: undefined }));
+      return;
+    }
+    setDraft((d) => ({
+      ...emptyCard(),
+      user_id: user._id,
+      name: user.name || '',
+      title: user.designation || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      whatsapp: user.whatsapp || user.phone || '',
+      photo_url: user.photo_url || '',
+      city: user.city || d.city,
+      country: user.country || d.country,
+      socials: { ...(user.socials || {}) },
+    }));
   };
 
   const setField = (field: keyof Card, value: any) =>
@@ -225,9 +299,10 @@ const BusinessCardsAdmin: React.FC = () => {
       }
       setEditOpen(false);
       fetchCards();
-    } catch (e) {
+      fetchUsers();
+    } catch (e: any) {
       console.error(e);
-      toast.error('Error saving card.');
+      toast.error(e?.response?.data?.detail || 'Error saving card.');
     } finally {
       setSaving(false);
     }
@@ -255,6 +330,7 @@ const BusinessCardsAdmin: React.FC = () => {
       await axiosInstance.delete(`/admin/cards/${card._id}`);
       toast.success('Card deleted');
       setCards((cs) => cs.filter((c) => c._id !== card._id));
+      fetchUsers();
     } catch {
       toast.error('Error deleting card.');
     }
@@ -437,6 +513,57 @@ const BusinessCardsAdmin: React.FC = () => {
       <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth='sm' fullWidth>
         <DialogTitle>{draft._id ? 'Edit Card' : 'New Card'}</DialogTitle>
         <DialogContent dividers>
+          {/* Create-from-user picker — pulls every data point from the users
+              collection. Available for any user except customers. */}
+          {!draft._id && (
+            <Box sx={{ mb: 2 }}>
+              <Autocomplete
+                options={users}
+                value={selectedUser}
+                onChange={(_, val) => applyUser(val)}
+                getOptionLabel={(u) => u.name || u.email || ''}
+                isOptionEqualToValue={(o, v) => o._id === v._id}
+                renderOption={(props, u) => (
+                  <Box component='li' {...props} key={u._id}>
+                    <Avatar src={u.photo_url} sx={{ width: 28, height: 28, mr: 1.5 }}>
+                      {u.name?.[0]}
+                    </Avatar>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant='body2' noWrap>
+                        {u.name || u.email}
+                        {u.has_card && (
+                          <Chip
+                            size='small'
+                            label='Has card'
+                            sx={{ ml: 1, height: 18, fontSize: '0.62rem' }}
+                          />
+                        )}
+                      </Typography>
+                      <Typography variant='caption' color='text.secondary' noWrap>
+                        {[roleLabel(u.role), u.email].filter(Boolean).join(' · ')}
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label='Create for user'
+                    placeholder='Search sales person, sales head, admin…'
+                    helperText='Select a user to auto-fill the card from their account. You can still edit anything below.'
+                  />
+                )}
+              />
+              {selectedUser?.has_card && (
+                <Alert severity='warning' sx={{ mt: 1 }}>
+                  {selectedUser.name} already has a card
+                  {selectedUser.card_slug ? ` (/card/${selectedUser.card_slug})` : ''}.
+                  Saving will be blocked — edit the existing card instead.
+                </Alert>
+              )}
+            </Box>
+          )}
+
           {/* Profile photo (optional — falls back to initials on the card) */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
             <Avatar src={draft.photo_url} sx={{ width: 72, height: 72 }}>
