@@ -23,6 +23,9 @@ import {
   Tooltip,
   TablePagination,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
   alpha,
   useTheme,
 } from '@mui/material';
@@ -59,6 +62,7 @@ interface ActivitySummary {
   total_actions: number;
   last_seen: string | null;
   action_counts: Record<string, number>;
+  distinct_orders: number;
 }
 
 interface ActivityLog {
@@ -98,6 +102,13 @@ function getActionMeta(action: string) {
 }
 
 const IST = 'Asia/Kolkata';
+
+// Internal/test accounts excluded from all activity stats and tables
+const EXCLUDED_EMAILS = new Set([
+  'rkoalsi2000@gmail.com',
+  'rkoalsi2175@gmail.com',
+  'rkoalsi2@gmail.com',
+]);
 
 // Ensure UTC string is parsed as UTC (append Z if no timezone info present)
 function parseUTC(iso: string): Date {
@@ -428,13 +439,18 @@ const CustomerActivityPage = () => {
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [selected, setSelected] = useState<ActivitySummary | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
 
   const fetchSummary = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const { data } = await axiosInstance.get('/customer_activity/summary');
-      setSummary(data.summary || []);
+      setSummary(
+        (data.summary || []).filter(
+          (s: ActivitySummary) => !EXCLUDED_EMAILS.has((s.email || '').toLowerCase())
+        )
+      );
     } catch {
       setError('Failed to load customer activity. Please try again.');
     } finally {
@@ -478,6 +494,19 @@ const CustomerActivityPage = () => {
     const diff = Date.now() - parseUTC(s.last_seen).getTime();
     return diff < 24 * 60 * 60 * 1000;
   }).length;
+  const customersWithOrders = summary.filter((s) => (s.distinct_orders || 0) > 0).length;
+  const totalOrders = summary.reduce((acc, s) => acc + (s.distinct_orders || 0), 0);
+  // Per-customer order breakdown, highest order count first
+  const orderBreakdown = summary
+    .map((s) => ({ ...s, orders: s.distinct_orders || 0 }))
+    .filter((s) => s.orders > 0)
+    .sort((a, b) => b.orders - a.orders);
+
+  const openBreakdownFor = (row: ActivitySummary) => {
+    setBreakdownOpen(false);
+    setSelected(row);
+    setDrawerOpen(true);
+  };
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
@@ -502,28 +531,46 @@ const CustomerActivityPage = () => {
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
+          gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(6, 1fr)' },
           gap: 2,
           mb: 3,
         }}
       >
         {[
-          { label: 'Tracked Customers', value: totalCustomers, color: '#2563eb' },
-          { label: 'Total Logins',       value: totalLogins,    color: '#16a34a' },
-          { label: 'Total Actions',      value: totalActions,   color: '#7c3aed' },
-          { label: 'Active Today',       value: activeToday,    color: '#d97706' },
+          { label: 'Tracked Customers',   value: totalCustomers,       color: '#2563eb' },
+          { label: 'Customers w/ Orders', value: customersWithOrders,  color: '#15803d', clickable: true },
+          { label: 'Orders Finalized',    value: totalOrders,          color: '#0d9488', clickable: true },
+          { label: 'Total Logins',        value: totalLogins,          color: '#16a34a' },
+          { label: 'Total Actions',       value: totalActions,         color: '#7c3aed' },
+          { label: 'Active Today',        value: activeToday,          color: '#d97706' },
         ].map((s) => (
           <Paper
             key={s.label}
             elevation={0}
+            onClick={s.clickable ? () => setBreakdownOpen(true) : undefined}
             sx={{
               p: 2.5,
               borderRadius: 3,
               border: `1px solid ${theme.palette.divider}`,
+              ...(s.clickable && {
+                cursor: 'pointer',
+                transition: 'border-color 0.15s, box-shadow 0.15s',
+                '&:hover': {
+                  borderColor: alpha(s.color, 0.5),
+                  boxShadow: `0 2px 12px ${alpha(s.color, 0.15)}`,
+                },
+              }),
             }}
           >
             <Typography variant="h4" fontWeight={800} sx={{ color: s.color }}>{s.value}</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{s.label}</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {s.label}
+              {s.clickable && (
+                <Box component="span" sx={{ color: alpha(s.color, 0.7), ml: 0.5, fontSize: '0.7rem' }}>
+                  ▸
+                </Box>
+              )}
+            </Typography>
           </Paper>
         ))}
       </Box>
@@ -648,6 +695,74 @@ const CustomerActivityPage = () => {
           </>
         )}
       </Paper>
+
+      {/* Orders breakdown dialog */}
+      <Dialog
+        open={breakdownOpen}
+        onClose={() => setBreakdownOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 1 }}>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>Orders by Customer</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {orderBreakdown.length} customer{orderBreakdown.length !== 1 ? 's' : ''} · {totalOrders} order{totalOrders !== 1 ? 's' : ''} finalized
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setBreakdownOpen(false)}>
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 0 }}>
+          {orderBreakdown.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 6 }}>
+              <ShoppingCart sx={{ fontSize: 48, color: 'grey.300', mb: 1 }} />
+              <Typography color="text.secondary">No finalized orders yet</Typography>
+            </Box>
+          ) : (
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.78rem' }}>Customer</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.78rem' }}>Email</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.78rem' }}>Orders</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {orderBreakdown.map((row) => (
+                  <TableRow
+                    key={row.customer_id}
+                    hover
+                    onClick={() => openBreakdownFor(row)}
+                    sx={{ cursor: 'pointer', '&:hover': { backgroundColor: alpha('#15803d', 0.04) } }}
+                  >
+                    <TableCell sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                      {row.customer_name || '—'}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
+                      {row.email || '—'}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Chip
+                        label={row.orders}
+                        size="small"
+                        sx={{
+                          backgroundColor: alpha('#0d9488', 0.1),
+                          color: '#0d9488',
+                          fontWeight: 700,
+                          minWidth: 36,
+                        }}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Detail drawer */}
       <ActivityDrawer
