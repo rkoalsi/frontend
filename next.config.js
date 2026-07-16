@@ -17,6 +17,8 @@ module.exports = {
   env: {
     api_url: 'https://orderform.pupscribe.in/api',
     support_email: 'enquiries@pupscribe.in',
-    support_whatsapp: '919867878275',
+    support_whatsapp: '919867878275', // e.g. '919876543210' — leave empty to hide the WhatsApp button
+    // Public blog origin where digital business cards are served (/card/<slug>).
+    blog_url: 'https://barkbutler.in',
   },
 };
