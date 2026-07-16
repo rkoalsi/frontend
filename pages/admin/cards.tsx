@@ -29,6 +29,7 @@ import {
   OpenInNew,
   ContentCopy,
   QrCode2,
+  QrCodeScanner,
   Search,
 } from '@mui/icons-material';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -57,6 +58,15 @@ interface Card {
   bio: string;
   socials: Record<string, string>;
   is_active: boolean;
+  scan_count?: number;
+}
+
+interface Scan {
+  _id: string;
+  ts: string;
+  ip?: string;
+  user_agent?: string;
+  referer?: string;
 }
 
 const emptyCard = (): Card => ({
@@ -92,6 +102,39 @@ const BusinessCardsAdmin: React.FC = () => {
 
   // QR dialog state
   const [qrCard, setQrCard] = useState<Card | null>(null);
+
+  // Scan-log dialog state
+  const [scanCard, setScanCard] = useState<Card | null>(null);
+  const [scans, setScans] = useState<Scan[]>([]);
+  const [scansTotal, setScansTotal] = useState(0);
+  const [scansLoading, setScansLoading] = useState(false);
+
+  const openScans = async (card: Card) => {
+    setScanCard(card);
+    setScansLoading(true);
+    try {
+      const res = await axiosInstance.get(`/admin/cards/${card._id}/scans`);
+      setScans(res.data?.scans || []);
+      setScansTotal(res.data?.total || 0);
+    } catch {
+      toast.error('Error loading scan history.');
+      setScans([]);
+      setScansTotal(0);
+    } finally {
+      setScansLoading(false);
+    }
+  };
+
+  // Coarse device summary from the user agent — enough for an at-a-glance log.
+  const deviceOf = (ua?: string) => {
+    if (!ua) return 'Unknown device';
+    if (/iphone|ipad|ipod/i.test(ua)) return 'iPhone / iPad';
+    if (/android/i.test(ua)) return 'Android';
+    if (/windows/i.test(ua)) return 'Windows';
+    if (/macintosh|mac os/i.test(ua)) return 'Mac';
+    if (/linux/i.test(ua)) return 'Linux';
+    return 'Other';
+  };
 
   const fetchCards = async () => {
     setLoading(true);
@@ -323,6 +366,18 @@ const BusinessCardsAdmin: React.FC = () => {
                 >
                   /card/{card.slug}
                 </Typography>
+
+                <Box>
+                  <Tooltip title='View scan history'>
+                    <Chip
+                      size='small'
+                      icon={<QrCodeScanner fontSize='small' />}
+                      label={`${card.scan_count ?? 0} scan${(card.scan_count ?? 0) === 1 ? '' : 's'}`}
+                      onClick={() => openScans(card)}
+                      variant='outlined'
+                    />
+                  </Tooltip>
+                </Box>
 
                 <Box sx={{ mt: 'auto', display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <FormControlLabel
@@ -560,7 +615,7 @@ const BusinessCardsAdmin: React.FC = () => {
               <Box sx={{ p: 2, display: 'inline-block', bgcolor: '#fff', borderRadius: 2 }}>
                 <QRCodeCanvas
                   id='card-qr-canvas'
-                  value={publicUrl(qrCard.slug)}
+                  value={`${publicUrl(qrCard.slug)}?src=qr`}
                   size={220}
                   level='M'
                 />
@@ -587,6 +642,64 @@ const BusinessCardsAdmin: React.FC = () => {
           >
             Download PNG
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Scan history dialog */}
+      <Dialog
+        open={!!scanCard}
+        onClose={() => setScanCard(null)}
+        maxWidth='sm'
+        fullWidth
+      >
+        <DialogTitle>
+          QR Scans — {scanCard?.name}
+          <Typography variant='body2' color='text.secondary'>
+            {scansTotal} total scan{scansTotal === 1 ? '' : 's'}
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers>
+          {scansLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={28} />
+            </Box>
+          ) : scans.length === 0 ? (
+            <Typography color='text.secondary' sx={{ py: 3, textAlign: 'center' }}>
+              No scans recorded yet. Scans are counted when someone opens the
+              card through its QR code.
+            </Typography>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {scans.map((s) => (
+                <Paper key={s._id} variant='outlined' sx={{ p: 1.5 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 1,
+                    }}
+                  >
+                    <Typography variant='body2' fontWeight={600}>
+                      {new Date(s.ts).toLocaleString('en-IN', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      })}
+                    </Typography>
+                    <Chip size='small' label={deviceOf(s.user_agent)} />
+                  </Box>
+                  {s.ip && (
+                    <Typography variant='caption' color='text.secondary'>
+                      IP: {s.ip}
+                    </Typography>
+                  )}
+                </Paper>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setScanCard(null)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>
