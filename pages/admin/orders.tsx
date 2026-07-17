@@ -104,6 +104,8 @@ const Orders = () => {
   const [orderLoading, setOrderLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [orderDocs, setOrderDocs] = useState<any>(null);
+  const [orderDocsLoading, setOrderDocsLoading] = useState(false);
   const [openFilterModal, setOpenFilterModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterSalesPerson, setFilterSalesPerson] = useState<string>('');
@@ -284,6 +286,30 @@ const Orders = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, rowsPerPage, searchKey]);
 
+  // Deep-link: open a specific order's drawer when arriving via ?order_id=
+  useEffect(() => {
+    if (!router.isReady) return;
+    const oid = router.query.order_id;
+    if (!oid || typeof oid !== 'string') return;
+    (async () => {
+      try {
+        const { data } = await axiosInstance.get('/admin/orders', {
+          params: { order_id: oid, limit: 1 },
+        });
+        const order = data?.orders?.[0];
+        if (order) {
+          setSelectedOrder(order);
+          setDrawerOpen(true);
+        } else {
+          toast.error('Order not found.');
+        }
+      } catch {
+        toast.error('Failed to load the linked order.');
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady, router.query.order_id]);
+
   // MUI Pagination: next/previous
   const handleChangePage = (event: any, newPage: number) => {
     setPage(newPage);
@@ -314,6 +340,59 @@ const Orders = () => {
     console.log(order);
     setSelectedOrder(order);
     setDrawerOpen(true);
+  };
+
+  // Fetch downstream Zoho documents (sales orders + invoices) for the open order
+  useEffect(() => {
+    if (!drawerOpen || !selectedOrder?._id) {
+      setOrderDocs(null);
+      return;
+    }
+    let cancelled = false;
+    setOrderDocsLoading(true);
+    (async () => {
+      try {
+        const { data } = await axiosInstance.get(
+          `/orders/${selectedOrder._id}/documents`
+        );
+        if (!cancelled) setOrderDocs(data);
+      } catch {
+        if (!cancelled) setOrderDocs(null);
+      } finally {
+        if (!cancelled) setOrderDocsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [drawerOpen, selectedOrder?._id]);
+
+  // Download a sales-order or invoice PDF from Zoho by its id
+  const handleDownloadDoc = async (
+    kind: 'salesorder' | 'invoice',
+    id: string,
+    label: string
+  ) => {
+    try {
+      const apiUrl = `${process.env.api_url}/orders/download_${kind}/${id}`;
+      const resp = await axios.get(apiUrl, { responseType: 'blob' });
+      if (resp.data.type !== 'application/pdf') {
+        toast.error(`Could not download ${label}`);
+        return;
+      }
+      const blob = new Blob([resp.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${label}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error downloading PDF:', error);
+      toast.error(error.message || `Failed to download ${label}`);
+    }
   };
 
   const handleDownload = async (order: any, type?: 'pre_order') => {
@@ -1047,6 +1126,212 @@ const Orders = () => {
                     <strong>Updated At:</strong>{' '}
                     {new Date(selectedOrder.updated_at).toLocaleString()}
                   </Typography>
+                </Box>
+
+                {/* Documents — grouped by In-Stock vs Pre-Order so the flow
+                    (Estimate → Sales Order → Invoice) is clear at a glance. */}
+                <Box sx={{ marginBottom: 3 }}>
+                  <Typography sx={{ mb: 1 }}>
+                    <strong>Documents</strong>
+                  </Typography>
+
+                  {orderDocsLoading && (
+                    <Typography variant='body2' color='text.secondary'>
+                      Loading documents…
+                    </Typography>
+                  )}
+
+                  {([
+                    {
+                      key: 'stock',
+                      title: 'In-Stock',
+                      accent: theme.palette.primary.main,
+                      created: selectedOrder?.estimate_created,
+                      estimateNumber: selectedOrder?.estimate_number,
+                      estimateStatus: orderDocs?.estimate?.status,
+                      dlType: undefined as undefined | 'pre_order',
+                    },
+                    {
+                      key: 'pre_order',
+                      title: 'Pre-Order',
+                      accent: theme.palette.warning.main,
+                      created: selectedOrder?.pre_order_estimate_created,
+                      estimateNumber: selectedOrder?.pre_order_estimate_number,
+                      estimateStatus: orderDocs?.pre_order_estimate?.status,
+                      dlType: 'pre_order' as 'pre_order',
+                    },
+                  ]).map((group) => {
+                    const salesOrders = (orderDocs?.sales_orders || []).filter(
+                      (d: any) => d.source === group.key
+                    );
+                    const invoices = (orderDocs?.invoices || []).filter(
+                      (d: any) => d.source === group.key
+                    );
+                    if (!group.created && salesOrders.length === 0 && invoices.length === 0)
+                      return null;
+                    return (
+                      <Box
+                        key={group.key}
+                        sx={{
+                          mb: 1.5,
+                          p: 1.5,
+                          borderRadius: 2,
+                          border: `1px solid ${theme.palette.divider}`,
+                          borderLeft: `4px solid ${group.accent}`,
+                        }}
+                      >
+                        <Typography
+                          variant='subtitle2'
+                          sx={{ fontWeight: 'bold', color: group.accent, mb: 1 }}
+                        >
+                          {group.title}
+                        </Typography>
+
+                        {/* Estimate */}
+                        {group.created && (
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1,
+                              mb: 0.75,
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <Typography
+                              variant='body2'
+                              sx={{ minWidth: 70, color: 'text.secondary' }}
+                            >
+                              Estimate
+                            </Typography>
+                            <Typography variant='body2'>
+                              {group.estimateNumber}
+                            </Typography>
+                            {group.estimateStatus && (
+                              <Chip
+                                size='small'
+                                label={capitalize(group.estimateStatus)}
+                                color={getStatusChipColor(group.estimateStatus)}
+                              />
+                            )}
+                            <Button
+                              variant='text'
+                              size='small'
+                              startIcon={<Download />}
+                              onClick={() =>
+                                handleDownload(selectedOrder, group.dlType)
+                              }
+                              sx={{ textTransform: 'none', minWidth: 0 }}
+                            >
+                              Download
+                            </Button>
+                          </Box>
+                        )}
+
+                        {/* Sales Orders */}
+                        {salesOrders.map((so: any) => (
+                          <Box
+                            key={so.salesorder_id}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1,
+                              mb: 0.75,
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <Typography
+                              variant='body2'
+                              sx={{ minWidth: 70, color: 'text.secondary' }}
+                            >
+                              Sales Order
+                            </Typography>
+                            <Typography variant='body2'>
+                              {so.salesorder_number}
+                            </Typography>
+                            {so.status && (
+                              <Chip
+                                size='small'
+                                label={capitalize(so.status)}
+                                color={getStatusChipColor(so.status)}
+                              />
+                            )}
+                            <Button
+                              variant='text'
+                              size='small'
+                              startIcon={<Download />}
+                              onClick={() =>
+                                handleDownloadDoc(
+                                  'salesorder',
+                                  so.salesorder_id,
+                                  so.salesorder_number
+                                )
+                              }
+                              sx={{ textTransform: 'none', minWidth: 0 }}
+                            >
+                              Download
+                            </Button>
+                          </Box>
+                        ))}
+
+                        {/* Invoices */}
+                        {invoices.map((inv: any) => (
+                          <Box
+                            key={inv.invoice_id}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1,
+                              mb: 0.75,
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <Typography
+                              variant='body2'
+                              sx={{ minWidth: 70, color: 'text.secondary' }}
+                            >
+                              Invoice
+                            </Typography>
+                            <Typography variant='body2'>
+                              {inv.invoice_number}
+                            </Typography>
+                            {inv.status && (
+                              <Chip
+                                size='small'
+                                label={capitalize(inv.status)}
+                                color={getPaymentChipColor(inv.status)}
+                              />
+                            )}
+                            <Button
+                              variant='text'
+                              size='small'
+                              startIcon={<Download />}
+                              onClick={() =>
+                                handleDownloadDoc(
+                                  'invoice',
+                                  inv.invoice_id,
+                                  inv.invoice_number
+                                )
+                              }
+                              sx={{ textTransform: 'none', minWidth: 0 }}
+                            >
+                              Download
+                            </Button>
+                          </Box>
+                        ))}
+                      </Box>
+                    );
+                  })}
+
+                  {!orderDocsLoading &&
+                    !selectedOrder?.estimate_created &&
+                    !selectedOrder?.pre_order_estimate_created &&
+                    !(orderDocs?.sales_orders?.length > 0) &&
+                    !(orderDocs?.invoices?.length > 0) && (
+                      <Typography variant='body2' color='text.secondary'>
+                        No documents available yet.
+                      </Typography>
+                    )}
                 </Box>
 
                 {/* Payment (Razorpay) — shown when a payment link/gateway payment exists */}
