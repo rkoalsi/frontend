@@ -26,9 +26,13 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  Link,
   alpha,
+  capitalize,
   useTheme,
 } from '@mui/material';
+import NextLink from 'next/link';
+import { OpenInNew } from '@mui/icons-material';
 import {
   Close,
   Refresh,
@@ -77,6 +81,8 @@ interface ActivityLog {
   ip_address: string | null;
   user_agent: string | null;
   timestamp: string;
+  order_status?: string | null;
+  estimate_number?: string | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -143,6 +149,18 @@ const CATEGORY_COLORS: Record<string, string> = {
   orders:    '#d97706',
   documents: '#0891b2',
 };
+
+function orderStatusColor(status?: string | null): string {
+  switch ((status || '').toLowerCase()) {
+    case 'draft':      return '#64748b';
+    case 'sent':       return '#2563eb';
+    case 'accepted':   return '#16a34a';
+    case 'invoiced':   return '#15803d';
+    case 'declined':   return '#dc2626';
+    case 'deleted':    return '#dc2626';
+    default:           return '#94a3b8';
+  }
+}
 
 // ─── Action Chip ──────────────────────────────────────────────────────────────
 
@@ -387,14 +405,53 @@ const ActivityDrawer = ({
                     <Typography variant="caption" color="text.secondary">
                       {fmtDate(log.timestamp)}
                     </Typography>
-                    {log.metadata && Object.keys(log.metadata).length > 0 && (
-                      <Box sx={{ mt: 0.5 }}>
-                        {Object.entries(log.metadata).map(([k, v]) => (
-                          <Typography key={k} variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                            {k}: <strong>{String(v)}</strong>
+                    {log.action === 'finalize_order' && log.metadata?.order_id ? (
+                      <Box sx={{ mt: 0.75, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                        <Chip
+                          label={log.order_status ? capitalize(log.order_status) : 'Unknown'}
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            backgroundColor: alpha(orderStatusColor(log.order_status), 0.12),
+                            color: orderStatusColor(log.order_status),
+                            border: `1px solid ${alpha(orderStatusColor(log.order_status), 0.25)}`,
+                          }}
+                        />
+                        {log.estimate_number && (
+                          <Typography variant="caption" color="text.secondary">
+                            {log.estimate_number}
                           </Typography>
-                        ))}
+                        )}
+                        <Link
+                          component={NextLink}
+                          href={`/admin/orders?order_id=${log.metadata.order_id}`}
+                          target="_blank"
+                          rel="noopener"
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 0.25,
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            '& svg': { fontSize: 13 },
+                          }}
+                        >
+                          View order
+                          <OpenInNew />
+                        </Link>
                       </Box>
+                    ) : (
+                      log.metadata && Object.keys(log.metadata).length > 0 && (
+                        <Box sx={{ mt: 0.5 }}>
+                          {Object.entries(log.metadata).map(([k, v]) => (
+                            <Typography key={k} variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                              {k}: <strong>{String(v)}</strong>
+                            </Typography>
+                          ))}
+                        </Box>
+                      )
                     )}
                     {log.ip_address && (
                       <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mt: 0.25 }}>
