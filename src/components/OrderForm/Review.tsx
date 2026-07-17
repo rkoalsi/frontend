@@ -218,7 +218,7 @@ const Review: React.FC<Props> = React.memo((props) => {
 
   // ── Product list controls (search / issues filter / pagination) ──
   // Search + issues filter are shared, but each section paginates on its own.
-  const PRODUCTS_PER_PAGE = 5;
+  const PRODUCTS_PER_PAGE = 10;
   const [productSearch, setProductSearch] = useState('');
   const [issuesOnly, setIssuesOnly] = useState(false);
   const [inStockPage, setInStockPage] = useState(1);
