@@ -104,6 +104,8 @@ interface CustomerRow {
   value: number;
   paidValue: number;
   productsAdded: number;
+  sharedLinkOrders: number;
+  selfFinalisedOrders: number;
   lastOrder: string | null;
 }
 
@@ -436,6 +438,12 @@ const OrderAnalyticsPage = () => {
     [data]
   );
 
+  const customersFinalisedByLogin = useMemo(
+    () =>
+      (data?.customers || []).filter((c) => c.selfFinalisedOrders > 0).length,
+    [data]
+  );
+
   const COLORS = {
     orders: theme.palette.primary.main,
     finalised: theme.palette.success.main,
@@ -764,7 +772,10 @@ const OrderAnalyticsPage = () => {
               </Stack>
               <Typography variant="body2" color="text.secondary" mb={2}>
                 Line items in the <code>orders</code> collection, split by who
-                added each product (<code>added_by</code>).
+                added each product (<code>added_by</code>). Value is{' '}
+                <strong>net of the B2B margin</strong> (price × qty × (1 −
+                margin%)), so it reconciles with the order totals above rather
+                than the gross list price.
               </Typography>
               <TableContainer component={Paper} variant="outlined">
                 <Table size="small">
@@ -773,7 +784,7 @@ const OrderAnalyticsPage = () => {
                       <TableCell>Added By</TableCell>
                       <TableCell align="right">Line Items</TableCell>
                       <TableCell align="right">Units</TableCell>
-                      <TableCell align="right">Value</TableCell>
+                      <TableCell align="right">Net Value</TableCell>
                       <TableCell align="right">Share of Items</TableCell>
                     </TableRow>
                   </TableHead>
@@ -784,6 +795,8 @@ const OrderAnalyticsPage = () => {
                         (a, r) => a + r.lineItems,
                         0
                       );
+                      const totalQty = rows.reduce((a, r) => a + r.qty, 0);
+                      const totalValue = rows.reduce((a, r) => a + r.value, 0);
                       return rows.map((r) => (
                         <TableRow key={r.addedBy} hover>
                           <TableCell>
@@ -829,7 +842,23 @@ const OrderAnalyticsPage = () => {
                             </Stack>
                           </TableCell>
                         </TableRow>
-                      ));
+                      )).concat(
+                        <TableRow key="__total__">
+                          <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>
+                            {fmtInt(totalItems)}
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>
+                            {fmtInt(totalQty)}
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>
+                            {fmtMoney(totalValue)}
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>
+                            100%
+                          </TableCell>
+                        </TableRow>
+                      );
                     })()}
                   </TableBody>
                 </Table>
@@ -906,7 +935,9 @@ const OrderAnalyticsPage = () => {
           {/* ── Customers whose orders flow through the form ── */}
           <UsageListCard
             title="Customers Using the Order Form"
-            subtitle="Customers with at least one real order in the range. 'Self-Added' = line items the customer added themselves via the shared form."
+            subtitle={`Customers who added product(s) themselves (added_by = customer) on at least one real order. ${fmtInt(
+              customersFinalisedByLogin
+            )} of them also finalised an order by logging in themselves.`}
             rows={data!.customers}
             searchPlaceholder="Search customers…"
             onDownload={() => downloadReport('customers')}
@@ -941,10 +972,37 @@ const OrderAnalyticsPage = () => {
                 render: (r) => `${fmtInt(r.paid)} (${pct(r.paid, r.orders)}%)`,
               },
               {
-                key: 'productsAdded',
-                label: 'Self-Added Items',
+                key: 'sharedLink',
+                label: 'Shared-Link Orders',
                 align: 'right',
-                render: (r) => fmtInt(r.productsAdded),
+                render: (r) =>
+                  r.sharedLinkOrders > 0 ? (
+                    <Chip
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                      label={`${fmtInt(r.sharedLinkOrders)} · ${fmtInt(
+                        r.productsAdded
+                      )} items`}
+                    />
+                  ) : (
+                    '—'
+                  ),
+              },
+              {
+                key: 'loginFinalised',
+                label: 'Finalised by Login',
+                align: 'right',
+                render: (r) =>
+                  r.selfFinalisedOrders > 0 ? (
+                    <Chip
+                      size="small"
+                      color="success"
+                      label={fmtInt(r.selfFinalisedOrders)}
+                    />
+                  ) : (
+                    '—'
+                  ),
               },
               {
                 key: 'value',
@@ -1059,7 +1117,10 @@ const OrderAnalyticsPage = () => {
                           <TableCell align="right">Estimates</TableCell>
                           <TableCell align="right">Invoiced</TableCell>
                           <TableCell align="right">Paid</TableCell>
+                          <TableCell align="right">Fulfilment %</TableCell>
                           <TableCell align="right">Cust. Products</TableCell>
+                          <TableCell align="right">Estimate Value</TableCell>
+                          <TableCell align="right">Invoiced Value</TableCell>
                           <TableCell align="right">Paid Value</TableCell>
                         </TableRow>
                       </TableHead>
@@ -1097,7 +1158,16 @@ const OrderAnalyticsPage = () => {
                                 {fmtInt(p.paidOrders)}
                               </TableCell>
                               <TableCell align="right">
+                                {pct(p.finalisedOrders, p.estimateOrders)}%
+                              </TableCell>
+                              <TableCell align="right">
                                 {fmtInt(p.customerAddedItems)}
+                              </TableCell>
+                              <TableCell align="right">
+                                {fmtMoney(p.estimateValue)}
+                              </TableCell>
+                              <TableCell align="right">
+                                {fmtMoney(p.finalisedValue)}
                               </TableCell>
                               <TableCell align="right">
                                 {fmtMoney(p.paidValue)}
