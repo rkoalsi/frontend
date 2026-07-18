@@ -54,6 +54,7 @@ const ChatsPage = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [typeFilter, setTypeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [phoneFilter, setPhoneFilter] = useState('');
   const [debouncedPhone, setDebouncedPhone] = useState('');
 
@@ -65,6 +66,7 @@ const ChatsPage = () => {
   const buildParams = (overrides: Record<string, unknown> = {}) => {
     const params: Record<string, unknown> = { ...overrides };
     if (typeFilter) params.chat_type = typeFilter;
+    if (statusFilter) params.status = statusFilter;
     if (debouncedPhone.trim()) params.phone = debouncedPhone.trim();
     return params;
   };
@@ -86,7 +88,7 @@ const ChatsPage = () => {
 
   useEffect(() => {
     fetchChats();
-  }, [page, rowsPerPage, typeFilter, debouncedPhone]); // eslint-disable-line
+  }, [page, rowsPerPage, typeFilter, statusFilter, debouncedPhone]); // eslint-disable-line
 
   const getMessageBody = (chat: any): string => {
     if (chat.type === 'incoming') return chat.body || '-';
@@ -169,6 +171,23 @@ const ChatsPage = () => {
               <MenuItem value='incoming'>Incoming</MenuItem>
               <MenuItem value='outgoing'>Outgoing</MenuItem>
               <MenuItem value='callback'>Callback</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size='small' sx={{ minWidth: 180 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              label='Status'
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
+            >
+              <MenuItem value=''>All</MenuItem>
+              <MenuItem value='queued'>Queued</MenuItem>
+              <MenuItem value='sent'>Sent</MenuItem>
+              <MenuItem value='delivered'>Delivered</MenuItem>
+              <MenuItem value='read'>Read</MenuItem>
+              <MenuItem value='failed'>Failed</MenuItem>
+              <MenuItem value='undelivered'>Undelivered</MenuItem>
+              <MenuItem value='rate_limit_exceeded'>Rate limit exceeded</MenuItem>
             </Select>
           </FormControl>
           <TextField
