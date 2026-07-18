@@ -1,0 +1,8 @@
+# UAT / test environment (test.orderform.pupscribe.in)
+# Crawling is intentionally ALLOWED so Googlebot can re-crawl and honour the
+# `noindex` served via X-Robots-Tag (next.config.js) and the <meta name="robots">
+# tag (pages/_document.tsx), which is what actually removes pages from search.
+# Do NOT change this to `Disallow: /` until the test URLs have dropped out of
+# the index — blocking the crawl would leave the stale result frozen in Google.
+User-agent: *
+Allow: /

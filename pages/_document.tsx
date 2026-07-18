@@ -24,6 +24,8 @@ gtag('config', 'G-B3B84C0Y76', { send_page_view: false });`,
           }}
         />
         {/* End Google tag (gtag.js) */}
+        {/* UAT-only: keep the test environment out of search results (see next.config.js) */}
+        <meta name="robots" content="noindex, nofollow" />
         {/* PWA primary color */}
         <meta name="theme-color" content={theme.palette.primary.main} />
         <link rel="shortcut icon" href="/favicon.ico" />

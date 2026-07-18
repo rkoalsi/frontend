@@ -21,4 +21,17 @@ module.exports = {
     // Public blog origin where digital business cards are served (/card/<slug>).
     blog_url: 'https://barkbutler.in',
   },
+  // UAT-only: keep the test environment out of search engines. This branch is
+  // deployed exclusively to test.orderform.pupscribe.in, so the noindex applies
+  // to every response (HTML, assets, API) and can never reach prod.
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+        ],
+      },
+    ];
+  },
 };
