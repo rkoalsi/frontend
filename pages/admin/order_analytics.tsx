@@ -107,6 +107,10 @@ interface CustomerRow {
   sharedLinkOrders: number;
   selfFinalisedOrders: number;
   lastOrder: string | null;
+  contactId?: string | null;
+  salesPerson?: string;
+  hasCustomerLogin?: boolean;
+  customerLoginEmail?: string;
 }
 
 interface SalespersonRow {
@@ -951,6 +955,26 @@ const OrderAnalyticsPage = () => {
                     {r.name}
                   </Typography>
                 ),
+              },
+              {
+                key: 'salesPerson',
+                label: 'Sales Person',
+                render: (r) => r.salesPerson || '—',
+              },
+              {
+                key: 'hasLogin',
+                label: 'Login',
+                render: (r) =>
+                  r.hasCustomerLogin ? (
+                    <Chip
+                      size="small"
+                      color="success"
+                      variant="outlined"
+                      label={r.customerLoginEmail || 'Yes'}
+                    />
+                  ) : (
+                    <Chip size="small" variant="outlined" label="No account" />
+                  ),
               },
               {
                 key: 'orders',
