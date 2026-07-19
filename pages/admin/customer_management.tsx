@@ -148,6 +148,7 @@ const CustomerManagement: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [debouncedSearch, setDebouncedSearch] = useState<string>('');
     const [statusFilter, setStatusFilter] = useState<string>('');
+    const [linkFilter, setLinkFilter] = useState<string>('');
     const [page, setPage] = useState<number>(0);
     const [rowsPerPage, setRowsPerPage] = useState<number>(20);
     const [totalUsers, setTotalUsers] = useState<number>(0);
@@ -209,10 +210,16 @@ const CustomerManagement: React.FC = () => {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
+    // Any filter change resets to the first page, otherwise a narrowed result
+    // set can leave you stranded on a now-empty page.
+    useEffect(() => {
+        setPage(0);
+    }, [debouncedSearch, statusFilter, linkFilter]);
+
     // Fetch users when filters change
     useEffect(() => {
         fetchUsers();
-    }, [debouncedSearch, statusFilter, page, rowsPerPage]);
+    }, [debouncedSearch, statusFilter, linkFilter, page, rowsPerPage]);
 
     const fetchUsers = useCallback(async () => {
         setLoading(true);
@@ -229,6 +236,9 @@ const CustomerManagement: React.FC = () => {
             if (statusFilter) {
                 params.append('status', statusFilter);
             }
+            if (linkFilter) {
+                params.append('linked', linkFilter);
+            }
 
             const response = await axiosInstance.get(`/admin/users?${params}`);
             setUsers(response.data.users);
@@ -240,7 +250,7 @@ const CustomerManagement: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [debouncedSearch, statusFilter, page, rowsPerPage]);
+    }, [debouncedSearch, statusFilter, linkFilter, page, rowsPerPage]);
 
     const generatePassword = async () => {
         try {
@@ -696,7 +706,7 @@ const CustomerManagement: React.FC = () => {
                                     <Person sx={{ fontSize: 28 }} />
                                 </Avatar>
                                 <Typography variant="h3" color="primary" fontWeight="bold">
-                                    {stats.by_role.customer || 0}
+                                    {stats.total || 0}
                                 </Typography>
                                 <Typography variant="body1" color="text.secondary" fontWeight={500}>
                                     Total Customers
@@ -726,7 +736,7 @@ const CustomerManagement: React.FC = () => {
                                     <CheckCircle sx={{ fontSize: 28 }} />
                                 </Avatar>
                                 <Typography variant="h3" color="success.main" fontWeight="bold">
-                                    {users.filter(u => u.status === 'active').length}
+                                    {stats.active || 0}
                                 </Typography>
                                 <Typography variant="body1" color="text.secondary" fontWeight={500}>
                                     Active
@@ -756,7 +766,7 @@ const CustomerManagement: React.FC = () => {
                                     <Block sx={{ fontSize: 28 }} />
                                 </Avatar>
                                 <Typography variant="h3" color="error.main" fontWeight="bold">
-                                    {users.filter(u => u.status === 'inactive').length}
+                                    {stats.inactive || 0}
                                 </Typography>
                                 <Typography variant="body1" color="text.secondary" fontWeight={500}>
                                     Inactive
@@ -778,7 +788,7 @@ const CustomerManagement: React.FC = () => {
                 }}
             >
                 <Grid container spacing={3} alignItems="center">
-                    <Grid size={{ xs: 12, md: 7 }}>
+                    <Grid size={{ xs: 12, md: 4 }}>
                         <TextField
                             fullWidth
                             placeholder="Search by name, email or phone..."
@@ -824,6 +834,24 @@ const CustomerManagement: React.FC = () => {
                             </Select>
                         </FormControl>
                     </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <FormControl fullWidth>
+                            <InputLabel>Filter by Link</InputLabel>
+                            <Select
+                                value={linkFilter}
+                                label="Filter by Link"
+                                onChange={(e) => setLinkFilter(e.target.value)}
+                                sx={{
+                                    borderRadius: 2,
+                                    minHeight: 56,
+                                }}
+                            >
+                                <MenuItem value="">All Customers</MenuItem>
+                                <MenuItem value="linked">Linked</MenuItem>
+                                <MenuItem value="unlinked">Not Linked</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Grid>
                     <Grid size={{ xs: 12, sm: 6, md: 2 }}>
                         <Button
                             fullWidth
@@ -832,6 +860,7 @@ const CustomerManagement: React.FC = () => {
                             onClick={() => {
                                 setSearchTerm('');
                                 setStatusFilter('');
+                                setLinkFilter('');
                             }}
                             sx={{
                                 borderRadius: 2,
