@@ -14,12 +14,21 @@ import {
 } from '@mui/material';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import { AddToPhotos, AssignmentReturn, ContentCopy, Download, Edit } from '@mui/icons-material';
+import {
+  AddToPhotos,
+  AssignmentReturn,
+  ContentCopy,
+  Download,
+  Edit,
+  Inventory2,
+  ShoppingCartCheckout,
+} from '@mui/icons-material';
 import AuthContext from '../../../src/components/Auth';
 import { toast } from 'react-toastify';
 import Header from '../../../src/components/common/Header';
 import OrderReturnDialog from '../../../src/components/common/OrderReturnDialog';
 import { parseMarginPct, getEffectiveMarginPct } from '../../../src/util/margin';
+import { expandOrderProductRows } from '../../../src/util/orderRows';
 
 const STATUS_COLOR: Record<string, 'warning' | 'info' | 'success' | 'error' | 'default'> = {
   draft: 'warning',
@@ -230,6 +239,209 @@ const OrderDetails = () => {
     }
     const base = special || orderData.customer_margin || item.margin || '40%';
     return getEffectiveMarginPct(base, item);
+  };
+
+  // Split products (pre-order in the catalogue but with stock) hold both an
+  // in-stock and a pre-order quantity on one saved line, so they expand into two
+  // rows — same as Review.tsx and the Zoho estimates.
+  const productRows = expandOrderProductRows(orderData.products);
+  const totalUnits = productRows.reduce((n, r) => n + r.quantity, 0);
+  // Same two buckets Review.tsx shows — they map 1:1 onto the two Zoho estimates.
+  const inStockRows = productRows.filter((r) => !r.isPreOrderRow);
+  const preOrderRows = productRows.filter((r) => r.isPreOrderRow);
+
+  // `price` on an order line is the MRP/rate — the amount actually charged is
+  // MRP less the effective margin, same as Review.tsx `calculatePrices()` and
+  // the backend's effective_margin(). Summing raw `price` overstates the order.
+  const rowSellingPrice = (item: any) => {
+    const rate = Number(item.price) || 0;
+    return parseFloat((rate - rate * (getItemMarginPct(item) / 100)).toFixed(2));
+  };
+  const rowSubtotal = (item: any) => rowSellingPrice(item) * (item.quantity ?? 1);
+
+  const ItemsSection = ({
+    title,
+    rows,
+    color,
+    icon,
+    estimateNumber,
+    note,
+  }: {
+    title: string;
+    rows: any[];
+    color: string;
+    icon: React.ReactNode;
+    estimateNumber?: string;
+    note?: string;
+  }) => {
+    if (rows.length === 0) return null;
+    const units = rows.reduce((n, r) => n + r.quantity, 0);
+    const subtotal = rows.reduce((n, r) => n + rowSubtotal(r), 0);
+    const gridCols = isMobile ? 'auto 1fr auto' : 'auto 1fr auto auto';
+
+    return (
+      <Box sx={{ mb: 3 }}>
+        {/* Section header */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+          {icon}
+          <Typography variant='subtitle1' fontWeight={700} sx={{ color }}>
+            {title}
+          </Typography>
+          <Chip
+            label={`${rows.length} item${rows.length !== 1 ? 's' : ''} · ${units} unit${
+              units !== 1 ? 's' : ''
+            }`}
+            size='small'
+            sx={{ fontWeight: 700, height: 22, fontSize: '0.7rem' }}
+          />
+        </Box>
+        {(estimateNumber || note) && (
+          <Box sx={{ mb: 1 }}>
+            <Chip
+              size='small'
+              variant='outlined'
+              color={color === theme.palette.warning.main ? 'warning' : 'primary'}
+              label={estimateNumber ? `Estimate — ${estimateNumber}` : note}
+              sx={{ fontSize: '0.7rem', height: 22 }}
+            />
+          </Box>
+        )}
+
+        {/* Column headers */}
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: gridCols,
+            gap: 1,
+            px: 1,
+            py: 1,
+            bgcolor: 'action.hover',
+            borderRadius: 1,
+            mb: 0.5,
+          }}
+        >
+          <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ fontSize: '0.7rem', minWidth: 26 }}>
+            #
+          </Typography>
+          <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ fontSize: '0.7rem' }}>
+            Item
+          </Typography>
+          {!isMobile && (
+            <Typography
+              variant='overline'
+              color='text.secondary'
+              fontWeight={700}
+              sx={{ textAlign: 'right', minWidth: 80, fontSize: '0.7rem' }}
+            >
+              Unit Price
+            </Typography>
+          )}
+          <Typography
+            variant='overline'
+            color='text.secondary'
+            fontWeight={700}
+            sx={{ textAlign: 'right', minWidth: 80, fontSize: '0.7rem' }}
+          >
+            Subtotal
+          </Typography>
+        </Box>
+
+        {rows.map((item: any, index: number) => (
+          <Box
+            key={item.rowKey}
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: gridCols,
+              gap: 1,
+              px: 1,
+              py: { xs: 1.5, sm: 1.25 },
+              borderBottom: index < rows.length - 1 ? '1px solid' : 'none',
+              borderColor: 'divider',
+              alignItems: 'center',
+            }}
+          >
+            {/* Row number */}
+            <Box
+              sx={{
+                width: 26,
+                height: 26,
+                borderRadius: '50%',
+                border: `1px solid ${color}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Typography sx={{ fontSize: '0.7rem', fontWeight: 800, lineHeight: 1, color }}>
+                {index + 1}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant='body1' fontWeight={500} color='text.primary'>
+                {item.name}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 0.25 }}>
+                <Typography variant='body2' color='text.secondary'>
+                  Qty: {item.quantity}
+                  {isMobile &&
+                    ` × ₹${rowSellingPrice(item).toLocaleString('en-IN')}`}
+                </Typography>
+                <Chip
+                  label={`${getItemMarginPct(item)}% margin`}
+                  size='small'
+                  color='success'
+                  sx={{ fontWeight: 700, height: 20, fontSize: '0.65rem' }}
+                />
+              </Box>
+            </Box>
+            {!isMobile && (
+              <Box sx={{ textAlign: 'right', minWidth: 80 }}>
+                <Typography variant='body1' color='text.primary'>
+                  ₹{rowSellingPrice(item).toLocaleString('en-IN')}
+                </Typography>
+                <Typography
+                  variant='caption'
+                  color='text.disabled'
+                  sx={{ textDecoration: 'line-through' }}
+                >
+                  ₹{(item.price ?? 0).toLocaleString('en-IN')}
+                </Typography>
+              </Box>
+            )}
+            <Typography
+              variant='body1'
+              fontWeight={600}
+              color='text.primary'
+              sx={{ textAlign: 'right', minWidth: 80 }}
+            >
+              ₹{rowSubtotal(item).toLocaleString('en-IN')}
+            </Typography>
+          </Box>
+        ))}
+
+        {/* Section subtotal */}
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 2,
+            px: 1,
+            pt: 1,
+            mt: 0.5,
+            borderTop: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Typography variant='body2' color='text.secondary'>
+            {title} subtotal
+          </Typography>
+          <Typography variant='body2' fontWeight={700} sx={{ color, minWidth: 80, textAlign: 'right' }}>
+            ₹{Math.round(subtotal).toLocaleString('en-IN')}
+          </Typography>
+        </Box>
+      </Box>
+    );
   };
 
   return (
@@ -595,6 +807,17 @@ const OrderDetails = () => {
         <Box sx={{ px: { xs: 2, sm: 3 }, py: 2.5 }}>
           <Typography variant='h6' fontWeight={700} gutterBottom>
             Ordered Items
+            {productRows.length > 0 && (
+              <Typography
+                component='span'
+                variant='body2'
+                color='text.secondary'
+                sx={{ fontWeight: 500, ml: 1 }}
+              >
+                ({productRows.length} item{productRows.length !== 1 ? 's' : ''}, {totalUnits} unit
+                {totalUnits !== 1 ? 's' : ''})
+              </Typography>
+            )}
             {estimateCreated && (
               <Typography
                 component='span'
@@ -606,115 +829,27 @@ const OrderDetails = () => {
               </Typography>
             )}
           </Typography>
-          {(orderData.products?.filter(
-            (p: any) => Number(p.quantity) > 0
-          ).length ?? 0) === 0 ? (
+          {productRows.length === 0 ? (
             <Typography variant='body1' color='text.secondary'>
               No products found in this order.
             </Typography>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {/* Column headers */}
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr auto' : '1fr auto auto',
-                  gap: 1,
-                  px: 1,
-                  py: 1,
-                  bgcolor: 'action.hover',
-                  borderRadius: 1,
-                  mb: 0.5,
-                }}
-              >
-                <Typography variant='overline' color='text.secondary' fontWeight={700} sx={{ fontSize: '0.7rem' }}>
-                  Item
-                </Typography>
-                {!isMobile && (
-                  <Typography
-                    variant='overline'
-                    color='text.secondary'
-                    fontWeight={700}
-                    sx={{ textAlign: 'right', minWidth: 80, fontSize: '0.7rem' }}
-                  >
-                    Unit Price
-                  </Typography>
-                )}
-                <Typography
-                  variant='overline'
-                  color='text.secondary'
-                  fontWeight={700}
-                  sx={{ textAlign: 'right', minWidth: 80, fontSize: '0.7rem' }}
-                >
-                  Subtotal
-                </Typography>
-              </Box>
-              {orderData.products
-                ?.filter((item: any) => Number(item.quantity) > 0)
-                .map((item: any, index: number, arr: any[]) => {
-                const subtotal = (item.price ?? 0) * (item.quantity ?? 1);
-                return (
-                  <Box
-                    key={index}
-                    sx={{
-                      display: 'grid',
-                      gridTemplateColumns: isMobile ? '1fr auto' : '1fr auto auto',
-                      gap: 1,
-                      px: 1,
-                      py: { xs: 1.5, sm: 1.25 },
-                      borderBottom: index < arr.length - 1 ? '1px solid' : 'none',
-                      borderColor: 'divider',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
-                        <Typography variant='body1' fontWeight={500} color='text.primary'>
-                          {item.name}
-                        </Typography>
-                        {item.pre_order && (
-                          <Chip
-                            label='Pre-Order'
-                            color='warning'
-                            size='small'
-                            variant='outlined'
-                            sx={{ fontWeight: 600, height: 20, fontSize: '0.65rem' }}
-                          />
-                        )}
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 0.25 }}>
-                        <Typography variant='body2' color='text.secondary'>
-                          Qty: {item.quantity}
-                          {isMobile && ` × ₹${(item.price ?? 0).toLocaleString('en-IN')}`}
-                        </Typography>
-                        <Chip
-                          label={`${getItemMarginPct(item)}% margin`}
-                          size='small'
-                          color='success'
-                          sx={{ fontWeight: 700, height: 20, fontSize: '0.65rem' }}
-                        />
-                      </Box>
-                    </Box>
-                    {!isMobile && (
-                      <Typography
-                        variant='body1'
-                        color='text.secondary'
-                        sx={{ textAlign: 'right', minWidth: 80 }}
-                      >
-                        ₹{(item.price ?? 0).toLocaleString('en-IN')}
-                      </Typography>
-                    )}
-                    <Typography
-                      variant='body1'
-                      fontWeight={600}
-                      color='text.primary'
-                      sx={{ textAlign: 'right', minWidth: 80 }}
-                    >
-                      ₹{subtotal.toLocaleString('en-IN')}
-                    </Typography>
-                  </Box>
-                );
-              })}
+              <ItemsSection
+                title='In Stock Items'
+                rows={inStockRows}
+                color={theme.palette.primary.main}
+                icon={<Inventory2 sx={{ color: theme.palette.primary.main, fontSize: 18 }} />}
+                estimateNumber={orderData.estimate_number}
+              />
+              <ItemsSection
+                title='Pre-Order Items'
+                rows={preOrderRows}
+                color={theme.palette.warning.main}
+                icon={<ShoppingCartCheckout sx={{ color: theme.palette.warning.main, fontSize: 18 }} />}
+                estimateNumber={orderData.pre_order_estimate_number}
+                note='Fulfilled when stock arrives'
+              />
               {/* Total row */}
               <Box
                 sx={{
