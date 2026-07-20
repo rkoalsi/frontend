@@ -17,7 +17,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import 'react-quill/dist/quill.snow.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ColorModeProvider, useColorMode } from '../src/context/ColorModeContext';
-import { event, isPublicPath, pageview } from '../src/util/gtag';
+import { event, isPublicPath, pageview, trackedPath } from '../src/util/gtag';
 import axios from 'axios';
 
 // Global axios defaults: send cookies and Authorization header on every request
@@ -152,10 +152,12 @@ export default function MyApp(props: AppProps) {
   const { Component, pageProps } = props;
   const router = useRouter();
 
-  // GA4: report a page_view only on public pages (initial load + client-side nav).
+  // GA4: report a page_view on every page (initial load + client-side nav).
+  // trackedPath() reduces authenticated routes to their route pattern so no
+  // order/customer IDs are sent.
   React.useEffect(() => {
-    if (!router.isReady || !isPublicPath(router.pathname)) return;
-    pageview(router.asPath);
+    if (!router.isReady) return;
+    pageview(trackedPath(router.pathname, router.asPath));
   }, [router.isReady, router.pathname, router.asPath]);
 
   // GA4: scroll-depth tracking on public pages — fires once per page as the
