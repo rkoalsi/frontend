@@ -45,6 +45,8 @@ import {
   Visibility,
 } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
+import { expandOrderProductRows } from '../../src/util/orderRows';
+import { parseMarginPct, getEffectiveMarginPct } from '../../src/util/margin';
 import axios from 'axios';
 import SingleImagePopupDialog from '../../src/components/common/SingleImagePopUp';
 import AuthContext from '../../src/components/Auth';
@@ -575,6 +577,22 @@ const Orders = () => {
   const productIsSplit = (p: any) =>
     !!p?.pre_order && Number(p?.pre_order_quantity) > 0;
 
+  // `price` on an order line is the MRP/rate. What the customer is actually
+  // charged is MRP less the effective margin — the same maths Review.tsx
+  // `calculatePrices()` and the backend's effective_margin() use. Summing raw
+  // `price` overstates the order and won't reconcile with `total_amount`.
+  const lineMarginPct = (p: any) => {
+    if (p?.estimate_margin != null && p.estimate_margin !== '') {
+      return parseMarginPct(p.estimate_margin);
+    }
+    return getEffectiveMarginPct(p?.margin || '40%', p);
+  };
+
+  const lineSellingPrice = (p: any) => {
+    const rate = Number(p?.price) || 0;
+    return parseFloat((rate - rate * (lineMarginPct(p) / 100)).toFixed(2));
+  };
+
   const orderHasStockItems = (o: any) =>
     (o?.products || []).some((p: any) =>
       productIsSplit(p)
@@ -1004,7 +1022,7 @@ const Orders = () => {
           onClose={handleCloseDrawer}
           sx={{
             '& .MuiDrawer-paper': {
-              width: 500,
+              width: 600,
               padding: 3,
             },
           }}
@@ -1612,90 +1630,213 @@ const Orders = () => {
                   }}
                 >
                   Products
+                  {(() => {
+                    const rows = expandOrderProductRows(selectedOrder.products);
+                    const units = rows.reduce(
+                      (n: number, r: any) => n + r.quantity,
+                      0
+                    );
+                    return (
+                      <Typography
+                        component='span'
+                        variant='body2'
+                        color='text.secondary'
+                        sx={{ fontWeight: 500, ml: 1 }}
+                      >
+                        ({rows.length} item{rows.length !== 1 ? 's' : ''}, {units}{' '}
+                        unit{units !== 1 ? 's' : ''})
+                      </Typography>
+                    );
+                  })()}
                 </Typography>
-                <TableContainer
-                  component={Paper}
-                  sx={{
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                    borderRadius: 2,
-                  }}
-                >
-                  <Table size='small'>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Image</TableCell>
-                        <TableCell>Product Name</TableCell>
-                        <TableCell>Qty</TableCell>
-                        <TableCell>Price</TableCell>
-                        <TableCell>Added By</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {selectedOrder.products
-                        ?.filter((product: any) => Number(product.quantity) > 0)
-                        .map((product: any) => (
-                        <TableRow key={product.product_id}>
-                          <TableCell>
-                            <img
-                              onClick={() =>
-                                handleImageClick(
-                                  product.image_url || '/placeholder.png'
+                {(() => {
+                  const allRows = expandOrderProductRows(selectedOrder.products);
+                  const sections = [
+                    {
+                      key: 'stock',
+                      title: 'In Stock Items',
+                      rows: allRows.filter((r: any) => !r.isPreOrderRow),
+                      color: 'info.main' as const,
+                      estimateNumber: selectedOrder.estimate_number,
+                      note: undefined as string | undefined,
+                    },
+                    {
+                      key: 'pre_order',
+                      title: 'Pre-Order Items',
+                      rows: allRows.filter((r: any) => r.isPreOrderRow),
+                      color: 'warning.main' as const,
+                      estimateNumber: selectedOrder.pre_order_estimate_number,
+                      note: 'Fulfilled when stock arrives',
+                    },
+                  ].filter((s) => s.rows.length > 0);
+
+                  return sections.map((section) => {
+                    const units = section.rows.reduce(
+                      (n: number, r: any) => n + r.quantity,
+                      0
+                    );
+                    const subtotal = section.rows.reduce(
+                      (n: number, r: any) =>
+                        n + lineSellingPrice(r) * (r.quantity ?? 0),
+                      0
+                    );
+                    return (
+                      <Box key={section.key} sx={{ mb: 3 }}>
+                        <Box
+                          display='flex'
+                          alignItems='center'
+                          gap={1}
+                          flexWrap='wrap'
+                          mb={1}
+                        >
+                          <Typography
+                            variant='subtitle1'
+                            sx={{ fontWeight: 700, color: section.color }}
+                          >
+                            {section.title}
+                          </Typography>
+                          <Chip
+                            size='small'
+                            label={`${section.rows.length} item${
+                              section.rows.length !== 1 ? 's' : ''
+                            } · ${units} unit${units !== 1 ? 's' : ''}`}
+                            sx={{ fontWeight: 700, height: 22 }}
+                          />
+                          <Chip
+                            size='small'
+                            variant='outlined'
+                            color={
+                              section.key === 'pre_order' ? 'warning' : 'info'
+                            }
+                            label={
+                              section.estimateNumber
+                                ? `Estimate — ${section.estimateNumber}`
+                                : section.note || 'No estimate yet'
+                            }
+                            sx={{ height: 22 }}
+                          />
+                        </Box>
+                        <TableContainer
+                          component={Paper}
+                          sx={{
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                            borderRadius: 2,
+                          }}
+                        >
+                          <Table size='small'>
+                            <TableHead>
+                              <TableRow>
+                                <TableCell sx={{ width: 44 }}>#</TableCell>
+                                <TableCell>Image</TableCell>
+                                <TableCell>Product Name</TableCell>
+                                <TableCell>Qty</TableCell>
+                                <TableCell>Price</TableCell>
+                                <TableCell>Added By</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {section.rows.map(
+                                (product: any, index: number) => (
+                                  <TableRow key={product.rowKey}>
+                                    <TableCell sx={{ fontWeight: 700 }}>
+                                      {index + 1}
+                                    </TableCell>
+                                    <TableCell>
+                                      <img
+                                        onClick={() =>
+                                          handleImageClick(
+                                            product.image_url ||
+                                              '/placeholder.png'
+                                          )
+                                        }
+                                        src={
+                                          product.image_url ||
+                                          '/placeholder.png'
+                                        }
+                                        alt={product.name}
+                                        style={{
+                                          width: '50px',
+                                          height: '50px',
+                                          borderRadius: '4px',
+                                          objectFit: 'cover',
+                                        }}
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <Box
+                                        display='flex'
+                                        flexDirection='column'
+                                        gap={0.5}
+                                      >
+                                        <span>{product.name}</span>
+                                        {/* The section already says stock vs
+                                            pre-order; this chip only flags the
+                                            products that appear in BOTH. */}
+                                        {product.hasBothPortions && (
+                                          <Box>
+                                            <Chip
+                                              label='Split — also in the other section'
+                                              size='small'
+                                              variant='outlined'
+                                              sx={{
+                                                fontWeight: 600,
+                                                height: 20,
+                                              }}
+                                            />
+                                          </Box>
+                                        )}
+                                      </Box>
+                                    </TableCell>
+                                    <TableCell>{product.quantity}</TableCell>
+                                    <TableCell>
+                                      <Box
+                                        display='flex'
+                                        flexDirection='column'
+                                      >
+                                        <span>
+                                          ₹{lineSellingPrice(product).toFixed(2)}
+                                        </span>
+                                        <Typography
+                                          variant='caption'
+                                          color='text.disabled'
+                                          sx={{ textDecoration: 'line-through' }}
+                                        >
+                                          ₹{Number(product.price ?? 0).toFixed(2)}
+                                        </Typography>
+                                      </Box>
+                                    </TableCell>
+                                    <TableCell>
+                                      {capitalize(
+                                        product?.added_by?.split('_')?.join(' ')
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
                                 )
-                              }
-                              src={product.image_url || '/placeholder.png'}
-                              alt={product.name}
-                              style={{
-                                width: '50px',
-                                height: '50px',
-                                borderRadius: '4px',
-                                objectFit: 'cover',
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Box
-                              display='flex'
-                              flexDirection='column'
-                              gap={0.5}
-                            >
-                              <span>{product.name}</span>
-                              {product?.pre_order && (
-                                <Box display='flex' gap={0.5} flexWrap='wrap'>
-                                  <Chip
-                                    label={
-                                      productIsSplit(product)
-                                        ? 'Pre-Order (Split)'
-                                        : 'Pre-Order'
-                                    }
-                                    color='warning'
-                                    size='small'
-                                    variant='outlined'
-                                    sx={{ fontWeight: 600, height: 20 }}
-                                  />
-                                  {productIsSplit(product) && (
-                                    <Chip
-                                      label={`PO Qty: ${product.pre_order_quantity}`}
-                                      color='warning'
-                                      size='small'
-                                      sx={{ height: 20 }}
-                                    />
-                                  )}
-                                </Box>
                               )}
-                            </Box>
-                          </TableCell>
-                          <TableCell>{product.quantity}</TableCell>
-                          <TableCell>₹{product.price?.toFixed(2)}</TableCell>
-                          <TableCell>
-                            {capitalize(
-                              product?.added_by?.split('_')?.join(' ')
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                        <Box
+                          display='flex'
+                          justifyContent='flex-end'
+                          gap={2}
+                          mt={1}
+                          pr={1}
+                        >
+                          <Typography variant='body2' color='text.secondary'>
+                            {section.title} subtotal
+                          </Typography>
+                          <Typography
+                            variant='body2'
+                            sx={{ fontWeight: 700, color: section.color }}
+                          >
+                            ₹{Math.round(subtotal).toLocaleString('en-IN')}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    );
+                  });
+                })()}
               </>
             )}
           </Box>
