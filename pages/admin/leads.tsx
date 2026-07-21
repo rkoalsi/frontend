@@ -1008,7 +1008,7 @@ const B2BRegistrationsTab = () => {
     <>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
         <Typography variant='body2' color='text.secondary'>
-          Mobile numbers that started B2B self-registration on the order form. A row
+          Mobile numbers that started B2B self-registration on Marketplace. A row
           is captured the moment an OTP is requested; "Verified" means the account
           was created.
         </Typography>

@@ -99,7 +99,7 @@ const SheetsDisplay = ({
             fontWeight={700}
             sx={{ fontSize: { xs: '0.95rem', sm: '1.15rem' }, lineHeight: 1.3 }}
           >
-            {isMobile ? 'Order Form Sheet' : 'Order Form Google Sheet Template'}
+            {isMobile ? 'Order Sheet' : 'Order Google Sheet Template'}
           </Typography>
         </Box>
       </AccordionSummary>

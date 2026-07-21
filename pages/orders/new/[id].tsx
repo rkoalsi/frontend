@@ -70,7 +70,7 @@ import CustomerTour, { TourStep } from '../../../src/components/common/CustomerT
 const ORDERS_TOUR_STEPS: TourStep[] = [
   {
     target: null,
-    title: 'Your Order Form',
+    title: 'Your Order',
     content: "This is where you build and submit your order. We'll walk you through each section so you know exactly what to do.",
   },
   {
@@ -85,7 +85,7 @@ const ORDERS_TOUR_STEPS: TourStep[] = [
   },
   {
     target: 'order-download',
-    title: 'Download Order Form',
+    title: 'Download Order',
     content: "This section lets you open your order as a Google Sheet — handy for offline browsing or sharing a formatted copy. You can also download it as an Excel file.",
   },
   {
@@ -1460,7 +1460,7 @@ const NewOrder: React.FC = () => {
                   '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.15)' },
                 }}
               >
-                {loading ? <CircularProgress size={22} /> : 'Download Order Form'}
+                {loading ? <CircularProgress size={22} /> : 'Download Order'}
               </Button>
             )}
           </Box>

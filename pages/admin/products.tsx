@@ -827,7 +827,7 @@ const handleImageUpload = async (files: File[] | File) => {
         />
         {filterBrand && brandOptions.find((b) => b.name === filterBrand)?.hidden && (
           <Alert severity='warning' sx={{ marginBottom: 3 }}>
-            <strong>{filterBrand}</strong> is currently hidden — it will not appear in the order form or all products catalogue for customers.
+            <strong>{filterBrand}</strong> is currently hidden — it will not appear in Marketplace or all products catalogue for customers.
           </Alert>
         )}
 
