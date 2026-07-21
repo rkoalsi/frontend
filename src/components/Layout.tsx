@@ -180,7 +180,7 @@ const Layout = ({ children }: any) => {
                 variant='caption'
                 sx={{ color: 'rgba(255,255,255,0.45)', lineHeight: 1, fontSize: '0.65rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}
               >
-                Order Portal
+                Marketplace
               </Typography>
             </Box>
           </Box>
