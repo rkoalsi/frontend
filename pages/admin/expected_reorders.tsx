@@ -24,6 +24,7 @@ import {
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import formatAddress from '../../src/util/formatAddress';
+import { formatHumanDateTime } from '../../src/util/date';
 import { FilterAlt } from '@mui/icons-material';
 
 const ExpectedReorders = () => {
@@ -277,8 +278,11 @@ const ExpectedReorders = () => {
                     <TableBody>
                       {expectedReorders.map((customer: any) => (
                         <TableRow key={customer._id}>
-                          <TableCell>
-                            {new Date(customer?.created_at).toLocaleString()}
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            {formatHumanDateTime(customer?.created_at, {
+                              assumeUTC: true,
+                              tz: 'Asia/Kolkata',
+                            })}
                           </TableCell>
                           <TableCell>{customer.customer_name}</TableCell>
                           <TableCell>
