@@ -1,4 +1,4 @@
-// Shared margin helpers for the order form.
+// Shared margin helpers for the Marketplace.
 // Mirrors the backend effective_margin() in routes/orders.py so the price the
 // customer sees (card → cart → Review) matches the Zoho estimate discount.
 
