@@ -289,6 +289,10 @@ const NewOrder: React.FC = () => {
   const { user }: any = useContext(AuthContext);
   const isAdmin = user?.role?.includes('admin');
   const isCustomerUser = user?.role === 'customer';
+  // Staff (admin / sales) reviewing a self-registered customer's order should
+  // still use the Save-as-Draft / estimate flow — the online-payment UI (Pay
+  // Now / COD) is only for the customer placing their own order.
+  const isStaffViewer = !isShared && !!user?.role && user.role !== 'customer';
   const canViewMargins =
     !isCustomerUser &&
     !isShared &&
@@ -1779,7 +1783,7 @@ const NewOrder: React.FC = () => {
                       order={order}
                       referenceNumber={referenceNumber}
                       onPaymentSuccess={getOrder}
-                      isSelfRegistered={payConfig.is_self_registered}
+                      isSelfRegistered={payConfig.is_self_registered && !isStaffViewer}
                       minOrderValue={payConfig.min_order_value}
                     />
                   </Suspense>
@@ -1860,8 +1864,9 @@ const NewOrder: React.FC = () => {
 
                 {/* Save as Draft / Submit Order — last step only.
                     Self-registered customers pay online instead (Pay Now in Review),
-                    so the submit button is hidden for them. */}
-                {activeStep === STEP_HELP.length - 1 && !payConfig.is_self_registered && (
+                    so the submit button is hidden for them — but staff (admin /
+                    sales) reviewing the order still get Save as Draft. */}
+                {activeStep === STEP_HELP.length - 1 && (!payConfig.is_self_registered || isStaffViewer) && (
                   <Tooltip
                     title={saveDraftBlockers.length > 0 ? saveDraftBlockers.join(' · ') : ''}
                     arrow

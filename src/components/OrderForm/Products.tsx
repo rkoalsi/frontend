@@ -171,6 +171,8 @@ const MemoizedDesktopProductCard = memo(({
   const splitProdDesktop = product.pre_order === true && (product.stock ?? 0) > 0;
   const isPreOrderCartDesktop = isPreOrderTab && splitProdDesktop;
   const showAsPreOrderLabelDesktop = isPreOrderTab && product.pre_order === true;
+  // Hide the Sale / Special Offer chip inside the Pre Orders tab only.
+  const showSaleChipDesktop = product.clearance && !isPreOrderTab;
   // Admin/internal-only logistics dates for pre-order products
   const fmtDate = (v?: string) => {
     if (!v) return '';
@@ -236,15 +238,24 @@ const MemoizedDesktopProductCard = memo(({
                 fontFamily: 'Poppins, sans-serif',
                 fontWeight: 700,
                 fontSize: '0.75rem',
-                backgroundColor: 'warning.main',
                 color: 'white',
                 letterSpacing: '0.5px',
                 textTransform: 'uppercase',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                backgroundColor: (theme) =>
+                  theme.palette.mode === 'dark' ? theme.palette.warning.main : theme.palette.warning.dark,
+                animation: 'preOrderPulse 1.8s ease-in-out infinite',
+                '@keyframes preOrderPulse': {
+                  '0%, 100%': { boxShadow: '0 0 0 0 rgba(255,167,38,0.55)' },
+                  '50%': { boxShadow: '0 0 10px 3px rgba(255,167,38,0.85)' },
+                },
+                '@media (prefers-reduced-motion: reduce)': {
+                  animation: 'none',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                },
               }}
             />
           )}
-          {product.clearance && (
+          {showSaleChipDesktop && (
             <Chip
               label={(product.clearance_margin ?? 0) > 0 ? `Sale +${product.clearance_margin}%` : 'Sale'}
               size="small"
@@ -270,7 +281,7 @@ const MemoizedDesktopProductCard = memo(({
               size="small"
               sx={{
                 position: 'absolute',
-                top: product.clearance ? 44 : 8,
+                top: showSaleChipDesktop ? 44 : 8,
                 right: 8,
                 zIndex: 1,
                 fontFamily: 'Poppins, sans-serif',
@@ -2559,7 +2570,7 @@ const Products: React.FC<ProductsProps> = ({
               </Box>
             )
           )}
-          {sortOrder !== "catalogue" && (
+          {sortOrder !== "catalogue" && activeBrand !== "Pre Orders" && (
             <Box display="flex" justifyContent="flex-end" gap={2}>
               <Tooltip
                 title="View all products organized by category instead of by brand. Useful for finding products across different brands in the same category."
