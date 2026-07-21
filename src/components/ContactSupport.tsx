@@ -19,7 +19,7 @@ const ContactSupport = ({ context }: ContactSupportProps) => {
 
   if (!email && !whatsapp) return null;
 
-  const subject = encodeURIComponent('Support request — Pupscribe order portal');
+  const subject = encodeURIComponent('Support request — Pupscribe Marketplace');
   const body = encodeURIComponent(
     `Hi Pupscribe team,\n\nI need help with my account.${context ? `\n\n(${context})` : ''}\n\nThanks,`
   );
