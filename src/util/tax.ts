@@ -1,4 +1,4 @@
-// Shared tax helpers for the order form.
+// Shared tax helpers for the Marketplace.
 
 /**
  * GST percentage for a product. Zoho returns an `item_tax_preferences` array

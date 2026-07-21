@@ -160,7 +160,7 @@ const LoginPage = () => {
               Pupscribe
             </Typography>
             <Typography variant='h6' fontWeight={400} sx={{ color: 'rgba(255,255,255,0.5)', mb: 4, fontSize: '1rem' }}>
-              Order Form
+              Marketplace
             </Typography>
 
             <Typography variant='body2' sx={{ color: 'rgba(255,255,255,0.6)', mb: 3, lineHeight: 1.7 }}>

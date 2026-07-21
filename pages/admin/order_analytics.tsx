@@ -467,7 +467,7 @@ const OrderAnalyticsPage = () => {
         </Typography>
       </Stack>
       <Typography variant="body2" color="text.secondary" mb={2}>
-        Month-wise / day-wise breakdown of orders placed on the order form.
+        Month-wise / day-wise breakdown of orders placed on Marketplace.
         Empty orders (someone clicked <em>Create Order</em> but never added any
         products or value) are excluded from every metric and reported
         separately as <strong>abandoned</strong>.
@@ -872,7 +872,7 @@ const OrderAnalyticsPage = () => {
 
           {/* ── Salespeople using the form ── */}
           <UsageListCard
-            title="Salespeople Using the Order Form"
+            title="Salespeople Using the Marketplace"
             subtitle="Team members who created at least one real order in the range, most active first."
             rows={data!.salespeople}
             searchPlaceholder="Search salespeople…"
@@ -938,7 +938,7 @@ const OrderAnalyticsPage = () => {
 
           {/* ── Customers whose orders flow through the form ── */}
           <UsageListCard
-            title="Customers Using the Order Form"
+            title="Customers Using the Marketplace"
             subtitle={`Customers who added product(s) themselves (added_by = customer) on at least one real order. ${fmtInt(
               customersFinalisedByLogin
             )} of them also finalised an order by logging in themselves.`}
