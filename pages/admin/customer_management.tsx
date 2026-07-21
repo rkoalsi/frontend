@@ -491,7 +491,7 @@ const CustomerManagement: React.FC = () => {
 
     const handleCopyShareCred = () => {
         if (!userToShare || !sharePwd) return;
-        const text = `Link: https://orderform.pupscribe.in/login\nEmail: ${userToShare.email}\nPassword: ${sharePwd}`;
+        const text = `Link: https://marketplace.pupscribe.in/login\nEmail: ${userToShare.email}\nPassword: ${sharePwd}`;
         navigator.clipboard.writeText(text).then(
             () => toast.success('Credentials copied!'),
             () => toast.error('Failed to copy.')
@@ -1722,7 +1722,7 @@ const CustomerManagement: React.FC = () => {
                     {sharePwd && (
                         <Alert severity="info" sx={{ mt: 2 }}>
                             <Typography variant="body2" fontFamily="monospace" whiteSpace="pre-line">
-                                {`Link: https://orderform.pupscribe.in/login\nEmail: ${userToShare?.email}\nPassword: ${sharePwd}`}
+                                {`Link: https://marketplace.pupscribe.in/login\nEmail: ${userToShare?.email}\nPassword: ${sharePwd}`}
                             </Typography>
                         </Alert>
                     )}
