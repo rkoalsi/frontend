@@ -38,13 +38,19 @@ import {
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
 import {
+  Block,
+  ContentCopy,
   Delete,
+  Done,
   Download,
   Edit,
   FilterAlt,
+  ReceiptLong,
+  SaveAs,
   Visibility,
 } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
+import { formatHumanDateTime } from '../../src/util/date';
 import { expandOrderProductRows } from '../../src/util/orderRows';
 import { parseMarginPct, getEffectiveMarginPct } from '../../src/util/margin';
 import axios from 'axios';
@@ -113,9 +119,13 @@ const Orders = () => {
   const [filterSalesPerson, setFilterSalesPerson] = useState<string>('');
   const [filterEstimatesCreated, setFilterEstimatesCreated] =
     useState<boolean>(false);
+  const [filterSpreadsheetCreated, setFilterSpreadsheetCreated] =
+    useState<boolean>(false);
   const [filterEstimatesGreaterThanZero, setFilterEstimatesGreaterThanZero] =
     useState<boolean>(false);
   const [filterHasPreOrder, setFilterHasPreOrder] = useState<boolean>(false);
+  // Hide "empty" orders (no customer / nothing in the cart). Default on.
+  const [filterHideEmpty, setFilterHideEmpty] = useState<boolean>(true);
   const [salesPeople, setSalesPeople] = useState<string[]>([
     'SP1',
     'SP2',
@@ -141,7 +151,7 @@ const Orders = () => {
   ]);
   const [openImagePopup, setOpenImagePopup] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
-  const [searchEstimateNumber, setSearchEstimateNumber] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
   const [searchKey, setSearchKey] = useState(0);
@@ -210,15 +220,18 @@ const Orders = () => {
       const params: any = {
         ...(filterStartDate && { start_date: filterStartDate }),
         ...(filterEndDate && { end_date: filterEndDate }),
-        ...(searchEstimateNumber && { estimate_number: searchEstimateNumber }),
+        ...(searchQuery && { search: searchQuery }),
       };
 
       if (filterStatus) params.status = filterStatus;
       if (filterSalesPerson) params.sales_person = filterSalesPerson;
       if (filterEstimatesCreated)
         params.estimate_created = filterEstimatesCreated;
+      if (filterSpreadsheetCreated)
+        params.spreadsheet_created = filterSpreadsheetCreated;
       if (filterEstimatesGreaterThanZero) params.amount = true;
       if (filterHasPreOrder) params.has_pre_order = true;
+      if (!filterHideEmpty) params.hide_empty = false;
       console.log(params);
       const response = await axiosInstance.get('/admin/orders/export', {
         params,
@@ -255,15 +268,18 @@ const Orders = () => {
         limit: rowsPerPage,
         ...(filterStartDate && { start_date: filterStartDate }),
         ...(filterEndDate && { end_date: filterEndDate }),
-        ...(searchEstimateNumber && { estimate_number: searchEstimateNumber }),
+        ...(searchQuery && { search: searchQuery }),
       };
 
       if (filterStatus) params.status = filterStatus;
       if (filterSalesPerson) params.sales_person = filterSalesPerson;
       if (filterEstimatesCreated)
         params.estimate_created = filterEstimatesCreated;
+      if (filterSpreadsheetCreated)
+        params.spreadsheet_created = filterSpreadsheetCreated;
       if (filterEstimatesGreaterThanZero) params.amount = true;
       if (filterHasPreOrder) params.has_pre_order = true;
+      if (!filterHideEmpty) params.hide_empty = false;
       const response = await axiosInstance.get(`/admin/orders`, {
         params,
       });
@@ -523,6 +539,21 @@ const Orders = () => {
     }
   };
 
+  // Duplicate an order into a fresh draft, then open it in the order form —
+  // mirrors the Duplicate Order action on /orders/past/[id].tsx.
+  const handleDuplicate = async (order: any) => {
+    try {
+      const resp = await axiosInstance.post(`/orders/duplicate_order`, {
+        order_id: order._id,
+      });
+      toast.success('Order duplicated');
+      router.push(`/orders/new/${resp.data}`);
+    } catch (error) {
+      console.error('Error duplicating order:', error);
+      toast.error('Failed to duplicate order');
+    }
+  };
+
   const handleDelete = async (order: any) => {
     setOrderLoading(true);
     try {
@@ -663,11 +694,13 @@ const Orders = () => {
           </Typography>
           <Box display='flex' alignItems='center' gap={2}>
             <TextField
-              label='Search Estimate Number'
+              label='Search orders'
+              placeholder='Invoice, Customer, Estimate, Sales Person, Order ID'
               variant='outlined'
               size='small'
-              value={searchEstimateNumber}
-              onChange={(e) => setSearchEstimateNumber(e.target.value)}
+              sx={{ minWidth: 340 }}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && triggerSearch()}
             />
             <Button
@@ -756,36 +789,50 @@ const Orders = () => {
               <>
                 {/* Orders Table */}
                 <TableContainer component={Paper}>
-                  <Table>
+                  <Table
+                    size='small'
+                    sx={{
+                      width: '100%',
+                      // Clear grid edges so each row — and its wrapped block of
+                      // action icons — is visually bounded within its own cell.
+                      '& td, & th': {
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        verticalAlign: 'middle',
+                      },
+                    }}
+                  >
                     <TableHead>
                       <TableRow>
                         <TableCell>Created At</TableCell>
-                        <TableCell>Estimate Created</TableCell>
-                        <TableCell>Spreadsheet Created</TableCell>
+                        <TableCell align='center'>Estimate</TableCell>
+                        <TableCell align='center'>Sheet</TableCell>
                         <TableCell>Order ID</TableCell>
-                        <TableCell>Customer Name</TableCell>
+                        <TableCell>Customer</TableCell>
                         <TableCell>Status</TableCell>
-                        <TableCell>Payment Status</TableCell>
+                        <TableCell>Payment</TableCell>
                         <TableCell>Created By</TableCell>
-                        <TableCell>Total Amount</TableCell>
-                        <TableCell>Actions</TableCell>
+                        <TableCell align='right'>Total</TableCell>
+                        <TableCell align='center'>Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {orders.map((order: any) => (
-                        <TableRow key={order._id}>
-                          <TableCell>
-                            {new Date(order.created_at).toLocaleString()}
+                        <TableRow key={order._id} hover>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            {formatHumanDateTime(order.created_at)}
                           </TableCell>
-                          <TableCell>
+                          <TableCell align='center' padding='checkbox'>
                             <Checkbox
                               disabled
+                              size='small'
                               checked={order?.estimate_created}
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell align='center' padding='checkbox'>
                             <Checkbox
                               disabled
+                              size='small'
                               checked={order?.spreadsheet_created}
                             />
                           </TableCell>
@@ -806,7 +853,8 @@ const Orders = () => {
                                   color='warning'
                                   size='small'
                                   variant='outlined'
-                                  sx={{ fontWeight: 600 }}
+                                  onClick={() => handleViewDetails(order)}
+                                  sx={{ fontWeight: 600, cursor: 'pointer' }}
                                 />
                               )}
                             </Box>
@@ -817,33 +865,98 @@ const Orders = () => {
                               label={capitalize(order.estimate_status || order.status)}
                               color={getStatusChipColor(order.estimate_status || order.status)}
                               size='small'
-                              sx={{ fontWeight: 600, textTransform: 'capitalize' }}
+                              onClick={() => handleViewDetails(order)}
+                              sx={{
+                                fontWeight: 600,
+                                textTransform: 'capitalize',
+                                cursor: 'pointer',
+                              }}
                             />
                           </TableCell>
                           <TableCell>
-                            {order?.payment?.status ? (
-                              <Chip
-                                label={getPaymentChipLabel(order.payment.status)}
-                                color={getPaymentChipColor(order.payment.status)}
-                                size='small'
-                                sx={{ fontWeight: 600, textTransform: 'capitalize' }}
-                              />
-                            ) : (
-                              <Typography variant='body2' color='text.secondary'>
-                                —
-                              </Typography>
-                            )}
+                            {(() => {
+                              // When the estimate is invoiced, prefer the Zoho
+                              // invoice's payment state (paid / overdue) over the
+                              // gateway payment, with a distinct receipt-icon cue
+                              // that this reflects an actual invoice.
+                              const isInvoiced =
+                                (order.estimate_status || order.status)
+                                  ?.toLowerCase() === 'invoiced';
+                              const invStatus = order?.invoice_payment_status;
+                              if (isInvoiced && invStatus) {
+                                const isPaid = invStatus === 'paid';
+                                const isOverdue = invStatus === 'overdue';
+                                return (
+                                  <Chip
+                                    icon={<ReceiptLong />}
+                                    label={
+                                      isPaid
+                                        ? 'Paid · Invoice'
+                                        : isOverdue
+                                        ? 'Overdue · Invoice'
+                                        : `${capitalize(invStatus)} · Invoice`
+                                    }
+                                    color={
+                                      isPaid
+                                        ? 'success'
+                                        : isOverdue
+                                        ? 'error'
+                                        : 'warning'
+                                    }
+                                    variant={isPaid ? 'filled' : 'outlined'}
+                                    size='small'
+                                    title='Zoho invoice payment status'
+                                    onClick={() => handleViewDetails(order)}
+                                    sx={{
+                                      fontWeight: 700,
+                                      textTransform: 'capitalize',
+                                      cursor: 'pointer',
+                                    }}
+                                  />
+                                );
+                              }
+                              return order?.payment?.status ? (
+                                <Chip
+                                  label={getPaymentChipLabel(
+                                    order.payment.status
+                                  )}
+                                  color={getPaymentChipColor(
+                                    order.payment.status
+                                  )}
+                                  size='small'
+                                  onClick={() => handleViewDetails(order)}
+                                  sx={{
+                                    fontWeight: 600,
+                                    textTransform: 'capitalize',
+                                    cursor: 'pointer',
+                                  }}
+                                />
+                              ) : (
+                                <Typography
+                                  variant='body2'
+                                  color='text.secondary'
+                                >
+                                  —
+                                </Typography>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell>{getCreatedByLabel(order)}</TableCell>
-                          <TableCell>₹{order.total_amount || 0}</TableCell>
-                          <TableCell>
+                          <TableCell align='right' sx={{ whiteSpace: 'nowrap' }}>
+                            ₹{order.total_amount || 0}
+                          </TableCell>
+                          <TableCell sx={{ width: 160 }}>
                             <Box
                               display={'flex'}
                               flexDirection={'row'}
-                              gap={'8px'}
+                              flexWrap={'wrap'}
+                              justifyContent={'center'}
+                              gap={'2px'}
+                              sx={{ maxWidth: 150, mx: 'auto' }}
                             >
-                              <Button
-                                variant='outlined'
+                              <IconButton
+                                size='small'
+                                title='Save as Draft'
                                 color={'warning'}
                                 disabled={
                                   (order?.status?.toLowerCase() === 'draft'
@@ -854,10 +967,11 @@ const Orders = () => {
                                 }
                                 onClick={() => handleEstimateAction(order, 'draft')}
                               >
-                                Save As Draft
-                              </Button>
-                              <Button
-                                variant='outlined'
+                                <SaveAs fontSize='small' />
+                              </IconButton>
+                              <IconButton
+                                size='small'
+                                title='Accept'
                                 color={'success'}
                                 disabled={
                                   !order?.estimate_created ||
@@ -870,10 +984,11 @@ const Orders = () => {
                                 }
                                 onClick={() => handleEstimateAction(order, 'accepted')}
                               >
-                                Accept
-                              </Button>
-                              <Button
-                                variant='outlined'
+                                <Done fontSize='small' />
+                              </IconButton>
+                              <IconButton
+                                size='small'
+                                title='Decline'
                                 color={'error'}
                                 onClick={() => handleEstimateAction(order, 'declined')}
                                 disabled={
@@ -886,9 +1001,11 @@ const Orders = () => {
                                   )
                                 }
                               >
-                                Decline
-                              </Button>
+                                <Block fontSize='small' />
+                              </IconButton>
                               <IconButton
+                                size='small'
+                                title='Delete'
                                 color={'error'}
                                 disabled={
                                   ['deleted'].includes(
@@ -897,9 +1014,11 @@ const Orders = () => {
                                 }
                                 onClick={() => handleDelete(order)}
                               >
-                                <Delete />
+                                <Delete fontSize='small' />
                               </IconButton>
                               <IconButton
+                                size='small'
+                                title='Edit'
                                 onClick={() =>
                                   router.push(`/orders/new/${order._id}`)
                                 }
@@ -907,28 +1026,41 @@ const Orders = () => {
                                   order?.status?.toLowerCase()
                                 )}
                               >
-                                <Edit />
+                                <Edit fontSize='small' />
                               </IconButton>
                               <IconButton
+                                size='small'
+                                title='View details'
                                 onClick={() => handleViewDetails(order)}
                               >
-                                <Visibility />
+                                <Visibility fontSize='small' />
+                              </IconButton>
+                              <IconButton
+                                size='small'
+                                title='Duplicate order'
+                                onClick={() => handleDuplicate(order)}
+                              >
+                                <ContentCopy fontSize='small' />
                               </IconButton>
                               {order?.estimate_created && (
                                 <IconButton
+                                  size='small'
+                                  title='Download estimate'
                                   onClick={() => handleDownload(order)}
                                 >
-                                  <Download />
+                                  <Download fontSize='small' />
                                 </IconButton>
                               )}
                               {order?.pre_order_estimate_created && (
                                 <IconButton
+                                  size='small'
+                                  title='Download pre-order estimate'
                                   color='warning'
                                   onClick={() =>
                                     handleDownload(order, 'pre_order')
                                   }
                                 >
-                                  <Download />
+                                  <Download fontSize='small' />
                                 </IconButton>
                               )}
                             </Box>
@@ -998,7 +1130,7 @@ const Orders = () => {
                     </Box>
                   </Box>
                   <Typography variant='subtitle1'>
-                    Total Pages: {totalPagesCount}
+                    Total Pages: {totalPagesCount < 0 ? '—' : totalPagesCount}
                   </Typography>
                 </Box>
               </>
@@ -1138,11 +1270,11 @@ const Orders = () => {
                   </Typography>
                   <Typography>
                     <strong>Created At:</strong>{' '}
-                    {new Date(selectedOrder.created_at).toLocaleString()}
+                    {formatHumanDateTime(selectedOrder.created_at)}
                   </Typography>
                   <Typography>
                     <strong>Updated At:</strong>{' '}
-                    {new Date(selectedOrder.updated_at).toLocaleString()}
+                    {formatHumanDateTime(selectedOrder.updated_at)}
                   </Typography>
                 </Box>
 
@@ -1931,6 +2063,19 @@ const Orders = () => {
             <FormControlLabel
               control={
                 <Checkbox
+                  checked={filterSpreadsheetCreated}
+                  onChange={(e) =>
+                    setFilterSpreadsheetCreated(e.target.checked)
+                  }
+                />
+              }
+              label='Spreadsheet Created'
+              sx={{ mt: 2 }}
+            />
+
+            <FormControlLabel
+              control={
+                <Checkbox
                   checked={filterEstimatesGreaterThanZero}
                   onChange={(e) =>
                     setFilterEstimatesGreaterThanZero(e.target.checked)
@@ -1952,6 +2097,17 @@ const Orders = () => {
               sx={{ mt: 2 }}
             />
 
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={filterHideEmpty}
+                  onChange={(e) => setFilterHideEmpty(e.target.checked)}
+                />
+              }
+              label='Hide empty orders (no customer / no items)'
+              sx={{ mt: 2 }}
+            />
+
             {/* Apply Filters Button */}
             <Box sx={{ mt: 3 }}>
               <Button variant='contained' fullWidth onClick={applyFilters}>
@@ -1968,8 +2124,10 @@ const Orders = () => {
                   setFilterStatus('');
                   setFilterSalesPerson('');
                   setFilterEstimatesCreated(false);
+                  setFilterSpreadsheetCreated(false);
                   setFilterEstimatesGreaterThanZero(false);
                   setFilterHasPreOrder(false);
+                  setFilterHideEmpty(true);
                 }}
               >
                 Reset Filters

@@ -32,6 +32,7 @@ import { FileDownloadOutlined, CheckOutlined, CloseOutlined, EditOutlined, Filte
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 import axiosInstance from '../../src/util/axios';
+import { formatHumanDateTime } from '../../src/util/date';
 import { useRouter } from 'next/router';
 
 // ─── XLSX helpers ─────────────────────────────────────────────────────────────
@@ -110,11 +111,8 @@ const REPORT_CONFIGS = [
   },
 ];
 
-const formatIST = (dateStr: string | null | undefined) => {
-  if (!dateStr) return '-';
-  const withZ = dateStr + (dateStr.endsWith('Z') ? '' : 'Z');
-  return new Date(withZ).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-};
+const formatIST = (dateStr: string | null | undefined) =>
+  formatHumanDateTime(dateStr, { assumeUTC: true, tz: 'Asia/Kolkata' });
 
 // ─── Inline Notes Cell ────────────────────────────────────────────────────────
 
@@ -838,7 +836,7 @@ const PotentialCustomersTab = () => {
                       <TableCell>{customer.tier}</TableCell>
                       <TableCell>{customer.customer_name || '-'}</TableCell>
                       <TableCell>{customer.mobile || '-'}</TableCell>
-                      <TableCell>{new Date(customer.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatIST(customer.created_at)}</TableCell>
                       <TableCell>{customer.created_by_info?.name}</TableCell>
                       <TableCell>{customer.follow_up_date || '-'}</TableCell>
                       <TableCell>{customer.comments || '-'}</TableCell>
