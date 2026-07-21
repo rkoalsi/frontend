@@ -122,6 +122,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
     );
     const isSplitVariant = currentVariant.pre_order === true && (currentVariant.stock ?? 0) > 0;
     const isPreOrderCartGroup = isPreOrderTab && isSplitVariant;
+    const showAsPreOrderLabelGroup = isPreOrderTab && currentVariant.pre_order === true;
     // Admin/internal-only logistics dates for pre-order variants
     const fmtDate = (v?: string) => {
       if (!v) return '';
@@ -314,7 +315,8 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
             )
           )}
 
-          {(currentVariant as any).clearance && (
+          {/* Hide the Sale / Special Offer chip inside the Pre Orders tab only. */}
+          {(currentVariant as any).clearance && !isPreOrderTab && (
             <Chip
               label={((currentVariant as any).clearance_margin ?? 0) > 0 ? `Sale +${(currentVariant as any).clearance_margin}%` : 'Sale'}
               size="small"
@@ -331,6 +333,39 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                 backgroundColor: 'error.main',
                 color: 'white',
                 boxShadow: 2,
+              }}
+            />
+          )}
+
+          {/* Pre Order chip — shown for every item in the Pre Orders tab.
+              Placed top-right (the Sale chip is hidden in this tab). */}
+          {showAsPreOrderLabelGroup && (
+            <Chip
+              label="Pre Order"
+              size="small"
+              sx={{
+                position: "absolute",
+                top: 20,
+                right: 24,
+                zIndex: 11,
+                fontWeight: 700,
+                fontSize: "0.65rem",
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+                borderRadius: '12px',
+                padding: "6px 8px",
+                color: 'white',
+                backgroundColor: (theme) =>
+                  theme.palette.mode === 'dark' ? theme.palette.warning.main : theme.palette.warning.dark,
+                animation: 'preOrderPulse 1.8s ease-in-out infinite',
+                '@keyframes preOrderPulse': {
+                  '0%, 100%': { boxShadow: '0 0 0 0 rgba(255,167,38,0.55)' },
+                  '50%': { boxShadow: '0 0 10px 3px rgba(255,167,38,0.85)' },
+                },
+                '@media (prefers-reduced-motion: reduce)': {
+                  animation: 'none',
+                  boxShadow: 2,
+                },
               }}
             />
           )}

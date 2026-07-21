@@ -181,7 +181,8 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               />
             )}
 
-            {product.clearance && (
+            {/* Hide the Sale / Special Offer chip inside the Pre Orders tab only. */}
+            {product.clearance && !isPreOrderTab && (
               <Chip
                 label={(product.clearance_margin ?? 0) > 0 ? `Sale +${product.clearance_margin}%` : 'Sale'}
                 size="small"
@@ -196,6 +197,37 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                   backgroundColor: 'error.main',
                   color: 'white',
                   boxShadow: 2,
+                }}
+              />
+            )}
+
+            {/* Pre Order chip — shown for every item in the Pre Orders tab.
+                Placed top-right (the Sale chip is hidden in this tab). */}
+            {showAsPreOrderLabel && (
+              <Chip
+                label="Pre Order"
+                size="small"
+                sx={{
+                  position: "absolute",
+                  top: 20,
+                  right: 24,
+                  zIndex: 11,
+                  fontWeight: 700,
+                  fontSize: '0.65rem',
+                  letterSpacing: '0.5px',
+                  textTransform: 'uppercase',
+                  color: 'white',
+                  backgroundColor: (theme) =>
+                    theme.palette.mode === 'dark' ? theme.palette.warning.main : theme.palette.warning.dark,
+                  animation: 'preOrderPulse 1.8s ease-in-out infinite',
+                  '@keyframes preOrderPulse': {
+                    '0%, 100%': { boxShadow: '0 0 0 0 rgba(255,167,38,0.55)' },
+                    '50%': { boxShadow: '0 0 10px 3px rgba(255,167,38,0.85)' },
+                  },
+                  '@media (prefers-reduced-motion: reduce)': {
+                    animation: 'none',
+                    boxShadow: 2,
+                  },
                 }}
               />
             )}
