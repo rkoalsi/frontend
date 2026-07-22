@@ -307,12 +307,12 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                   bottom: 8,
                   right: 8,
                   zIndex: 10,
-                  width: 20,
-                  height: 20,
+                  width: 12,
+                  height: 12,
                   bgcolor: 'primary.main',
-                  clipPath: 'polygon(50% 6%, 97% 90%, 3% 90%)',
-                  borderRadius: '3px',
-                  transform: 'rotate(8deg)',
+                  borderRadius: '50%',
+                  border: '2px solid',
+                  borderColor: 'background.paper',
                   boxShadow: 1,
                 }}
               />
@@ -347,8 +347,8 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                   height: 22,
                   fontSize: '0.65rem',
                   fontWeight: 700,
-                  bgcolor: 'primary.main',
-                  color: 'primary.contrastText',
+                  bgcolor: isDark ? '#322B5F' : '#E7E2F9',
+                  color: isDark ? '#BCAFFF' : '#37279C',
                   boxShadow: 1,
                   '& .MuiChip-label': { px: 1 },
                 }}
@@ -371,9 +371,8 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                 textTransform: 'uppercase',
                 borderRadius: '12px',
                 padding: "6px 8px",
-                backgroundColor: 'secondary.main',
-                color: 'secondary.contrastText',
-                transform: 'rotate(-2deg)',
+                backgroundColor: isDark ? '#4A2A3D' : '#F9E2EF',
+                color: isDark ? '#F2A9D2' : '#A22F68',
                 boxShadow: 1,
               }}
             />
@@ -396,48 +395,79 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                 textTransform: 'uppercase',
                 borderRadius: '12px',
                 padding: "6px 8px",
-                color: '#1C1A33',
-                backgroundColor: isDark ? '#EFD84A' : '#E4CD2E',
-                animation: 'preOrderPulse 1.8s ease-in-out infinite',
-                '@keyframes preOrderPulse': {
-                  '0%, 100%': { boxShadow: '0 0 0 0 rgba(228,205,46,0.5)' },
-                  '50%': { boxShadow: '0 0 10px 3px rgba(228,205,46,0.8)' },
-                },
-                '@media (prefers-reduced-motion: reduce)': {
-                  animation: 'none',
-                  boxShadow: 2,
-                },
+                color: isDark ? '#F2DE64' : '#6B5D00',
+                backgroundColor: isDark ? '#3F3A15' : '#F6EEBC',
               }}
             />
           )}
 
           {!isShared && !isOutOfStock && (
-            <Chip
-              size="small"
-              label={
-                isSplitVariant && !isPreOrderTab
-                  ? `${currentVariant.stock.toLocaleString('en-IN')} + ${currentVariant.upcoming_stock ?? 0} soon`
-                  : (isPreOrderTab || (currentVariant.pre_order && (currentVariant.stock ?? 0) <= 0))
-                    ? `Soon: ${currentVariant.upcoming_stock ?? '—'}`
-                    : `Stock ${currentVariant.stock.toLocaleString('en-IN')}`
-              }
+            <Box
               sx={{
                 position: 'absolute',
                 bottom: 8,
                 left: 8,
                 zIndex: 10,
-                height: 22,
-                fontSize: '0.68rem',
-                fontWeight: 700,
-                letterSpacing: '0.02em',
-                boxShadow: 1,
-                ...((isPreOrderTab || (currentVariant.pre_order && (currentVariant.stock ?? 0) <= 0) || (isSplitVariant && !isPreOrderTab))
-                  ? { bgcolor: isDark ? '#EFD84A' : '#E4CD2E', color: '#1C1A33' }
-                  : currentVariant.stock > 10
-                    ? { bgcolor: 'success.main', color: 'success.contrastText' }
-                    : { bgcolor: 'error.main', color: 'error.contrastText' }),
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                gap: 0.5,
               }}
-            />
+            >
+              {isSplitVariant && !isPreOrderTab ? (
+                <>
+                  {/* Split variant: stock now + arriving soon, on separate lines */}
+                  <Chip
+                    size="small"
+                    label={`Stock ${currentVariant.stock.toLocaleString('en-IN')}`}
+                    sx={{
+                      height: 22,
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.02em',
+                      boxShadow: 1,
+                      ...(currentVariant.stock > 10
+                        ? { bgcolor: isDark ? '#26402F' : '#DFF2E5', color: isDark ? '#9FDDB2' : '#1F5A33' }
+                        : { bgcolor: isDark ? '#442527' : '#FBE3E3', color: isDark ? '#F49B9B' : '#A93232' }),
+                    }}
+                  />
+                  <Chip
+                    size="small"
+                    label={`Soon ${currentVariant.upcoming_stock ?? 0}`}
+                    sx={{
+                      height: 22,
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.02em',
+                      boxShadow: 1,
+                      bgcolor: isDark ? '#3F3A15' : '#F6EEBC',
+                      color: isDark ? '#F2DE64' : '#6B5D00',
+                    }}
+                  />
+                </>
+              ) : (
+                <Chip
+                  size="small"
+                  label={
+                    (isPreOrderTab || (currentVariant.pre_order && (currentVariant.stock ?? 0) <= 0))
+                      ? `Soon: ${currentVariant.upcoming_stock ?? '—'}`
+                      : `Stock ${currentVariant.stock.toLocaleString('en-IN')}`
+                  }
+                  sx={{
+                    height: 22,
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.02em',
+                    boxShadow: 1,
+                    ...((isPreOrderTab || (currentVariant.pre_order && (currentVariant.stock ?? 0) <= 0))
+                      ? { bgcolor: isDark ? '#EFD84A' : '#E4CD2E', color: '#1C1A33' }
+                      : currentVariant.stock > 10
+                        ? { bgcolor: isDark ? '#26402F' : '#DFF2E5', color: isDark ? '#9FDDB2' : '#1F5A33' }
+                        : { bgcolor: isDark ? '#442527' : '#FBE3E3', color: isDark ? '#F49B9B' : '#A93232' }),
+                  }}
+                />
+              )}
+            </Box>
           )}
           <ImageCarousel
             product={currentVariant}
@@ -522,8 +552,8 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                     fontWeight: 600,
                     letterSpacing: '0.04em',
                     textTransform: 'uppercase',
-                    backgroundColor: isDark ? 'rgba(167,150,255,0.18)' : 'rgba(70,51,184,0.08)',
-                    color: isDark ? 'primary.light' : 'primary.main',
+                    backgroundColor: isDark ? '#322B5F' : '#E7E2F9',
+                    color: isDark ? '#BCAFFF' : '#37279C',
                     '& .MuiChip-label': { px: 1 },
                   }}
                 />
@@ -607,7 +637,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                   <Typography sx={{ fontWeight: 800, fontSize: { xs: '0.95rem', sm: '1.05rem' }, color: 'text.primary', fontVariantNumeric: 'tabular-nums' }}>
                     ₹{sellingPrice?.toLocaleString('en-IN')}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'warning.main', fontWeight: 600, textDecoration: 'line-through', fontVariantNumeric: 'tabular-nums' }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, textDecoration: 'line-through', fontVariantNumeric: 'tabular-nums' }}>
                     ₹{currentVariant.rate?.toLocaleString('en-IN')}
                   </Typography>
                   {(() => {
@@ -623,13 +653,15 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                           fontSize: '0.7rem',
                           fontWeight: 700,
                           lineHeight: 1,
-                          color: hasClearance ? 'error.main' : 'secondary.main',
+                          px: 0.75,
+                          py: 0.4,
+                          borderRadius: '999px',
                           bgcolor: hasClearance
-                            ? (isDark ? 'rgba(240,138,138,0.16)' : 'rgba(201,68,68,0.1)')
-                            : (isDark ? 'rgba(232,139,192,0.22)' : '#F7DEEC'),
-                          px: 1,
-                          py: 0.5,
-                          borderRadius: 999,
+                            ? (isDark ? '#442527' : '#FBE3E3')
+                            : (isDark ? '#1E3D3A' : '#DCEFED'),
+                          color: hasClearance
+                            ? (isDark ? '#F49B9B' : '#A93232')
+                            : (isDark ? '#8FD9CF' : '#0B5E57'),
                           whiteSpace: 'nowrap',
                         }}
                       >
