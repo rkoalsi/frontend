@@ -121,18 +121,11 @@ const ProductCard: React.FC<ProductCardProps> = memo(
       const d = new Date(v);
       return isNaN(d.getTime()) ? v : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
     };
-    const preOrderDates = (!isShared && product.pre_order && (product.inward_date || product.eta_port_date)) ? (
+    const preOrderDates = (!isShared && product.pre_order && product.inward_date) ? (
       <Box sx={{ mt: 0.5 }}>
-        {product.eta_port_date && (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.6rem', fontWeight: 600 }}>
-            ETA Port: {fmtDate(product.eta_port_date)}
-          </Typography>
-        )}
-        {product.inward_date && (
-          <Typography variant="caption" color="warning.main" sx={{ display: 'block', fontSize: '0.6rem', fontWeight: 700 }}>
-            Inward: {fmtDate(product.inward_date)}
-          </Typography>
-        )}
+        <Typography variant="caption" color="warning.main" sx={{ display: 'block', fontSize: '0.6rem', fontWeight: 700 }}>
+          Inward: {fmtDate(product.inward_date)}
+        </Typography>
       </Box>
     ) : null;
     // All pre-order products on the Pre Orders tab show pre-order labels
@@ -191,8 +184,8 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 aria-hidden
                 sx={{
                   position: 'absolute',
-                  top: 8,
-                  left: 8,
+                  bottom: 8,
+                  right: 8,
                   zIndex: 10,
                   width: 20,
                   height: 20,
@@ -293,13 +286,13 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                   height: 22,
                   fontSize: '0.68rem',
                   fontWeight: 700,
-                  bgcolor: 'background.paper',
+                  letterSpacing: '0.02em',
                   boxShadow: 1,
-                  color: (isPreOrderTab || (product.pre_order && !product.stock))
-                    ? 'warning.main'
-                    : isSplitProd && !isPreOrderTab
-                      ? 'warning.main'
-                      : product.stock > 10 ? 'success.main' : 'error.main',
+                  ...((isPreOrderTab || (product.pre_order && !product.stock) || (isSplitProd && !isPreOrderTab))
+                    ? { bgcolor: isDark ? '#EFD84A' : '#E4CD2E', color: '#1C1A33' }
+                    : product.stock > 10
+                      ? { bgcolor: 'success.main', color: 'success.contrastText' }
+                      : { bgcolor: 'error.main', color: 'error.contrastText' }),
                 }}
               />
             )}
