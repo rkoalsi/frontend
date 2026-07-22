@@ -6,7 +6,6 @@ import {
   Typography,
   Box,
   Button,
-  Badge,
   Chip,
   Alert,
   Divider,
@@ -65,6 +64,33 @@ interface ProductCardProps {
   isShared: boolean;
   isPreOrderTab?: boolean;
 }
+
+
+// Re-render only when this card's own slice of state changes — selectedProducts
+// and temporaryQuantities are new objects on every parent render, so the default
+// shallow compare would re-render every visible card on each keystroke.
+const productCardPropsAreEqual = (prev: ProductCardProps, next: ProductCardProps) => {
+  const id = next.product._id;
+  const preKey = `${id}-pre`;
+  const ps: any = prev.selectedProducts.find((p) => p._id === id);
+  const ns: any = next.selectedProducts.find((p) => p._id === id);
+  return (
+    prev.product === next.product &&
+    prev.orderStatus === next.orderStatus &&
+    prev.customerMargin === next.customerMargin &&
+    prev.isShared === next.isShared &&
+    prev.isPreOrderTab === next.isPreOrderTab &&
+    prev.specialMargins[id] === next.specialMargins[id] &&
+    prev.temporaryQuantities[id] === next.temporaryQuantities[id] &&
+    prev.temporaryQuantities[preKey] === next.temporaryQuantities[preKey] &&
+    ps?.quantity === ns?.quantity &&
+    ps?.pre_order_quantity === ns?.pre_order_quantity &&
+    prev.getSellingPrice === next.getSellingPrice &&
+    prev.handleImageClick === next.handleImageClick &&
+    prev.handleQuantityChange === next.handleQuantityChange &&
+    prev.handleAddOrRemove === next.handleAddOrRemove
+  );
+};
 
 const ProductCard: React.FC<ProductCardProps> = memo(
   ({
@@ -136,7 +162,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
           flexDirection: "column",
           height: '100%',
           minHeight: '100%',
-          borderRadius: 3,
+          borderRadius: '16px',
           boxShadow: isInCart ? 4 : 2,
           overflow: "visible",
           backgroundColor: "background.paper",
@@ -156,27 +182,44 @@ const ProductCard: React.FC<ProductCardProps> = memo(
             sx={{
               position: "relative",
               bgcolor: 'background.paper',
-              height: { xs: 220, sm: 260, md: 280, xl: 240 },
+              height: { xs: 150, sm: 210, md: 230, xl: 210 },
               width: '100%',
             }}
           >
-            {product.new && !product.pre_order && !product.clearance && (
-              <Badge
-                badgeContent="New"
-                color="secondary"
-                overlap="rectangular"
+            {isInCart && (
+              <Box
+                aria-hidden
                 sx={{
-                  position: "absolute",
-                  top: 20,
-                  right: 24,
+                  position: 'absolute',
+                  top: 8,
+                  left: 8,
                   zIndex: 10,
-                  "& .MuiBadge-badge": {
-                    fontSize: "0.65rem",
-                    fontWeight: 600,
-                    borderRadius: '12px',
-                    padding: "6px 8px",
-                    boxShadow: 2,
-                  },
+                  width: 20,
+                  height: 20,
+                  bgcolor: 'primary.main',
+                  clipPath: 'polygon(50% 6%, 97% 90%, 3% 90%)',
+                  borderRadius: '3px',
+                  transform: 'rotate(8deg)',
+                  boxShadow: 1,
+                }}
+              />
+            )}
+            {product.new && !product.pre_order && !product.clearance && (
+              <Chip
+                size="small"
+                label="New"
+                sx={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  zIndex: 10,
+                  height: 22,
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                  boxShadow: 1,
+                  '& .MuiChip-label': { px: 1 },
                 }}
               />
             )}
@@ -188,15 +231,16 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 size="small"
                 sx={{
                   position: "absolute",
-                  top: 20,
-                  right: 24,
+                  top: 8,
+                  right: 8,
                   zIndex: 11,
                   fontWeight: 700,
                   fontSize: '0.65rem',
                   textTransform: 'uppercase',
-                  backgroundColor: 'error.main',
-                  color: 'white',
-                  boxShadow: 2,
+                  backgroundColor: 'secondary.main',
+                  color: 'secondary.contrastText',
+                  transform: 'rotate(-2deg)',
+                  boxShadow: 1,
                 }}
               />
             )}
@@ -209,20 +253,19 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 size="small"
                 sx={{
                   position: "absolute",
-                  top: 20,
-                  right: 24,
+                  top: 8,
+                  right: 8,
                   zIndex: 11,
                   fontWeight: 700,
                   fontSize: '0.65rem',
                   letterSpacing: '0.5px',
                   textTransform: 'uppercase',
-                  color: 'white',
-                  backgroundColor: (theme) =>
-                    theme.palette.mode === 'dark' ? theme.palette.warning.main : theme.palette.warning.dark,
+                  color: '#1C1A33',
+                  backgroundColor: isDark ? '#EFD84A' : '#E4CD2E',
                   animation: 'preOrderPulse 1.8s ease-in-out infinite',
                   '@keyframes preOrderPulse': {
-                    '0%, 100%': { boxShadow: '0 0 0 0 rgba(255,167,38,0.55)' },
-                    '50%': { boxShadow: '0 0 10px 3px rgba(255,167,38,0.85)' },
+                    '0%, 100%': { boxShadow: '0 0 0 0 rgba(228,205,46,0.5)' },
+                    '50%': { boxShadow: '0 0 10px 3px rgba(228,205,46,0.8)' },
                   },
                   '@media (prefers-reduced-motion: reduce)': {
                     animation: 'none',
@@ -232,6 +275,34 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               />
             )}
 
+            {!isShared && (
+              <Chip
+                size="small"
+                label={
+                  isSplitProd && !isPreOrderTab
+                    ? `${product.stock.toLocaleString('en-IN')} + ${product.upcoming_stock ?? 0} soon`
+                    : (isPreOrderTab || (product.pre_order && !product.stock))
+                      ? `Soon: ${product.upcoming_stock ?? '—'}`
+                      : `Stock ${product.stock.toLocaleString('en-IN')}`
+                }
+                sx={{
+                  position: 'absolute',
+                  bottom: 8,
+                  left: 8,
+                  zIndex: 10,
+                  height: 22,
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  bgcolor: 'background.paper',
+                  boxShadow: 1,
+                  color: (isPreOrderTab || (product.pre_order && !product.stock))
+                    ? 'warning.main'
+                    : isSplitProd && !isPreOrderTab
+                      ? 'warning.main'
+                      : product.stock > 10 ? 'success.main' : 'error.main',
+                }}
+              />
+            )}
             <ImageCarousel
               product={product}
               handleImageClick={handleImageClick}
@@ -239,111 +310,52 @@ const ProductCard: React.FC<ProductCardProps> = memo(
           </Box>
 
 
-          <CardContent sx={{ p: 2, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+          <CardContent sx={{ p: { xs: 1.25, sm: 2 }, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
             {/* Product Name */}
             <Typography
               variant="h6"
               sx={{
                 fontWeight: 600,
-                mb: 1.5,
+                mb: 1,
                 color: 'text.primary',
                 lineHeight: 1.3,
-                wordWrap: 'break-word',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
                 wordBreak: 'break-word',
-                minHeight: '40px',
-                fontSize: '1rem',
+                fontSize: { xs: '0.85rem', sm: '0.95rem' },
               }}
             >
               {product.name}
             </Typography>
 
-            {/* Product Details - Enhanced Design */}
-            <Box sx={{ mb: 1.5 }}>
-              {/* Category & Series in one row */}
-              <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
+            {/* Category */}
+            <Box sx={{ mb: 1 }}>
+              <Box sx={{ display: 'flex', gap: 0.75, mb: 0.75, flexWrap: 'wrap', alignItems: 'center' }}>
                 {product.category && (
                   <Chip
                     label={product.category}
-                    variant="filled"
                     size="small"
-                    color="primary"
                     sx={{
                       borderRadius: 1.5,
-                      fontSize: '0.7rem',
-                      height: '24px',
+                      fontSize: '0.62rem',
+                      height: '20px',
                       fontWeight: 600,
-                      '& .MuiChip-label': { px: 1.5 },
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase',
+                      backgroundColor: isDark ? 'rgba(167,150,255,0.18)' : 'rgba(70,51,184,0.08)',
+                      color: isDark ? 'primary.light' : 'primary.main',
+                      '& .MuiChip-label': { px: 1 },
                     }}
                   />
                 )}
-              </Box>
-
-              {/* SKU & UPC in enhanced grid */}
-              <Box sx={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 2,
-              }}>
-                <Box>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{
-                      fontSize: '0.65rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.3px',
-                      display: 'block',
-                      mb: 0.5,
-                    }}
-                  >
-                    SKU
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      fontFamily: 'monospace',
-                      color: 'text.primary',
-                    }}
-                  >
-                    {product.cf_sku_code || "-"}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{
-                      fontSize: '0.65rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.3px',
-                      display: 'block',
-                      mb: 0.5,
-                    }}
-                  >
-                    UPC
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      fontFamily: 'monospace',
-                      color: 'text.primary',
-                    }}
-                  >
-                    {product.upc_code || "-"}
-                  </Typography>
-                </Box>
               </Box>
             </Box>
 
             {/* Dimensions Accordion - More Compact */}
             {product.dimensions && (product.dimensions.length || product.dimensions.breadth || product.dimensions.height) && (
-              <Box sx={{ mb: 1.5 }}>
+              <Box sx={{ mb: 1, display: { xs: 'none', sm: 'block' } }}>
                 <Accordion
                   elevation={0}
                   sx={{
@@ -398,132 +410,27 @@ const ProductCard: React.FC<ProductCardProps> = memo(
               </Box>
             )}
 
-            <Divider sx={{ my: 1.5 }} />
+            <Divider sx={{ my: 1 }} />
 
-            {/* Pricing Section - Enhanced */}
-            <Box sx={{ mb: 1.5 }}>
-              {/* Price Information Grid */}
-              <Box sx={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: 2,
-                mb: 1.5,
-              }}>
-                {/* MRP */}
-                <Box>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{
-                      fontSize: '0.65rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.3px',
-                      display: 'block',
-                      mb: 0.5,
-                    }}
-                  >
-                    MRP
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: '0.95rem',
-                      fontFamily: 'system-ui',
-                      color: 'text.primary',
-                      letterSpacing: '-0.3px',
-                    }}
-                  >
+            {/* Pricing — compact */}
+            <Box sx={{ mb: 1 }}>
+              {isShared ? (
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: { xs: '0.95rem', sm: '1.05rem' }, color: 'text.primary', fontVariantNumeric: 'tabular-nums' }}>
                     ₹{product.rate?.toLocaleString('en-IN')}
                   </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    MRP · GST {getTaxPercentage(product)}%
+                  </Typography>
                 </Box>
-
-                {/* Stock - Hidden when isShared */}
-                {!isShared && (
-                  isSplitProd && !isPreOrderTab ? (
-                    <Box sx={{ textAlign: 'right' }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', display: 'block', mb: 0.5 }}>
-                        Stock
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 700, fontSize: '0.95rem', fontFamily: 'system-ui', color: product.stock > 10 ? 'success.main' : 'error.main', letterSpacing: '-0.3px' }}>
-                        {product.stock.toLocaleString('en-IN')}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', display: 'block', mb: 0.5, mt: 0.5 }}>
-                        Upcoming
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 700, fontSize: '0.95rem', fontFamily: 'system-ui', color: 'warning.main', letterSpacing: '-0.3px' }}>
-                        {product.upcoming_stock ?? '—'}
-                      </Typography>
-                      {preOrderDates}
-                    </Box>
-                  ) : (
-                    <Box sx={{ textAlign: 'right' }}>
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{
-                          fontSize: '0.65rem',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.3px',
-                          display: 'block',
-                          mb: 0.5,
-                        }}
-                      >
-                        {(isPreOrderTab || (product.pre_order && !product.stock)) ? 'Upcoming' : 'Stock'}
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'end', gap: 0.5, justifyContent: 'flex-end' }}>
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            fontWeight: 700,
-                            fontSize: '0.95rem',
-                            fontFamily: 'system-ui',
-                            color: (isPreOrderTab || (product.pre_order && !product.stock))
-                              ? 'warning.main'
-                              : product.stock > 10 ? 'success.main' : product.stock > 0 ? 'error.main' : 'primary',
-                            letterSpacing: '-0.3px',
-                          }}
-                        >
-                          {(isPreOrderTab || (product.pre_order && !product.stock))
-                            ? (product.upcoming_stock ?? '—')
-                            : product.stock.toLocaleString('en-IN')}
-                        </Typography>
-                      </Box>
-                      {(isPreOrderTab || (product.pre_order && !product.stock)) && preOrderDates}
-                    </Box>
-                  )
-                )}
-
-                {/* Selling Price - Hidden when isShared */}
-                {!isShared && (
-                  <Box>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        fontSize: '0.65rem',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.3px',
-                        display: 'block',
-                        mb: 0.5,
-                      }}
-                    >
-                      Selling Price
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        fontWeight: 800,
-                        fontSize: '1.05rem',
-                        fontFamily: 'system-ui',
-                        color: isDark ? 'text.primary' : 'primary.main',
-                        letterSpacing: '-0.5px',
-                      }}
-                    >
+              ) : (
+                <Box sx={{ mb: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: { xs: '0.95rem', sm: '1.05rem' }, color: 'text.primary', fontVariantNumeric: 'tabular-nums' }}>
                       ₹{sellingPrice?.toLocaleString('en-IN')}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'warning.main', fontWeight: 600, textDecoration: 'line-through', fontVariantNumeric: 'tabular-nums' }}>
+                      ₹{product.rate?.toLocaleString('en-IN')}
                     </Typography>
                     {(() => {
                       const baseMarginStr = specialMargins[productId] || customerMargin || '40%';
@@ -532,89 +439,53 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                       const hasClearance = product.clearance && totalPct > basePct;
                       return (
                         <Typography
-                          variant="caption"
+                          component="span"
+                          title={hasClearance ? `${basePct}% + ${totalPct - basePct}% sale = ${totalPct}% margin` : undefined}
                           sx={{
-                            fontSize: '0.65rem',
-                            color: hasClearance ? 'error.main' : 'text.secondary',
-                            fontWeight: hasClearance ? 700 : 400,
-                            fontStyle: 'italic',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            lineHeight: 1,
+                            color: hasClearance ? 'error.main' : 'secondary.main',
+                            bgcolor: hasClearance
+                              ? (isDark ? 'rgba(240,138,138,0.16)' : 'rgba(201,68,68,0.1)')
+                              : (isDark ? 'rgba(232,139,192,0.22)' : '#F7DEEC'),
+                            px: 1,
+                            py: 0.5,
+                            borderRadius: 999,
+                            whiteSpace: 'nowrap',
                           }}
                         >
-                          {hasClearance
-                            ? `${basePct}% + ${totalPct - basePct}% sale = ${totalPct}% margin`
-                            : `${totalPct}% margin`}
+                          {totalPct}% margin
                         </Typography>
                       );
                     })()}
+                    <Box sx={{ flex: 1 }} />
+                    <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                      GST {getTaxPercentage(product)}%
+                    </Typography>
                   </Box>
-                )}
-
-                {/* GST */}
-                <Box sx={{ textAlign: 'right' }}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{
-                      fontSize: '0.65rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.3px',
-                      display: 'block',
-                      mb: 0.5,
-                    }}
-                  >
-                    GST
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: '0.95rem',
-                      fontFamily: 'system-ui',
-                      color: 'text.primary',
-                      letterSpacing: '-0.3px',
-                    }}
-                  >
-                    {getTaxPercentage(product)}%
-                  </Typography>
+                  {preOrderDates}
                 </Box>
-              </Box>
+              )}
 
               {isInCart && (
                 <Box
                   sx={{
-                    p: 1.5,
-                    bgcolor: 'success.50',
+                    py: 0.5,
+                    px: 1.25,
+                    bgcolor: isDark ? 'rgba(143,211,166,0.12)' : '#E4F2E9',
                     borderRadius: 1.5,
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    border: '2px solid',
+                    border: '1px solid',
                     borderColor: 'success.main',
                   }}
                 >
-                  <Typography
-                    variant="subtitle2"
-                    sx={{
-                      fontWeight: 700,
-                      color: 'success.dark',
-                      fontSize: '0.85rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                    }}
-                  >
-                    Item Total
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: 'success.dark', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                    Total
                   </Typography>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: 800,
-                      color: 'success.dark',
-                      fontSize: '1.15rem',
-                      fontFamily: 'system-ui',
-                      letterSpacing: '-0.5px',
-                    }}
-                  >
+                  <Typography sx={{ fontWeight: 800, color: 'success.dark', fontSize: '0.95rem', fontVariantNumeric: 'tabular-nums' }}>
                     ₹{itemTotal?.toLocaleString('en-IN')}
                   </Typography>
                 </Box>
@@ -630,20 +501,9 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                mb: 1.5,
+                mb: 1,
               }}
             >
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{
-                  fontWeight: 600,
-                  mb: 0.75,
-                  fontSize: '0.7rem',
-                }}
-              >
-                Quantity
-              </Typography>
               <QuantitySelector
                 quantity={quantity}
                 max={isPreOrderCart ? (product.upcoming_stock || Infinity) : (product.pre_order && (product.stock ?? 0) <= 0 ? (product.upcoming_stock || Infinity) : product.stock)}
@@ -686,8 +546,8 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                     textTransform: "none",
                     borderRadius: 2,
                     fontWeight: 600,
-                    py: 1,
-                    fontSize: '0.85rem',
+                    py: 0.75,
+                    fontSize: { xs: '0.75rem', sm: '0.8rem' },
                     boxShadow: 2,
                     transition: isMobile || isTablet ? 'none' : 'box-shadow 0.15s ease, transform 0.15s ease',
                     '&:hover': {
@@ -709,7 +569,8 @@ const ProductCard: React.FC<ProductCardProps> = memo(
           </CardContent>
         </Card>
     );
-  }
+  },
+  productCardPropsAreEqual
 );
 
 export default ProductCard;

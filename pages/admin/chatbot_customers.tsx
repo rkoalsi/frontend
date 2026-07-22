@@ -206,7 +206,7 @@ const ChatbotCustomersPage = () => {
           </Typography>
           <Tooltip title='Download as XLSX' placement='left'>
             <span>
-              <IconButton onClick={handleDownload} disabled={downloading} sx={{ color: '#344d69' }}>
+              <IconButton onClick={handleDownload} disabled={downloading} sx={{ color: '#37279C' }}>
                 {downloading ? <CircularProgress size={22} /> : <FileDownloadOutlined />}
               </IconButton>
             </span>
@@ -318,7 +318,7 @@ const ChatbotCustomersPage = () => {
                         </TableCell>
                         <TableCell>
                           <Tooltip title='View all & reply' placement='top'>
-                            <IconButton size='small' onClick={() => openChat(c)} sx={{ color: '#344d69' }}>
+                            <IconButton size='small' onClick={() => openChat(c)} sx={{ color: '#37279C' }}>
                               <ChatBubbleOutlineOutlined fontSize='small' />
                             </IconButton>
                           </Tooltip>

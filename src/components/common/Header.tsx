@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useRouter } from 'next/router';
+import { brand } from '../../theme';
 
 type HeaderProps = {
   title: string;
@@ -22,7 +23,6 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = false, backUrl,
   const theme: any = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isDark = theme.palette.mode === 'dark';
-  const textColor = isDark ? 'white' : theme.palette.primary.main;
 
   const handleBack = () => {
     if (useBack) {
@@ -52,7 +52,7 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = false, backUrl,
           sx={{
             position: 'absolute',
             left: { xs: -8, sm: 0, md: 8 },
-            color: textColor,
+            color: 'text.primary',
             p: { xs: 0.75, sm: 1 },
             minWidth: { xs: 36, sm: 44 },
             minHeight: { xs: 36, sm: 44 },
@@ -61,18 +61,39 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = false, backUrl,
           <ArrowBackIcon sx={{ fontSize: { xs: 18, sm: 22, md: 24 } }} />
         </IconButton>
       )}
-      <Typography
-        variant={isMobile ? 'h3' : 'h2'}
-        fontWeight='bold'
+      <Box
         sx={{
-          color: textColor,
-          textAlign: 'center',
-          fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' },
+          display: 'flex',
+          alignItems: 'center',
+          gap: { xs: 1, sm: 1.25 },
           px: showBackButton ? { xs: 4, sm: 6 } : 0,
         }}
       >
-        {title}
-      </Typography>
+        {/* Brand triangle "ear" motif */}
+        <Box
+          aria-hidden
+          sx={{
+            width: { xs: 14, sm: 18 },
+            height: { xs: 14, sm: 18 },
+            flex: 'none',
+            backgroundColor: isDark ? brand.dkYellow : brand.yellow,
+            clipPath: 'polygon(50% 6%, 97% 90%, 3% 90%)',
+            borderRadius: '3px',
+            transform: 'rotate(8deg)',
+          }}
+        />
+        <Typography
+          variant={isMobile ? 'h4' : 'h3'}
+          sx={{
+            color: 'text.primary',
+            textAlign: 'center',
+            fontWeight: 700,
+            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.25rem' },
+          }}
+        >
+          {title}
+        </Typography>
+      </Box>
     </Box>
   );
 };

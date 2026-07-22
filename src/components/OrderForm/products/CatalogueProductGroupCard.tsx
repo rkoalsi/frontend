@@ -241,7 +241,7 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
                   sx={{
                     fontWeight: 800,
                     fontSize: '0.65rem',
-                    background: 'linear-gradient(135deg, #5e52b5 0%, #7c6fcd 100%)',
+                    background: 'linear-gradient(135deg, #4633B8 0%, #6A5AD1 100%)',
                     color: 'white',
                     letterSpacing: '0.8px',
                     boxShadow: '0 3px 8px rgba(61, 133, 200, 0.5)',

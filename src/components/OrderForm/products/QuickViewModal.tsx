@@ -188,7 +188,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                     fontWeight: 800,
                     fontSize: { xs: '0.6rem', md: '0.7rem' },
                     height: { xs: 20, md: 24 },
-                    background: 'linear-gradient(135deg, #5e52b5 0%, #7c6fcd 100%)',
+                    background: 'linear-gradient(135deg, #4633B8 0%, #6A5AD1 100%)',
                     color: 'white',
                     letterSpacing: '0.8px',
                     boxShadow: '0 3px 8px rgba(63, 81, 181, 0.4)',

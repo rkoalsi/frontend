@@ -1182,7 +1182,7 @@ const AdminDashboard = () => {
                             dataKey="value"
                           >
                             {stats.product_additions_by_type.breakdown.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.added_by === 'customer' ? '#4caf50' : entry.added_by === 'admin' ? '#df1515' : '#2196f3'} />
+                              <Cell key={`cell-${index}`} fill={entry.added_by === 'customer' ? '#4caf50' : entry.added_by === 'admin' ? '#df1515' : '#6A5AD1'} />
                             ))}
                           </Pie>
                           <RechartsTooltip
@@ -1206,8 +1206,8 @@ const AdminDashboard = () => {
                             sx={{
                               p: 2,
                               borderRadius: 2,
-                              backgroundColor: item.added_by === 'customer' ? '#4caf5008' : item.added_by === 'admin' ? '#f3212108' : '#2196f308',
-                              border: `1px solid ${item.added_by === 'customer' ? '#4caf5020' : item.added_by === 'admin' ? '#f3212108' : '#2196f320'}`,
+                              backgroundColor: item.added_by === 'customer' ? '#4caf5008' : item.added_by === 'admin' ? '#f3212108' : '#6A5AD108',
+                              border: `1px solid ${item.added_by === 'customer' ? '#4caf5020' : item.added_by === 'admin' ? '#f3212108' : '#6A5AD120'}`,
                             }}
                           >
                             <Typography variant='body1' fontWeight={600} sx={{ mb: 0.5 }}>
@@ -1216,7 +1216,7 @@ const AdminDashboard = () => {
                             <Typography
                               variant='h5'
                               fontWeight={700}
-                              sx={{ color: item.added_by === 'customer' ? '#4caf50' : item.added_by === 'admin' ? '#df1515' : '#2196f3' }}
+                              sx={{ color: item.added_by === 'customer' ? '#4caf50' : item.added_by === 'admin' ? '#df1515' : '#6A5AD1' }}
                             >
                               {item.count.toLocaleString()}
                             </Typography>

@@ -163,7 +163,7 @@ function Address(props: Props) {
   const accentColor =
     type === 'Shipping'
       ? isDark ? theme.palette.primary.main : theme.palette.secondary.main
-      : isDark ? '#42a5f5' : theme.palette.primary.main;
+      : isDark ? '#6A5AD1' : theme.palette.primary.main;
 
   return (
     <>
@@ -233,8 +233,8 @@ function Address(props: Props) {
                   '&:hover': {
                     borderColor: accentColor,
                     bgcolor: isDark
-                      ? 'rgba(124,111,205,0.08)'
-                      : 'rgba(42,74,107,0.06)',
+                      ? 'rgba(106,90,209,0.08)'
+                      : 'rgba(70,51,184,0.06)',
                   },
                 }}
               >

@@ -82,7 +82,7 @@ const ResetPassword = () => {
       <Box
         sx={{
           width: 52, height: 52, borderRadius: '14px',
-          background: 'linear-gradient(135deg, #2B4864, #172335)',
+          background: 'linear-gradient(135deg, #37279C, #191536)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           mb: 3,
         }}

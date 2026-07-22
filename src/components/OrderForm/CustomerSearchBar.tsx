@@ -195,8 +195,8 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
                   },
                   '&.Mui-focused, &:hover': {
                     backgroundColor: isDark
-                      ? 'rgba(124,111,205,0.15)'
-                      : 'rgba(42,74,107,0.06)',
+                      ? 'rgba(106,90,209,0.15)'
+                      : 'rgba(70,51,184,0.06)',
                   },
                   minHeight: { xs: 'auto', sm: 'auto' },
                 }}
@@ -208,8 +208,8 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
                     height: { xs: 36, sm: 32 },
                     borderRadius: '50%',
                     bgcolor: isDark
-                      ? 'rgba(124,111,205,0.2)'
-                      : 'rgba(42,74,107,0.1)',
+                      ? 'rgba(106,90,209,0.2)'
+                      : 'rgba(70,51,184,0.1)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -335,8 +335,8 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
               border: `1.5px solid`,
               borderColor: 'primary.main',
               bgcolor: isDark
-                ? 'rgba(124,111,205,0.08)'
-                : 'rgba(42,74,107,0.04)',
+                ? 'rgba(106,90,209,0.08)'
+                : 'rgba(70,51,184,0.04)',
               px: { xs: 2, sm: 2.5 },
               py: { xs: 1.5, sm: 1.75 },
             }}
@@ -473,8 +473,8 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
                       fontSize: { xs: '0.72rem', sm: '0.68rem' },
                       fontWeight: 600,
                       bgcolor: isDark
-                        ? 'rgba(124,111,205,0.2)'
-                        : 'rgba(42,74,107,0.1)',
+                        ? 'rgba(106,90,209,0.2)'
+                        : 'rgba(70,51,184,0.1)',
                       color: 'primary.main',
                     }}
                   />

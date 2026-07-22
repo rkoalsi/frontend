@@ -137,7 +137,7 @@ const Layout = ({ children }: any) => {
         position='sticky'
         elevation={0}
         sx={{
-          backgroundColor: '#1a2b3c',
+          backgroundColor: '#191536',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
           backdropFilter: 'blur(8px)',
         }}
@@ -159,7 +159,7 @@ const Layout = ({ children }: any) => {
                 width: 34,
                 height: 34,
                 borderRadius: '10px',
-                background: 'linear-gradient(135deg, #4E8098, #2B4864)',
+                background: 'linear-gradient(135deg, #6A5AD1, #37279C)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

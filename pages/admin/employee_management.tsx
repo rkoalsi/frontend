@@ -534,7 +534,7 @@ const EmployeeManagement: React.FC = () => {
                                             <Box display="flex" alignItems="center" gap={2}>
                                                 <Avatar
                                                     sx={{
-                                                        backgroundColor: '#3b82f6',
+                                                        backgroundColor: '#6A5AD1',
                                                         width: 48,
                                                         height: 48,
                                                         fontSize: '1.1rem',
@@ -665,7 +665,7 @@ const EmployeeManagement: React.FC = () => {
                                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
                                     <Avatar
                                         sx={{
-                                            backgroundColor: '#3b82f6',
+                                            backgroundColor: '#6A5AD1',
                                             width: 64,
                                             height: 64,
                                             fontSize: '1.5rem',

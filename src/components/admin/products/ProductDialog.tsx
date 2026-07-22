@@ -186,7 +186,7 @@ const ProductDialog = ({
                                         alignItems: 'center',
                                         gap: 1.5,
                                         backgroundColor: snapshot.isDragging
-                                          ? (isDark ? 'rgba(124,111,205,0.2)' : 'rgba(124,111,205,0.1)')
+                                          ? (isDark ? 'rgba(106,90,209,0.2)' : 'rgba(106,90,209,0.1)')
                                           : theme.palette.background.paper,
                                         border:
                                           index === 0
@@ -459,7 +459,7 @@ const ProductDialog = ({
                                         alignItems: 'center',
                                         gap: 1.5,
                                         backgroundColor: snapshot.isDragging
-                                          ? (isDark ? 'rgba(124,111,205,0.2)' : 'rgba(124,111,205,0.1)')
+                                          ? (isDark ? 'rgba(106,90,209,0.2)' : 'rgba(106,90,209,0.1)')
                                           : theme.palette.background.paper,
                                         border: '1px solid divider',
                                         position: 'relative',

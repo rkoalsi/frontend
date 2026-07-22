@@ -89,7 +89,7 @@ interface ActivityLog {
 
 const ACTION_META: Record<string, { label: string; icon: React.ReactElement; color: string }> = {
   login:                  { label: 'Login',            icon: <Login />,            color: '#16a34a' },
-  view_dashboard:         { label: 'Dashboard',        icon: <Dashboard />,        color: '#2563eb' },
+  view_dashboard:         { label: 'Dashboard',        icon: <Dashboard />,        color: '#4633B8' },
   view_invoices:          { label: 'Invoices',         icon: <Receipt />,          color: '#7c3aed' },
   view_credit_notes:      { label: 'Credit Notes',     icon: <CreditCard />,       color: '#db2777' },
   view_shipments:         { label: 'Shipments',        icon: <LocalShipping />,    color: '#d97706' },
@@ -97,7 +97,7 @@ const ACTION_META: Record<string, { label: string; icon: React.ReactElement; col
   download_statement:     { label: 'Statement DL',     icon: <Download />,         color: '#0284c7' },
   create_order:           { label: 'Created Order',    icon: <AddShoppingCart />,  color: '#16a34a' },
   finalize_order:         { label: 'Finalized Order',  icon: <ShoppingCart />,     color: '#15803d' },
-  view_orders_list:       { label: 'Orders List',      icon: <ShoppingCart />,     color: '#2563eb' },
+  view_orders_list:       { label: 'Orders List',      icon: <ShoppingCart />,     color: '#4633B8' },
   view_order_detail:      { label: 'Order Detail',     icon: <Visibility />,       color: '#6d28d9' },
   view_account:           { label: 'Account',          icon: <AccountCircle />,    color: '#64748b' },
   click_new_order:        { label: 'New Order Btn',    icon: <TouchApp />,         color: '#84cc16' },
@@ -145,7 +145,7 @@ function timeAgo(iso: string | null) {
 
 const CATEGORY_COLORS: Record<string, string> = {
   auth:      '#16a34a',
-  portal:    '#2563eb',
+  portal:    '#4633B8',
   orders:    '#d97706',
   documents: '#0891b2',
 };
@@ -153,7 +153,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 function orderStatusColor(status?: string | null): string {
   switch ((status || '').toLowerCase()) {
     case 'draft':      return '#64748b';
-    case 'sent':       return '#2563eb';
+    case 'sent':       return '#4633B8';
     case 'accepted':   return '#16a34a';
     case 'invoiced':   return '#15803d';
     case 'declined':   return '#dc2626';
@@ -594,7 +594,7 @@ const CustomerActivityPage = () => {
         }}
       >
         {[
-          { label: 'Tracked Customers',   value: totalCustomers,       color: '#2563eb' },
+          { label: 'Tracked Customers',   value: totalCustomers,       color: '#4633B8' },
           { label: 'Customers w/ Orders', value: customersWithOrders,  color: '#15803d', clickable: true },
           { label: 'Orders Finalized',    value: totalOrders,          color: '#0d9488', clickable: true },
           { label: 'Total Logins',        value: totalLogins,          color: '#16a34a' },
@@ -682,7 +682,7 @@ const CustomerActivityPage = () => {
                           key={row.customer_id}
                           hover
                           onClick={() => handleRowClick(row)}
-                          sx={{ cursor: 'pointer', '&:hover': { backgroundColor: alpha('#2563eb', 0.04) } }}
+                          sx={{ cursor: 'pointer', '&:hover': { backgroundColor: alpha('#4633B8', 0.04) } }}
                         >
                           <TableCell sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
                             {row.customer_name || '—'}

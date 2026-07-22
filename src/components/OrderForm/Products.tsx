@@ -68,6 +68,7 @@ import ImagePopupDialog from "../common/ImagePopUp";
 import Image from "next/image";
 import ImageCarousel from "./products/ImageCarousel";
 import QuantitySelector from "./QuantitySelector";
+import ScrollTriangleButtons from "../common/ScrollTriangleButtons";
 import { groupProductsByName, ProductGroup, GroupedProducts, getPackStep } from "../../util/groupProducts";
 import { getEffectiveMarginPct } from "../../util/margin";
 import { getTaxPercentage } from "../../util/tax";
@@ -577,6 +578,7 @@ const Products: React.FC<ProductsProps> = ({
   const router = useRouter();
   const { id = "" } = router.query;
   const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
   const { user }: any = useContext(AuthContext);
@@ -1463,6 +1465,25 @@ const Products: React.FC<ProductsProps> = ({
   const handleCloseConfirmModal = () => {
     setConfirmModalOpen(false);
   };
+  // Stable add/remove handler — refs break the selectedProducts/activeBrand
+  // dependency so the callback identity never changes and memo'd cards
+  // stop re-rendering on every keystroke/cart change.
+  const selectedProductsRefPerf = useRef(selectedProducts);
+  useEffect(() => { selectedProductsRefPerf.current = selectedProducts; }, [selectedProducts]);
+  const activeBrandRefPerf = useRef(activeBrand);
+  useEffect(() => { activeBrandRefPerf.current = activeBrand; }, [activeBrand]);
+  const handleAddOrRemove = useCallback((prod: any) => {
+    const _isPreCtx = activeBrandRefPerf.current === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
+    const _inCart: any = selectedProductsRefPerf.current.find((p: any) => p._id === prod._id);
+    if (_isPreCtx) {
+      (_inCart?.pre_order_quantity ?? 0) > 0
+        ? handleRemoveProduct(prod._id, true)
+        : handleAddProducts(prod, true);
+    } else {
+      _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
+    }
+  }, [handleAddProducts, handleRemoveProduct]);
+
   const handleImageClick = useCallback((srcList: any, index: number) => {
     if (Array.isArray(srcList)) {
       // Check if items already have src property (media items with type)
@@ -1837,6 +1858,9 @@ const Products: React.FC<ProductsProps> = ({
                   fontWeight: 600,
                   borderRadius: '24px',
                   px: 2.5,
+                  height: 40,
+                  whiteSpace: 'nowrap',
+                  fontSize: '0.8rem',
                   flex: { xs: 1, sm: 'none' },
                 }}
               >
@@ -1861,9 +1885,12 @@ const Products: React.FC<ProductsProps> = ({
                   }
                   sx={{
                     textTransform: "none",
-                    fontWeight: "bold",
+                    fontWeight: 600,
                     borderRadius: "24px",
                     px: 2.5,
+                    height: 40,
+                    whiteSpace: "nowrap",
+                    fontSize: "0.8rem",
                     flex: 1,
                   }}
                 >
@@ -2612,7 +2639,7 @@ const Products: React.FC<ProductsProps> = ({
                 sx={{
                   display: 'grid',
                   gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
-                  gap: 2,
+                  gap: { xs: 1.25, sm: 2 },
                   width: '100%',
                 }}
               >
@@ -2625,7 +2652,7 @@ const Products: React.FC<ProductsProps> = ({
                 sx={{
                   display: 'grid',
                   gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
-                  gap: 2,
+                  gap: { xs: 1.25, sm: 2 },
                   width: '100%',
                   alignItems: 'stretch',
                 }}
@@ -2647,17 +2674,7 @@ const Products: React.FC<ProductsProps> = ({
                         getSellingPrice={getSellingPrice}
                         handleImageClick={handleImageClick}
                         handleQuantityChange={handleQuantityChange}
-                        handleAddOrRemove={(prod: any) => {
-                          const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
-                          const _inCart = selectedProducts.find((p) => p._id === prod._id);
-                          if (_isPreCtx) {
-                            (_inCart?.pre_order_quantity ?? 0) > 0
-                              ? handleRemoveProduct(prod._id, true)
-                              : handleAddProducts(prod, true);
-                          } else {
-                            _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
-                          }
-                        }}
+                        handleAddOrRemove={handleAddOrRemove}
                         index={index}
                         isShared={isShared}
                         isPreOrderTab={activeBrand === "Pre Orders" && !searchTerm.trim()}
@@ -2677,17 +2694,7 @@ const Products: React.FC<ProductsProps> = ({
                         getSellingPrice={getSellingPrice}
                         handleImageClick={handleImageClick}
                         handleQuantityChange={handleQuantityChange}
-                        handleAddOrRemove={(prod: any) => {
-                          const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
-                          const _inCart = selectedProducts.find((p) => p._id === prod._id);
-                          if (_isPreCtx) {
-                            (_inCart?.pre_order_quantity ?? 0) > 0
-                              ? handleRemoveProduct(prod._id, true)
-                              : handleAddProducts(prod, true);
-                          } else {
-                            _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
-                          }
-                        }}
+                        handleAddOrRemove={handleAddOrRemove}
                         index={index}
                         isShared={isShared}
                         isPreOrderTab={activeBrand === "Pre Orders" && !searchTerm.trim()}
@@ -2701,7 +2708,7 @@ const Products: React.FC<ProductsProps> = ({
                 sx={{
                   display: 'grid',
                   gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
-                  gap: 2,
+                  gap: { xs: 1.25, sm: 2 },
                   width: '100%',
                   alignItems: 'stretch',
                 }}
@@ -2718,17 +2725,7 @@ const Products: React.FC<ProductsProps> = ({
                     getSellingPrice={getSellingPrice}
                     handleImageClick={handleImageClick}
                     handleQuantityChange={handleQuantityChange}
-                    handleAddOrRemove={(prod: any) => {
-                      const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
-                      const _inCart = selectedProducts.find((p) => p._id === prod._id);
-                      if (_isPreCtx) {
-                        (_inCart?.pre_order_quantity ?? 0) > 0
-                          ? handleRemoveProduct(prod._id, true)
-                          : handleAddProducts(prod, true);
-                      } else {
-                        _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
-                      }
-                    }}
+                    handleAddOrRemove={handleAddOrRemove}
                     index={index}
                     isShared={isShared}
                     isPreOrderTab={activeBrand === "Pre Orders" && !searchTerm.trim()}
@@ -2811,17 +2808,7 @@ const Products: React.FC<ProductsProps> = ({
                             getSellingPrice={getSellingPrice}
                             handleImageClick={handleImageClick}
                             handleQuantityChange={handleQuantityChange}
-                            handleAddOrRemove={(prod: any) => {
-                              const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
-                              const _inCart = selectedProducts.find((p) => p._id === prod._id);
-                              if (_isPreCtx) {
-                                (_inCart?.pre_order_quantity ?? 0) > 0
-                                  ? handleRemoveProduct(prod._id, true)
-                                  : handleAddProducts(prod, true);
-                              } else {
-                                _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
-                              }
-                            }}
+                            handleAddOrRemove={handleAddOrRemove}
                             index={index}
                             isShared={isShared}
                             isOutOfStock={true}
@@ -3052,17 +3039,7 @@ const Products: React.FC<ProductsProps> = ({
                         getSellingPrice={getSellingPrice}
                         handleImageClick={handleImageClick}
                         handleQuantityChange={handleQuantityChange}
-                        handleAddOrRemove={(prod: any) => {
-                          const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
-                          const _inCart = selectedProducts.find((p) => p._id === prod._id);
-                          if (_isPreCtx) {
-                            (_inCart?.pre_order_quantity ?? 0) > 0
-                              ? handleRemoveProduct(prod._id, true)
-                              : handleAddProducts(prod, true);
-                          } else {
-                            _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
-                          }
-                        }}
+                        handleAddOrRemove={handleAddOrRemove}
                         index={index}
                         isShared={isShared}
                         isPreOrderTab={activeBrand === "Pre Orders" && !searchTerm.trim()}
@@ -3082,17 +3059,7 @@ const Products: React.FC<ProductsProps> = ({
                         getSellingPrice={getSellingPrice}
                         handleImageClick={handleImageClick}
                         handleQuantityChange={handleQuantityChange}
-                        handleAddOrRemove={(prod: any) => {
-                          const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
-                          const _inCart = selectedProducts.find((p) => p._id === prod._id);
-                          if (_isPreCtx) {
-                            (_inCart?.pre_order_quantity ?? 0) > 0
-                              ? handleRemoveProduct(prod._id, true)
-                              : handleAddProducts(prod, true);
-                          } else {
-                            _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
-                          }
-                        }}
+                        handleAddOrRemove={handleAddOrRemove}
                         index={index}
                         isShared={isShared}
                         isPreOrderTab={activeBrand === "Pre Orders" && !searchTerm.trim()}
@@ -3212,17 +3179,7 @@ const Products: React.FC<ProductsProps> = ({
                             getSellingPrice={getSellingPrice}
                             handleImageClick={handleImageClick}
                             handleQuantityChange={handleQuantityChange}
-                            handleAddOrRemove={(prod: any) => {
-                              const _isPreCtx = activeBrand === "Pre Orders" && prod.pre_order === true && (prod.stock ?? 0) > 0;
-                              const _inCart = selectedProducts.find((p) => p._id === prod._id);
-                              if (_isPreCtx) {
-                                (_inCart?.pre_order_quantity ?? 0) > 0
-                                  ? handleRemoveProduct(prod._id, true)
-                                  : handleAddProducts(prod, true);
-                              } else {
-                                _inCart ? handleRemoveProduct(prod._id) : handleAddProducts(prod);
-                              }
-                            }}
+                            handleAddOrRemove={handleAddOrRemove}
                             index={index}
                             isShared={isShared}
                             isOutOfStock={true}
@@ -3417,65 +3374,12 @@ const Products: React.FC<ProductsProps> = ({
         }}
         className='no-pdf'
       >
-        <IconButton
-          color='primary'
-          onClick={scrollToTop}
+        <ScrollTriangleButtons
+          onScrollTop={scrollToTop}
+          onScrollBottom={scrollToBottom}
           disabled={isScrollButtonDisabled}
-          sx={{
-            backgroundColor: 'primary.main',
-            color: 'white',
-            width: { xs: 48, sm: 56 },
-            height: { xs: 48, sm: 56 },
-            boxShadow: 6,
-            '&:disabled': {
-              backgroundColor: 'action.disabledBackground',
-              color: 'action.disabled',
-              opacity: 0.5,
-            },
-            '&:hover:not(:disabled)': {
-              backgroundColor: 'primary.dark',
-              boxShadow: 8,
-              transform: isMobile ? 'none' : 'scale3d(1.1, 1.1, 1) translate3d(0, -2px, 0)',
-            },
-            '&:active:not(:disabled)': {
-              transform: isMobile ? 'none' : 'scale3d(0.95, 0.95, 1)',
-            },
-            transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease',
-            pointerEvents: 'auto',
-          }}
-        >
-          <ArrowUpward fontSize={isMobile ? 'medium' : 'large'} />
-        </IconButton>
-
-        <IconButton
-          color='primary'
-          onClick={scrollToBottom}
-          disabled={isScrollButtonDisabled}
-          sx={{
-            backgroundColor: 'primary.main',
-            color: 'white',
-            width: { xs: 48, sm: 56 },
-            height: { xs: 48, sm: 56 },
-            boxShadow: 6,
-            '&:disabled': {
-              backgroundColor: 'action.disabledBackground',
-              color: 'action.disabled',
-              opacity: 0.5,
-            },
-            '&:hover:not(:disabled)': {
-              backgroundColor: 'primary.dark',
-              boxShadow: 8,
-              transform: isMobile ? 'none' : 'scale3d(1.1, 1.1, 1) translate3d(0, 2px, 0)',
-            },
-            '&:active:not(:disabled)': {
-              transform: isMobile ? 'none' : 'scale3d(0.95, 0.95, 1)',
-            },
-            transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease',
-            pointerEvents: 'auto',
-          }}
-        >
-          <ArrowDownward fontSize={isMobile ? 'medium' : 'large'} />
-        </IconButton>
+          isMobile={isMobile}
+        />
       </Box>
 
       {/* Cart Icon */}

@@ -74,7 +74,7 @@ const CatalogueFilters: React.FC<CatalogueFiltersProps> = ({
     '& .MuiAccordionSummary-content': { my: 1.25 },
     bgcolor: theme.palette.mode === 'dark'
       ? 'rgba(255,255,255,0.03)'
-      : 'rgba(42,74,107,0.04)',
+      : 'rgba(70,51,184,0.04)',
     '&.Mui-expanded': { minHeight: 'unset' },
   };
 
@@ -166,7 +166,7 @@ const CatalogueFilters: React.FC<CatalogueFiltersProps> = ({
                         height: 18,
                         fontSize: '0.6rem',
                         fontWeight: 700,
-                        background: 'linear-gradient(135deg, #5e52b5 0%, #7c6fcd 100%)',
+                        background: 'linear-gradient(135deg, #4633B8 0%, #6A5AD1 100%)',
                         color: 'white',
                         '& .MuiChip-label': { px: 0.75 },
                       }}
