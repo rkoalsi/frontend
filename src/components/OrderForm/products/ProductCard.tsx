@@ -8,7 +8,6 @@ import {
   Button,
   Chip,
   Alert,
-  Divider,
   Tooltip,
   Accordion,
   AccordionSummary,
@@ -174,7 +173,10 @@ const ProductCard: React.FC<ProductCardProps> = memo(
           <Box
             sx={{
               position: "relative",
-              bgcolor: 'background.paper',
+              bgcolor: '#FFFFFF',
+              borderRadius: '14px 14px 0 0',
+              overflow: 'hidden',
+              borderBottom: '1px solid #F1EEF8',
               height: { xs: 150, sm: 210, md: 230, xl: 210 },
               width: '100%',
             }}
@@ -192,7 +194,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                   bgcolor: 'primary.main',
                   borderRadius: '50%',
                   border: '2px solid',
-                  borderColor: 'background.paper',
+                  borderColor: '#FFFFFF',
                   boxShadow: 1,
                 }}
               />
@@ -209,8 +211,8 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                   height: 22,
                   fontSize: '0.65rem',
                   fontWeight: 700,
-                  bgcolor: isDark ? '#322B5F' : '#E7E2F9',
-                  color: isDark ? '#BCAFFF' : '#37279C',
+                  bgcolor: '#E7E2F9',
+                  color: '#37279C',
                   boxShadow: 1,
                   '& .MuiChip-label': { px: 1 },
                 }}
@@ -230,8 +232,8 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                   fontWeight: 700,
                   fontSize: '0.65rem',
                   textTransform: 'uppercase',
-                  backgroundColor: isDark ? '#4A2A3D' : '#F9E2EF',
-                  color: isDark ? '#F2A9D2' : '#A22F68',
+                  backgroundColor: '#F9E2EF',
+                  color: '#A22F68',
                   boxShadow: 1,
                 }}
               />
@@ -252,8 +254,8 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                   fontSize: '0.65rem',
                   letterSpacing: '0.5px',
                   textTransform: 'uppercase',
-                  color: isDark ? '#F2DE64' : '#6B5D00',
-                  backgroundColor: isDark ? '#3F3A15' : '#F6EEBC',
+                  color: '#6B5D00',
+                  backgroundColor: '#F6EEBC',
                 }}
               />
             )}
@@ -284,8 +286,8 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                         letterSpacing: '0.02em',
                         boxShadow: 1,
                         ...(product.stock > 10
-                          ? { bgcolor: isDark ? '#26402F' : '#DFF2E5', color: isDark ? '#9FDDB2' : '#1F5A33' }
-                          : { bgcolor: isDark ? '#442527' : '#FBE3E3', color: isDark ? '#F49B9B' : '#A93232' }),
+                          ? { bgcolor: '#DFF2E5', color: '#1F5A33' }
+                          : { bgcolor: '#FBE3E3', color: '#A93232' }),
                       }}
                     />
                     <Chip
@@ -297,8 +299,8 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                         fontWeight: 700,
                         letterSpacing: '0.02em',
                         boxShadow: 1,
-                        bgcolor: isDark ? '#3F3A15' : '#F6EEBC',
-                        color: isDark ? '#F2DE64' : '#6B5D00',
+                        bgcolor: '#F6EEBC',
+                        color: '#6B5D00',
                       }}
                     />
                   </>
@@ -317,10 +319,10 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                       letterSpacing: '0.02em',
                       boxShadow: 1,
                       ...((isPreOrderTab || (product.pre_order && !product.stock))
-                        ? { bgcolor: isDark ? '#EFD84A' : '#E4CD2E', color: '#1C1A33' }
+                        ? { bgcolor: '#E4CD2E', color: '#1C1A33' }
                         : product.stock > 10
-                          ? { bgcolor: isDark ? '#26402F' : '#DFF2E5', color: isDark ? '#9FDDB2' : '#1F5A33' }
-                          : { bgcolor: isDark ? '#442527' : '#FBE3E3', color: isDark ? '#F49B9B' : '#A93232' }),
+                          ? { bgcolor: '#DFF2E5', color: '#1F5A33' }
+                          : { bgcolor: '#FBE3E3', color: '#A93232' }),
                     }}
                   />
                 )}
@@ -332,27 +334,27 @@ const ProductCard: React.FC<ProductCardProps> = memo(
             />
           </Box>
 
-
-          <CardContent sx={{ p: { xs: 1.25, sm: 2 }, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-            {/* Product Name */}
+          {/* Product name — lives on the white media panel so the image,
+              badges and title read as one clean block in both modes */}
+          {/* flexGrow here (not on CardContent) absorbs row-height differences,
+              so category/price/quantity/button rows stay aligned across a row
+              even when one card's name wraps to more lines */}
+          <Box sx={{ bgcolor: isDark ? 'background.paper' : '#FFFFFF', px: { xs: 1.25, sm: 2 }, pt: 0.75, pb: 1, flexGrow: 1 }}>
             <Typography
               variant="h6"
               sx={{
                 fontWeight: 600,
-                mb: 1,
-                color: 'text.primary',
+                color: isDark ? '#FFFFFF' : '#1C1A33',
                 lineHeight: 1.3,
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
                 wordBreak: 'break-word',
                 fontSize: { xs: '0.85rem', sm: '0.95rem' },
               }}
             >
               {product.name}
             </Typography>
+          </Box>
 
+          <CardContent sx={{ p: { xs: 1.25, sm: 2 }, pt: { xs: 1, sm: 1.25 }, display: 'flex', flexDirection: 'column' }}>
             {/* Category */}
             <Box sx={{ mb: 1 }}>
               <Box sx={{ display: 'flex', gap: 0.75, mb: 0.75, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -432,8 +434,6 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                 </Accordion>
               </Box>
             )}
-
-            <Divider sx={{ my: 1 }} />
 
             {/* Pricing — compact */}
             <Box sx={{ mb: 1 }}>
