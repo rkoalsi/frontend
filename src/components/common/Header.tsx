@@ -8,7 +8,6 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useRouter } from 'next/router';
-import { brand } from '../../theme';
 
 type HeaderProps = {
   title: string;
@@ -22,7 +21,6 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = false, backUrl,
   const router = useRouter();
   const theme: any = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isDark = theme.palette.mode === 'dark';
 
   const handleBack = () => {
     if (useBack) {
@@ -69,19 +67,6 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = false, backUrl,
           px: showBackButton ? { xs: 4, sm: 6 } : 0,
         }}
       >
-        {/* Brand triangle "ear" motif */}
-        <Box
-          aria-hidden
-          sx={{
-            width: { xs: 14, sm: 18 },
-            height: { xs: 14, sm: 18 },
-            flex: 'none',
-            backgroundColor: isDark ? brand.dkYellow : brand.yellow,
-            clipPath: 'polygon(50% 6%, 97% 90%, 3% 90%)',
-            borderRadius: '3px',
-            transform: 'rotate(8deg)',
-          }}
-        />
         <Typography
           variant={isMobile ? 'h4' : 'h3'}
           sx={{

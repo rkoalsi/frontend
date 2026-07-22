@@ -59,6 +59,7 @@ import {
   Percent,
   Close,
   PictureAsPdf,
+  Pets,
 } from '@mui/icons-material';
 import useDebounce from '../../../src/util/useDebounce';
 import { getEffectiveMarginPct } from '../../../src/util/margin';
@@ -255,9 +256,11 @@ const PAGE_MAX_WIDTH = { xs: '100%', sm: '700px', md: '900px', lg: '1200px' };
 
 // Per-step contextual help shown below the stepper
 
-/* ── Brand-book triangle "ear" step icon ──
-   Completed: filled blue ear with a white dot (like the paw-pad in the logo).
-   Active: Hello Yellow ear with a gentle wag. Pending: soft muted ear. */
+/* ── Paw step icon ──
+   Pet-forward but restrained: steps you've walked through (completed + active)
+   show a paw print — like a trail of paw steps across the order. Active gets a
+   soft halo and a gentle scale-in; pending stays a quiet numbered hairline
+   circle. Premium, not playful. */
 const EarStepIcon: React.FC<{
   active?: boolean;
   completed?: boolean;
@@ -268,40 +271,48 @@ const EarStepIcon: React.FC<{
   return (
     <Box
       sx={{
-        width: { xs: 24, md: 30 },
-        height: { xs: 24, md: 30 },
-        clipPath: 'polygon(50% 6%, 97% 90%, 3% 90%)',
-        borderRadius: '4px',
+        width: { xs: 24, md: 28 },
+        height: { xs: 24, md: 28 },
+        borderRadius: '50%',
         display: 'grid',
-        placeItems: 'end center',
-        pb: { xs: '3px', md: '4px' },
-        bgcolor: completed
-          ? 'primary.main'
-          : active
-            ? (isDark ? '#EFD84A' : '#E4CD2E')
-            : (isDark ? 'rgba(167,150,255,0.22)' : 'rgba(70,51,184,0.1)'),
-        transform: 'rotate(6deg)',
-        transition: 'background-color 0.25s ease',
+        placeItems: 'center',
+        transition: 'background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease',
+        ...(completed || active
+          ? { bgcolor: 'primary.main' }
+          : {
+              bgcolor: 'transparent',
+              border: '1.5px solid',
+              borderColor: isDark ? 'rgba(158,142,255,0.35)' : 'divider',
+            }),
         ...(active && {
-          animation: 'earWag 1.6s ease-in-out infinite',
-          '@keyframes earWag': {
-            '0%, 100%': { transform: 'rotate(2deg)' },
-            '50%': { transform: 'rotate(12deg) translateY(-2px)' },
-          },
-          '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+          boxShadow: isDark
+            ? '0 0 0 4px rgba(167,150,255,0.18)'
+            : '0 0 0 4px rgba(70,51,184,0.12)',
         }),
+        '@keyframes pawIn': {
+          from: { transform: 'scale(0.6)', opacity: 0 },
+          to: { transform: 'scale(1)', opacity: 1 },
+        },
       }}
     >
-      {completed ? (
-        <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.contrastText', mb: '2px' }} />
+      {completed || active ? (
+        <Pets
+          sx={{
+            fontSize: { xs: 13, md: 15 },
+            color: 'primary.contrastText',
+            // Completed paws sit slightly quieter than the active one
+            opacity: active ? 1 : 0.85,
+            ...(active && { animation: 'pawIn 0.3s ease-out' }),
+          }}
+        />
       ) : (
         <Typography
           component='span'
           sx={{
-            fontSize: { xs: '0.6rem', md: '0.7rem' },
-            fontWeight: 700,
+            fontSize: { xs: '0.65rem', md: '0.72rem' },
+            fontWeight: 600,
             lineHeight: 1,
-            color: active ? '#1C1A33' : (isDark ? 'rgba(241,238,255,0.75)' : 'text.secondary'),
+            color: isDark ? 'rgba(241,238,255,0.6)' : 'text.secondary',
           }}
         >
           {icon}
