@@ -736,7 +736,7 @@ const ReturnOrders = () => {
                                   target='_blank'
                                   rel='noopener noreferrer'
                                   style={{
-                                    color: '#1976d2',
+                                    color: '#4633B8',
                                     textDecoration: 'underline',
                                   }}
                                 >

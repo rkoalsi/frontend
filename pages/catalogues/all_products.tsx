@@ -717,8 +717,8 @@ export default function AllProductsCatalouge() {
                 fontWeight: 800,
                 fontSize: { sm: '1.05rem', md: '1.15rem' },
                 background: theme.palette.mode === 'dark'
-                  ? 'linear-gradient(135deg, #9c92d8 0%, #7c6fcd 100%)'
-                  : 'linear-gradient(135deg, #2a4a6b 0%, #456089 100%)',
+                  ? 'linear-gradient(135deg, #A796FF 0%, #8D7BF2 100%)'
+                  : 'linear-gradient(135deg, #4633B8 0%, #6A5AD1 100%)',
                 backgroundClip: 'text',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
@@ -924,7 +924,7 @@ export default function AllProductsCatalouge() {
                       backgroundColor: "action.hover",
                       color: "text.primary",
                       "& .brand-logo": {
-                        boxShadow: "0 0 0 2px rgba(42,74,107,0.2)",
+                        boxShadow: "0 0 0 2px rgba(70,51,184,0.2)",
                       },
                     },
                   },
@@ -933,7 +933,7 @@ export default function AllProductsCatalouge() {
                     "& .brand-logo": {
                       boxShadow: theme.palette.mode === 'dark'
                         ? "0 0 0 2.5px #7fa8cc"
-                        : "0 0 0 2.5px #2a4a6b",
+                        : "0 0 0 2.5px #4633B8",
                     },
                     "& .MuiTypography-root": {
                       color: "primary.main !important" as any,

@@ -48,10 +48,10 @@ const STATUS_COLORS: Record<
     label: 'Closed',
   },
   warehouse: {
-    bg: '#dbeafe',
-    bgDark: 'rgba(124,111,205,0.2)',
-    color: '#1d4ed8',
-    colorDark: '#90caf9',
+    bg: '#EDE9FB',
+    bgDark: 'rgba(106,90,209,0.2)',
+    color: '#37279C',
+    colorDark: '#A796FF',
     label: 'Warehouse',
   },
 };
@@ -110,18 +110,18 @@ export default function CheckList({
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
 
-  // Dark mode: billing = blue (#42a5f5), shipping = indigo/primary (current billing colour)
+  // Dark mode: billing = blue (#6A5AD1), shipping = indigo/primary (current billing colour)
   // Light mode: billing = primary, shipping = secondary (unchanged)
   const isShipping = addressType === 'Shipping';
   const accentColor = isShipping
     ? isDark ? theme.palette.primary.main : theme.palette.secondary.main
-    : isDark ? '#42a5f5' : theme.palette.primary.main;
+    : isDark ? '#6A5AD1' : theme.palette.primary.main;
   const accentBg = isShipping
-    ? isDark ? 'rgba(124,111,205,0.1)' : 'rgba(97,73,152,0.05)'
-    : isDark ? 'rgba(66,165,245,0.1)' : 'rgba(42,74,107,0.05)';
+    ? isDark ? 'rgba(106,90,209,0.1)' : 'rgba(97,73,152,0.05)'
+    : isDark ? 'rgba(66,165,245,0.1)' : 'rgba(70,51,184,0.05)';
   const accentShadow = isShipping
-    ? isDark ? '0 0 0 3px rgba(124,111,205,0.25)' : '0 0 0 3px rgba(97,73,152,0.12)'
-    : isDark ? '0 0 0 3px rgba(66,165,245,0.25)' : '0 0 0 3px rgba(42,74,107,0.12)';
+    ? isDark ? '0 0 0 3px rgba(106,90,209,0.25)' : '0 0 0 3px rgba(97,73,152,0.12)'
+    : isDark ? '0 0 0 3px rgba(66,165,245,0.25)' : '0 0 0 3px rgba(70,51,184,0.12)';
 
   // Use card layout on mobile AND tablet (sm+md). Desktop (lg+) uses list.
   const isCardLayout = useMediaQuery(theme.breakpoints.down('md'));

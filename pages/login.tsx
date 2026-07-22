@@ -124,7 +124,7 @@ const LoginPage = () => {
             justifyContent: 'center',
             alignItems: 'flex-start',
             flex: '0 0 380px',
-            background: 'linear-gradient(160deg, #0f1923 0%, #070e15 100%)',
+            background: 'linear-gradient(160deg, #191536 0%, #100D26 100%)',
             p: 6,
             position: 'relative',
             overflow: 'hidden',
@@ -134,13 +134,13 @@ const LoginPage = () => {
           <Box sx={{
             position: 'absolute', top: -80, right: -80,
             width: 260, height: 260, borderRadius: '50%',
-            background: 'rgba(43,72,100,0.4)',
+            background: 'rgba(70,51,184,0.4)',
             pointerEvents: 'none',
           }} />
           <Box sx={{
             position: 'absolute', bottom: -60, left: -60,
             width: 200, height: 200, borderRadius: '50%',
-            background: 'rgba(43,72,100,0.25)',
+            background: 'rgba(70,51,184,0.25)',
             pointerEvents: 'none',
           }} />
 
@@ -205,7 +205,7 @@ const LoginPage = () => {
             <Box
               sx={{
                 width: 38, height: 38, borderRadius: '10px',
-                background: 'linear-gradient(135deg, #2B4864, #172335)',
+                background: 'linear-gradient(135deg, #37279C, #191536)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >

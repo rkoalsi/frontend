@@ -79,7 +79,7 @@ const SheetsDisplay = ({
           py: 1.5,
           background: isDark
             ? 'linear-gradient(135deg, #2a2a38 0%, #1c1c28 100%)'
-            : 'linear-gradient(135deg, #2a4a6b 0%, #192d45 100%)',
+            : 'linear-gradient(135deg, #4633B8 0%, #37279C 100%)',
           color: 'white',
           borderRadius: '12px 12px 0 0',
           '&.Mui-expanded': {
@@ -88,7 +88,7 @@ const SheetsDisplay = ({
           '&:hover': {
             background: isDark
               ? 'linear-gradient(135deg, #323244 0%, #242434 100%)'
-              : 'linear-gradient(135deg, #1e3a58 0%, #111f30 100%)',
+              : 'linear-gradient(135deg, #37279C 0%, #2A2168 100%)',
           },
         }}
       >

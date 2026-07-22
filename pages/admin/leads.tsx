@@ -1146,7 +1146,7 @@ const LeadsPage = () => {
           {tabIndex < 3 && (
             <Tooltip title={`Download ${REPORT_CONFIGS[tabIndex].label} as XLSX`} placement='left'>
               <span>
-                <IconButton onClick={handleDownload} disabled={downloading} sx={{ color: '#344d69' }}>
+                <IconButton onClick={handleDownload} disabled={downloading} sx={{ color: '#37279C' }}>
                   {downloading ? <CircularProgress size={22} /> : <FileDownloadOutlined />}
                 </IconButton>
               </span>

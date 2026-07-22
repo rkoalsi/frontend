@@ -134,6 +134,7 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
         border: '1px solid',
         borderColor: 'divider',
         bgcolor: 'background.paper',
+        maxWidth: '100%',
         transition: 'all 0.2s ease',
         '&:hover': {
           borderColor: 'primary.main',
@@ -147,9 +148,9 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
         aria-label='Decrease quantity'
         size={isMobile ? 'medium' : 'small'}
         sx={{
-          minWidth: isMobile ? 44 : 36,
-          minHeight: isMobile ? 44 : 36,
-          padding: isMobile ? 1.5 : 1,
+          minWidth: isMobile ? 38 : 36,
+          minHeight: isMobile ? 40 : 36,
+          padding: isMobile ? 0.75 : 1,
           borderRadius: '8px 0 0 8px',
           touchAction: 'manipulation',
           WebkitTapHighlightColor: 'transparent',
@@ -187,13 +188,13 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
             inputMode: 'numeric',
             style: {
               textAlign: 'center',
-              width: isMobile ? '60px' : isTablet ? '70px' : '80px',
+              width: isMobile ? '42px' : isTablet ? '64px' : '72px',
               // 16px minimum on mobile prevents iOS Safari from auto-zooming
               // the page when the input gains focus.
               fontSize: '16px',
               fontWeight: 600,
               padding: 0,
-              height: isMobile ? '44px' : '36px',
+              height: isMobile ? '40px' : '36px',
             },
           },
           htmlInput: {
@@ -202,7 +203,7 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
             'aria-label': 'Quantity',
             style: {
               textAlign: 'center',
-              padding: isMobile ? '12px 8px' : '8px 6px',
+              padding: isMobile ? '10px 4px' : '8px 6px',
             },
           },
         }}
@@ -237,9 +238,9 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
         aria-label='Increase quantity'
         size={isMobile ? 'medium' : 'small'}
         sx={{
-          minWidth: isMobile ? 44 : 36,
-          minHeight: isMobile ? 44 : 36,
-          padding: isMobile ? 1.5 : 1,
+          minWidth: isMobile ? 38 : 36,
+          minHeight: isMobile ? 40 : 36,
+          padding: isMobile ? 0.75 : 1,
           borderRadius: '0 8px 8px 0',
           touchAction: 'manipulation',
           WebkitTapHighlightColor: 'transparent',

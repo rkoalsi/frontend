@@ -602,32 +602,18 @@ function ReturnOrders() {
           sx={{
             flex: 1,
             maxWidth: 500,
-            '& .MuiInputBase-input': {
-              color: 'white',
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: 'background.paper',
             },
-            '& .MuiInputLabel-root': {
-              color: 'white',
-            },
-            '& .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'white',
-            },
-            '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'white',
-            },
-            '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline':
-              {
-                borderColor: 'white',
-              },
           }}
           fullWidth={isMobile}
         />
         <Button
           variant='contained'
+          color='primary'
           startIcon={<AssignmentReturnIcon />}
           onClick={handleCreateNew}
           sx={{
-            backgroundColor: '#2e7d32',
-            '&:hover': { backgroundColor: '#1b5e20' },
             whiteSpace: 'nowrap',
             minWidth: isMobile ? '100%' : 'auto',
           }}

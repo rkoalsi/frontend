@@ -90,7 +90,7 @@ const PotentialCustomerCard = ({
       {/* Header */}
       <Box
         sx={{
-          background: 'linear-gradient(135deg, #1976d2, #1565c0)',
+          background: 'linear-gradient(135deg, #4633B8, #37279C)',
           color: 'white',
           px: 2.5,
           py: 2,

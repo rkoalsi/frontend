@@ -37,12 +37,12 @@ import { useRouter } from 'next/router';
 /*  Stays within the Deep Indigo brand family (primary / secondary).   */
 /* ------------------------------------------------------------------ */
 const BRAND_GRADIENTS: [string, string][] = [
-  ['#2a4a6b', '#456089'],
-  ['#614998', '#7d63be'],
-  ['#4E8098', '#2B4864'],
-  ['#5e52b5', '#9c92d8'],
-  ['#3B6374', '#4E8098'],
-  ['#7a64a8', '#b09ed8'],
+  ['#4633B8', '#6A5AD1'],
+  ['#4633B8', '#6A5AD1'],
+  ['#6A5AD1', '#37279C'],
+  ['#4633B8', '#A796FF'],
+  ['#37279C', '#6A5AD1'],
+  ['#8D7BF2', '#A796FF'],
 ];
 
 const gradientForName = (name: string): [string, string] => {

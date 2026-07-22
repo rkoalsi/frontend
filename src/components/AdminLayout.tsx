@@ -245,11 +245,11 @@ const AdminLayout = ({ children }: any) => {
   };
 
   const mainBg = isDark
-    ? 'linear-gradient(135deg, #5A7CA4, #2B4864, #172335)'
+    ? 'linear-gradient(135deg, #6A5AD1, #4633B8, #2A2168)'
     : '#f0f4f8';
 
-  const sidebarBg = isDark ? '#344d69' : '#e8eef5';
-  const sidebarText = isDark ? 'white' : '#1a2b3c';
+  const sidebarBg = isDark ? '#37279C' : '#e8eef5';
+  const sidebarText = isDark ? 'white' : '#191536';
   const activeItemBg = isDark ? '#78354f' : 'rgba(120, 53, 79, 0.15)';
   const activeItemText = isDark ? 'white' : '#78354f';
   const hoverItemBg = isDark ? '#78354f' : 'rgba(120, 53, 79, 0.1)';
@@ -264,7 +264,7 @@ const AdminLayout = ({ children }: any) => {
         elevation={0}
         sx={{
           zIndex: 1300,
-          backgroundColor: '#1a2b3c',
+          backgroundColor: '#191536',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
           backdropFilter: 'blur(8px)',
         }}
@@ -293,7 +293,7 @@ const AdminLayout = ({ children }: any) => {
                   width: 34,
                   height: 34,
                   borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #4E8098, #2B4864)',
+                  background: 'linear-gradient(135deg, #6A5AD1, #37279C)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -600,7 +600,7 @@ const AdminLayout = ({ children }: any) => {
                 height: 36,
                 fontSize: 15,
                 fontWeight: 700,
-                background: 'linear-gradient(135deg, #4E8098, #2B4864)',
+                background: 'linear-gradient(135deg, #6A5AD1, #37279C)',
                 color: '#fff',
               }}
             >

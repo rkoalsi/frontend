@@ -133,7 +133,7 @@ const NotificationBell = () => {
           ) : (
             <List dense disablePadding>
               {preview.map((n, i) => {
-                const accent = TYPE_ACCENT_COLORS[n.type] ?? '#7c6fcd';
+                const accent = TYPE_ACCENT_COLORS[n.type] ?? '#6A5AD1';
                 return (
                   <Box key={n._id}>
                     <ListItemButton
@@ -143,7 +143,7 @@ const NotificationBell = () => {
                         py: 1.25,
                         gap: 1.25,
                         alignItems: 'flex-start',
-                        backgroundColor: n.read ? 'transparent' : 'rgba(124,111,205,0.06)',
+                        backgroundColor: n.read ? 'transparent' : 'rgba(106,90,209,0.06)',
                         borderLeft: `3px solid ${n.read ? 'transparent' : accent}`,
                         transition: 'background-color 0.15s',
                         '&:hover': { backgroundColor: 'action.hover' },

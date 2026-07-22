@@ -62,7 +62,7 @@ const ShopHookCard = ({ hookData, onEdit }: any) => {
       {/* Header Section */}
       <div
         style={{
-          backgroundColor: '#1976d2', // Primary color
+          backgroundColor: '#4633B8', // Primary color
           color: 'white',
           padding: '16px',
           textAlign: 'center',
@@ -328,7 +328,7 @@ function ExpectedReorder() {
                 borderColor: 'rgba(255, 255, 255, 0.23)',
                 '&.Mui-selected': {
                   backgroundColor: 'rgba(144, 202, 249, 0.16)',
-                  color: '#90caf9',
+                  color: '#A796FF',
                 },
               },
             }}

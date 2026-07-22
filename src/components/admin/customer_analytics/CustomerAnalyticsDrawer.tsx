@@ -302,8 +302,8 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
               <Card
                 sx={{
                   textAlign: 'center',
-                  background: isDark ? 'rgba(124,111,205,0.1)' : 'linear-gradient(135deg, #e3f2fd 0%, #f8f9fa 100%)',
-                  border: isDark ? '1px solid rgba(124,111,205,0.25)' : '1px solid #e3f2fd',
+                  background: isDark ? 'rgba(106,90,209,0.1)' : 'linear-gradient(135deg, #EDE9FB 0%, #f8f9fa 100%)',
+                  border: isDark ? '1px solid rgba(106,90,209,0.25)' : '1px solid #EDE9FB',
                   transition: 'transform 0.2s ease-in-out',
                   '&:hover': {
                     transform: 'translateY(-2px)',
@@ -498,7 +498,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                           sx={{
                             mb: 2,
                             p: 2,
-                            backgroundColor: isDark ? 'rgba(124,111,205,0.1)' : '#e3f2fd',
+                            backgroundColor: isDark ? 'rgba(106,90,209,0.1)' : '#EDE9FB',
                             borderRadius: 2,
                             display: 'flex',
                             justifyContent: 'space-between',
@@ -515,7 +515,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                         <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
                           <Table size="small">
                             <TableHead>
-                              <TableRow sx={{ backgroundColor: isDark ? 'rgba(124,111,205,0.15)' : '#e3f2fd' }}>
+                              <TableRow sx={{ backgroundColor: isDark ? 'rgba(106,90,209,0.15)' : '#EDE9FB' }}>
                                 <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold' }}>Tags</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold' }} align="right">Investment</TableCell>
@@ -938,7 +938,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                 <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
                   <Table size="small">
                     <TableHead>
-                      <TableRow sx={{ backgroundColor: isDark ? 'rgba(124,111,205,0.15)' : '#e3f2fd' }}>
+                      <TableRow sx={{ backgroundColor: isDark ? 'rgba(106,90,209,0.15)' : '#EDE9FB' }}>
                         <TableCell sx={{ fontWeight: 'bold', minWidth: 100 }}>Brand</TableCell>
                         <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.previousFY || 'Previous FY'}</TableCell>
                         <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.lastFY || 'Last FY'}</TableCell>
@@ -988,7 +988,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                   <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
                     <Table size="small">
                       <TableHead>
-                        <TableRow sx={{ backgroundColor: isDark ? 'rgba(124,111,205,0.15)' : '#e3f2fd' }}>
+                        <TableRow sx={{ backgroundColor: isDark ? 'rgba(106,90,209,0.15)' : '#EDE9FB' }}>
                           <TableCell sx={{ fontWeight: 'bold', minWidth: 100 }}>Brand</TableCell>
                           <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.previousFY || 'Previous FY'}</TableCell>
                           <TableCell sx={{ fontWeight: 'bold' }} align="right">{brandFyLabels.lastFY || 'Last FY'}</TableCell>

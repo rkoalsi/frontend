@@ -1107,7 +1107,7 @@ const ReturnOrderStepper = ({
                     border: '2px dashed',
                     borderColor: 'primary.main',
                     borderRadius: 2,
-                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(124,111,205,0.08)' : 'rgba(42,74,107,0.04)',
+                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(106,90,209,0.08)' : 'rgba(70,51,184,0.04)',
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>

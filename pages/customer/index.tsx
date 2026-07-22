@@ -340,7 +340,7 @@ const CustomerDashboard = () => {
       title: 'My Orders',
       description: 'View all estimates',
       icon: <History />,
-      color: '#3b82f6',
+      color: '#6A5AD1',
       onClick: () => router.push('/customer/orders'),
       show: true,
     },
@@ -411,7 +411,7 @@ const CustomerDashboard = () => {
         {/* Header */}
         <Box
           sx={{
-            background: 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 100%)',
+            background: 'linear-gradient(135deg, #221E48 0%, #37279C 100%)',
             color: 'white',
             padding: { xs: 2.5, sm: 3, md: 4 },
             position: 'relative',

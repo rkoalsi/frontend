@@ -104,29 +104,27 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
       {/* Header */}
       <Box
         sx={{
-          padding: { xs: 2, sm: 2.5 },
+          padding: { xs: 1.5, sm: 2 },
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '2px solid',
-          borderColor: 'primary.main',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
           bgcolor: 'background.paper',
-          boxShadow: 3,
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <ShoppingCartOutlined
             sx={{
-              fontSize: 28,
+              fontSize: 22,
               color: 'primary.main',
             }}
           />
             <Typography
-              variant='h5'
+              variant='h6'
               sx={{
                 fontWeight: 700,
                 color: 'text.primary',
-                letterSpacing: '-0.5px',
               }}
             >
               Your Cart
@@ -209,9 +207,9 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
         >
           <ShoppingCartOutlined
             sx={{
-              fontSize: 80,
+              fontSize: 56,
               color: 'text.disabled',
-              mb: 3,
+              mb: 2,
               opacity: 0.5,
             }}
           />
@@ -239,7 +237,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
             flex: 1,
             overflowY: 'auto',
             overflowX: 'hidden',
-            p: { xs: 2, sm: 2.5 },
+            p: { xs: 1.5, sm: 2 },
             width: '100%',
             WebkitOverflowScrolling: 'touch',
             willChange: 'scroll-position',
@@ -258,7 +256,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
             },
           }}
         >
-          <Stack spacing={2.5} sx={{ width: '100%', maxWidth: '100%' }}>
+          <Stack spacing={1.5} sx={{ width: '100%', maxWidth: '100%' }}>
             {selectedProducts.flatMap((product) => {
               const isSplit = product.pre_order === true && (product.stock ?? 0) > 0;
               const rows: any[] = [];
@@ -283,235 +281,120 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                   key={cartKey}
                   elevation={0}
                   sx={{
-                    p: { xs: 2, sm: 2.5 },
-                    borderRadius: 3,
-                    border: '2px solid',
+                    p: 1.5,
+                    borderRadius: 2.5,
+                    border: '1px solid',
                     borderColor: 'divider',
-                    transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
+                    transition: 'border-color 0.2s ease',
                     width: '100%',
                     maxWidth: '100%',
                     overflow: 'hidden',
-                    position: 'relative',
                     bgcolor: 'background.paper',
-                    '&:hover': {
-                      boxShadow: 2,
-                      borderColor: 'primary.light',
-                    },
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '4px',
-                      height: '100%',
-                      bgcolor: 'primary.main',
-                    },
+                    '&:hover': { borderColor: 'primary.light' },
                   }}
                 >
+                  <Box sx={{ display: 'flex', gap: 1.5, width: '100%' }}>
+                    {/* Thumbnail */}
                     <Box
                       sx={{
-                        display: 'flex',
-                        gap: 2,
-                        flexDirection: isMobile ? 'column' : 'row',
-                        width: '100%',
+                        width: 64,
+                        height: 64,
+                        flexShrink: 0,
+                        borderRadius: 1.5,
+                        overflow: 'hidden',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        bgcolor: '#fff',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => {
+                        const imageList = product.images && product.images.length > 0
+                          ? product.images
+                          : product.image_url
+                          ? [product.image_url]
+                          : ['/placeholder.png'];
+                        handleImageClick(imageList, 0);
                       }}
                     >
-                      {/* Product Image */}
-                      <Box
-                        sx={{
-                          width: isMobile ? '100%' : 100,
-                          height: isMobile ? 200 : 100,
-                          flexShrink: 0,
-                          borderRadius: 2,
-                          overflow: 'hidden',
-                          border: '2px solid',
-                          borderColor: 'divider',
-                          bgcolor: 'action.hover',
-                          position: 'relative',
-                          transition: 'all 0.3s ease',
-                          cursor: 'pointer',
-                          '&:hover': {
-                            transform: 'scale(1.05)',
-                            borderColor: 'primary.main',
-                            boxShadow: 3,
-                          },
-                        }}
-                        onClick={() => {
-                          const imageList = product.images && product.images.length > 0
-                            ? product.images
-                            : product.image_url
-                            ? [product.image_url]
-                            : ['/placeholder.png'];
-                          handleImageClick(imageList, 0);
-                        }}
-                      >
-                        <img
-                          src={
-                            product.images && product.images.length > 0
-                              ? product.images[0]
-                              : product.image_url || '/placeholder.png'
-                          }
-                          alt={product.name}
-                          loading='lazy'
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                            padding: '8px',
-                          }}
-                        />
+                      <img
+                        src={
+                          product.images && product.images.length > 0
+                            ? product.images[0]
+                            : product.image_url || '/placeholder.png'
+                        }
+                        alt={product.name}
+                        loading='lazy'
+                        style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '4px' }}
+                      />
+                    </Box>
+
+                    {/* Details */}
+                    <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography
+                            variant='subtitle2'
+                            sx={{
+                              fontWeight: 600,
+                              lineHeight: 1.3,
+                              color: 'text.primary',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              fontSize: '0.85rem',
+                            }}
+                          >
+                            {product.name}
+                          </Typography>
+                          <Typography variant='caption' sx={{ color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
+                            ₹{sellingPrice.toFixed(2)} each
+                            {(isPreOrderRow || (product.pre_order === true && (product.stock ?? 0) <= 0)) && (
+                              <Box component='span' sx={{ color: 'warning.main', fontWeight: 700 }}> · Pre-Order</Box>
+                            )}
+                          </Typography>
+                        </Box>
+                        <IconButton
+                          size='small'
+                          onClick={() => handleRemoveProduct(productId, isPreOrderRow)}
+                          aria-label={`Remove ${product.name} from cart`}
+                          sx={{ p: 0.5, color: 'error.main', flexShrink: 0 }}
+                        >
+                          <RemoveShoppingCart sx={{ fontSize: 18 }} />
+                        </IconButton>
                       </Box>
 
-                      {/* Product Details */}
                       <Box
                         sx={{
-                          flex: 1,
-                          width: isMobile ? '100%' : 'auto',
-                          minWidth: 0,
                           display: 'flex',
-                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          gap: 1,
+                          flexWrap: 'wrap',
                         }}
                       >
-                        {/* Product Name & Remove Button */}
-                        <Box
+                        <QuantitySelector
+                          quantity={product.quantity}
+                          max={isPreOrderRow ? (product.upcoming_stock || Infinity) : (product.pre_order && (product.stock ?? 0) <= 0 ? (product.upcoming_stock || Infinity) : product.stock)}
+                          step={getPackStep(product.name)}
+                          onChange={(newQuantity) =>
+                            handleQuantityChange(productId, newQuantity, isPreOrderRow)
+                          }
+                          disabled={isDisabled}
+                        />
+                        <Typography
                           sx={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'flex-start',
-                            mb: 1.5,
-                            gap: 1,
+                            fontWeight: 700,
+                            color: 'success.main',
+                            fontSize: '0.95rem',
+                            fontVariantNumeric: 'tabular-nums',
                           }}
                         >
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography
-                              variant='subtitle1'
-                              sx={{
-                                fontWeight: 700,
-                                lineHeight: 1.3,
-                                color: 'text.primary',
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden',
-                                fontSize: { xs: '0.95rem', sm: '1rem' },
-                              }}
-                            >
-                              {product.name}
-                            </Typography>
-                            {(isPreOrderRow || (product.pre_order === true && (product.stock ?? 0) <= 0)) && (
-                              <Chip label='Pre-Order' size='small' color='warning' variant='outlined' sx={{ mt: 0.5, fontSize: '0.65rem', height: 20 }} />
-                            )}
-                          </Box>
-
-                          <IconButton
-                            size='small'
-                            onClick={() => handleRemoveProduct(productId, isPreOrderRow)}
-                            aria-label={`Remove ${product.name} from cart`}
-                            sx={{
-                              p: 0.75,
-                              bgcolor: 'error.lighter',
-                              color: 'error.main',
-                              transition: 'all 0.2s ease',
-                              '&:hover': {
-                                bgcolor: 'error.main',
-                                color: 'error.contrastText',
-                                transform: 'scale(1.1) rotate(10deg)',
-                              },
-                            }}
-                          >
-                            <RemoveShoppingCart fontSize='small' />
-                          </IconButton>
-                        </Box>
-
-                        {/* Price Badge */}
-                        <Box sx={{ mb: 2 }}>
-                          <Chip
-                            icon={<LocalOffer sx={{ fontSize: 16 }} />}
-                            label={`₹${sellingPrice.toFixed(2)}`}
-                            size='small'
-                            sx={{
-                              bgcolor: 'info.lighter',
-                              color: 'info.main',
-                              fontWeight: 600,
-                              fontSize: '0.85rem',
-                              height: 28,
-                              '& .MuiChip-icon': {
-                                color: 'info.main',
-                              },
-                            }}
-                          />
-                        </Box>
-
-                        <Divider sx={{ mb: 2 }} />
-
-                        {/* Quantity & Total */}
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            flexDirection: isMobile ? 'column' : 'row',
-                            gap: 2,
-                          }}
-                        >
-                          <Box sx={{ width: isMobile ? '100%' : 'auto' }}>
-                            <Typography
-                              variant='caption'
-                              color='text.secondary'
-                              sx={{
-                                textTransform: 'uppercase',
-                                fontWeight: 600,
-                                letterSpacing: '0.5px',
-                                display: 'block',
-                                mb: 0.5,
-                              }}
-                            >
-                              Quantity
-                            </Typography>
-                            <QuantitySelector
-                              quantity={product.quantity}
-                              max={isPreOrderRow ? (product.upcoming_stock || Infinity) : (product.pre_order && (product.stock ?? 0) <= 0 ? (product.upcoming_stock || Infinity) : product.stock)}
-                              step={getPackStep(product.name)}
-                              onChange={(newQuantity) =>
-                                handleQuantityChange(productId, newQuantity, isPreOrderRow)
-                              }
-                              disabled={isDisabled}
-                            />
-                          </Box>
-
-                          <Box
-                            sx={{
-                              textAlign: isMobile ? 'right' : 'center',
-                              width: isMobile ? '100%' : 'auto',
-                            }}
-                          >
-                            <Typography
-                              variant='caption'
-                              color='text.secondary'
-                              sx={{
-                                textTransform: 'uppercase',
-                                fontWeight: 600,
-                                letterSpacing: '0.5px',
-                                display: 'block',
-                                mb: 0.5,
-                              }}
-                            >
-                              Subtotal
-                            </Typography>
-                            <Typography
-                              variant='h6'
-                              sx={{
-                                fontWeight: 700,
-                                color: 'success.main',
-                                fontSize: { xs: '1.15rem', sm: '1.25rem' },
-                              }}
-                            >
-                              ₹{itemTotal.toLocaleString()}
-                            </Typography>
-                          </Box>
-                        </Box>
+                          ₹{itemTotal.toLocaleString()}
+                        </Typography>
                       </Box>
                     </Box>
+                  </Box>
                   </Paper>
               );
             })}
@@ -526,7 +409,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
           <Paper
             elevation={4}
             sx={{
-              p: { xs: 2.5, sm: 3 },
+              p: { xs: 1.5, sm: 2 },
               borderRadius: 0,
               bgcolor: 'background.paper',
               width: '100%',
@@ -535,8 +418,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
               {/* Price Summary */}
               <Box
                 sx={{
-                  mb: 2.5,
-                  p: 2,
+                  mb: 1.5,
+                  p: 1.5,
                   borderRadius: 2,
                   bgcolor: 'action.hover',
                   border: '1px solid',
@@ -547,27 +430,16 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                   sx={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    mb: 1.5,
-                    pb: 1.5,
+                    mb: 1,
+                    pb: 1,
                     borderBottom: '1px dashed',
                     borderColor: 'divider',
                   }}
                 >
-                  <Typography
-                    variant='body2'
-                    sx={{
-                      fontWeight: 600,
-                      color: 'text.secondary',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                    }}
-                  >
+                  <Typography variant='caption' sx={{ fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     GST ({customer?.cf_in_ex || 'Exclusive'})
                   </Typography>
-                  <Typography
-                    variant='body1'
-                    sx={{ fontWeight: 600, color: 'text.primary' }}
-                  >
+                  <Typography variant='body2' sx={{ fontWeight: 600, color: 'text.primary', fontVariantNumeric: 'tabular-nums' }}>
                     ₹{totals.totalGST.toLocaleString()}
                   </Typography>
                 </Box>
@@ -579,23 +451,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                     alignItems: 'center',
                   }}
                 >
-                  <Typography
-                    variant='h6'
-                    sx={{
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                    }}
-                  >
-                    Total Amount
+                  <Typography variant='subtitle2' sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Total
                   </Typography>
-                  <Typography
-                    variant='h5'
-                    sx={{
-                      fontWeight: 800,
-                      color: 'success.main',
-                    }}
-                  >
+                  <Typography variant='h6' sx={{ fontWeight: 800, color: 'success.main', fontVariantNumeric: 'tabular-nums' }}>
                     ₹{totals.totalAmount.toLocaleString()}
                   </Typography>
                 </Box>
@@ -608,10 +467,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                 fullWidth
                 size='large'
                 sx={{
-                  py: { xs: 1.5, sm: 1.8 },
+                  py: { xs: 1.1, sm: 1.25 },
                   fontWeight: 700,
-                  fontSize: { xs: '1rem', sm: '1.1rem' },
-                  borderRadius: 3,
+                  fontSize: { xs: '0.9rem', sm: '0.95rem' },
+                  borderRadius: 2.5,
                   textTransform: 'none',
                   boxShadow: 2,
                   transition: 'box-shadow 0.2s ease',

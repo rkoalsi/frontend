@@ -116,11 +116,11 @@ const CustomerLayout = ({ children }: any) => {
           alignItems: 'center',
           height: '100dvh',
           background: isDark
-            ? 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 50%, #1a365d 100%)'
-            : '#f0f4f8',
+            ? 'linear-gradient(135deg, #191536 0%, #221E48 100%)'
+            : '#F9F8FD',
         }}
       >
-        <CircularProgress sx={{ color: '#38a169' }} />
+        <CircularProgress color='primary' />
       </Box>
     );
   }
@@ -147,14 +147,14 @@ const CustomerLayout = ({ children }: any) => {
   const menuItems = getMenuItems();
 
   const mainBg = isDark
-    ? 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 50%, #1a365d 100%)'
-    : '#f0f4f8';
+    ? 'linear-gradient(135deg, #191536 0%, #221E48 100%)'
+    : '#F9F8FD';
 
-  const sidebarBg = isDark ? '#2d4a6f' : '#e8f4ee';
-  const sidebarText = isDark ? 'white' : '#1a2b3c';
-  const activeItemBg = isDark ? '#38a169' : 'rgba(56, 161, 105, 0.15)';
-  const activeItemText = isDark ? 'white' : '#2d6a4f';
-  const hoverItemBg = isDark ? '#38a169' : 'rgba(56, 161, 105, 0.1)';
+  const sidebarBg = isDark ? '#221E48' : '#FFFFFF';
+  const sidebarText = isDark ? 'rgba(241,238,255,0.92)' : '#1C1A33';
+  const activeItemBg = isDark ? 'rgba(167,150,255,0.2)' : 'rgba(70,51,184,0.1)';
+  const activeItemText = isDark ? '#BCAFFF' : '#4633B8';
+  const hoverItemBg = isDark ? 'rgba(167,150,255,0.12)' : 'rgba(70,51,184,0.06)';
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100dvh', background: mainBg }}>
@@ -166,7 +166,7 @@ const CustomerLayout = ({ children }: any) => {
         elevation={0}
         sx={{
           zIndex: 1300,
-          backgroundColor: '#1a2b3c',
+          backgroundColor: '#191536',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
           backdropFilter: 'blur(8px)',
         }}
@@ -196,7 +196,7 @@ const CustomerLayout = ({ children }: any) => {
                   width: 34,
                   height: 34,
                   borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #4E8098, #2B4864)',
+                  background: 'linear-gradient(135deg, #6A5AD1, #37279C)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -211,7 +211,7 @@ const CustomerLayout = ({ children }: any) => {
                   fontWeight={700}
                   sx={{ color: '#fff', lineHeight: 1.1, letterSpacing: '-0.01em' }}
                 >
-                  Pupscribe
+                  Pupscribe Marketplace
                 </Typography>
                 <Typography
                   variant='caption'
@@ -381,6 +381,9 @@ const CustomerLayout = ({ children }: any) => {
         component='main'
         sx={{
           flexGrow: 1,
+          minWidth: 0,
+          maxWidth: '100%',
+          overflowX: 'hidden',
           background: mainBg,
           minHeight: '100dvh',
           padding: { xs: 1.5, sm: 2, md: 3 },

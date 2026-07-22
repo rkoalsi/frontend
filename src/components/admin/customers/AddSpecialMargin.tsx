@@ -547,7 +547,7 @@ const AddSpecialMarginDialog: React.FC<AddSpecialMarginDialogProps> = ({
           sx={{
             mb: 3,
             mt: 3,
-            border: isBulkMode ? '2px solid #1976d2' : '1px solid #e0e0e0',
+            border: isBulkMode ? '2px solid #4633B8' : '1px solid #e0e0e0',
             boxShadow: isBulkMode ? 3 : 1,
             transition: 'all 0.3s ease',
           }}

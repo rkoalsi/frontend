@@ -32,7 +32,7 @@ const ShopHookCard = ({ user, hookData, onAddNotes }: any) => {
     >
       <div
         style={{
-          backgroundColor: '#1976d2',
+          backgroundColor: '#4633B8',
           color: 'white',
           padding: '16px',
           textAlign: 'center',

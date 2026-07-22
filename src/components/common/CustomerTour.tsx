@@ -216,7 +216,7 @@ const CustomerTour = ({
           zIndex: 10002,
           borderRadius: 3,
           p: { xs: 2, sm: 2.5 },
-          background: '#1a2b3c',
+          background: '#191536',
           border: '1px solid rgba(56,161,105,0.35)',
           color: 'white',
           ...(isWelcome ? {

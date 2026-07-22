@@ -259,7 +259,7 @@ const CustomerOrderDetail = () => {
         {/* Header section */}
         <Box
           sx={{
-            background: 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 100%)',
+            background: 'linear-gradient(135deg, #221E48 0%, #37279C 100%)',
             color: 'white',
             padding: { xs: 3, md: 4 },
           }}
