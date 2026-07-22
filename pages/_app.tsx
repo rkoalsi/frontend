@@ -12,6 +12,7 @@ import Layout from '../src/components/Layout';
 import AdminLayout from '../src/components/AdminLayout';
 import CustomerLayout from '../src/components/CustomerLayout';
 import ErrorBoundary from '../src/components/ErrorBoundary';
+import PresenceHeartbeat from '../src/components/PresenceHeartbeat';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import 'react-quill/dist/quill.snow.css';
@@ -63,6 +64,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/customer_requests': 'Customer Requests',
   // Admin
   '/admin': 'Admin Dashboard',
+  '/admin/active_users': 'Active Users',
   '/admin/announcements': 'Announcements',
   '/admin/attendance': 'Attendance',
   '/admin/billed_customers': 'Billed Customers',
@@ -300,6 +302,7 @@ export default function MyApp(props: AppProps) {
                 <meta name='robots' content='noindex, nofollow' />
               )}
             </Head>
+            <PresenceHeartbeat />
             <ThemeWrapper>
               <ToastContainer position='top-left' autoClose={1000} />
               <LayoutComponent>
