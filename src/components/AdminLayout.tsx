@@ -61,6 +61,7 @@ import {
   DarkMode,
   LightMode,
   ReceiptLong,
+  Sensors,
   Search as SearchIcon,
   ExpandLess,
   ExpandMore,
@@ -103,6 +104,7 @@ const iconMap: { [key: string]: React.ReactElement } = {
   Chat: <Chat />,
   Security: <Security />,
   ReceiptLong: <ReceiptLong />,
+  Sensors: <Sensors />,
   Receipt: <OrdersIcon />,
 };
 
