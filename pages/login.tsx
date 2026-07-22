@@ -24,7 +24,11 @@ import AuthContext from '../src/components/Auth';
 import { useRouter } from 'next/router';
 import { event as trackEvent } from '../src/util/gtag';
 
-const FEATURES = ['Order management', 'Customer portal', 'Sales analytics'];
+const FEATURES = [
+  'Place wholesale orders online, anytime',
+  'Live stock and retailer pricing',
+  'Track orders, invoices and payments',
+];
 
 const LoginPage = () => {
   const { login, loginWithOtp }: any = useContext(AuthContext);
@@ -164,7 +168,9 @@ const LoginPage = () => {
             </Typography>
 
             <Typography variant='body2' sx={{ color: 'rgba(255,255,255,0.6)', mb: 3, lineHeight: 1.7 }}>
-              Manage your orders and customer relationships in one powerful platform.
+              The B2B ordering portal for pet retailers. Registered retailers can
+              browse the full Pupscribe catalogue and place wholesale orders
+              directly from here.
             </Typography>
 
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 3 }} />
