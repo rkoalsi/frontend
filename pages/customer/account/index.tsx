@@ -19,6 +19,7 @@ import {
   FormControl,
   InputLabel,
   Select,
+  Link as MuiLink,
 } from '@mui/material';
 import AuthContext from '../../../src/components/Auth';
 import { Person, Email, Phone, Business, Receipt, UploadFile } from '@mui/icons-material';
@@ -220,12 +221,12 @@ const CustomerAccount = () => {
   );
 
   const ReadField = ({ icon, label, value }: { icon: React.ReactNode; label: string; value?: string }) => (
-    <Box sx={{ mb: 3 }}>
+    <Box sx={{ mb: { xs: 2, md: 3 } }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
         <Box sx={{ color: 'text.secondary', mr: 1 }}>{icon}</Box>
         <Typography variant='body2' color='text.secondary'>{label}</Typography>
       </Box>
-      <Typography variant='body1' fontWeight={500} sx={{ pl: 4 }}>{value || 'Not provided'}</Typography>
+      <Typography variant='body1' fontWeight={500} sx={{ pl: 4, wordBreak: 'break-word' }}>{value || 'Not provided'}</Typography>
     </Box>
   );
 
@@ -247,9 +248,7 @@ const CustomerAccount = () => {
         {/* Header */}
         <Box
           sx={{
-            background: theme.palette.mode === 'dark'
-              ? `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`
-              : 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 100%)',
+            background: 'linear-gradient(135deg, #221E48 0%, #37279C 100%)',
             color: 'white', padding: { xs: 2.5, sm: 3, md: 4 },
           }}
         >
@@ -293,9 +292,9 @@ const CustomerAccount = () => {
                   <Typography variant='h6' fontWeight={600} sx={{ mb: 2 }}>Documents</Typography>
                   <Paper elevation={0} sx={cardSx}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      {docs.gst && <a href={docs.gst} target='_blank' rel='noopener noreferrer'>GST Certificate</a>}
-                      {docs.pan && <a href={docs.pan} target='_blank' rel='noopener noreferrer'>PAN Card</a>}
-                      {docs.aadhar && <a href={docs.aadhar} target='_blank' rel='noopener noreferrer'>Aadhaar</a>}
+                      {docs.gst && <MuiLink href={docs.gst} target='_blank' rel='noopener noreferrer' sx={{ fontWeight: 500 }}>GST Certificate</MuiLink>}
+                      {docs.pan && <MuiLink href={docs.pan} target='_blank' rel='noopener noreferrer' sx={{ fontWeight: 500 }}>PAN Card</MuiLink>}
+                      {docs.aadhar && <MuiLink href={docs.aadhar} target='_blank' rel='noopener noreferrer' sx={{ fontWeight: 500 }}>Aadhaar</MuiLink>}
                     </Box>
                   </Paper>
                 </>
@@ -374,9 +373,9 @@ const CustomerAccount = () => {
                         />
                       </Button>
                       {(docs as any)[key] && (
-                        <a href={(docs as any)[key]} target='_blank' rel='noopener noreferrer' style={{ fontSize: 12 }}>
+                        <MuiLink href={(docs as any)[key]} target='_blank' rel='noopener noreferrer' sx={{ fontSize: 12 }}>
                           View uploaded file
-                        </a>
+                        </MuiLink>
                       )}
                     </Box>
                   ))}

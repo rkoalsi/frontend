@@ -48,7 +48,7 @@ interface PerformanceData {
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   draft: { label: 'Draft', color: '#f57c00', icon: Schedule },
-  sent: { label: 'Sent', color: '#1976d2', icon: Send },
+  sent: { label: 'Sent', color: '#4633B8', icon: Send },
   accepted: { label: 'Accepted', color: '#388e3c', icon: CheckCircle },
   invoiced: { label: 'Invoiced', color: '#2e7d32', icon: Receipt },
   declined: { label: 'Declined', color: '#d32f2f', icon: Cancel },

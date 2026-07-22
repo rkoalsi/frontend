@@ -143,9 +143,72 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 function getPageTitle(pathname: string): string {
+  const seo = PAGE_SEO[pathname];
+  if (seo) return seo.title;
   const label = PAGE_TITLES[pathname] ?? 'Pupscribe';
   return label === 'Pupscribe' ? 'Pupscribe' : `${label} | Pupscribe`;
 }
+
+// SEO for the public (indexable) pages. Everything else is behind auth and is
+// marked noindex — only these pages should ever appear in Google results.
+const SITE_URL = 'https://marketplace.pupscribe.in';
+const DEFAULT_SEO_DESCRIPTION =
+  'Pupscribe Marketplace — the B2B ordering portal for pet retailers. ' +
+  'Registered retailers can browse the full Pupscribe catalogue, check live ' +
+  'stock and place wholesale orders directly online.';
+const PAGE_SEO: Record<string, { title: string; description: string }> = {
+  '/login': {
+    title: 'Pupscribe Marketplace | B2B Ordering Portal for Pet Retailers',
+    description: DEFAULT_SEO_DESCRIPTION,
+  },
+  '/register': {
+    title: 'Register Your Store | Pupscribe Marketplace',
+    description:
+      'Register your pet store on Pupscribe Marketplace and start placing ' +
+      'wholesale B2B orders directly — browse brands, live stock and pricing ' +
+      'made for retailers.',
+  },
+  '/catalogues': {
+    title: 'Product Catalogues | Pupscribe Marketplace',
+    description:
+      'Browse Pupscribe product catalogues — pet food, treats, toys and ' +
+      'accessories available to B2B retailers on Pupscribe Marketplace.',
+  },
+  '/catalogues/all_products': {
+    title: 'All Products | Pupscribe Marketplace',
+    description:
+      'Explore all products available to retailers on Pupscribe Marketplace, ' +
+      'the B2B ordering portal for pet stores.',
+  },
+  '/forgot_password': {
+    title: 'Forgot Password | Pupscribe Marketplace',
+    description: DEFAULT_SEO_DESCRIPTION,
+  },
+  '/reset_password': {
+    title: 'Reset Password | Pupscribe Marketplace',
+    description: DEFAULT_SEO_DESCRIPTION,
+  },
+};
+
+// Organization + WebSite structured data so Google associates the
+// "Pupscribe Marketplace" name with this domain.
+const STRUCTURED_DATA = JSON.stringify([
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Pupscribe Marketplace',
+    alternateName: ['Pupscribe B2B Marketplace', 'Pupscribe Order Portal'],
+    url: SITE_URL,
+    description: DEFAULT_SEO_DESCRIPTION,
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Pupscribe',
+    url: 'https://pupscribe.in',
+    sameAs: [SITE_URL],
+  },
+]);
 
 export default function MyApp(props: AppProps) {
   useNetworkStatus();
@@ -206,6 +269,36 @@ export default function MyApp(props: AppProps) {
             <Head>
               <title>{getPageTitle(router.pathname)}</title>
               <meta name='viewport' content='initial-scale=1, width=device-width' />
+              {isPublicPath(router.pathname) ? (
+                <>
+                  <meta
+                    name='description'
+                    content={
+                      PAGE_SEO[router.pathname]?.description ??
+                      DEFAULT_SEO_DESCRIPTION
+                    }
+                  />
+                  <link rel='canonical' href={`${SITE_URL}${router.pathname}`} />
+                  <meta property='og:site_name' content='Pupscribe Marketplace' />
+                  <meta property='og:type' content='website' />
+                  <meta property='og:title' content={getPageTitle(router.pathname)} />
+                  <meta
+                    property='og:description'
+                    content={
+                      PAGE_SEO[router.pathname]?.description ??
+                      DEFAULT_SEO_DESCRIPTION
+                    }
+                  />
+                  <meta property='og:url' content={`${SITE_URL}${router.pathname}`} />
+                  <script
+                    type='application/ld+json'
+                    dangerouslySetInnerHTML={{ __html: STRUCTURED_DATA }}
+                  />
+                </>
+              ) : (
+                // Authenticated pages: keep them out of search results.
+                <meta name='robots' content='noindex, nofollow' />
+              )}
             </Head>
             <ThemeWrapper>
               <ToastContainer position='top-left' autoClose={1000} />

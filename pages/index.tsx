@@ -272,7 +272,7 @@ const menuSections = [
       {
         icon: <ShoppingCart />,
         text: 'Create New Order',
-        color: '#3b82f6',
+        color: '#6A5AD1',
         action: 'newOrder',
         tourId: 'home-new-order',
       },
@@ -390,7 +390,7 @@ const menuSections = [
       {
         icon: <Assignment />,
         text: 'My Customer Requests',
-        color: '#3b82f6',
+        color: '#6A5AD1',
         action: 'my_customer_requests',
       },
       {
@@ -914,36 +914,34 @@ const Home = () => {
                 </Tooltip>
               </Box>
               {cataloguesLoading ? (
-                <Stack spacing={1.5}>
-                  {[1, 2, 3].map((i) => (
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
+                    gap: 1.5,
+                  }}
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                     <Paper
                       key={i}
                       elevation={0}
                       sx={{
-                        p: { xs: 1.25, sm: 1.5 },
-                        px: { xs: 1.5, sm: 2 },
+                        p: 1.5,
                         borderRadius: 3,
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        gap: 1.5,
+                        gap: 1,
                         bgcolor: 'background.paper',
                         border: '1px solid',
                         borderColor: 'divider',
                       }}
                     >
-                      <Skeleton
-                        variant='rounded'
-                        width={44}
-                        height={44}
-                        sx={{ borderRadius: 2.5, flexShrink: 0 }}
-                      />
-                      <Box flex={1}>
-                        <Skeleton variant='text' width='60%' height={24} />
-                        <Skeleton variant='text' width='40%' height={16} />
-                      </Box>
+                      <Skeleton variant='rounded' width={40} height={40} sx={{ borderRadius: 2.5 }} />
+                      <Skeleton variant='text' width='70%' height={20} />
                     </Paper>
                   ))}
-                </Stack>
+                </Box>
               ) : (
                 <AnimatePresence mode='wait'>
                   <motion.div
@@ -951,7 +949,7 @@ const Home = () => {
                     initial='hidden'
                     animate='visible'
                   >
-                    <Stack spacing={1.5}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                       {/* All Products Catalogue */}
                       <motion.div variants={itemVariants}>
                         <CatalogueCard
@@ -1026,56 +1024,76 @@ const Home = () => {
                         </CatalogueCard>
                       </motion.div>
 
-                      {/* Brand Catalogues */}
-                      {catalogues.map((b: any, index: number) => (
-                        <motion.div key={b._id || index} variants={itemVariants}>
-                          <CatalogueCard
-                            elevation={0}
-                            onClick={() => handleOpenCatalogue(b.image_url, b.name)}
-                          >
-                            <CatalogueIconWrapper>
-                              <PictureAsPdf
-                                sx={{
-                                  fontSize: { xs: '20px', sm: '22px' },
-                                  color: 'primary.main',
-                                }}
-                              />
-                            </CatalogueIconWrapper>
-                            <Box flex={1} minWidth={0}>
+                      {/* Brand Catalogues — compact tile grid to keep scroll short */}
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
+                          gap: 1.5,
+                        }}
+                      >
+                        {catalogues.map((b: any, index: number) => (
+                          <motion.div key={b._id || index} variants={itemVariants} style={{ minWidth: 0 }}>
+                            <Paper
+                              elevation={0}
+                              onClick={() => handleOpenCatalogue(b.image_url, b.name)}
+                              sx={{
+                                p: 1.5,
+                                pt: 2,
+                                height: '100%',
+                                borderRadius: 3,
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                bgcolor: 'background.paper',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                textAlign: 'center',
+                                gap: 1,
+                                cursor: 'pointer',
+                                position: 'relative',
+                                transition: 'all 0.18s ease',
+                                '&:hover': {
+                                  borderColor: 'primary.main',
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: 2,
+                                },
+                              }}
+                            >
+                              <Tooltip title='Copy link' arrow>
+                                <CatalogueActionButton
+                                  onClick={(e) => { e.stopPropagation(); handleCopyLink(e, b.image_url, b.name); }}
+                                  size='small'
+                                  sx={{ position: 'absolute', top: 4, right: 4 }}
+                                >
+                                  <ContentCopy sx={{ fontSize: '14px' }} />
+                                </CatalogueActionButton>
+                              </Tooltip>
+                              <CatalogueIconWrapper>
+                                <PictureAsPdf
+                                  sx={{ fontSize: { xs: '20px', sm: '22px' }, color: 'primary.main' }}
+                                />
+                              </CatalogueIconWrapper>
                               <Typography
-                                variant='body1'
-                                fontWeight='600'
+                                variant='body2'
+                                fontWeight={600}
                                 color='text.primary'
-                                noWrap
+                                sx={{
+                                  lineHeight: 1.3,
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  wordBreak: 'break-word',
+                                }}
                               >
                                 {b.name}
                               </Typography>
-                              <Typography variant='caption' color='text.secondary' noWrap>
-                                Tap to view PDF catalogue
-                              </Typography>
-                            </Box>
-                            <Box display='flex' gap={0.5} onClick={(e) => e.stopPropagation()} flexShrink={0}>
-                              <Tooltip title='Copy link' arrow>
-                                <CatalogueActionButton
-                                  onClick={(e) => handleCopyLink(e, b.image_url, b.name)}
-                                  size='small'
-                                >
-                                  <ContentCopy sx={{ fontSize: '16px' }} />
-                                </CatalogueActionButton>
-                              </Tooltip>
-                              <Tooltip title='Open catalogue' arrow>
-                                <CatalogueActionButton
-                                  onClick={() => handleOpenCatalogue(b.image_url, b.name)}
-                                  size='small'
-                                >
-                                  <OpenInNew sx={{ fontSize: '16px' }} />
-                                </CatalogueActionButton>
-                              </Tooltip>
-                            </Box>
-                          </CatalogueCard>
-                        </motion.div>
-                      ))}
-                    </Stack>
+                            </Paper>
+                          </motion.div>
+                        ))}
+                      </Box>
+                    </Box>
                   </motion.div>
                 </AnimatePresence>
               )}

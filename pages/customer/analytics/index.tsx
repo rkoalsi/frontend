@@ -340,7 +340,7 @@ const CustomerAnalytics = () => {
         {/* Header */}
         <Box
           sx={{
-            background: 'linear-gradient(135deg, #1a365d 0%, #2d4a6f 100%)',
+            background: 'linear-gradient(135deg, #221E48 0%, #37279C 100%)',
             color: 'white',
             padding: { xs: 2, sm: 3, md: 4 },
           }}
@@ -400,7 +400,7 @@ const CustomerAnalytics = () => {
                     icon={<ShoppingCart />}
                     label='Total Orders (Estimates)'
                     value={analytics?.total_orders || 0}
-                    color='#3b82f6'
+                    color='#6A5AD1'
                   />
                 </Grid>
                 <Grid size={{ xs: 6, sm: 6, md: 6 }}>
@@ -551,7 +551,7 @@ const CustomerAnalytics = () => {
                             {
                               label: 'Total Amount',
                               value: formatCurrency(analytics?.invoice_stats?.total_amount || 0),
-                              color: '#3b82f6',
+                              color: '#6A5AD1',
                             },
                             {
                               label: 'Paid',

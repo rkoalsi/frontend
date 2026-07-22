@@ -38,6 +38,7 @@ import {
   WarningAmber,
   Clear,
 } from '@mui/icons-material';
+import ScrollTriangleButtons from '../common/ScrollTriangleButtons';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import QuantitySelector from './QuantitySelector';
@@ -1750,65 +1751,12 @@ const Review: React.FC<Props> = React.memo((props) => {
           pointerEvents: 'none',
         }}
       >
-        <IconButton
-          color='primary'
-          onClick={scrollToTop}
+        <ScrollTriangleButtons
+          onScrollTop={scrollToTop}
+          onScrollBottom={scrollToBottom}
           disabled={isScrollButtonDisabled}
-          sx={{
-            backgroundColor: 'primary.main',
-            color: 'white',
-            width: { xs: 48, sm: 56 },
-            height: { xs: 48, sm: 56 },
-            boxShadow: 6,
-            '&:disabled': {
-              backgroundColor: 'action.disabledBackground',
-              color: 'action.disabled',
-              opacity: 0.5,
-            },
-            '&:hover:not(:disabled)': {
-              backgroundColor: 'primary.dark',
-              boxShadow: 8,
-              transform: isMobile ? 'none' : 'scale3d(1.1, 1.1, 1) translate3d(0, -2px, 0)',
-            },
-            '&:active:not(:disabled)': {
-              transform: isMobile ? 'none' : 'scale3d(0.95, 0.95, 1)',
-            },
-            transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease',
-            pointerEvents: 'auto',
-          }}
-        >
-          <ArrowUpward fontSize={isMobile ? 'medium' : 'large'} />
-        </IconButton>
-
-        <IconButton
-          color='primary'
-          onClick={scrollToBottom}
-          disabled={isScrollButtonDisabled}
-          sx={{
-            backgroundColor: 'primary.main',
-            color: 'white',
-            width: { xs: 48, sm: 56 },
-            height: { xs: 48, sm: 56 },
-            boxShadow: 6,
-            '&:disabled': {
-              backgroundColor: 'action.disabledBackground',
-              color: 'action.disabled',
-              opacity: 0.5,
-            },
-            '&:hover:not(:disabled)': {
-              backgroundColor: 'primary.dark',
-              boxShadow: 8,
-              transform: isMobile ? 'none' : 'scale3d(1.1, 1.1, 1) translate3d(0, 2px, 0)',
-            },
-            '&:active:not(:disabled)': {
-              transform: isMobile ? 'none' : 'scale3d(0.95, 0.95, 1)',
-            },
-            transition: 'background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease',
-            pointerEvents: 'auto',
-          }}
-        >
-          <ArrowDownward fontSize={isMobile ? 'medium' : 'large'} />
-        </IconButton>
+          isMobile={isMobile}
+        />
       </Box>
     </Box>
   );

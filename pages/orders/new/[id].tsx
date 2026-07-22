@@ -254,6 +254,63 @@ const addressCaption = (addr: any) =>
 const PAGE_MAX_WIDTH = { xs: '100%', sm: '700px', md: '900px', lg: '1200px' };
 
 // Per-step contextual help shown below the stepper
+
+/* ── Brand-book triangle "ear" step icon ──
+   Completed: filled blue ear with a white dot (like the paw-pad in the logo).
+   Active: Hello Yellow ear with a gentle wag. Pending: soft muted ear. */
+const EarStepIcon: React.FC<{
+  active?: boolean;
+  completed?: boolean;
+  icon: React.ReactNode;
+}> = ({ active, completed, icon }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+  return (
+    <Box
+      sx={{
+        width: { xs: 24, md: 30 },
+        height: { xs: 24, md: 30 },
+        clipPath: 'polygon(50% 6%, 97% 90%, 3% 90%)',
+        borderRadius: '4px',
+        display: 'grid',
+        placeItems: 'end center',
+        pb: { xs: '3px', md: '4px' },
+        bgcolor: completed
+          ? 'primary.main'
+          : active
+            ? (isDark ? '#EFD84A' : '#E4CD2E')
+            : (isDark ? 'rgba(167,150,255,0.22)' : 'rgba(70,51,184,0.1)'),
+        transform: 'rotate(6deg)',
+        transition: 'background-color 0.25s ease',
+        ...(active && {
+          animation: 'earWag 1.6s ease-in-out infinite',
+          '@keyframes earWag': {
+            '0%, 100%': { transform: 'rotate(2deg)' },
+            '50%': { transform: 'rotate(12deg) translateY(-2px)' },
+          },
+          '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+        }),
+      }}
+    >
+      {completed ? (
+        <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.contrastText', mb: '2px' }} />
+      ) : (
+        <Typography
+          component='span'
+          sx={{
+            fontSize: { xs: '0.6rem', md: '0.7rem' },
+            fontWeight: 700,
+            lineHeight: 1,
+            color: active ? '#1C1A33' : (isDark ? 'rgba(241,238,255,0.75)' : 'text.secondary'),
+          }}
+        >
+          {icon}
+        </Typography>
+      )}
+    </Box>
+  );
+};
+
 const STEP_HELP: { name: string; mobileName: string; helpText: string }[] = [
   {
     name: 'Select Customer',
@@ -1235,147 +1292,141 @@ const NewOrder: React.FC = () => {
       >
         {customer ? (
           <Box>
+            {/* Top row: "New Order" label (left) + status chip (right, aligned) */}
             <Box
               display='flex'
-              flexDirection={{ xs: 'column', md: 'row' }}
               justifyContent='space-between'
-              alignItems={{ xs: 'stretch', md: 'flex-start' }}
-              gap={{ xs: 2, md: 2 }}
+              alignItems='center'
+              gap={1}
             >
-              {/* Left: customer name + order ID + date */}
-              <Box flex={1} minWidth={0}>
-                <Typography
-                  variant='overline'
+              <Typography
+                variant='overline'
+                sx={{
+                  color: 'text.secondary',
+                  fontWeight: 600,
+                  letterSpacing: '0.1em',
+                  fontSize: { xs: '0.65rem', sm: '0.7rem' },
+                  lineHeight: 1.5,
+                }}
+              >
+                New Order
+              </Typography>
+              {order?.status && (
+                <Chip
+                  size='small'
+                  label={getStatusLabel(order.status)}
                   sx={{
-                    color: 'text.secondary',
-                    fontWeight: 600,
-                    letterSpacing: '0.1em',
-                    fontSize: { xs: '0.65rem', sm: '0.7rem' },
+                    fontWeight: 700,
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.05em',
+                    backgroundColor: getStatusColor(order.status) + '20',
+                    color: getStatusColor(order.status),
+                    border: `1.5px solid ${getStatusColor(order.status)}50`,
                   }}
-                >
-                  New Order
-                </Typography>
-                <Typography
-                  variant={isMobile ? 'h6' : 'h5'}
-                  fontWeight={700}
-                  noWrap
-                  sx={{
-                    background: isDark
-                      ? 'linear-gradient(135deg, #9c92d8 0%, #7c6fcd 100%)'
-                      : 'linear-gradient(135deg, #2a4a6b 0%, #192d45 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                    mb: 0.5,
-                    fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' },
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {customer.company_name || customer.contact_name}
-                </Typography>
+                />
+              )}
+            </Box>
 
-                <Box display='flex' alignItems='center' gap={1} flexWrap='wrap' mt={0.5}>
-                  {order?.created_at && (
-                    <Typography
-                      variant='caption'
-                      color='text.secondary'
-                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-                    >
-                      {new Date(order.created_at).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </Typography>
+            {/* Customer name + date */}
+            <Typography
+              variant={isMobile ? 'h6' : 'h5'}
+              fontWeight={700}
+              noWrap
+              sx={{
+                color: 'text.primary',
+                fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' },
+                lineHeight: 1.2,
+              }}
+            >
+              {customer.company_name || customer.contact_name}
+            </Typography>
+            {order?.created_at && (
+              <Typography
+                variant='caption'
+                color='text.secondary'
+                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' }, display: 'block', mt: 0.5 }}
+              >
+                {new Date(order.created_at).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </Typography>
+            )}
+
+            {/* Actions row: estimate pills + Share Link + Margins, all inline */}
+            {(order?.estimate_created ||
+              order?.pre_order_estimate_created ||
+              (!isShared && customer && billingAddress && shippingAddress) ||
+              (canViewMargins && customer)) && (
+              <>
+                <Divider sx={{ mt: 1.5, mb: 1.5 }} />
+                <Box display='flex' alignItems='center' gap={1} flexWrap='wrap'>
+                  {/* Estimate — number (tap to copy) + Download combined into one
+                      segmented pill so the two actions read as a single unit. */}
+                  {order?.estimate_created && (
+                    <EstimatePill
+                      numberLabel={`${order.estimate_number}${order.estimate_status ? ` · ${order.estimate_status.charAt(0).toUpperCase() + order.estimate_status.slice(1)}` : ''}`}
+                      accent={theme.palette.primary.main}
+                      onCopy={handleCopyEstimate}
+                      onDownload={() => handleDownloadEstimate('stock')}
+                      copyTitle='Copy estimate number'
+                    />
+                  )}
+
+                  {/* Pre-order estimate — same combined pill, warning accent. */}
+                  {order?.pre_order_estimate_created && (
+                    <EstimatePill
+                      numberLabel={`${order.pre_order_estimate_number} (Pre Order)${order.pre_order_estimate_status ? ` · ${order.pre_order_estimate_status.charAt(0).toUpperCase() + order.pre_order_estimate_status.slice(1)}` : ''}`}
+                      accent={theme.palette.warning.main}
+                      onCopy={async () => {
+                        if (order?.pre_order_estimate_number && (await copyToClipboard(order.pre_order_estimate_number))) {
+                          toast.success('Pre-order estimate number copied');
+                        }
+                      }}
+                      onDownload={() => handleDownloadEstimate('pre_order')}
+                      copyTitle='Copy pre-order estimate number'
+                    />
+                  )}
+
+                  {/* Spacer pushes the action buttons to the right on wider screens */}
+                  <Box sx={{ flex: 1, display: { xs: 'none', sm: 'block' } }} />
+
+                  {/* Generate Shared Link — moved here from footer */}
+                  {!isShared && customer && billingAddress && shippingAddress && (
+                    <Tooltip title='Copy a link to share this order with the customer'>
+                      <NavButton
+                        data-tour='order-share'
+                        size='small'
+                        variant='outlined'
+                        color='primary'
+                        startIcon={<Share sx={{ fontSize: 16 }} />}
+                        onClick={generateSharedLink}
+                        sx={{ fontSize: '0.75rem', px: 1.5, py: 0.5, flexShrink: 0 }}
+                      >
+                        Share Link
+                      </NavButton>
+                    </Tooltip>
+                  )}
+
+                  {/* View Margins — sales/admin roles only */}
+                  {canViewMargins && customer && (
+                    <Tooltip title='View customer margins'>
+                      <NavButton
+                        size='small'
+                        variant='outlined'
+                        color='secondary'
+                        startIcon={<Percent sx={{ fontSize: 16 }} />}
+                        onClick={() => setMarginDialogOpen(true)}
+                        sx={{ fontSize: '0.75rem', px: 1.5, py: 0.5, flexShrink: 0 }}
+                      >
+                        Margins
+                      </NavButton>
+                    </Tooltip>
                   )}
                 </Box>
-              </Box>
-
-              {/* Right: status, estimate, share button */}
-              <Box
-                display='flex'
-                flexDirection={{ xs: 'row', md: 'column' }}
-                alignItems={{ xs: 'center', md: 'flex-end' }}
-                gap={1}
-                flexWrap='wrap'
-              >
-                {/* Status chip */}
-                {order?.status && (
-                  <Chip
-                    size='small'
-                    label={getStatusLabel(order.status)}
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: '0.7rem',
-                      letterSpacing: '0.05em',
-                      backgroundColor: getStatusColor(order.status) + '20',
-                      color: getStatusColor(order.status),
-                      border: `1.5px solid ${getStatusColor(order.status)}50`,
-                    }}
-                  />
-                )}
-
-                {/* Estimate — number (tap to copy) + Download combined into one
-                    segmented pill so the two actions read as a single unit. */}
-                {order?.estimate_created && (
-                  <EstimatePill
-                    numberLabel={`${order.estimate_number}${order.estimate_status ? ` · ${order.estimate_status.charAt(0).toUpperCase() + order.estimate_status.slice(1)}` : ''}`}
-                    accent={theme.palette.primary.main}
-                    onCopy={handleCopyEstimate}
-                    onDownload={() => handleDownloadEstimate('stock')}
-                    copyTitle='Copy estimate number'
-                  />
-                )}
-
-                {/* Pre-order estimate — same combined pill, warning accent. */}
-                {order?.pre_order_estimate_created && (
-                  <EstimatePill
-                    numberLabel={`${order.pre_order_estimate_number} (Pre Order)${order.pre_order_estimate_status ? ` · ${order.pre_order_estimate_status.charAt(0).toUpperCase() + order.pre_order_estimate_status.slice(1)}` : ''}`}
-                    accent={theme.palette.warning.main}
-                    onCopy={async () => {
-                      if (order?.pre_order_estimate_number && (await copyToClipboard(order.pre_order_estimate_number))) {
-                        toast.success('Pre-order estimate number copied');
-                      }
-                    }}
-                    onDownload={() => handleDownloadEstimate('pre_order')}
-                    copyTitle='Copy pre-order estimate number'
-                  />
-                )}
-
-                {/* Generate Shared Link — moved here from footer */}
-                {!isShared && customer && billingAddress && shippingAddress && (
-                  <Tooltip title='Copy a link to share this order with the customer'>
-                    <NavButton
-                      data-tour='order-share'
-                      size='small'
-                      variant='outlined'
-                      color='info'
-                      startIcon={<Share sx={{ fontSize: 16 }} />}
-                      onClick={generateSharedLink}
-                      sx={{ fontSize: '0.75rem', px: 1.5, py: 0.5 }}
-                    >
-                      Share Link
-                    </NavButton>
-                  </Tooltip>
-                )}
-
-                {/* View Margins — sales/admin roles only */}
-                {canViewMargins && customer && (
-                  <Tooltip title='View customer margins'>
-                    <NavButton
-                      size='small'
-                      variant='outlined'
-                      color='secondary'
-                      startIcon={<Percent sx={{ fontSize: 16 }} />}
-                      onClick={() => setMarginDialogOpen(true)}
-                      sx={{ fontSize: '0.75rem', px: 1.5, py: 0.5 }}
-                    >
-                      Margins
-                    </NavButton>
-                  </Tooltip>
-                )}
-              </Box>
-            </Box>
+              </>
+            )}
           </Box>
         ) : !isSharedGuest && ((!order && id) || order?.customer_id) ? (
           /* Still loading the customer for this order — keep the skeleton up
@@ -1397,8 +1448,8 @@ const NewOrder: React.FC = () => {
               fontWeight={700}
               sx={{
                 background: isDark
-                  ? 'linear-gradient(135deg, #9c92d8 0%, #7c6fcd 100%)'
-                  : 'linear-gradient(135deg, #2a4a6b 0%, #192d45 100%)',
+                  ? 'linear-gradient(135deg, #A796FF 0%, #8D7BF2 100%)'
+                  : 'linear-gradient(135deg, #4633B8 0%, #37279C 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
@@ -1541,7 +1592,7 @@ const NewOrder: React.FC = () => {
                   fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.9rem' },
                   marginTop: { xs: '4px', md: '8px' },
                   fontWeight: 600,
-                  color: isDark ? 'rgba(255,255,255,0.45)' : 'text.secondary',
+                  color: isDark ? '#B4ACDC' : 'text.secondary',
                   // Phones: five labels don't fit legibly, so show only the
                   // active step's label; the icons still convey progress.
                   display: { xs: 'none', sm: 'block' },
@@ -1550,35 +1601,18 @@ const NewOrder: React.FC = () => {
                     fontWeight: 700,
                     display: 'block',
                   },
-                  '&.Mui-completed': { color: 'success.main', fontWeight: 600 },
+                  '&.Mui-completed': { color: isDark ? '#F1EEFF' : 'text.primary', fontWeight: 600 },
                 },
                 '& .MuiStepConnector-root': {
-                  top: { xs: 10, md: 14 },
-                  '&.Mui-completed .MuiStepConnector-line': {
-                    borderColor: theme.palette.success.main,
-                  },
-                  '&.Mui-active .MuiStepConnector-line': {
+                  top: { xs: 11, md: 14 },
+                  '&.Mui-completed .MuiStepConnector-line, &.Mui-active .MuiStepConnector-line': {
                     borderColor: theme.palette.primary.main,
+                    opacity: 0.5,
                   },
                 },
                 '& .MuiStepConnector-line': {
-                  borderColor: isDark ? 'rgba(255,255,255,0.12)' : theme.palette.divider,
+                  borderColor: isDark ? 'rgba(158,142,255,0.25)' : theme.palette.divider,
                   borderTopWidth: 2,
-                },
-                '& .MuiStepIcon-root': {
-                  fontSize: { xs: '1.4rem', sm: '1.6rem', md: '1.9rem' },
-                  color: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.15)',
-                  transition: 'all 0.25s ease',
-                  '&.Mui-active': {
-                    color: 'primary.main',
-                    filter: `drop-shadow(0 0 6px ${theme.palette.primary.main}80)`,
-                  },
-                  '&.Mui-completed': { color: 'success.main' },
-                },
-                '& .MuiStepIcon-text': {
-                  fill: isDark ? 'rgba(255,255,255,0.5)' : 'white',
-                  fontSize: '0.7rem',
-                  fontWeight: 700,
                 },
               }}
             >
@@ -1590,6 +1624,7 @@ const NewOrder: React.FC = () => {
                 return (
                   <Step key={index} onClick={() => handleStepClick(index)}>
                     <StepLabel
+                      StepIconComponent={EarStepIcon}
                       sx={{ cursor: 'pointer' }}
                       optional={
                         stepCaptions[index] ? (
@@ -1597,7 +1632,7 @@ const NewOrder: React.FC = () => {
                             variant='caption'
                             sx={{
                               display: { xs: 'none', sm: 'block' },
-                              color: 'text.secondary',
+                              color: isDark ? '#A79ED2' : 'text.secondary',
                               fontSize: '0.65rem',
                               textAlign: 'center',
                               maxWidth: 120,
@@ -1623,13 +1658,13 @@ const NewOrder: React.FC = () => {
             {STEP_HELP[activeStep]?.helpText && (
               <Typography
                 variant='caption'
-                color='text.secondary'
                 sx={{
                   display: 'block',
                   textAlign: 'center',
+                  color: isDark ? '#B4ACDC' : 'text.secondary',
                   mb: { xs: 2, md: 3 },
                   fontSize: { xs: '0.72rem', sm: '0.8rem' },
-                  bgcolor: 'action.hover',
+                  bgcolor: isDark ? 'rgba(158,142,255,0.1)' : 'action.hover',
                   borderRadius: 1.5,
                   px: 2,
                   py: 0.75,

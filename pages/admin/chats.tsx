@@ -148,7 +148,7 @@ const ChatsPage = () => {
           </Typography>
           <Tooltip title='Download as XLSX' placement='left'>
             <span>
-              <IconButton onClick={handleDownload} disabled={downloading} sx={{ color: '#344d69' }}>
+              <IconButton onClick={handleDownload} disabled={downloading} sx={{ color: '#37279C' }}>
                 {downloading ? <CircularProgress size={22} /> : <FileDownloadOutlined />}
               </IconButton>
             </span>

@@ -535,7 +535,7 @@ const CustomerAnalytics = () => {
                         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
                             {[
                                 { tier: 'A', count: tierStats.A, pct: tierStats.aPercent, color: '#2e7d32', bg: '#e8f5e9' },
-                                { tier: 'B', count: tierStats.B, pct: tierStats.bPercent, color: '#1565c0', bg: '#e3f2fd' },
+                                { tier: 'B', count: tierStats.B, pct: tierStats.bPercent, color: '#37279C', bg: '#EDE9FB' },
                                 { tier: 'C', count: tierStats.C, pct: tierStats.cPercent, color: '#e65100', bg: '#fff3e0' },
                                 { tier: '—', count: tierStats.untiered, pct: 100 - tierStats.aPercent - tierStats.bPercent - tierStats.cPercent, color: '#616161', bg: '#f5f5f5' },
                             ].map(({ tier, count, pct, color, bg }) => (
@@ -581,9 +581,9 @@ const CustomerAnalytics = () => {
                                 <CircularProgress
                                     size={80}
                                     thickness={4}
-                                    sx={{ mb: 3, color: '#1976d2' }}
+                                    sx={{ mb: 3, color: '#4633B8' }}
                                 />
-                                <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#1976d2', mb: 2 }}>
+                                <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#4633B8', mb: 2 }}>
                                     Loading Customer Analytics
                                 </Typography>
                                 <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>

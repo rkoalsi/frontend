@@ -116,7 +116,7 @@ const ShopHookCard = ({ hookData, onEdit }: any) => {
       {/* Header Section */}
       <div
         style={{
-          backgroundColor: '#1976d2', // Primary color
+          backgroundColor: '#4633B8', // Primary color
           color: 'white',
           padding: '16px',
           textAlign: 'center',
