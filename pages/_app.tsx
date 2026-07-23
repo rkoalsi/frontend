@@ -159,8 +159,15 @@ const DEFAULT_SEO_DESCRIPTION =
   'Registered retailers can browse the full Pupscribe catalogue, check live ' +
   'stock and place wholesale orders directly online.';
 const PAGE_SEO: Record<string, { title: string; description: string }> = {
-  '/login': {
+  // The root URL is what Google surfaces for brand searches. Guests are
+  // redirected to /login client-side, but the SSR HTML carries the brand SEO
+  // so the domain result shows a proper title + description.
+  '/': {
     title: 'Pupscribe Marketplace | B2B Ordering Portal for Pet Retailers',
+    description: DEFAULT_SEO_DESCRIPTION,
+  },
+  '/login': {
+    title: 'Login | Pupscribe Marketplace',
     description: DEFAULT_SEO_DESCRIPTION,
   },
   '/register': {
@@ -271,7 +278,7 @@ export default function MyApp(props: AppProps) {
             <Head>
               <title>{getPageTitle(router.pathname)}</title>
               <meta name='viewport' content='initial-scale=1, width=device-width' />
-              {isPublicPath(router.pathname) ? (
+              {isPublicPath(router.pathname) || router.pathname === '/' ? (
                 <>
                   <meta
                     name='description'
