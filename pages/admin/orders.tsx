@@ -492,6 +492,18 @@ const Orders = () => {
   const getPaymentChipLabel = (status: string): string =>
     status.toLowerCase() === 'cod' ? 'COD' : capitalize(status);
 
+  // Salesperson-chosen payment mode (order form step 0). Shown in the Payment
+  // column when there's no gateway payment yet, so the column is never empty.
+  const getPaymentModeMeta = (
+    mode?: string
+  ): { label: string; color: 'default' | 'warning' | 'info' } => {
+    switch (mode) {
+      case 'upfront': return { label: 'Upfront · Awaiting Payment', color: 'warning' };
+      case 'cheque_cod': return { label: 'Cheque / COD', color: 'info' };
+      default: return { label: 'Standard', color: 'default' };
+    }
+  };
+
   // Resolve a human name for who created the order. Self-registered B2B
   // customers place their own orders and may not have a `name` on their user
   // record (it's only their shop/contact), so fall back to first/last name,
@@ -915,29 +927,42 @@ const Orders = () => {
                                   />
                                 );
                               }
-                              return order?.payment?.status ? (
+                              if (order?.payment?.status) {
+                                return (
+                                  <Chip
+                                    label={getPaymentChipLabel(
+                                      order.payment.status
+                                    )}
+                                    color={getPaymentChipColor(
+                                      order.payment.status
+                                    )}
+                                    size='small'
+                                    onClick={() => handleViewDetails(order)}
+                                    sx={{
+                                      fontWeight: 600,
+                                      textTransform: 'capitalize',
+                                      cursor: 'pointer',
+                                    }}
+                                  />
+                                );
+                              }
+                              // No gateway payment yet — show the salesperson-
+                              // chosen payment mode (step 0) so the column is
+                              // never empty.
+                              const mode = getPaymentModeMeta(order?.payment_mode);
+                              return (
                                 <Chip
-                                  label={getPaymentChipLabel(
-                                    order.payment.status
-                                  )}
-                                  color={getPaymentChipColor(
-                                    order.payment.status
-                                  )}
+                                  label={mode.label}
+                                  color={mode.color}
+                                  variant='outlined'
                                   size='small'
+                                  title='Payment method chosen on the order form'
                                   onClick={() => handleViewDetails(order)}
                                   sx={{
                                     fontWeight: 600,
-                                    textTransform: 'capitalize',
                                     cursor: 'pointer',
                                   }}
                                 />
-                              ) : (
-                                <Typography
-                                  variant='body2'
-                                  color='text.secondary'
-                                >
-                                  —
-                                </Typography>
                               );
                             })()}
                           </TableCell>
@@ -1482,6 +1507,25 @@ const Orders = () => {
                         No documents available yet.
                       </Typography>
                     )}
+                </Box>
+
+                {/* Payment method chosen on the order form (step 0) */}
+                <Box sx={{ marginBottom: 3 }}>
+                  <Typography sx={{ mb: 1 }}>
+                    <strong>Payment Method</strong>
+                  </Typography>
+                  {(() => {
+                    const mode = getPaymentModeMeta(selectedOrder?.payment_mode);
+                    return (
+                      <Chip
+                        size='small'
+                        label={mode.label}
+                        color={mode.color}
+                        variant='outlined'
+                        sx={{ fontWeight: 600 }}
+                      />
+                    );
+                  })()}
                 </Box>
 
                 {/* Payment (Razorpay) — shown when a payment link/gateway payment exists */}

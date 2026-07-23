@@ -164,6 +164,8 @@ interface Props {
   onPaymentSuccess?: () => void | Promise<void>;
   isSelfRegistered?: boolean;
   minOrderValue?: number;
+  // Salesperson-chosen payment mode (step 0): '' standard | 'upfront' | 'cheque_cod'.
+  paymentMode?: string;
 }
 
 // Format a brand_orders date string (e.g. "2026-05-21") as "21 May 2026".
@@ -193,6 +195,7 @@ const Review: React.FC<Props> = React.memo((props) => {
     referenceNumber,
     isSelfRegistered = false,
     minOrderValue = 0,
+    paymentMode = '',
   } = props;
 
   // Self-registered customers must reach a minimum cart value before they can pay.
@@ -1719,6 +1722,30 @@ const Review: React.FC<Props> = React.memo((props) => {
                 </Typography>
               )}
             </>
+          ) : paymentMode === 'upfront' ? (
+            // Salesperson-chosen upfront payment: the gateway is available to
+            // everyone on this order — staff, the customer, and shared-link guests.
+            <Button
+              fullWidth
+              variant='contained'
+              color='success'
+              startIcon={payLoading ? <CircularProgress size={16} color='inherit' /> : <Payment />}
+              disabled={payLoading || isOrderLocked || totals.totalAmount <= 0}
+              onClick={handlePayNow}
+              sx={{ mt: 2, textTransform: 'none', fontWeight: 700, borderRadius: 24, py: 1.1 }}
+            >
+              {payLoading ? 'Generating payment link…' : `Pay Now ₹${totals.totalAmount.toLocaleString('en-IN')}`}
+            </Button>
+          ) : paymentMode === 'cheque_cod' ? (
+            <Box display='flex' justifyContent='center' mt={2}>
+              <Chip
+                icon={<LocalAtm />}
+                label='Payment: Cheque / Cash on Delivery'
+                color='info'
+                variant='outlined'
+                sx={{ fontWeight: 700, px: 1, py: 2.2, borderRadius: 24 }}
+              />
+            </Box>
           ) : null}
         </Paper>
       )}

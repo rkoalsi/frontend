@@ -11,10 +11,12 @@ import {
   styled,
   useTheme,
   useMediaQuery,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import axios from 'axios';
 import AuthContext from '../Auth';
-import { Person, Business, Search, CheckCircle } from '@mui/icons-material';
+import { Person, Business, Search, CheckCircle, Payment, LocalAtm, Assignment } from '@mui/icons-material';
 
 interface SearchResult {
   _id: string;
@@ -33,6 +35,10 @@ interface SearchBarProps {
   onChangeReference?: (value: any | null) => void;
   reference?: any;
   ref_no?: boolean;
+  // Salesperson-chosen payment mode: '' (standard) | 'upfront' | 'cheque_cod'.
+  // Selector renders only when onChangePaymentMode is provided (staff users).
+  paymentMode?: string;
+  onChangePaymentMode?: (mode: string) => void;
 }
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -69,6 +75,8 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
   onChangeReference,
   reference,
   ref_no = true,
+  paymentMode = '',
+  onChangePaymentMode,
 }) => {
   const { user }: any = useContext(AuthContext);
   const isAdmin = user?.role?.includes('admin');
@@ -481,6 +489,72 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
                 </Box>
               )}
             </Box>
+          </Box>
+        )}
+
+        {/* ── Payment Method (staff only) ── */}
+        {selectedOption && onChangePaymentMode && (
+          <Box>
+            <Box display='flex' alignItems='center' mb={1.5}>
+              <Payment
+                sx={{ mr: 1, color: 'secondary.main', fontSize: { xs: 22, sm: 24 } }}
+              />
+              <Typography
+                variant='subtitle2'
+                fontWeight={600}
+                color='text.secondary'
+                sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}
+              >
+                Payment Method
+              </Typography>
+            </Box>
+            <ToggleButtonGroup
+              exclusive
+              fullWidth
+              disabled={disabled}
+              value={paymentMode || ''}
+              onChange={(_e, value) => {
+                // Ignore deselect clicks — one of the modes is always active.
+                if (value !== null) onChangePaymentMode(value);
+              }}
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: { xs: 1, sm: 0 },
+                '& .MuiToggleButton-root': {
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: { xs: '0.85rem', sm: '0.82rem' },
+                  py: 1.1,
+                  borderRadius: { xs: '8px !important', sm: undefined },
+                  border: { xs: `1px solid ${theme.palette.divider} !important`, sm: undefined },
+                },
+              }}
+            >
+              <ToggleButton value=''>
+                <Assignment sx={{ fontSize: 18, mr: 0.75 }} />
+                Standard
+              </ToggleButton>
+              <ToggleButton value='upfront'>
+                <Payment sx={{ fontSize: 18, mr: 0.75 }} />
+                Upfront Payment
+              </ToggleButton>
+              <ToggleButton value='cheque_cod'>
+                <LocalAtm sx={{ fontSize: 18, mr: 0.75 }} />
+                Cheque / Cash on Delivery
+              </ToggleButton>
+            </ToggleButtonGroup>
+            <Typography
+              variant='caption'
+              color='text.secondary'
+              sx={{ display: 'block', mt: 0.75 }}
+            >
+              {paymentMode === 'upfront'
+                ? 'The online payment option will be shown on the Review step — to you, the customer, and anyone with the shared link.'
+                : paymentMode === 'cheque_cod'
+                ? 'The estimate will be marked "Payment Mode: Cheque / Cash on Delivery".'
+                : 'Standard flow — no online payment, no payment note on the estimate.'}
+            </Typography>
           </Box>
         )}
 
