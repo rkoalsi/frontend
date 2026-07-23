@@ -7,7 +7,6 @@ import {
   Paper,
   Typography,
   Chip,
-  Divider,
   styled,
   useTheme,
   useMediaQuery,
@@ -300,7 +299,16 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
               placeholder='Type to search customers…'
               InputProps={{
                 ...params.InputProps,
-                startAdornment: (
+                startAdornment: selectedOption ? (
+                  // Selected — the input doubles as the confirmation.
+                  <CheckCircle
+                    sx={{
+                      color: 'success.main',
+                      mr: 0.5,
+                      fontSize: { xs: 20, sm: 18 },
+                    }}
+                  />
+                ) : (
                   <Search
                     sx={{
                       color: 'text.disabled',
@@ -335,162 +343,6 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
           }}
         />
 
-        {/* ── Selected customer summary card ── */}
-        {selectedOption && !disabled && (
-          <Box
-            sx={{
-              borderRadius: 2,
-              border: `1.5px solid`,
-              borderColor: 'primary.main',
-              bgcolor: isDark
-                ? 'rgba(106,90,209,0.08)'
-                : 'rgba(70,51,184,0.04)',
-              px: { xs: 2, sm: 2.5 },
-              py: { xs: 1.5, sm: 1.75 },
-            }}
-          >
-            {/* Header row */}
-            <Box display='flex' alignItems='center' gap={1} mb={1.25}>
-              <CheckCircle
-                sx={{ color: 'success.main', fontSize: { xs: 18, sm: 16 } }}
-              />
-              <Typography
-                variant='caption'
-                fontWeight={700}
-                color='success.main'
-                sx={{
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  fontSize: { xs: '0.65rem', sm: '0.62rem' },
-                }}
-              >
-                Customer Selected
-              </Typography>
-            </Box>
-
-            <Divider sx={{ mb: 1.25 }} />
-
-            {/* Name fields */}
-            <Box display='flex' flexDirection='column' gap={0.75}>
-              {(() => {
-                const sel = selectedOption as any;
-                const sameNames =
-                  sel.contact_name &&
-                  sel.company_name &&
-                  sel.contact_name.trim().toLowerCase() ===
-                    sel.company_name.trim().toLowerCase();
-                return sameNames ? (
-                  <Box display='flex' gap={{ xs: 1.5, sm: 2 }} alignItems='baseline'>
-                    <Typography
-                      variant='caption'
-                      color='text.disabled'
-                      fontWeight={600}
-                      sx={{
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.06em',
-                        fontSize: '0.62rem',
-                        width: { xs: 90, sm: 100 },
-                        flexShrink: 0,
-                      }}
-                    >
-                      Name
-                    </Typography>
-                    <Typography
-                      variant='body2'
-                      fontWeight={700}
-                      color='text.primary'
-                      sx={{ fontSize: { xs: '0.9rem', sm: '0.875rem' } }}
-                    >
-                      {sel.contact_name}
-                    </Typography>
-                  </Box>
-                ) : (
-                  <>
-                    <Box display='flex' gap={{ xs: 1.5, sm: 2 }} alignItems='baseline'>
-                      <Typography
-                        variant='caption'
-                        color='text.disabled'
-                        fontWeight={600}
-                        sx={{
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.06em',
-                          fontSize: '0.62rem',
-                          width: { xs: 90, sm: 100 },
-                          flexShrink: 0,
-                        }}
-                      >
-                        Contact Name
-                      </Typography>
-                      <Typography
-                        variant='body2'
-                        fontWeight={700}
-                        color='text.primary'
-                        sx={{ fontSize: { xs: '0.9rem', sm: '0.875rem' } }}
-                      >
-                        {sel.contact_name || '—'}
-                      </Typography>
-                    </Box>
-                    <Box display='flex' gap={{ xs: 1.5, sm: 2 }} alignItems='baseline'>
-                      <Typography
-                        variant='caption'
-                        color='text.disabled'
-                        fontWeight={600}
-                        sx={{
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.06em',
-                          fontSize: '0.62rem',
-                          width: { xs: 90, sm: 100 },
-                          flexShrink: 0,
-                        }}
-                      >
-                        Company
-                      </Typography>
-                      <Typography
-                        variant='body2'
-                        color='text.secondary'
-                        sx={{ fontSize: { xs: '0.875rem', sm: '0.85rem' } }}
-                      >
-                        {sel.company_name || '—'}
-                      </Typography>
-                    </Box>
-                  </>
-                );
-              })()}
-
-              {(selectedOption as any).salesperson_name && (
-                <Box display='flex' gap={{ xs: 1.5, sm: 2 }} alignItems='center'>
-                  <Typography
-                    variant='caption'
-                    color='text.disabled'
-                    fontWeight={600}
-                    sx={{
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      fontSize: '0.62rem',
-                      width: { xs: 90, sm: 100 },
-                      flexShrink: 0,
-                    }}
-                  >
-                    Sales Rep
-                  </Typography>
-                  <Chip
-                    label={(selectedOption as any).salesperson_name}
-                    size='small'
-                    sx={{
-                      height: 22,
-                      fontSize: { xs: '0.72rem', sm: '0.68rem' },
-                      fontWeight: 600,
-                      bgcolor: isDark
-                        ? 'rgba(106,90,209,0.2)'
-                        : 'rgba(70,51,184,0.1)',
-                      color: 'primary.main',
-                    }}
-                  />
-                </Box>
-              )}
-            </Box>
-          </Box>
-        )}
 
         {/* ── Payment Method (staff only) ── */}
         {selectedOption && onChangePaymentMode && (
@@ -511,6 +363,10 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
             <ToggleButtonGroup
               exclusive
               fullWidth
+              size='small'
+              // Stack vertically on phones — three wide options side by side
+              // overflow the viewport and overlap the Reference field below.
+              orientation={isMobile ? 'vertical' : 'horizontal'}
               disabled={disabled}
               value={paymentMode || ''}
               onChange={(_e, value) => {
@@ -518,29 +374,26 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
                 if (value !== null) onChangePaymentMode(value);
               }}
               sx={{
-                display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
-                gap: { xs: 1, sm: 0 },
+                width: '100%',
                 '& .MuiToggleButton-root': {
                   textTransform: 'none',
                   fontWeight: 600,
-                  fontSize: { xs: '0.85rem', sm: '0.82rem' },
-                  py: 1.1,
-                  borderRadius: { xs: '8px !important', sm: undefined },
-                  border: { xs: `1px solid ${theme.palette.divider} !important`, sm: undefined },
+                  fontSize: { xs: '0.78rem', sm: '0.78rem' },
+                  py: 0.6,
+                  justifyContent: 'center',
                 },
               }}
             >
               <ToggleButton value=''>
-                <Assignment sx={{ fontSize: 18, mr: 0.75 }} />
+                <Assignment sx={{ fontSize: 15, mr: 0.5 }} />
                 Standard
               </ToggleButton>
               <ToggleButton value='upfront'>
-                <Payment sx={{ fontSize: 18, mr: 0.75 }} />
+                <Payment sx={{ fontSize: 15, mr: 0.5 }} />
                 Upfront Payment
               </ToggleButton>
               <ToggleButton value='cheque_cod'>
-                <LocalAtm sx={{ fontSize: 18, mr: 0.75 }} />
+                <LocalAtm sx={{ fontSize: 15, mr: 0.5 }} />
                 Cheque / Cash on Delivery
               </ToggleButton>
             </ToggleButtonGroup>
@@ -585,7 +438,8 @@ const CustomerSearchBar: React.FC<SearchBarProps> = ({
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 2,
-                    fontSize: { xs: '0.5rem', sm: '0.95rem' },
+                    // 16px on phones — readable AND stops iOS zooming the input on focus.
+                    fontSize: { xs: '1rem', sm: '0.95rem' },
                   },
                 }}
               />
