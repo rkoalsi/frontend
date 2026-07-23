@@ -379,6 +379,8 @@ const NewOrder: React.FC = () => {
     is_self_registered: false,
     min_order_value: 0,
   });
+  // Salesperson-chosen payment mode (step 0): '' standard | 'upfront' | 'cheque_cod'.
+  const [paymentMode, setPaymentMode] = useState<string>('');
   const [billingAddress, setBillingAddress] = useState<any>(null);
   const [shippingAddress, setShippingAddress] = useState<any>(null);
   const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
@@ -680,6 +682,7 @@ const NewOrder: React.FC = () => {
           Object.keys(prev).length > 0 ? prev : orderData.special_margins
         );
       }
+      setPaymentMode(orderData.payment_mode || '');
       setOrder(orderData);
       hasOrderLoaded.current = true;
 
@@ -1718,6 +1721,16 @@ const NewOrder: React.FC = () => {
                       setReferenceNumber(e.target.value)
                     }
                     reference={referenceNumber}
+                    paymentMode={paymentMode}
+                    onChangePaymentMode={
+                      // Staff only — customers never see step 0 anyway, but be explicit.
+                      !isCustomerUser
+                        ? async (mode: string) => {
+                            setPaymentMode(mode);
+                            await saveOrder({ payment_mode: mode }, { silent: true });
+                          }
+                        : undefined
+                    }
                   />
                 </Box>
               )}
@@ -1831,6 +1844,7 @@ const NewOrder: React.FC = () => {
                       onPaymentSuccess={getOrder}
                       isSelfRegistered={payConfig.is_self_registered && !isStaffViewer}
                       minOrderValue={payConfig.min_order_value}
+                      paymentMode={paymentMode}
                     />
                   </Suspense>
                 </Box>
