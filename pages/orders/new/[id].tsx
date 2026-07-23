@@ -1258,7 +1258,10 @@ const NewOrder: React.FC = () => {
               md: 'calc(96px + env(safe-area-inset-bottom))',
             }
           : showMobileNavBar
-            ? 'calc(80px + env(safe-area-inset-bottom))'
+            ? // Bar = 12px top pad + ~48px buttons + 12px bottom pad (+ safe
+              // area), so reserve comfortably more than its real height —
+              // otherwise the last field sits underneath it.
+              'calc(120px + env(safe-area-inset-bottom))'
             : undefined,
       }}
     >
