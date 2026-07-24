@@ -15,8 +15,6 @@ import {
   useTheme,
   useMediaQuery,
   InputAdornment,
-  ToggleButtonGroup,
-  ToggleButton,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import Header from '../src/components/common/Header';
@@ -27,6 +25,11 @@ import SendIcon from '@mui/icons-material/Send';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import SearchIcon from '@mui/icons-material/Search';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CheckIcon from '@mui/icons-material/Check';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -123,7 +126,7 @@ const ChequeItem = ({
   onCommentPosted,
 }: {
   cheque: any;
-  onImageClick: (url: string) => void;
+  onImageClick: (images: string[], index: number) => void;
   onCommentPosted: (updated: any) => void;
 }) => {
   const { user }: any = useContext(AuthContext);
@@ -131,9 +134,18 @@ const ChequeItem = ({
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [posting, setPosting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const commentCount = (cheque.comments || []).length;
+
+  const refreshCheque = async () => {
+    const { data } = await axiosInstance.get('/cheques', { params: { page: 0, limit: 100 } });
+    const updated = (data.cheques || []).find((c: any) => c._id === cheque._id);
+    if (updated) onCommentPosted(updated);
+  };
 
   const handlePost = async () => {
     const text = newComment.trim();
@@ -141,14 +153,46 @@ const ChequeItem = ({
     setPosting(true);
     try {
       await axiosInstance.post(`/cheques/${cheque._id}/comments`, { text });
-      const { data } = await axiosInstance.get('/cheques', { params: { page: 0, limit: 100 } });
-      const updated = (data.cheques || []).find((c: any) => c._id === cheque._id);
-      if (updated) onCommentPosted(updated);
+      await refreshCheque();
       setNewComment('');
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Failed to post comment');
     } finally {
       setPosting(false);
+    }
+  };
+
+  const startEdit = (cmt: any) => {
+    setEditingId(String(cmt._id));
+    setEditingText(cmt.text || '');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingText('');
+  };
+
+  const handleSaveEdit = async (commentId: string) => {
+    if (!editingText.trim()) return;
+    setSavingEdit(true);
+    try {
+      await axiosInstance.patch(`/cheques/${cheque._id}/comments/${commentId}`, { text: editingText.trim() });
+      await refreshCheque();
+      cancelEdit();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Failed to update comment');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm('Delete this comment?')) return;
+    try {
+      await axiosInstance.delete(`/cheques/${cheque._id}/comments/${commentId}`);
+      await refreshCheque();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Failed to delete comment');
     }
   };
 
@@ -170,11 +214,6 @@ const ChequeItem = ({
               {cheque.customer_name}
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              {cheque.invoice_number && (
-                <Typography variant='caption' color='text.secondary' sx={{ fontFamily: 'monospace', fontSize: '0.72rem' }}>
-                  {cheque.invoice_number}
-                </Typography>
-              )}
               <Typography variant='caption' color='text.disabled'>
                 {cheque.created_at ? dayjs(cheque.created_at).format('DD MMM YYYY') : ''}
               </Typography>
@@ -252,7 +291,15 @@ const ChequeItem = ({
         {cheque.images?.length > 0 && (
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             {cheque.images.map((img: any, i: number) => (
-              <Thumb key={i} onClick={() => onImageClick(img.url)}>
+              <Thumb
+                key={i}
+                onClick={() =>
+                  onImageClick(
+                    cheque.images.map((im: any) => im.url),
+                    i
+                  )
+                }
+              >
                 {img.url && !img.url.endsWith('.pdf') ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -310,20 +357,52 @@ const ChequeItem = ({
                         {isMe ? 'You' : cmt.created_by_name}
                         {' · '}
                         {cmt.created_at ? dayjs(cmt.created_at).format('DD MMM, HH:mm') : ''}
+                        {cmt.edited_at ? ' (edited)' : ''}
                       </Typography>
-                      <CommentBubble
-                        sx={
-                          isMe
-                            ? {
-                                borderRadius: '12px 4px 12px 12px',
-                                bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
-                                borderColor: (t) => alpha(t.palette.primary.main, 0.2),
-                              }
-                            : {}
-                        }
-                      >
-                        <Typography variant='body2'>{cmt.text}</Typography>
-                      </CommentBubble>
+                      {editingId === String(cmt._id) ? (
+                        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>
+                          <TextField
+                            size='small'
+                            multiline
+                            fullWidth
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            autoFocus
+                          />
+                          <IconButton size='small' color='primary' onClick={() => handleSaveEdit(String(cmt._id))} disabled={savingEdit}>
+                            {savingEdit ? <CircularProgress size={14} /> : <CheckIcon sx={{ fontSize: 16 }} />}
+                          </IconButton>
+                          <IconButton size='small' onClick={cancelEdit}>
+                            <CloseIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Box>
+                      ) : (
+                        <>
+                          <CommentBubble
+                            sx={
+                              isMe
+                                ? {
+                                    borderRadius: '12px 4px 12px 12px',
+                                    bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+                                    borderColor: (t) => alpha(t.palette.primary.main, 0.2),
+                                  }
+                                : {}
+                            }
+                          >
+                            <Typography variant='body2'>{cmt.text}</Typography>
+                          </CommentBubble>
+                          {isMe && (
+                            <Box sx={{ display: 'flex', gap: 0.25, justifyContent: 'flex-end', mt: 0.3 }}>
+                              <IconButton size='small' onClick={() => startEdit(cmt)} sx={{ p: 0.25, opacity: 0.6, '&:hover': { opacity: 1 } }}>
+                                <EditIcon sx={{ fontSize: 14 }} />
+                              </IconButton>
+                              <IconButton size='small' color='error' onClick={() => handleDeleteComment(String(cmt._id))} sx={{ p: 0.25, opacity: 0.6, '&:hover': { opacity: 1 } }}>
+                                <DeleteIcon sx={{ fontSize: 14 }} />
+                              </IconButton>
+                            </Box>
+                          )}
+                        </>
+                      )}
                     </Box>
                   </Box>
                 );
@@ -413,19 +492,51 @@ const ChequesPage = () => {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState('');
+
+  // Image carousel preview
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const previewOpen = previewImages.length > 0;
+  const touchStartX = useRef<number | null>(null);
+
+  const openPreview = useCallback((images: string[], index: number) => {
+    setPreviewImages(images);
+    setPreviewIndex(index);
+  }, []);
+
+  const closePreview = useCallback(() => setPreviewImages([]), []);
+
+  const showPrev = useCallback(
+    () => setPreviewIndex((i) => (i - 1 + previewImages.length) % previewImages.length),
+    [previewImages.length]
+  );
+  const showNext = useCallback(
+    () => setPreviewIndex((i) => (i + 1) % previewImages.length),
+    [previewImages.length]
+  );
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 50 && previewImages.length > 1) {
+      if (dx > 0) showPrev();
+      else showNext();
+    }
+    touchStartX.current = null;
+  };
 
   // Search state
-  const [searchMode, setSearchMode] = useState<'customer' | 'invoice'>('customer');
   const [searchText, setSearchText] = useState('');
   const searchTimeout = useRef<any>(null);
 
-  const fetchCheques = useCallback(async (p: number, append = false, customerQ = '', invoiceQ = '') => {
+  const fetchCheques = useCallback(async (p: number, append = false, customerQ = '') => {
     setLoading(true);
     try {
       const params: any = { page: p, limit: LIMIT };
       if (customerQ.trim()) params.customer_name = customerQ.trim();
-      if (invoiceQ.trim()) params.invoice_number = invoiceQ.trim();
       const { data } = await axiosInstance.get('/cheques', { params });
       const items = data.cheques || [];
       setCheques((prev) => (append ? [...prev, ...items] : items));
@@ -448,19 +559,26 @@ const ChequesPage = () => {
     clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
       setPage(0);
-      if (searchMode === 'customer') {
-        fetchCheques(0, false, searchText, '');
-      } else {
-        fetchCheques(0, false, '', searchText);
-      }
+      fetchCheques(0, false, searchText);
     }, 350);
     return () => clearTimeout(searchTimeout.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchText, searchMode]);
+  }, [searchText]);
 
   const handleCommentPosted = useCallback((updated: any) => {
     setCheques((prev) => prev.map((c) => (c._id === updated._id ? updated : c)));
   }, []);
+
+  // Keyboard navigation for carousel
+  useEffect(() => {
+    if (!previewOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') showPrev();
+      else if (e.key === 'ArrowRight') showNext();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [previewOpen, showPrev, showNext]);
 
   return (
     <Box sx={{ width: '100%', pb: 6 }}>
@@ -469,24 +587,10 @@ const ChequesPage = () => {
       <Box sx={{ px: { xs: 1.5, sm: 3 }, pt: 1, maxWidth: 640, mx: 'auto' }}>
         {/* Search bar */}
         <Box sx={{ mb: 2.5 }}>
-          <ToggleButtonGroup
-            value={searchMode}
-            exclusive
-            onChange={(_, val) => { if (val) { setSearchMode(val); setSearchText(''); } }}
-            size='small'
-            sx={{ mb: 1.5, width: { xs: '100%', sm: 'auto' } }}
-          >
-            <ToggleButton value='customer' sx={{ flex: { xs: 1, sm: 'none' }, px: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.78rem' }}>
-              Customer
-            </ToggleButton>
-            <ToggleButton value='invoice' sx={{ flex: { xs: 1, sm: 'none' }, px: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.78rem' }}>
-              Invoice #
-            </ToggleButton>
-          </ToggleButtonGroup>
           <TextField
             fullWidth
             size='small'
-            placeholder={searchMode === 'customer' ? 'Search by customer name…' : 'Search by invoice number…'}
+            placeholder='Search by customer name…'
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             InputProps={{
@@ -528,7 +632,7 @@ const ChequesPage = () => {
               <ChequeItem
                 key={c._id}
                 cheque={c}
-                onImageClick={setPreviewUrl}
+                onImageClick={openPreview}
                 onCommentPosted={handleCommentPosted}
               />
             ))}
@@ -540,9 +644,7 @@ const ChequesPage = () => {
                   onClick={() => {
                     const next = page + 1;
                     setPage(next);
-                    const customerQ = searchMode === 'customer' ? searchText : '';
-                    const invoiceQ = searchMode === 'invoice' ? searchText : '';
-                    fetchCheques(next, true, customerQ, invoiceQ);
+                    fetchCheques(next, true, searchText);
                   }}
                   disabled={loading}
                   sx={{
@@ -562,8 +664,8 @@ const ChequesPage = () => {
         )}
       </Box>
 
-      {/* Image / PDF preview */}
-      <Dialog open={!!previewUrl} onClose={() => setPreviewUrl('')} maxWidth='md' fullWidth fullScreen={isMobile}>
+      {/* Image / PDF carousel preview */}
+      <Dialog open={previewOpen} onClose={closePreview} maxWidth='md' fullWidth fullScreen={isMobile}>
         <DialogTitle
           sx={{
             display: 'flex',
@@ -573,21 +675,74 @@ const ChequesPage = () => {
             px: 2,
           }}
         >
-          <Typography fontWeight={600}>Cheque Image</Typography>
-          <IconButton onClick={() => setPreviewUrl('')} size='small'>
+          <Typography fontWeight={600}>
+            Cheque Image
+            {previewImages.length > 1 && (
+              <Typography component='span' variant='caption' color='text.secondary' sx={{ ml: 1 }}>
+                {previewIndex + 1} / {previewImages.length}
+              </Typography>
+            )}
+          </Typography>
+          <IconButton onClick={closePreview} size='small'>
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ p: 1, textAlign: 'center' }}>
-          {previewUrl.endsWith('.pdf') ? (
-            <iframe src={previewUrl} width='100%' height={isMobile ? '100%' : 560} style={{ border: 'none', minHeight: isMobile ? '75vh' : undefined }} />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={previewUrl}
-              alt='cheque'
-              style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }}
-            />
+        <DialogContent sx={{ p: 1, textAlign: 'center', position: 'relative' }}>
+          <Box
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: isMobile ? '75vh' : 300 }}
+          >
+            {previewImages[previewIndex]?.endsWith('.pdf') ? (
+              <iframe src={previewImages[previewIndex]} width='100%' height={isMobile ? '100%' : 560} style={{ border: 'none', minHeight: isMobile ? '75vh' : undefined }} />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={previewImages[previewIndex]}
+                alt='cheque'
+                style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', userSelect: 'none' }}
+              />
+            )}
+          </Box>
+
+          {previewImages.length > 1 && (
+            <>
+              <IconButton
+                onClick={showPrev}
+                sx={{
+                  position: 'absolute', top: '50%', left: 8, transform: 'translateY(-50%)',
+                  bgcolor: 'rgba(0,0,0,0.45)', color: '#fff',
+                  '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' },
+                }}
+              >
+                <ChevronLeftIcon />
+              </IconButton>
+              <IconButton
+                onClick={showNext}
+                sx={{
+                  position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)',
+                  bgcolor: 'rgba(0,0,0,0.45)', color: '#fff',
+                  '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' },
+                }}
+              >
+                <ChevronRightIcon />
+              </IconButton>
+
+              {/* Dot indicators */}
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.75, mt: 1 }}>
+                {previewImages.map((_, i) => (
+                  <Box
+                    key={i}
+                    onClick={() => setPreviewIndex(i)}
+                    sx={{
+                      width: 8, height: 8, borderRadius: '50%', cursor: 'pointer',
+                      bgcolor: i === previewIndex ? 'primary.main' : 'action.disabled',
+                      transition: 'background-color 0.2s',
+                    }}
+                  />
+                ))}
+              </Box>
+            </>
           )}
         </DialogContent>
       </Dialog>
