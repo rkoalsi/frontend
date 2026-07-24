@@ -20,9 +20,8 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  DialogActions,
   Tooltip,
-  ToggleButtonGroup,
-  ToggleButton,
   Stack,
   alpha,
   Drawer,
@@ -32,18 +31,17 @@ import {
 import Header from '../../src/components/common/Header';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import DeleteIcon from '@mui/icons-material/Delete';
-import SearchIcon from '@mui/icons-material/Search';
 import ImageIcon from '@mui/icons-material/Image';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CommentIcon from '@mui/icons-material/Comment';
 import SendIcon from '@mui/icons-material/Send';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import dayjs from 'dayjs';
-
-type SearchMode = 'customer' | 'invoice';
 
 interface UploadedImage {
   url: string;
@@ -52,29 +50,17 @@ interface UploadedImage {
 }
 
 const AdminCheques = () => {
-  const [searchMode, setSearchMode] = useState<SearchMode>('customer');
-
   // Customer search
   const [customerQuery, setCustomerQuery] = useState('');
   const [customerOptions, setCustomerOptions] = useState<any[]>([]);
   const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
 
-  // Invoice search
-  const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [invoiceSearchLoading, setInvoiceSearchLoading] = useState(false);
-  const [resolvedInvoice, setResolvedInvoice] = useState<any>(null);
-
   // Derived display values
-  const customerName =
-    searchMode === 'customer'
-      ? selectedCustomer?.contact_name || ''
-      : resolvedInvoice?.customer_name || '';
+  const customerName = selectedCustomer?.contact_name || '';
 
   const salespersonCodesRaw =
-    searchMode === 'customer'
-      ? selectedCustomer?.cf_sales_person || selectedCustomer?.salesperson_name || ''
-      : resolvedInvoice?.salesperson_name || resolvedInvoice?.cf_sales_person || '';
+    selectedCustomer?.cf_sales_person || selectedCustomer?.salesperson_name || '';
 
   const salespersonCodes: string[] = (() => {
     if (!salespersonCodesRaw) return [];
@@ -100,6 +86,9 @@ const AdminCheques = () => {
   // Submit
   const [submitting, setSubmitting] = useState(false);
 
+  // Upload modal
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+
   // Cheques list
   const [cheques, setCheques] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -107,8 +96,33 @@ const AdminCheques = () => {
   const [rowsPerPage] = useState(20);
   const [listLoading, setListLoading] = useState(false);
 
-  // Image preview dialog
-  const [previewUrl, setPreviewUrl] = useState('');
+  // Image carousel preview
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const previewOpen = previewImages.length > 0;
+  const touchStartX = useRef<number | null>(null);
+
+  const openPreview = (imgs: string[], index: number) => {
+    setPreviewImages(imgs);
+    setPreviewIndex(index);
+  };
+  const closePreview = () => setPreviewImages([]);
+  const showPrev = () =>
+    setPreviewIndex((i) => (i - 1 + previewImages.length) % previewImages.length);
+  const showNext = () => setPreviewIndex((i) => (i + 1) % previewImages.length);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 50 && previewImages.length > 1) {
+      if (dx > 0) showPrev();
+      else showNext();
+    }
+    touchStartX.current = null;
+  };
 
   // Inline notes editing
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
@@ -120,6 +134,11 @@ const AdminCheques = () => {
   const [drawerCheque, setDrawerCheque] = useState<any>(null);
   const [newComment, setNewComment] = useState('');
   const [postingComment, setPostingComment] = useState(false);
+
+  // Comment editing
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
+  const [savingComment, setSavingComment] = useState(false);
 
   // Customer autocomplete debounce
   const searchTimeout = useRef<any>(null);
@@ -145,23 +164,6 @@ const AdminCheques = () => {
     }, 300);
     return () => clearTimeout(searchTimeout.current);
   }, [customerQuery, fetchCustomers]);
-
-  const handleInvoiceLookup = async () => {
-    if (!invoiceNumber.trim()) return;
-    setInvoiceSearchLoading(true);
-    try {
-      const { data } = await axiosInstance.get('/cheques/search/invoices', {
-        params: { invoice_number: invoiceNumber.trim() },
-      });
-      setResolvedInvoice(data);
-      toast.success(`Found: ${data.customer_name}`);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Invoice not found');
-      setResolvedInvoice(null);
-    } finally {
-      setInvoiceSearchLoading(false);
-    }
-  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -208,12 +210,9 @@ const AdminCheques = () => {
     try {
       const payload = {
         customer_name: customerName,
-        customer_id:
-          searchMode === 'customer'
-            ? selectedCustomer?.contact_id || ''
-            : resolvedInvoice?.customer_id || '',
-        invoice_number: searchMode === 'invoice' ? invoiceNumber.trim() : '',
-        invoice_id: searchMode === 'invoice' ? resolvedInvoice?.invoice_id || '' : '',
+        customer_id: selectedCustomer?.contact_id || '',
+        invoice_number: '',
+        invoice_id: '',
         salesperson_codes: salespersonCodes,
         images: images.map(({ url, s3_key }) => ({ url, s3_key })),
         notes,
@@ -222,10 +221,9 @@ const AdminCheques = () => {
       toast.success('Cheque uploaded successfully');
       setSelectedCustomer(null);
       setCustomerQuery('');
-      setInvoiceNumber('');
-      setResolvedInvoice(null);
       setImages([]);
       setNotes('');
+      setUploadModalOpen(false);
       setPage(0);
       fetchCheques(0);
     } catch (err: any) {
@@ -256,6 +254,18 @@ const AdminCheques = () => {
   useEffect(() => {
     fetchCheques(page);
   }, [page, fetchCheques]);
+
+  // Keyboard navigation for carousel
+  useEffect(() => {
+    if (!previewOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') showPrev();
+      else if (e.key === 'ArrowRight') showNext();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewOpen, previewImages.length]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this cheque entry?')) return;
@@ -298,6 +308,54 @@ const AdminCheques = () => {
     setDrawerCheque(cheque);
     setCommentsDrawerOpen(true);
     setNewComment('');
+    setEditingCommentId(null);
+  };
+
+  const refreshDrawerCheque = async () => {
+    const { data } = await axiosInstance.get('/cheques', { params: { page, limit: rowsPerPage } });
+    const updated = (data.cheques || []).find((c: any) => c._id === drawerCheque._id);
+    if (updated) {
+      setDrawerCheque(updated);
+      setCheques((prev) => prev.map((c) => (c._id === updated._id ? updated : c)));
+    }
+  };
+
+  const startEditComment = (cmt: any) => {
+    setEditingCommentId(String(cmt._id));
+    setEditingCommentText(cmt.text || '');
+  };
+
+  const cancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
+
+  const saveComment = async (commentId: string) => {
+    if (!editingCommentText.trim() || !drawerCheque) return;
+    setSavingComment(true);
+    try {
+      await axiosInstance.patch(`/cheques/${drawerCheque._id}/comments/${commentId}`, {
+        text: editingCommentText.trim(),
+      });
+      await refreshDrawerCheque();
+      cancelEditComment();
+      toast.success('Comment updated');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Failed to update comment');
+    } finally {
+      setSavingComment(false);
+    }
+  };
+
+  const deleteComment = async (commentId: string) => {
+    if (!drawerCheque || !confirm('Delete this comment?')) return;
+    try {
+      await axiosInstance.delete(`/cheques/${drawerCheque._id}/comments/${commentId}`);
+      await refreshDrawerCheque();
+      toast.success('Comment deleted');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Failed to delete comment');
+    }
   };
 
   const handlePostComment = async () => {
@@ -321,100 +379,63 @@ const AdminCheques = () => {
     }
   };
 
-  const resetCustomer = () => {
-    setSelectedCustomer(null);
-    setCustomerQuery('');
-    setResolvedInvoice(null);
-    setInvoiceNumber('');
-  };
-
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
-      <Header title='Cheques' />
-
-      {/* Upload Form */}
-      <Paper
-        sx={{
-          p: { xs: 2, sm: 3 },
-          mb: 4,
-          borderRadius: 3,
-          border: '1px solid',
-          borderColor: 'divider',
-        }}
-      >
-        <Typography variant='h6' fontWeight={700} mb={2.5}>
-          Upload Cheque
-        </Typography>
-
-        <ToggleButtonGroup
-          value={searchMode}
-          exclusive
-          onChange={(_, val) => {
-            if (val) { setSearchMode(val); resetCustomer(); }
+      <Box sx={{ position: 'relative' }}>
+        <Header title='Cheques' />
+        <Button
+          variant='contained'
+          startIcon={<AddPhotoAlternateIcon />}
+          onClick={() => setUploadModalOpen(true)}
+          sx={{
+            position: 'absolute',
+            right: 0,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            textTransform: 'none',
+            fontWeight: 700,
+            '& .MuiButton-startIcon': { m: { xs: 0, sm: undefined } },
           }}
-          size='small'
-          sx={{ mb: 3 }}
         >
-          <ToggleButton value='customer' sx={{ px: 3, textTransform: 'none', fontWeight: 600 }}>
-            Search by Customer
-          </ToggleButton>
-          <ToggleButton value='invoice' sx={{ px: 3, textTransform: 'none', fontWeight: 600 }}>
-            Search by Invoice
-          </ToggleButton>
-        </ToggleButtonGroup>
+          <Box component='span' sx={{ display: { xs: 'none', sm: 'inline' } }}>Upload Cheque</Box>
+        </Button>
+      </Box>
 
-        {searchMode === 'customer' && (
+      {/* Upload Modal */}
+      <Dialog open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} maxWidth='sm' fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700 }}>
+          Upload Cheque
+          <IconButton onClick={() => setUploadModalOpen(false)} size='small'><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
           <Autocomplete
-            options={customerOptions}
-            getOptionLabel={(o) => o.contact_name || ''}
-            loading={customerSearchLoading}
-            value={selectedCustomer}
-            onChange={(_, val) => setSelectedCustomer(val)}
-            inputValue={customerQuery}
-            onInputChange={(_, val) => setCustomerQuery(val)}
-            filterOptions={(x) => x}
-            isOptionEqualToValue={(o, v) => o._id === v._id}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label='Customer Name'
-                placeholder='Type to search customers…'
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {customerSearchLoading && <CircularProgress size={16} />}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-            sx={{ mb: 2 }}
-          />
-        )}
-
-        {searchMode === 'invoice' && (
-          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+          options={customerOptions}
+          getOptionLabel={(o) => o.contact_name || ''}
+          loading={customerSearchLoading}
+          value={selectedCustomer}
+          onChange={(_, val) => setSelectedCustomer(val)}
+          inputValue={customerQuery}
+          onInputChange={(_, val) => setCustomerQuery(val)}
+          filterOptions={(x) => x}
+          isOptionEqualToValue={(o, v) => o._id === v._id}
+          renderInput={(params) => (
             <TextField
-              label='Invoice Number'
-              placeholder='e.g. INV/26-27/0335'
-              value={invoiceNumber}
-              onChange={(e) => { setInvoiceNumber(e.target.value); setResolvedInvoice(null); }}
-              onKeyDown={(e) => e.key === 'Enter' && handleInvoiceLookup()}
-              sx={{ flex: 1 }}
+              {...params}
+              label='Customer Name'
+              placeholder='Type to search customers…'
+              InputProps={{
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {customerSearchLoading && <CircularProgress size={16} />}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+              }}
             />
-            <Button
-              variant='contained'
-              onClick={handleInvoiceLookup}
-              disabled={!invoiceNumber.trim() || invoiceSearchLoading}
-              startIcon={invoiceSearchLoading ? <CircularProgress size={16} color='inherit' /> : <SearchIcon />}
-              sx={{ px: 3, textTransform: 'none', fontWeight: 600 }}
-            >
-              Look Up
-            </Button>
-          </Box>
-        )}
+          )}
+          sx={{ mb: 2 }}
+        />
 
         {customerName && (
           <Paper
@@ -474,7 +495,7 @@ const AdminCheques = () => {
                   borderRadius: 2, overflow: 'hidden',
                   border: '1px solid', borderColor: 'divider', cursor: 'pointer',
                 }}
-                onClick={() => setPreviewUrl(img.url)}
+                onClick={() => openPreview(images.map((im) => im.url), images.indexOf(img))}
               >
                 {img.url.endsWith('.pdf') ? (
                   <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover' }}>
@@ -503,19 +524,23 @@ const AdminCheques = () => {
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           fullWidth
-          sx={{ mb: 2.5 }}
+          sx={{ mt: 1 }}
         />
-
-        <Button
-          variant='contained'
-          size='large'
-          onClick={handleSubmit}
-          disabled={submitting || !customerName || !images.length}
-          sx={{ textTransform: 'none', fontWeight: 700, px: 4 }}
-        >
-          {submitting ? <CircularProgress size={20} color='inherit' /> : 'Upload Cheque'}
-        </Button>
-      </Paper>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setUploadModalOpen(false)} sx={{ textTransform: 'none', fontWeight: 600 }}>
+            Cancel
+          </Button>
+          <Button
+            variant='contained'
+            onClick={handleSubmit}
+            disabled={submitting || !customerName || !images.length}
+            sx={{ textTransform: 'none', fontWeight: 700, px: 4 }}
+          >
+            {submitting ? <CircularProgress size={20} color='inherit' /> : 'Upload Cheque'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Cheques List */}
       <Typography variant='h6' fontWeight={700} mb={2}>
@@ -533,7 +558,6 @@ const AdminCheques = () => {
               <TableHead>
                 <TableRow sx={{ bgcolor: 'action.hover' }}>
                   <TableCell sx={{ fontWeight: 700 }}>Customer</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Invoice #</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Salesperson(s)</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Images</TableCell>
                   <TableCell sx={{ fontWeight: 700, minWidth: 200 }}>Notes</TableCell>
@@ -545,7 +569,7 @@ const AdminCheques = () => {
               <TableBody>
                 {cheques.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} align='center' sx={{ py: 4, color: 'text.secondary' }}>
+                    <TableCell colSpan={7} align='center' sx={{ py: 4, color: 'text.secondary' }}>
                       No cheques uploaded yet
                     </TableCell>
                   </TableRow>
@@ -555,9 +579,6 @@ const AdminCheques = () => {
                     <TableCell>
                       <Typography variant='body2' fontWeight={600}>{c.customer_name}</Typography>
                       <Typography variant='caption' color='text.secondary'>{c.uploaded_by_name}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant='body2' color='text.secondary'>{c.invoice_number || '—'}</Typography>
                     </TableCell>
                     <TableCell>
                       <Stack direction='row' spacing={0.5} flexWrap='wrap' useFlexGap>
@@ -580,7 +601,7 @@ const AdminCheques = () => {
                                 cursor: 'pointer', bgcolor: 'action.hover',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                               }}
-                              onClick={() => setPreviewUrl(img.url)}
+                              onClick={() => openPreview((c.images || []).map((im: any) => im.url), i)}
                             >
                               {img.url && !img.url.endsWith('.pdf') ? (
                                 // eslint-disable-next-line @next/next/no-img-element
@@ -663,18 +684,71 @@ const AdminCheques = () => {
         </Paper>
       )}
 
-      {/* Image preview dialog */}
-      <Dialog open={!!previewUrl} onClose={() => setPreviewUrl('')} maxWidth='md'>
+      {/* Image carousel preview */}
+      <Dialog open={previewOpen} onClose={closePreview} maxWidth='md' fullWidth>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          Cheque Image
-          <IconButton onClick={() => setPreviewUrl('')} size='small'><CloseIcon /></IconButton>
+          <Box component='span'>
+            Cheque Image
+            {previewImages.length > 1 && (
+              <Typography component='span' variant='caption' color='text.secondary' sx={{ ml: 1 }}>
+                {previewIndex + 1} / {previewImages.length}
+              </Typography>
+            )}
+          </Box>
+          <IconButton onClick={closePreview} size='small'><CloseIcon /></IconButton>
         </DialogTitle>
-        <DialogContent>
-          {previewUrl.endsWith('.pdf') ? (
-            <iframe src={previewUrl} width='100%' height={600} style={{ border: 'none' }} />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={previewUrl} alt='cheque' style={{ maxWidth: '100%' }} />
+        <DialogContent sx={{ position: 'relative' }}>
+          <Box
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}
+          >
+            {previewImages[previewIndex]?.endsWith('.pdf') ? (
+              <iframe src={previewImages[previewIndex]} width='100%' height={600} style={{ border: 'none' }} />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={previewImages[previewIndex]} alt='cheque' style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', userSelect: 'none' }} />
+            )}
+          </Box>
+
+          {previewImages.length > 1 && (
+            <>
+              <IconButton
+                onClick={showPrev}
+                sx={{
+                  position: 'absolute', top: '50%', left: 8, transform: 'translateY(-50%)',
+                  bgcolor: 'rgba(0,0,0,0.45)', color: '#fff',
+                  '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' },
+                }}
+              >
+                <ChevronLeftIcon />
+              </IconButton>
+              <IconButton
+                onClick={showNext}
+                sx={{
+                  position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)',
+                  bgcolor: 'rgba(0,0,0,0.45)', color: '#fff',
+                  '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' },
+                }}
+              >
+                <ChevronRightIcon />
+              </IconButton>
+
+              {/* Dot indicators */}
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.75, mt: 1.5 }}>
+                {previewImages.map((_, i) => (
+                  <Box
+                    key={i}
+                    onClick={() => setPreviewIndex(i)}
+                    sx={{
+                      width: 8, height: 8, borderRadius: '50%', cursor: 'pointer',
+                      bgcolor: i === previewIndex ? 'primary.main' : 'action.disabled',
+                      transition: 'background-color 0.2s',
+                    }}
+                  />
+                ))}
+              </Box>
+            </>
           )}
         </DialogContent>
       </Dialog>
@@ -706,25 +780,58 @@ const AdminCheques = () => {
               </Typography>
             ) : (
               <Stack spacing={2}>
-                {drawerCheque.comments.map((cmt: any) => (
-                  <Box key={cmt._id} sx={{ display: 'flex', gap: 1.5 }}>
-                    <Avatar sx={{ width: 32, height: 32, fontSize: '0.8rem', bgcolor: 'primary.main' }}>
-                      {(cmt.created_by_name || '?')[0].toUpperCase()}
-                    </Avatar>
-                    <Box sx={{ flex: 1 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
-                        <Typography variant='caption' fontWeight={700}>{cmt.created_by_name}</Typography>
-                        <Chip label={cmt.role} size='small' variant='outlined' sx={{ height: 16, fontSize: '0.6rem' }} />
-                        <Typography variant='caption' color='text.secondary'>
-                          {cmt.created_at ? dayjs(cmt.created_at).format('DD MMM, HH:mm') : ''}
-                        </Typography>
+                {drawerCheque.comments.map((cmt: any) => {
+                  const isEditing = editingCommentId === String(cmt._id);
+                  return (
+                    <Box key={cmt._id} sx={{ display: 'flex', gap: 1.5 }}>
+                      <Avatar sx={{ width: 32, height: 32, fontSize: '0.8rem', bgcolor: 'primary.main' }}>
+                        {(cmt.created_by_name || '?')[0].toUpperCase()}
+                      </Avatar>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
+                          <Typography variant='caption' fontWeight={700}>{cmt.created_by_name}</Typography>
+                          <Chip label={cmt.role} size='small' variant='outlined' sx={{ height: 16, fontSize: '0.6rem' }} />
+                          <Typography variant='caption' color='text.secondary'>
+                            {cmt.created_at ? dayjs(cmt.created_at).format('DD MMM, HH:mm') : ''}
+                            {cmt.edited_at ? ' (edited)' : ''}
+                          </Typography>
+                          {!isEditing && (
+                            <Box sx={{ ml: 'auto', display: 'flex', gap: 0.25 }}>
+                              <IconButton size='small' onClick={() => startEditComment(cmt)} sx={{ p: 0.3 }}>
+                                <EditIcon sx={{ fontSize: 15 }} />
+                              </IconButton>
+                              <IconButton size='small' color='error' onClick={() => deleteComment(String(cmt._id))} sx={{ p: 0.3 }}>
+                                <DeleteIcon sx={{ fontSize: 15 }} />
+                              </IconButton>
+                            </Box>
+                          )}
+                        </Box>
+                        {isEditing ? (
+                          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>
+                            <TextField
+                              size='small'
+                              multiline
+                              fullWidth
+                              value={editingCommentText}
+                              onChange={(e) => setEditingCommentText(e.target.value)}
+                              autoFocus
+                            />
+                            <IconButton size='small' color='success' onClick={() => saveComment(String(cmt._id))} disabled={savingComment}>
+                              {savingComment ? <CircularProgress size={16} /> : <CheckIcon fontSize='small' />}
+                            </IconButton>
+                            <IconButton size='small' onClick={cancelEditComment}>
+                              <CloseIcon fontSize='small' />
+                            </IconButton>
+                          </Box>
+                        ) : (
+                          <Paper variant='outlined' sx={{ p: 1.25, borderRadius: 2 }}>
+                            <Typography variant='body2'>{cmt.text}</Typography>
+                          </Paper>
+                        )}
                       </Box>
-                      <Paper variant='outlined' sx={{ p: 1.25, borderRadius: 2 }}>
-                        <Typography variant='body2'>{cmt.text}</Typography>
-                      </Paper>
                     </Box>
-                  </Box>
-                ))}
+                  );
+                })}
               </Stack>
             )}
           </Box>
