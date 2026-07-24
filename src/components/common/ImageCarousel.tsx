@@ -45,8 +45,12 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   const [activeIndex, setActiveIndex] = useState(initialSlide);
   const [isLoading, setIsLoading] = useState(true);
   const [showControls, setShowControls] = useState(false);
+  // Swipe tracking for touch devices (mirrors the product-card carousel).
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const maxSteps = imageSources?.length || 0;
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const minSwipeDistance = 50;
 
   // Early return if no images
   if (!imageSources || imageSources.length === 0) {
@@ -97,6 +101,23 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
     },
     [onIndexChange]
   );
+
+  // ── Swipe navigation (mobile) ──
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  }, []);
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  }, []);
+
+  const onTouchEnd = useCallback(() => {
+    if (touchStart === null || touchEnd === null) return;
+    const distance = touchStart - touchEnd;
+    if (distance > minSwipeDistance) handleNext();
+    else if (distance < -minSwipeDistance) handleBack();
+  }, [touchStart, touchEnd, handleNext, handleBack]);
 
   // Ensure activeIndex is within bounds if imageSources change dynamically
   useEffect(() => {
@@ -153,11 +174,15 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
       >
         {/* Main Image Container */}
         <Box
+          onTouchStart={maxSteps > 1 ? onTouchStart : undefined}
+          onTouchMove={maxSteps > 1 ? onTouchMove : undefined}
+          onTouchEnd={maxSteps > 1 ? onTouchEnd : undefined}
           sx={{
             position: 'relative',
             width: '100%',
             height: '100%',
             bgcolor: 'grey.900',
+            touchAction: 'pan-y',
           }}
         >
           {/* Loading Skeleton */}
@@ -243,7 +268,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
         {/* Navigation Buttons */}
         {maxSteps > 1 && (
           <>
-            <Fade in={showControls} timeout={200}>
+            <Fade in={showControls || isMobile} timeout={200}>
               <IconButton
                 onClick={handleBack}
                 sx={{
@@ -269,7 +294,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
               </IconButton>
             </Fade>
 
-            <Fade in={showControls} timeout={200}>
+            <Fade in={showControls || isMobile} timeout={200}>
               <IconButton
                 onClick={handleNext}
                 sx={{
