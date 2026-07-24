@@ -45,6 +45,7 @@ const CatalogueProductCard: React.FC<CatalogueProductCardProps> = memo(
     const isDark = theme.palette.mode === 'dark';
     const isCompact = viewDensity === '5x5';
     const isCozy = viewDensity === '4x4';
+    const imageHeight = isCompact ? 170 : isCozy ? 210 : 240;
 
     return (
       <Card
@@ -61,28 +62,25 @@ const CatalogueProductCard: React.FC<CatalogueProductCardProps> = memo(
           display: "flex",
           flexDirection: "column",
           height: '100%',
-          borderRadius: { xs: 2, md: 3 },
+          borderRadius: '16px',
           boxShadow: 2,
           overflow: "hidden",
           backgroundColor: "background.paper",
           border: '1px solid',
-          borderColor: product.new ? 'primary.light' : 'divider',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          position: 'relative',
+          borderColor: 'divider',
           cursor: isOutOfStock ? 'default' : 'pointer',
           opacity: isOutOfStock ? 0.72 : 1,
+          transition: 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
           '&:focus-visible': {
             outline: '2px solid',
             outlineColor: 'primary.main',
             outlineOffset: '2px',
           },
           '&:hover': isOutOfStock ? {} : {
-            boxShadow: 8,
-            transform: 'translateY(-6px)',
+            boxShadow: 6,
+            transform: 'translate3d(0, -4px, 0)',
             borderColor: 'primary.light',
-            '& .catalogue-card-overlay': {
-              opacity: 1,
-            },
+            '& .catalogue-card-overlay': { opacity: 1 },
           },
         }}
       >
@@ -90,75 +88,72 @@ const CatalogueProductCard: React.FC<CatalogueProductCardProps> = memo(
         <Box
           sx={{
             position: "relative",
-            bgcolor: 'background.paper',
-            height: isCompact ? 200 : isCozy ? 280 : 320,
-            width: '100%',
+            bgcolor: '#FFFFFF',
+            borderRadius: '14px 14px 0 0',
             overflow: 'hidden',
+            borderBottom: '1px solid #F1EEF8',
+            height: imageHeight,
+            width: '100%',
           }}
         >
-          {/* NEW badge */}
-          {product.new && !isOutOfStock && (
+          {/* New / Out of Stock chip — top-right */}
+          {isOutOfStock ? (
             <Chip
-              label="NEW"
               size="small"
-              sx={{
-                position: "absolute",
-                top: 12,
-                right: 12,
-                zIndex: 3,
-                fontWeight: 800,
-                fontSize: '0.65rem',
-                background: 'linear-gradient(135deg, #4633B8 0%, #6A5AD1 100%)',
-                color: 'white',
-                letterSpacing: '0.8px',
-                boxShadow: '0 3px 8px rgba(61, 133, 200, 0.5)',
-                border: '2px solid rgba(255,255,255,0.8)',
-              }}
-            />
-          )}
-
-          {/* OUT OF STOCK badge */}
-          {isOutOfStock && (
-            <Chip
-              label="OUT OF STOCK"
-              size="small"
+              label="Out of Stock"
               color="error"
               sx={{
-                position: "absolute",
-                top: 12,
-                right: 12,
-                zIndex: 3,
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                zIndex: 10,
+                height: 22,
+                fontSize: '0.65rem',
                 fontWeight: 700,
-                fontSize: '0.62rem',
-                border: '2px solid white',
+                textTransform: 'uppercase',
+                boxShadow: 1,
               }}
             />
+          ) : (
+            product.new && (
+              <Chip
+                size="small"
+                label="New"
+                sx={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  zIndex: 10,
+                  height: 22,
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  bgcolor: '#E7E2F9',
+                  color: '#37279C',
+                  boxShadow: 1,
+                  '& .MuiChip-label': { px: 1 },
+                }}
+              />
+            )
           )}
 
-          {/* Image */}
-          <Box sx={{ width: '100%', height: '100%', zIndex: 1 }}>
-            <ImageCarousel
-              product={product}
-              handleImageClick={() => {}}
-            />
-          </Box>
+          <ImageCarousel product={product} handleImageClick={() => {}} />
 
-          {/* Hover overlay — only for in-stock products */}
+          {/* Quick View hover overlay */}
           {!isOutOfStock && (
             <Box
               className="catalogue-card-overlay"
               sx={{
                 position: 'absolute',
                 inset: 0,
-                background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.06) 60%, transparent 100%)',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.04) 55%, transparent 100%)',
                 opacity: 0,
                 transition: 'opacity 0.3s ease',
-                zIndex: 2,
                 display: 'flex',
                 alignItems: 'flex-end',
                 justifyContent: 'center',
                 pb: 1.5,
                 pointerEvents: 'none',
+                zIndex: 9,
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
@@ -179,123 +174,60 @@ const CatalogueProductCard: React.FC<CatalogueProductCardProps> = memo(
           )}
         </Box>
 
-        <CardContent
-          sx={{
-            p: isCompact ? 1.5 : isCozy ? 2 : 2.5,
-            flexGrow: 1,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          {/* Product Name */}
+        {/* Product name */}
+        <Box sx={{ bgcolor: isDark ? 'background.paper' : '#FFFFFF', px: { xs: 1.25, sm: 2 }, pt: 0.75, pb: 1 }}>
           <Typography
             variant="h6"
+            title={product.name}
             sx={{
-              fontWeight: 700,
-              mb: isCompact ? 1 : 1.5,
-              color: 'text.primary',
+              fontWeight: 600,
+              color: isDark ? '#FFFFFF' : '#1C1A33',
               lineHeight: 1.3,
               wordBreak: 'break-word',
-              fontSize: isCompact ? '0.9rem' : isCozy ? '1rem' : '1.1rem',
+              fontSize: { xs: '0.85rem', sm: '0.95rem' },
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              minHeight: '2.6em',
             }}
           >
             {product.name}
           </Typography>
+        </Box>
 
-          {/* spacer so brand/category chips stay vertically aligned with group cards */}
-          <Box sx={{ minHeight: isCompact ? 0 : 28 }} />
-
-          {/* Brand & Category Tags */}
-          <Box sx={{ display: 'flex', gap: 0.75, mb: 1.5, flexWrap: 'wrap' }}>
-            {product.brand && (
-              <Chip
-                label={product.brand}
-                size="small"
-                variant="outlined"
-                sx={{
-                  height: 24,
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  '& .MuiChip-label': { px: 1.5 },
-                }}
-              />
-            )}
-            {product.category && (
+        <CardContent sx={{ p: { xs: 1.25, sm: 2 }, pt: { xs: 1, sm: 1.25 }, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+          {/* Category */}
+          {product.category && (
+            <Box sx={{ mb: 1 }}>
               <Chip
                 label={product.category}
                 size="small"
-                color="primary"
                 sx={{
-                  height: 24,
-                  fontSize: '0.7rem',
+                  borderRadius: 1.5,
+                  fontSize: '0.62rem',
+                  height: '20px',
                   fontWeight: 600,
-                  '& .MuiChip-label': { px: 1.5 },
-                }}
-              />
-            )}
-            {!isCompact && product.sub_category && (
-              <Chip
-                label={product.sub_category}
-                size="small"
-                color="info"
-                sx={{
-                  height: 24,
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  '& .MuiChip-label': { px: 1.5 },
-                }}
-              />
-            )}
-          </Box>
-
-          {/* Price Section */}
-          <Box sx={{ mt: 'auto' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 0.5 }}>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{
-                  fontSize: '0.68rem',
-                  fontWeight: 600,
+                  letterSpacing: '0.04em',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
+                  backgroundColor: isDark ? '#322B5F' : '#E7E2F9',
+                  color: isDark ? '#BCAFFF' : '#37279C',
+                  '& .MuiChip-label': { px: 1 },
                 }}
-              >
-                MRP
-              </Typography>
-              {product.cf_sku_code && !isCompact && (
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ fontSize: '0.62rem', fontFamily: 'monospace' }}
-                >
-                  {product.cf_sku_code}
-                </Typography>
-              )}
+              />
             </Box>
+          )}
 
-            <Typography
-              variant="h5"
-              sx={{
-                fontWeight: 800,
-                fontSize: isCompact ? '1.2rem' : '1.45rem',
-                fontFamily: 'system-ui',
-                color: isOutOfStock ? 'text.secondary' : isDark ? 'text.primary' : 'primary.main',
-                letterSpacing: '-0.5px',
-              }}
-            >
+          <Box sx={{ flexGrow: 1 }} />
+
+          {/* Price — MRP + GST */}
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
+            <Typography sx={{ fontWeight: 800, fontSize: { xs: '0.95rem', sm: '1.05rem' }, color: 'text.primary', fontVariantNumeric: 'tabular-nums' }}>
               ₹{product.rate?.toLocaleString('en-IN')}
             </Typography>
-
-            {!isCompact && product?.item_tax_preferences?.length > 0 && (
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ fontSize: '0.62rem', mt: 0.25, display: 'block' }}
-              >
-                GST: {getTaxPercentage(product)}%
-              </Typography>
-            )}
+            <Typography variant="caption" color="text.secondary">
+              MRP{product?.item_tax_preferences?.length > 0 ? ` · GST ${getTaxPercentage(product)}%` : ''}
+            </Typography>
           </Box>
         </CardContent>
       </Card>

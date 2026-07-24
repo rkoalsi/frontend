@@ -339,22 +339,30 @@ const ProductCard: React.FC<ProductCardProps> = memo(
           {/* flexGrow here (not on CardContent) absorbs row-height differences,
               so category/price/quantity/button rows stay aligned across a row
               even when one card's name wraps to more lines */}
-          <Box sx={{ bgcolor: isDark ? 'background.paper' : '#FFFFFF', px: { xs: 1.25, sm: 2 }, pt: 0.75, pb: 1, flexGrow: 1 }}>
+          <Box sx={{ bgcolor: isDark ? 'background.paper' : '#FFFFFF', px: { xs: 1.25, sm: 2 }, pt: 0.75, pb: 1 }}>
             <Typography
               variant="h6"
+              title={product.name}
               sx={{
                 fontWeight: 600,
                 color: isDark ? '#FFFFFF' : '#1C1A33',
                 lineHeight: 1.3,
                 wordBreak: 'break-word',
                 fontSize: { xs: '0.85rem', sm: '0.95rem' },
+                // Reserve exactly two lines so category/price/quantity rows
+                // start at the same Y on every card in a row
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                minHeight: '2.6em',
               }}
             >
               {product.name}
             </Typography>
           </Box>
 
-          <CardContent sx={{ p: { xs: 1.25, sm: 2 }, pt: { xs: 1, sm: 1.25 }, display: 'flex', flexDirection: 'column' }}>
+          <CardContent sx={{ p: { xs: 1.25, sm: 2 }, pt: { xs: 1, sm: 1.25 }, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
             {/* Category */}
             <Box sx={{ mb: 1 }}>
               <Box sx={{ display: 'flex', gap: 0.75, mb: 0.75, flexWrap: 'wrap', alignItems: 'center' }}>

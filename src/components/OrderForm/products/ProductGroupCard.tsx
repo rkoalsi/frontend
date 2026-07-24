@@ -482,24 +482,34 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
         {/* flexGrow here (not on CardContent) absorbs row-height differences,
             so variant/category/price/quantity/button rows stay aligned across
             a row even when one card's name wraps to more lines */}
-        <Box sx={{ bgcolor: isDark ? 'background.paper' : '#FFFFFF', px: { xs: 1.25, sm: 2 }, pt: 0.75, pb: 1, flexGrow: 1 }}>
+        <Box sx={{ bgcolor: isDark ? 'background.paper' : '#FFFFFF', px: { xs: 1.25, sm: 2 }, pt: 0.75, pb: 1 }}>
           <Typography
             variant="h6"
+            title={currentVariant.name}
             sx={{
               fontWeight: 600,
               color: isDark ? '#FFFFFF' : '#1C1A33',
               lineHeight: 1.3,
               wordBreak: 'break-word',
               fontSize: { xs: '0.85rem', sm: '0.95rem' },
+              // Reserve exactly two lines so variant/category/price/quantity rows
+              // start at the same Y on every card in a row
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              minHeight: '2.6em',
             }}
           >
             {currentVariant.name}
           </Typography>
         </Box>
 
-        <CardContent sx={{ p: { xs: 1.25, sm: 2 }, pt: { xs: 1, sm: 1.25 }, display: 'flex', flexDirection: 'column' }}>
+        <CardContent sx={{ p: { xs: 1.25, sm: 2 }, pt: { xs: 1, sm: 1.25 }, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
           {/* Variant Selector - Compact */}
-          <Box sx={{ mb: 1 }}>
+          {/* minHeight reserves one chip row so a single-row card and a
+              wrapped-row card keep the category chip below them aligned */}
+          <Box sx={{ mb: 1, minHeight: '24px' }}>
             <Box sx={{
               display: 'flex',
               flexWrap: 'wrap',
