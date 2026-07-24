@@ -1245,6 +1245,11 @@ const NewOrder: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        // Fill the Layout container (viewport minus the sticky header) instead of
+        // sitting content-sized inside it — otherwise the reserved bottom padding
+        // for the fixed nav/cart bar becomes empty *scrollable* space below the
+        // card, which the scroll-to-bottom button jumps into.
+        flexGrow: 1,
         padding: { xs: 1, sm: 2, md: 3 },
         gap: { xs: 1.5, sm: 2, md: 3 },
         width: '100%',
