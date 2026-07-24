@@ -11,16 +11,14 @@ import {
   useTheme,
   useMediaQuery,
   IconButton,
-  Tooltip,
   Button,
   CircularProgress,
   Tab,
   Tabs,
-  Fade,
-  useScrollTrigger,
 } from '@mui/material';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Search, ArrowUpward, Close } from '@mui/icons-material';
+import { Search, Close } from '@mui/icons-material';
+import ScrollTriangleButtons from '../../src/components/common/ScrollTriangleButtons';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import axios from 'axios';
@@ -131,9 +129,13 @@ export default function AllProductsCatalouge() {
 
   const showError = useCallback((msg: string) => toast.error(msg), []);
 
-  const handleImageClick = useCallback((srcList: string[], index: number) => {
+  const handleImageClick = useCallback((srcList: any, index: number) => {
     if (Array.isArray(srcList)) {
-      const formattedImages = srcList?.map((src) => ({ src }));
+      // ImageCarousel already passes media items shaped as { src, type }; only
+      // wrap when we were handed a bare list of URL strings.
+      const formattedImages = srcList[0]?.src && typeof srcList[0].src === 'string'
+        ? srcList
+        : srcList?.map((src: any) => ({ src }));
       setPopupImageSrc(formattedImages);
       setPopupImageIndex(index);
       setOpenImagePopup(true);
@@ -513,7 +515,9 @@ export default function AllProductsCatalouge() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const showScrollTop = useScrollTrigger({ disableHysteresis: true, threshold: 600 });
+  const scrollToBottom = useCallback(() => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+  }, []);
 
   useEffect(() => {
     fetchAllBrands();
@@ -1318,45 +1322,26 @@ export default function AllProductsCatalouge() {
 
         </Box>
 
-        {/* Back-to-top — appears only after scrolling down */}
-        <Fade in={showScrollTop}>
-          <Box
-            sx={{
-              position: 'fixed',
-              bottom: { xs: theme.spacing(3), sm: theme.spacing(4), md: theme.spacing(5) },
-              right: { xs: theme.spacing(1.5), sm: theme.spacing(2), md: theme.spacing(3) },
-              zIndex: 1000,
-            }}
-            className='no-pdf'
-          >
-            <Tooltip title="Back to top" placement="left">
-              <IconButton
-                color='primary'
-                onClick={scrollToTop}
-                aria-label="scroll back to top"
-                sx={{
-                  backgroundColor: 'primary.main',
-                  color: 'white',
-                  width: { xs: 44, sm: 52, md: 56 },
-                  height: { xs: 44, sm: 52, md: 56 },
-                  boxShadow: { xs: 4, md: 6 },
-                  border: '2px solid white',
-                  '&:hover': {
-                    backgroundColor: 'primary.dark',
-                    boxShadow: 8,
-                    transform: 'scale(1.1) translateY(-3px)',
-                  },
-                  '&:active': {
-                    transform: 'scale(0.95)',
-                  },
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                }}
-              >
-                <ArrowUpward fontSize={isMobile ? 'medium' : 'large'} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Fade>
+        {/* Scroll to top / bottom — same control as the order-form Products step */}
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: { xs: theme.spacing(3), sm: theme.spacing(4), md: theme.spacing(5) },
+            right: { xs: theme.spacing(1.5), sm: theme.spacing(2), md: theme.spacing(3) },
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1.5,
+            zIndex: 1000,
+            pointerEvents: 'none',
+          }}
+          className='no-pdf'
+        >
+          <ScrollTriangleButtons
+            onScrollTop={scrollToTop}
+            onScrollBottom={scrollToBottom}
+            isMobile={isMobile}
+          />
+        </Box>
 
         <ImagePopupDialog
           open={openImagePopup}

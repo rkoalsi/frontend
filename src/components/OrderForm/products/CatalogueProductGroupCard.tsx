@@ -6,8 +6,6 @@ import {
   Typography,
   Box,
   Chip,
-  IconButton,
-  Tooltip,
   Button,
   useTheme,
 } from "@mui/material";
@@ -53,6 +51,7 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
     const [selectedVariantId, setSelectedVariantId] = useState<string>(primaryProduct._id);
     const isCompact = viewDensity === '5x5';
     const isCozy = viewDensity === '4x4';
+    const imageHeight = isCompact ? 170 : isCozy ? 200 : 240;
 
     const currentVariant = products.find((p) => p._id === selectedVariantId) || primaryProduct;
 
@@ -175,24 +174,23 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
           display: "flex",
           flexDirection: "column",
           height: '100%',
-          borderRadius: { xs: 2, md: 3 },
+          borderRadius: '16px',
           boxShadow: 2,
           overflow: "hidden",
           backgroundColor: "background.paper",
           border: '1px solid',
-          borderColor: currentVariant.new ? 'primary.light' : 'divider',
-          borderLeft: currentVariant.new ? '4px solid' : '1px solid',
-          borderLeftColor: currentVariant.new ? 'primary.main' : 'divider',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          position: 'relative',
+          borderColor: 'divider',
+          opacity: isOutOfStock ? 0.72 : 1,
+          transition: 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
           '&:hover': {
-            boxShadow: 8,
-            transform: 'translateY(-6px)',
+            boxShadow: 6,
+            transform: 'translate3d(0, -4px, 0)',
             borderColor: 'primary.light',
+            '& .catalogue-card-overlay': { opacity: 1 },
           },
         }}
       >
-        {/* Image Section with Overlay */}
+        {/* Image Section */}
         <Box
           onClick={() => onQuickView(currentVariant, products)}
           role="button"
@@ -206,10 +204,12 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
           }}
           sx={{
             position: "relative",
-            bgcolor: 'background.paper',
-            height: isCompact ? 200 : isCozy ? 280 : 320,
-            width: '100%',
+            bgcolor: '#FFFFFF',
+            borderRadius: '14px 14px 0 0',
             overflow: 'hidden',
+            borderBottom: '1px solid #F1EEF8',
+            height: imageHeight,
+            width: '100%',
             cursor: 'pointer',
             '&:focus-visible': {
               outline: '2px solid',
@@ -218,100 +218,150 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
             },
           }}
         >
-          {/* Badge & Variants Count */}
-          <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 3, display: 'flex', gap: 1 }}>
-            {isOutOfStock ? (
-              <Chip
-                label="OUT OF STOCK"
-                size="small"
-                color="error"
-                sx={{
-                  fontWeight: 800,
-                  fontSize: '0.65rem',
-                  letterSpacing: '0.8px',
-                  boxShadow: '0 3px 8px rgba(244, 67, 54, 0.4)',
-                  border: '2px solid white',
-                }}
-              />
-            ) : (
-              currentVariant.new && (
-                <Chip
-                  label="NEW"
-                  size="small"
-                  sx={{
-                    fontWeight: 800,
-                    fontSize: '0.65rem',
-                    background: 'linear-gradient(135deg, #4633B8 0%, #6A5AD1 100%)',
-                    color: 'white',
-                    letterSpacing: '0.8px',
-                    boxShadow: '0 3px 8px rgba(61, 133, 200, 0.5)',
-                    border: '2px solid rgba(255,255,255,0.8)',
-                  }}
-                />
-              )
-            )}
-            {variants.length > 0 && (
-              <Chip
-                label={`${variants.length} variants`}
-                size="small"
-                sx={{
-                  fontWeight: 600,
-                  fontSize: '0.65rem',
-                  bgcolor: 'background.paper',
-                  color: 'text.secondary',
-                  boxShadow: 1,
-                }}
-              />
-            )}
-          </Box>
-
-          {/* Image */}
-          <Box sx={{ width: '100%', height: '100%', zIndex: 1 }}>
-            <ImageCarousel
-              product={currentVariant}
-              handleImageClick={() => {}}
+          {/* Variants count chip — top-right, aligned with the image counter (top-left) */}
+          {variants.length > 0 && (
+            <Chip
+              size="small"
+              label={`${variants.length} variants`}
+              sx={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                zIndex: 10,
+                height: 22,
+                fontSize: '0.65rem',
+                fontWeight: 700,
+                bgcolor: 'rgba(0, 0, 0, 0.7)',
+                color: 'white',
+                boxShadow: 1,
+                '& .MuiChip-label': { px: 1 },
+              }}
             />
+          )}
+
+          {/* New / Out of Stock chip — stacked below the variants chip */}
+          {isOutOfStock ? (
+            <Chip
+              size="small"
+              label="Out of Stock"
+              color="error"
+              sx={{
+                position: 'absolute',
+                top: variants.length > 0 ? 38 : 8,
+                right: 8,
+                zIndex: 10,
+                height: 22,
+                fontSize: '0.65rem',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                boxShadow: 1,
+              }}
+            />
+          ) : (
+            currentVariant.new && (
+              <Chip
+                size="small"
+                label="New"
+                sx={{
+                  position: 'absolute',
+                  top: variants.length > 0 ? 38 : 8,
+                  right: 8,
+                  zIndex: 10,
+                  height: 22,
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  bgcolor: '#E7E2F9',
+                  color: '#37279C',
+                  boxShadow: 1,
+                  '& .MuiChip-label': { px: 1 },
+                }}
+              />
+            )
+          )}
+
+          <ImageCarousel product={currentVariant} handleImageClick={() => {}} />
+
+          {/* Quick View hover overlay */}
+          <Box
+            className="catalogue-card-overlay"
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.04) 55%, transparent 100%)',
+              opacity: 0,
+              transition: 'opacity 0.3s ease',
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'center',
+              pb: 1.5,
+              pointerEvents: 'none',
+              zIndex: 9,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <ZoomIn sx={{ color: 'white', fontSize: '1.1rem' }} />
+              <Typography
+                sx={{
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: '0.75rem',
+                  letterSpacing: '0.8px',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Quick View
+              </Typography>
+            </Box>
           </Box>
         </Box>
 
-        <CardContent
-          sx={{
-            p: isCompact ? 1.5 : isCozy ? 2 : 2.5,
-            flexGrow: 1,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          {/* Product Name */}
+        {/* Product name */}
+        <Box sx={{ bgcolor: isDark ? 'background.paper' : '#FFFFFF', px: { xs: 1.25, sm: 2 }, pt: 0.75, pb: 1 }}>
           <Typography
             variant="h6"
+            title={currentVariant.name}
             sx={{
-              fontWeight: 700,
-              mb: isCompact ? 1 : 1.5,
-              color: 'text.primary',
+              fontWeight: 600,
+              color: isDark ? '#FFFFFF' : '#1C1A33',
               lineHeight: 1.3,
               wordBreak: 'break-word',
-              fontSize: isCompact ? '0.9rem' : isCozy ? '1rem' : '1.1rem',
+              fontSize: { xs: '0.85rem', sm: '0.95rem' },
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              minHeight: '2.6em',
             }}
           >
             {currentVariant.name}
           </Typography>
+        </Box>
 
-          {/* Variant Selector - Compact */}
-          {!isCompact && variants.length > 0 && (
-            <Box sx={{ mb: 1.5 }}>
-              <Typography
-                variant="caption"
-                color="text.secondary"
+        <CardContent sx={{ p: { xs: 1.25, sm: 2 }, pt: { xs: 1, sm: 1.25 }, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+          {/* Category */}
+          {currentVariant.category && (
+            <Box sx={{ mb: 1 }}>
+              <Chip
+                label={currentVariant.category}
+                size="small"
                 sx={{
+                  borderRadius: 1.5,
+                  fontSize: '0.62rem',
+                  height: '20px',
                   fontWeight: 600,
-                  mb: 0.5,
-                  display: 'block',
-                  fontSize: '0.65rem',
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                  backgroundColor: isDark ? '#322B5F' : '#E7E2F9',
+                  color: isDark ? '#BCAFFF' : '#37279C',
+                  '& .MuiChip-label': { px: 1 },
                 }}
-              >
-                Variants
-              </Typography>
+              />
+            </Box>
+          )}
+
+          {/* Variant Selector */}
+          {!isCompact && variants.length > 0 && (
+            <Box sx={{ mb: 1 }}>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
                 {variants.slice(0, 6).map(([sizeLabel, product]) => (
                   <Chip
@@ -327,10 +377,7 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
                       fontWeight: 600,
                       cursor: 'pointer',
                       transition: 'all 0.2s ease',
-                      '&:hover': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: 1,
-                      },
+                      '&:hover': { transform: 'translateY(-2px)', boxShadow: 1 },
                     }}
                   />
                 ))}
@@ -352,149 +399,40 @@ const CatalogueProductGroupCard: React.FC<CatalogueProductGroupCardProps> = memo
             </Box>
           )}
 
-          {/* Brand & Category Tags */}
-          <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
-            {currentVariant.brand && (
-              <Chip
-                label={currentVariant.brand}
-                size="small"
-                variant="outlined"
-                sx={{
-                  height: 24,
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  '& .MuiChip-label': { px: 1.5 },
-                }}
-              />
-            )}
-            {currentVariant.category && (
-              <Chip
-                label={currentVariant.category}
-                size="small"
-                color="primary"
-                sx={{
-                  height: 24,
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  '& .MuiChip-label': { px: 1.5 },
-                }}
-              />
-            )}
-            {!isCompact && currentVariant.sub_category && (
-              <Chip
-                label={currentVariant.sub_category}
-                size="small"
-                color="info"
-                sx={{
-                  height: 24,
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  '& .MuiChip-label': { px: 1.5 },
-                }}
-              />
-            )}
+          <Box sx={{ flexGrow: 1 }} />
+
+          {/* Price — MRP + GST */}
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
+            <Typography sx={{ fontWeight: 800, fontSize: { xs: '0.95rem', sm: '1.05rem' }, color: 'text.primary', fontVariantNumeric: 'tabular-nums' }}>
+              ₹{currentVariant.rate?.toLocaleString('en-IN')}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              MRP{currentVariant?.item_tax_preferences?.length > 0 ? ` · GST ${getTaxPercentage(currentVariant)}%` : ''}
+            </Typography>
           </Box>
 
-          {/* Price Section */}
-          <Box sx={{ mt: 'auto' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 1 }}>
-              <Typography
-                variant="caption"
-                color="text.primary"
-                sx={{
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                }}
-              >
-                MRP
-              </Typography>
-              {currentVariant.cf_sku_code && !isCompact && (
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{
-                    fontSize: '0.65rem',
-                    fontFamily: 'monospace',
-                  }}
-                >
-                  SKU: {currentVariant.cf_sku_code}
-                </Typography>
-              )}
-            </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography
-                variant="h5"
-                sx={{
-                  fontWeight: 800,
-                  fontSize: isCompact ? '1.25rem' : '1.5rem',
-                  fontFamily: 'system-ui',
-                  color: isDark ? 'text.primary' : 'primary.main',
-                  letterSpacing: '-0.5px',
-                }}
-              >
-                ₹{currentVariant.rate?.toLocaleString('en-IN')}
-              </Typography>
-              {!isCompact && (
-                <Tooltip title="View All Variants">
-                  <IconButton
-                    size="small"
-                    onClick={() => onQuickView(currentVariant, products)}
-                    sx={{
-                      color: 'primary.main',
-                      '&:hover': {
-                        bgcolor: 'action.hover',
-                      },
-                    }}
-                  >
-                    <ZoomIn />
-                  </IconButton>
-                </Tooltip>
-              )}
-            </Box>
-
-            {/* GST Info - Only in comfortable/cozy view */}
-            {!isCompact && (
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{
-                  fontSize: '0.65rem',
-                  mt: 0.5,
-                  display: 'block',
-                }}
-              >
-                GST: {getTaxPercentage(currentVariant)}%
-              </Typography>
-            )}
-
-            {/* Notify Me Button for Out of Stock */}
-            {isOutOfStock && onNotifyMe && (
-              <Button
-                variant="outlined"
-                color="secondary"
-                fullWidth
-                size="medium"
-                onClick={() => onNotifyMe(currentVariant._id, currentVariant.name)}
-                sx={{
-                  textTransform: "none",
-                  borderRadius: 2,
-                  fontWeight: 600,
-                  py: 1,
-                  mt: 2,
-                  fontSize: '0.85rem',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: 2,
-                  },
-                }}
-              >
-                Notify Me When Available
-              </Button>
-            )}
-          </Box>
+          {/* Notify Me Button for Out of Stock */}
+          {isOutOfStock && onNotifyMe && (
+            <Button
+              variant="outlined"
+              color="secondary"
+              fullWidth
+              size="medium"
+              onClick={() => onNotifyMe(currentVariant._id, currentVariant.name)}
+              sx={{
+                textTransform: 'none',
+                borderRadius: 2,
+                fontWeight: 600,
+                py: 0.75,
+                mt: 1.5,
+                fontSize: '0.8rem',
+                transition: 'all 0.2s ease',
+                '&:hover': { transform: 'translateY(-2px)', boxShadow: 2 },
+              }}
+            >
+              Notify Me When Available
+            </Button>
+          )}
         </CardContent>
       </Card>
     );

@@ -1,5 +1,5 @@
 // QuickViewModal.tsx - Modal for quick product details view
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,11 +10,26 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Slide,
+  useMediaQuery,
   useTheme,
 } from "@mui/material";
+import type { TransitionProps } from "@mui/material/transitions";
 import { Close, ExpandMore } from "@mui/icons-material";
 import ImageCarousel from "./ImageCarousel";
 import { getTaxPercentage } from "../../../util/tax";
+
+// Slide the dialog up from the bottom — reads as a premium bottom-sheet on
+// mobile and a gentle rise on desktop.
+const SlideUpTransition = React.forwardRef(function SlideUpTransition(
+  props: TransitionProps & { children: React.ReactElement },
+  ref: React.Ref<unknown>
+) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
+
+// Drag distance (px) past which releasing dismisses the sheet.
+const SWIPE_CLOSE_THRESHOLD = 110;
 
 interface Product {
   _id: string;
@@ -54,7 +69,71 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
 }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [selectedVariantId, setSelectedVariantId] = useState<string>(product?._id || '');
+
+  // ── Swipe-down-to-dismiss (mobile bottom-sheet) ──
+  // The sheet follows the finger while dragging down, then either snaps back
+  // or dismisses once dragged past SWIPE_CLOSE_THRESHOLD.
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  // Keeps the paper transform under our control through the snap-back animation
+  // (so releasing animates back to 0 instead of jumping).
+  const [controlled, setControlled] = useState(false);
+  const touchStartY = useRef<number | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reset any leftover drag offset whenever the modal (re)opens.
+  useEffect(() => {
+    if (open) {
+      setDragY(0);
+      setDragging(false);
+      setControlled(false);
+      touchStartY.current = null;
+    }
+  }, [open]);
+
+  useEffect(() => () => { if (settleTimer.current) clearTimeout(settleTimer.current); }, []);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isMobile) return;
+    // Only arm the dismiss gesture when the content is scrolled to the top,
+    // so mid-scroll downward swipes still scroll the details instead.
+    if ((contentRef.current?.scrollTop ?? 0) > 0) {
+      touchStartY.current = null;
+      return;
+    }
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isMobile || touchStartY.current == null) return;
+    const delta = e.touches[0].clientY - touchStartY.current;
+    if (delta > 0 && (contentRef.current?.scrollTop ?? 0) <= 0) {
+      setControlled(true);
+      setDragging(true);
+      // Slight resistance so the sheet feels weighty rather than 1:1.
+      setDragY(delta * 0.85);
+    } else if (delta <= 0 && dragY !== 0) {
+      setDragY(0);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!isMobile) return;
+    setDragging(false);
+    touchStartY.current = null;
+    if (dragY > SWIPE_CLOSE_THRESHOLD) {
+      onClose();
+      return;
+    }
+    // Snap back to rest, animated — keep controlling the transform until the
+    // transition finishes so it eases to 0 rather than snapping.
+    setDragY(0);
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => setControlled(false), 340);
+  };
 
   if (!product) return null;
 
@@ -86,20 +165,51 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
       onClose={onClose}
       maxWidth="lg"
       fullWidth
+      TransitionComponent={SlideUpTransition}
+      // On small screens the dialog behaves like a bottom sheet / drawer:
+      // anchored to the bottom, rounded top corners, not forced full-height.
+      sx={{ '& .MuiDialog-container': { alignItems: { xs: 'flex-end', md: 'center' } } }}
       slotProps={{
         paper: {
+          // Inline style (not sx) so the drag transform overrides the inline
+          // transform the Slide transition sets on the paper element.
+          style: isMobile && controlled
+            ? {
+                transform: `translateY(${dragY}px)`,
+                transition: dragging ? 'none' : 'transform 0.34s cubic-bezier(0.22, 1, 0.36, 1)',
+              }
+            : undefined,
           sx: {
-            borderRadius: { xs: 0, md: 3 },
+            borderRadius: { xs: '20px 20px 0 0', md: 3 },
             m: { xs: 0, md: 2 },
-            maxHeight: { xs: '75vh', md: '90vh' },
-            height: { xs: '100vh', md: 'auto' },
-            width: { xs: '100vw', md: '85%' },
-            maxWidth: { xs: '100vw', md: '1000px' },
+            maxHeight: { xs: '92vh', md: '90vh' },
+            height: 'auto',
+            width: { xs: '100%', md: '85%' },
+            maxWidth: { xs: '100%', md: '1000px' },
+            willChange: 'transform',
           },
         },
       }}
     >
-      <DialogContent sx={{ p: 0, overflow: 'auto', height: '100%', position: 'relative' }}>
+      <DialogContent
+        ref={contentRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        sx={{ p: 0, overflow: 'auto', height: '100%', position: 'relative' }}
+      >
+        {/* Mobile grab handle — reinforces the bottom-sheet affordance */}
+        <Box
+          sx={{
+            display: { xs: 'flex', md: 'none' },
+            justifyContent: 'center',
+            pt: 1,
+            pb: 0.5,
+          }}
+        >
+          <Box sx={{ width: 40, height: 4, borderRadius: 2, bgcolor: 'divider' }} />
+        </Box>
+
         {/* Desktop Close Button */}
         <IconButton
           onClick={onClose}
@@ -119,24 +229,23 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
           <Close />
         </IconButton>
 
-        {/* Mobile Close Button */}
+        {/* Mobile Close Button — floats over the image so the sheet content
+            starts cleanly under the grab handle. */}
         <IconButton
           onClick={onClose}
           sx={{
             display: { xs: 'flex', md: 'none' },
-            position: 'sticky',
-            top: 4,
-            right: 4,
-            zIndex: 10,
-            bgcolor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.95)',
+            position: 'absolute',
+            top: 18,
+            right: 12,
+            zIndex: 12,
+            bgcolor: isDark ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.95)',
+            color: isDark ? '#fff' : 'inherit',
             boxShadow: 2,
-            ml: 'auto',
-            mr: 0.5,
-            mt: 0.5,
-            width: 36,
-            height: 36,
+            width: 34,
+            height: 34,
             '&:hover': {
-              bgcolor: isDark ? 'rgba(255,255,255,0.2)' : 'background.paper',
+              bgcolor: isDark ? 'rgba(0,0,0,0.6)' : 'background.paper',
             },
           }}
         >
@@ -156,7 +265,9 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            p: { xs: 0, md: 3 },
+            px: { xs: 1.5, md: 3 },
+            pt: { xs: 0.5, md: 3 },
+            pb: { xs: 0, md: 3 },
             flex: { xs: '0 0 auto', md: '0 0 45%' },
           }}>
             <Box
@@ -164,14 +275,14 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                 position: 'relative',
                 bgcolor: '#ffffff',
                 width: { xs: '100%', md: '100%' },
-                height: { xs: '240px', sm: '280px', md: '100%' },
+                height: { xs: '270px', sm: '320px', md: '100%' },
                 maxHeight: { md: '500px' },
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 overflow: 'hidden',
-                borderRadius: { xs: 0, md: 2 },
-                border: { xs: 'none', md: '1px solid' },
+                borderRadius: 2,
+                border: '1px solid',
                 borderColor: 'divider',
                 p: { xs: 1, md: 2 },
               }}
@@ -222,30 +333,16 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
               alignItems: 'flex-start',
               textAlign: 'left',
             }}>
-              {/* Product Name */}
-              <Typography
-                variant="h5"
-                sx={{
-                  fontWeight: 700,
-                  mb: { xs: 1, sm: 1.5, md: 2 },
-                  fontSize: { xs: '0.9rem', sm: '1rem', md: '1.25rem' },
-                  color: 'text.primary',
-                  lineHeight: 1.3,
-                  pr: { xs: 5, md: 6 },
-                }}
-              >
-                {currentProduct.name}
-              </Typography>
-
-              {/* Brand & Category */}
-              <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 0.75, md: 1 }, mb: { xs: 1, sm: 1.5, md: 2.5 }, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+              {/* Brand & Category — eyebrow above the name */}
+              <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 0.75, md: 1 }, mb: { xs: 1, sm: 1.25, md: 1.5 }, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
                 {currentProduct.brand && (
                   <Chip
                     label={currentProduct.brand}
                     variant="outlined"
+                    size="small"
                     sx={{
-                      height: { xs: 22, sm: 24, md: 28 },
-                      fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+                      height: { xs: 24, sm: 26, md: 28 },
+                      fontSize: { xs: '0.7rem', sm: '0.72rem', md: '0.75rem' },
                       fontWeight: 600,
                     }}
                   />
@@ -254,14 +351,31 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                   <Chip
                     label={currentProduct.category}
                     color="primary"
+                    size="small"
                     sx={{
-                      height: { xs: 22, sm: 24, md: 28 },
-                      fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+                      height: { xs: 24, sm: 26, md: 28 },
+                      fontSize: { xs: '0.7rem', sm: '0.72rem', md: '0.75rem' },
                       fontWeight: 600,
                     }}
                   />
                 )}
               </Box>
+
+              {/* Product Name — the hero of the sheet */}
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: 800,
+                  mb: { xs: 1.5, sm: 1.75, md: 2 },
+                  fontSize: { xs: '1.3rem', sm: '1.45rem', md: '1.6rem' },
+                  color: 'text.primary',
+                  lineHeight: 1.25,
+                  letterSpacing: '-0.3px',
+                  pr: { xs: 5, md: 6 },
+                }}
+              >
+                {currentProduct.name}
+              </Typography>
 
               {/* Variants Selection */}
               {variants.length > 0 && (
@@ -307,39 +421,56 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
               {/* Price & Product Details Combined */}
               <Box sx={{ mb: { xs: 1, sm: 1.5, md: 2.5 }, width: '100%' }}>
-                {/* Price Section */}
-                <Box sx={{ mb: { xs: 1, sm: 1.5, md: 2 } }}>
+                {/* Price Section — pulled into a soft panel to anchor attention */}
+                <Box
+                  sx={{
+                    mb: { xs: 1.5, sm: 1.75, md: 2 },
+                    px: { xs: 1.75, md: 2 },
+                    py: { xs: 1.25, md: 1.5 },
+                    borderRadius: 2.5,
+                    bgcolor: isDark ? 'rgba(148,130,255,0.10)' : 'rgba(70,51,184,0.06)',
+                    border: '1px solid',
+                    borderColor: isDark ? 'rgba(148,130,255,0.24)' : 'rgba(70,51,184,0.14)',
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 1,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                    <Typography
+                      component="span"
+                      sx={{
+                        fontSize: { xs: '0.7rem', md: '0.75rem' },
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        color: 'text.secondary',
+                      }}
+                    >
+                      MRP
+                    </Typography>
+                    <Typography
+                      component="span"
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: { xs: '1.75rem', sm: '1.9rem', md: '2rem' },
+                        lineHeight: 1,
+                        fontFamily: 'system-ui',
+                        color: isDark ? 'text.primary' : 'primary.main',
+                        letterSpacing: '-0.5px',
+                      }}
+                    >
+                      ₹{currentProduct.rate?.toLocaleString('en-IN')}
+                    </Typography>
+                  </Box>
                   <Typography
-                    variant="subtitle2"
+                    component="span"
                     color="text.secondary"
-                    sx={{
-                      fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.8rem' },
-                      fontWeight: 600,
-                      mb: { xs: 0.25, sm: 0.5 },
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                    }}
+                    sx={{ fontSize: { xs: '0.72rem', md: '0.78rem' }, fontWeight: 600 }}
                   >
-                    MRP
-                  </Typography>
-                  <Typography
-                    variant="h4"
-                    sx={{
-                      fontWeight: 800,
-                      fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.75rem' },
-                      fontFamily: 'system-ui',
-                      color: isDark ? 'text.primary' : 'primary.main',
-                      letterSpacing: '-0.5px',
-                    }}
-                  >
-                    ₹{currentProduct.rate?.toLocaleString('en-IN')}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }, mt: { xs: 0.25, sm: 0.5 }, display: 'block', mb: { xs: 1, sm: 1.5, md: 2 } }}
-                  >
-                    GST: {getTaxPercentage(currentProduct)}%
+                    incl. GST {getTaxPercentage(currentProduct)}%
                   </Typography>
                 </Box>
 
