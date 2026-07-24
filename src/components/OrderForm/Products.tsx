@@ -693,7 +693,15 @@ const Products: React.FC<ProductsProps> = ({
   }, []);
 
   const scrollToBottom = useCallback(() => {
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+    // Scroll to the end of the actual product content rather than
+    // document.documentElement.scrollHeight — the latter includes the page's
+    // reserved bottom padding (for the fixed cart bar), so it overshoots below
+    // the last product into empty space.
+    if (pageBottomRef.current) {
+      pageBottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    } else {
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+    }
   }, []);
 
 

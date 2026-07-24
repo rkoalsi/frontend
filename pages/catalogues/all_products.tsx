@@ -681,7 +681,12 @@ export default function AllProductsCatalouge() {
       sx={{
         display: "flex",
         flexDirection: "column",
-        minHeight: "100vh",
+        // Fill the Layout container (which already spans the viewport minus the
+        // sticky header) rather than forcing an extra full 100vh on top of it —
+        // the latter left empty scrollable space below the grid, which the
+        // scroll-to-bottom button would jump into.
+        flexGrow: 1,
+        width: "100%",
         bgcolor: "background.default",
         backgroundImage: theme.palette.mode === 'dark'
           ? 'radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px)'
