@@ -27,8 +27,10 @@ import {
   FormControl,
   InputLabel,
   Autocomplete,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
-import { Visibility, Check, Close, Edit as EditIcon, CloudUpload as UploadIcon, Delete as DeleteIcon, InsertDriveFile as FileIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
+import { Visibility, Check, Close, Edit as EditIcon, CloudUpload as UploadIcon, Delete as DeleteIcon, InsertDriveFile as FileIcon, OpenInNew as OpenInNewIcon, VpnKey as KeyIcon, Refresh as RefreshIcon, ContentCopy as ContentCopyIcon, WhatsApp as WhatsAppIcon } from '@mui/icons-material';
 import CommentIcon from '@mui/icons-material/Comment';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -107,7 +109,18 @@ interface CustomerRequest {
   admin_comments?: Comment[];
   zoho_contact_id?: string;
   self_registered?: boolean;
+  linked_login?: CustomerLogin | null;
 }
+
+interface CustomerLogin {
+  _id: string;
+  name?: string;
+  email?: string;
+  phone?: number | string;
+  status?: string;
+}
+
+const LOGIN_URL = 'https://marketplace.pupscribe.in/login';
 
 // Helper function to format address for display
 const formatAddress = (address: AddressData | string | undefined): string => {
@@ -163,6 +176,18 @@ const CustomerRequests = () => {
   const [pendingApprovalRequestId, setPendingApprovalRequestId] = useState<string | null>(null);
   const [cities, setCities] = useState<string[]>([]);
   const [citiesLoading, setCitiesLoading] = useState(false);
+
+  // Customer login states
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+  const [loginRequest, setLoginRequest] = useState<CustomerRequest | null>(null);
+  const [existingLogin, setExistingLogin] = useState<CustomerLogin | null>(null);
+  const [loginForm, setLoginForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const [loginErrors, setLoginErrors] = useState<Record<string, string>>({});
+  const [creatingLogin, setCreatingLogin] = useState(false);
+  const [generatingPassword, setGeneratingPassword] = useState(false);
+  const [createdPassword, setCreatedPassword] = useState('');
+  const [shareMethod, setShareMethod] = useState<'password' | 'otp'>('password');
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
 
   useEffect(() => {
     fetchRequests();
@@ -506,6 +531,157 @@ const CustomerRequests = () => {
     }
   };
 
+  const handleOpenLoginDialog = async (request: CustomerRequest) => {
+    setLoginRequest(request);
+    setExistingLogin(request.linked_login ?? null);
+    setCreatedPassword('');
+    setLoginErrors({});
+    // Password is unknown for a pre-existing login, so OTP is the usable method there.
+    setShareMethod(request.linked_login ? 'otp' : 'password');
+    setLoginForm({
+      name: request.customer_name || request.shop_name || '',
+      email: request.customer_mail_id || '',
+      phone: String(request.whatsapp_no || '').replace(/\D/g, ''),
+      password: '',
+    });
+    setLoginDialogOpen(true);
+
+    // Refresh from the server in case a login was created elsewhere
+    try {
+      const response = await axiosInstance.get(`/customer_creation_requests/${request._id}/login`);
+      setExistingLogin(response.data.login ?? null);
+      if (response.data.login) setShareMethod('otp');
+    } catch (error) {
+      console.error('Error fetching linked login:', error);
+    }
+  };
+
+  const handleCloseLoginDialog = () => {
+    setLoginDialogOpen(false);
+    setLoginRequest(null);
+    setExistingLogin(null);
+    setCreatedPassword('');
+    setLoginErrors({});
+  };
+
+  const handleGenerateLoginPassword = async () => {
+    setGeneratingPassword(true);
+    try {
+      const response = await axiosInstance.get('/admin/users/generate-password');
+      setLoginForm(prev => ({ ...prev, password: response.data.password }));
+      setLoginErrors(prev => ({ ...prev, password: '' }));
+    } catch (error) {
+      console.error('Error generating password:', error);
+      toast.error('Failed to generate password');
+    } finally {
+      setGeneratingPassword(false);
+    }
+  };
+
+  const handleCreateLogin = async () => {
+    if (!loginRequest) return;
+
+    const errors: Record<string, string> = {};
+    if (!loginForm.name.trim()) errors.name = 'Name is required';
+    if (!loginForm.email.trim()) errors.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginForm.email.trim())) {
+      errors.email = 'Invalid email format';
+    }
+    if (!loginForm.phone.replace(/\D/g, '')) errors.phone = 'Phone is required';
+    if (!loginForm.password.trim()) errors.password = 'Password is required';
+    else if (loginForm.password.trim().length < 6) errors.password = 'Password must be at least 6 characters';
+
+    setLoginErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setCreatingLogin(true);
+    try {
+      const response = await axiosInstance.post(
+        `/customer_creation_requests/${loginRequest._id}/login`,
+        {
+          name: loginForm.name.trim(),
+          email: loginForm.email.trim(),
+          phone: loginForm.phone.replace(/\D/g, ''),
+          password: loginForm.password,
+        }
+      );
+      setExistingLogin(response.data.login);
+      setCreatedPassword(loginForm.password);
+      setShareMethod('password');
+      toast.success('Customer login created successfully');
+      setSelectedRequest((prev) =>
+        prev && prev._id === loginRequest._id ? { ...prev, linked_login: response.data.login } : prev
+      );
+      fetchRequests();
+    } catch (error: any) {
+      console.error('Error creating customer login:', error);
+      toast.error(error?.response?.data?.detail || 'Failed to create customer login');
+    } finally {
+      setCreatingLogin(false);
+    }
+  };
+
+  const getSharePhone = () => String(existingLogin?.phone ?? loginForm.phone).replace(/\D/g, '');
+
+  const buildCredentialsText = () => {
+    const intro = 'Your Pupscribe marketplace account is ready.';
+
+    if (shareMethod === 'otp') {
+      return [
+        `Hi ${(existingLogin?.name || loginRequest?.customer_name || 'there').split(' ')[0]}, your Pupscribe wholesale account for ${loginRequest?.shop_name || 'your shop'} has been activated. You can now view live stock, retailer pricing, and place orders online. Tap below to open your account.`,
+        '',
+        '[ Open my account ]',
+        '',
+        'The button opens the login page already tied to this WhatsApp number - they just tap "Send OTP" there. No password, and the number is never spelled out in the message.',
+      ].join('\n');
+    }
+
+    const email = existingLogin?.email || loginForm.email;
+    const lines = [
+      intro,
+      '',
+      `Login Link: ${LOGIN_URL}`,
+      `Email: ${email}`,
+    ];
+    if (createdPassword) lines.push(`Password: ${createdPassword}`);
+    return lines.join('\n');
+  };
+
+  const handleCopyCredentials = () => {
+    navigator.clipboard.writeText(buildCredentialsText()).then(
+      () => toast.success('Credentials copied to clipboard'),
+      () => toast.error('Failed to copy credentials')
+    );
+  };
+
+  // OTP instructions go out through our Plivo template (no secret in the message);
+  // the password variant has to be sent by hand from the admin's own WhatsApp.
+  const handleSendOnWhatsApp = async () => {
+    if (shareMethod !== 'otp') {
+      const phone = getSharePhone();
+      const withCountryCode = phone.length === 10 ? `91${phone}` : phone;
+      window.open(
+        `https://wa.me/${withCountryCode}?text=${encodeURIComponent(buildCredentialsText())}`,
+        '_blank'
+      );
+      return;
+    }
+
+    if (!loginRequest) return;
+    setSendingWhatsApp(true);
+    try {
+      const response = await axiosInstance.post(
+        `/customer_creation_requests/${loginRequest._id}/login/send`
+      );
+      toast.success(response.data.message || 'Login instructions sent on WhatsApp');
+    } catch (error: any) {
+      console.error('Error sending login instructions:', error);
+      toast.error(error?.response?.data?.detail || 'Failed to send WhatsApp message');
+    } finally {
+      setSendingWhatsApp(false);
+    }
+  };
+
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
   };
@@ -596,6 +772,17 @@ const CustomerRequests = () => {
                         <Visibility />
                       </IconButton>
                     </Tooltip>
+                    {request.status === 'created_on_zoho' && request.zoho_contact_id && (
+                      <Tooltip title={request.linked_login ? 'Login Created - Share Credentials' : 'Create Customer Login'}>
+                        <IconButton
+                          color={request.linked_login ? 'success' : 'secondary'}
+                          size="small"
+                          onClick={() => handleOpenLoginDialog(request)}
+                        >
+                          <KeyIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                   </TableCell>
                 </TableRow>
                 )
@@ -1347,9 +1534,19 @@ const CustomerRequests = () => {
                     </Button>
                   )}
                   {selectedRequest.status === 'created_on_zoho' && selectedRequest.zoho_contact_id && (
-                    <Typography variant="body2" color="success.main" sx={{ fontWeight: 500 }}>
-                      Zoho Contact ID: {selectedRequest.zoho_contact_id}
-                    </Typography>
+                    <>
+                      <Typography variant="body2" color="success.main" sx={{ fontWeight: 500, mr: 'auto' }}>
+                        Zoho Contact ID: {selectedRequest.zoho_contact_id}
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        color={selectedRequest.linked_login ? 'success' : 'primary'}
+                        startIcon={<KeyIcon />}
+                        onClick={() => handleOpenLoginDialog(selectedRequest)}
+                      >
+                        {selectedRequest.linked_login ? 'Share Login' : 'Create Login'}
+                      </Button>
+                    </>
                   )}
                 </>
               )}
@@ -1424,6 +1621,172 @@ const CustomerRequests = () => {
           >
             Continue Anyway
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Customer Login Dialog */}
+      <Dialog
+        open={loginDialogOpen}
+        onClose={handleCloseLoginDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {existingLogin ? 'Customer Login' : 'Create Customer Login'}
+          <Typography variant="body2" color="text.secondary">
+            {loginRequest?.shop_name}
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers>
+          {existingLogin ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Name</Typography>
+                <Typography variant="body1">{existingLogin.name}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Email</Typography>
+                <Typography variant="body1">{existingLogin.email}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Status</Typography>
+                <Box><Chip size="small" label={existingLogin.status} color={existingLogin.status === 'active' ? 'success' : 'default'} /></Box>
+              </Box>
+              <Divider />
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  How should the customer log in?
+                </Typography>
+                <ToggleButtonGroup
+                  exclusive
+                  fullWidth
+                  size="small"
+                  value={shareMethod}
+                  onChange={(_e, value) => { if (value) setShareMethod(value); }}
+                >
+                  <ToggleButton value="password" disabled={!createdPassword}>
+                    Email &amp; Password
+                  </ToggleButton>
+                  <ToggleButton value="otp" disabled={getSharePhone().length !== 10}>
+                    Mobile OTP
+                  </ToggleButton>
+                </ToggleButtonGroup>
+                {!createdPassword && (
+                  <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 1 }}>
+                    This login already existed, so its password cannot be shown. Share the Mobile OTP instructions, or reset the password from Customer Management.
+                  </Typography>
+                )}
+                {getSharePhone().length !== 10 && (
+                  <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 1 }}>
+                    OTP login needs a 10-digit mobile number on the account. Update the phone in Customer Management to enable it.
+                  </Typography>
+                )}
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  {shareMethod === 'otp' ? 'Message we will send (approximate)' : 'Message to share'}
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 2, mt: 1 }}>
+                  <Typography variant="body2" fontFamily="monospace" whiteSpace="pre-line">
+                    {buildCredentialsText()}
+                  </Typography>
+                </Paper>
+              </Box>
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                Creates a customer login linked to Zoho contact {loginRequest?.zoho_contact_id}. It will also appear in Customer Management.
+              </Typography>
+              <TextField
+                label="Name"
+                fullWidth
+                value={loginForm.name}
+                onChange={(e) => setLoginForm(prev => ({ ...prev, name: e.target.value }))}
+                error={!!loginErrors.name}
+                helperText={loginErrors.name}
+              />
+              <TextField
+                label="Email"
+                fullWidth
+                value={loginForm.email}
+                onChange={(e) => setLoginForm(prev => ({ ...prev, email: e.target.value }))}
+                error={!!loginErrors.email}
+                helperText={loginErrors.email}
+              />
+              <TextField
+                label="Phone"
+                fullWidth
+                value={loginForm.phone}
+                onChange={(e) => setLoginForm(prev => ({ ...prev, phone: e.target.value }))}
+                error={!!loginErrors.phone}
+                helperText={loginErrors.phone}
+              />
+              <TextField
+                label="Password"
+                fullWidth
+                value={loginForm.password}
+                onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
+                error={!!loginErrors.password}
+                helperText={loginErrors.password || 'Type a password or generate one'}
+                InputProps={{
+                  endAdornment: (
+                    <Tooltip title="Generate Password">
+                      <span>
+                        <IconButton onClick={handleGenerateLoginPassword} disabled={generatingPassword} color="primary">
+                          {generatingPassword ? <CircularProgress size={20} /> : <RefreshIcon />}
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  ),
+                }}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={handleCloseLoginDialog}>Close</Button>
+          {existingLogin ? (
+            <>
+              <Tooltip
+                title={
+                  shareMethod === 'otp'
+                    ? 'Sends the approved WhatsApp template from our number'
+                    : 'Opens WhatsApp with the message pre-filled - you send it yourself'
+                }
+              >
+                <span>
+                  <Button
+                    variant="outlined"
+                    color="success"
+                    disabled={sendingWhatsApp || getSharePhone().length !== 10}
+                    startIcon={sendingWhatsApp ? <CircularProgress size={18} /> : <WhatsAppIcon />}
+                    onClick={handleSendOnWhatsApp}
+                  >
+                    {shareMethod === 'otp' ? 'Send on WhatsApp' : 'Open in WhatsApp'}
+                  </Button>
+                </span>
+              </Tooltip>
+              {shareMethod === 'password' && (
+                <Button
+                  variant="contained"
+                  startIcon={<ContentCopyIcon />}
+                  onClick={handleCopyCredentials}
+                >
+                  Copy Credentials
+                </Button>
+              )}
+            </>
+          ) : (
+            <Button
+              variant="contained"
+              onClick={handleCreateLogin}
+              disabled={creatingLogin}
+              startIcon={creatingLogin ? <CircularProgress size={18} /> : <KeyIcon />}
+            >
+              Create Login
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Box>

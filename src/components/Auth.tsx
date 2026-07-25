@@ -19,8 +19,8 @@ interface AuthContextType {
   loading: boolean;
   permissions: UserPermissions | null;
   login: (email: string, password: string) => Promise<void>;
-  loginWithOtp: (phone: string, code: string) => Promise<void>;
-  registerWithOtp: (phone: string, code: string) => Promise<void>;
+  loginWithOtp: (phone: string, code: string, token?: string) => Promise<void>;
+  registerWithOtp: (phone: string, code: string) => Promise<boolean>;
   logout: () => void;
   checkRouteAccess: (routePath: string) => Promise<boolean>;
   checkPermission: (resource: string, action?: string) => Promise<boolean>;
@@ -97,11 +97,13 @@ export const AuthProvider = ({ children }: any) => {
   // Mobile + WhatsApp OTP login. Works for any existing account
   // (customer / salesperson / admin). Throws on failure so the caller can
   // surface a precise message (e.g. invalid OTP).
-  const loginWithOtp = async (phone: string, code: string) => {
+  // `token` is a login-link token standing in for the number (onboarding links),
+  // used in place of `phone` so the number never reaches the browser.
+  const loginWithOtp = async (phone: string, code: string, token?: string) => {
     const base = `${process.env.api_url}`;
     const res = await axios.post(
       `${base}/users/otp/login`,
-      { phone, code },
+      token ? { token, code } : { phone, code },
       { withCredentials: true }
     );
     const { user, access_token } = res.data;
@@ -117,8 +119,11 @@ export const AuthProvider = ({ children }: any) => {
       { phone, code },
       { withCredentials: true }
     );
-    const { user, access_token } = res.data;
+    const { user, access_token, linked_existing_customer } = res.data;
     await completeLogin(user, access_token);
+    // True when the number matched a customer a salesperson had already created —
+    // the account is linked and ready, no business details to submit.
+    return Boolean(linked_existing_customer);
   };
 
   const logout = async () => {
