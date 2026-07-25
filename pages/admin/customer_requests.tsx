@@ -37,6 +37,7 @@ import axiosInstance from '../../src/util/axios';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
+import { normalizeIndianMobile } from '../../src/util/phone';
 
 const INDIAN_STATES = [
   'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam',
@@ -584,11 +585,15 @@ const CustomerRequests = () => {
 
     const errors: Record<string, string> = {};
     if (!loginForm.name.trim()) errors.name = 'Name is required';
-    if (!loginForm.email.trim()) errors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginForm.email.trim())) {
+    // Email is optional - a mobile number alone is enough for OTP login.
+    if (loginForm.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginForm.email.trim())) {
       errors.email = 'Invalid email format';
     }
-    if (!loginForm.phone.replace(/\D/g, '')) errors.phone = 'Phone is required';
+    if (loginForm.password.trim() && !loginForm.email.trim()) {
+      errors.email = 'An email is needed to set a password';
+    }
+    const phoneInfo = normalizeIndianMobile(loginForm.phone);
+    if (!phoneInfo.valid) errors.phone = phoneInfo.reason;
     // Password is optional - leaving it blank makes the account OTP-only.
     if (loginForm.password.trim() && loginForm.password.trim().length < 6) {
       errors.password = 'Password must be at least 6 characters';
@@ -624,7 +629,10 @@ const CustomerRequests = () => {
     }
   };
 
-  const getSharePhone = () => String(existingLogin?.phone ?? loginForm.phone).replace(/\D/g, '');
+  // Numbers arrive as 10-digit, 0-prefixed or 91-prefixed, so normalise rather
+  // than assuming a bare 10 digits.
+  const getSharePhoneInfo = () => normalizeIndianMobile(existingLogin?.phone ?? loginForm.phone);
+  const getSharePhone = () => getSharePhoneInfo().phone ?? '';
 
   const buildCredentialsText = () => {
     const intro = 'Your Pupscribe marketplace account is ready.';
@@ -1670,7 +1678,7 @@ const CustomerRequests = () => {
                   <ToggleButton value="password" disabled={!createdPassword}>
                     Email &amp; Password
                   </ToggleButton>
-                  <ToggleButton value="otp" disabled={getSharePhone().length !== 10}>
+                  <ToggleButton value="otp" disabled={!getSharePhoneInfo().valid}>
                     Mobile OTP
                   </ToggleButton>
                 </ToggleButtonGroup>
@@ -1681,9 +1689,9 @@ const CustomerRequests = () => {
                       : 'This login already existed, so its password cannot be shown. Share the Mobile OTP instructions, or reset the password from Customer Management.'}
                   </Typography>
                 )}
-                {getSharePhone().length !== 10 && (
-                  <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 1 }}>
-                    OTP login needs a 10-digit mobile number on the account. Update the phone in Customer Management to enable it.
+                {!getSharePhoneInfo().valid && (
+                  <Typography variant="caption" color="error.main" sx={{ display: 'block', mt: 1 }}>
+                    Not usable on WhatsApp — {getSharePhoneInfo().reason}. Fix the phone in Customer Management to enable OTP login.
                   </Typography>
                 )}
               </Box>
@@ -1712,20 +1720,25 @@ const CustomerRequests = () => {
                 helperText={loginErrors.name}
               />
               <TextField
-                label="Email"
+                label="Email (optional)"
                 fullWidth
                 value={loginForm.email}
                 onChange={(e) => setLoginForm(prev => ({ ...prev, email: e.target.value }))}
                 error={!!loginErrors.email}
-                helperText={loginErrors.email}
+                helperText={loginErrors.email || 'Leave blank for OTP-only login on the mobile number'}
               />
               <TextField
                 label="Phone"
                 fullWidth
                 value={loginForm.phone}
                 onChange={(e) => setLoginForm(prev => ({ ...prev, phone: e.target.value }))}
-                error={!!loginErrors.phone}
-                helperText={loginErrors.phone}
+                error={!!loginErrors.phone || !normalizeIndianMobile(loginForm.phone).valid}
+                helperText={
+                  loginErrors.phone ||
+                  (normalizeIndianMobile(loginForm.phone).valid
+                    ? `Will be saved as ${normalizeIndianMobile(loginForm.phone).phone} - usable for WhatsApp OTP`
+                    : `Not usable on WhatsApp - ${normalizeIndianMobile(loginForm.phone).reason}`)
+                }
               />
               <TextField
                 label="Password (optional)"
@@ -1767,7 +1780,7 @@ const CustomerRequests = () => {
                   <Button
                     variant="outlined"
                     color="success"
-                    disabled={sendingWhatsApp || getSharePhone().length !== 10}
+                    disabled={sendingWhatsApp || !getSharePhoneInfo().valid}
                     startIcon={sendingWhatsApp ? <CircularProgress size={18} /> : <WhatsAppIcon />}
                     onClick={handleSendOnWhatsApp}
                   >
