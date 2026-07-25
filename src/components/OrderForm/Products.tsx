@@ -72,6 +72,7 @@ import ScrollTriangleButtons from "../common/ScrollTriangleButtons";
 import { groupProductsByName, ProductGroup, GroupedProducts, getPackStep } from "../../util/groupProducts";
 import { getEffectiveMarginPct } from "../../util/margin";
 import { getTaxPercentage } from "../../util/tax";
+import { getPreOrderMax, isPreOrderExhausted } from "../../util/preOrder";
 import AuthContext from "../Auth";
 
 // The "Clearance" brand is an internal routing/counts key (see backend
@@ -208,6 +209,9 @@ const MemoizedDesktopProductCard = memo(({
   const isDisabled = ['accepted', 'declined', 'invoiced'].includes(
     order?.status?.toLowerCase()
   );
+  // Nothing incoming left to pre-order and no on-hand stock to fall back on.
+  const preOrderBlockedDesktop =
+    isPreOrderExhausted(product) && (isPreOrderCartDesktop || (product.stock ?? 0) <= 0);
 
   return (
     <Box key={productId}>
@@ -487,10 +491,10 @@ const MemoizedDesktopProductCard = memo(({
           <Box sx={{ mb: 2 }}>
             <QuantitySelector
               quantity={quantity}
-              max={isPreOrderCartDesktop ? (product.upcoming_stock || Infinity) : (product.pre_order && (product.stock ?? 0) <= 0 ? (product.upcoming_stock || Infinity) : product.stock)}
+              max={isPreOrderCartDesktop ? getPreOrderMax(product.upcoming_stock) : (product.pre_order && (product.stock ?? 0) <= 0 ? getPreOrderMax(product.upcoming_stock) : product.stock)}
               step={packStep}
               onChange={(newQuantity: number) => handleQuantityChange(productId, newQuantity, isPreOrderCartDesktop)}
-              disabled={isDisabled}
+              disabled={isDisabled || (preOrderBlockedDesktop && !isInCartDesktop)}
             />
             {isQuantityExceedingStock && (
               <Alert severity="error" sx={{ mt: 1, py: 0 }}>
@@ -521,7 +525,7 @@ const MemoizedDesktopProductCard = memo(({
             fullWidth
             variant={isInCartDesktop ? "outlined" : "contained"}
             color={isInCartDesktop ? "error" : "primary"}
-            disabled={isDisabled}
+            disabled={isDisabled || (preOrderBlockedDesktop && !isInCartDesktop)}
             onClick={() => {
               if (isInCartDesktop) {
                 handleRemoveProduct(productId, isPreOrderCartDesktop);
@@ -1270,6 +1274,13 @@ const Products: React.FC<ProductsProps> = ({
       const packStep = getPackStep(product.name);
       const splitProd = isSplitProduct(product);
 
+      // Fully-received pre-orders have nothing left to reserve — never add them
+      // (as a pre-order row, or at all if there's no on-hand stock either).
+      if (isPreOrderExhausted(product) && (isPreOrder || (product.stock ?? 0) <= 0)) {
+        debouncedWarn(`${product.name} has no incoming stock left to pre-order.`);
+        return;
+      }
+
       if (isPreOrder && splitProd) {
         // Adding the pre-order portion for a split product
         const existing = selectedProducts.find((p) => p._id === productId);
@@ -1406,7 +1417,7 @@ const Products: React.FC<ProductsProps> = ({
             setSelectedProducts((prev) => prev.map((p) => {
               if (p._id !== id) return p;
               const minQty = getPackStep(p.name);
-              const sanitized = Math.max(minQty, Math.min(newQuantity, p.upcoming_stock || Infinity));
+              const sanitized = Math.max(minQty, Math.min(newQuantity, getPreOrderMax(p.upcoming_stock)));
               // No toast on in-place quantity edits — the card/cart totals update
               // live, so a toast per keystroke-commit would just be noise.
               return { ...p, pre_order_quantity: sanitized };
@@ -1430,7 +1441,7 @@ const Products: React.FC<ProductsProps> = ({
         const minQty = getPackStep(productInCart.name);
         const sanitized = Math.max(
           minQty,
-          (productInCart.pre_order && (productInCart.stock ?? 0) <= 0) ? Math.min(newQuantity, productInCart.upcoming_stock || Infinity) : Math.min(newQuantity, productInCart.stock)
+          (productInCart.pre_order && (productInCart.stock ?? 0) <= 0) ? Math.min(newQuantity, getPreOrderMax(productInCart.upcoming_stock)) : Math.min(newQuantity, productInCart.stock)
         );
         const updated = selectedProducts.map((p) =>
           p._id === id ? { ...p, quantity: sanitized } : p

@@ -27,6 +27,7 @@ import {
 } from '@mui/icons-material';
 import QuantitySelector from '../QuantitySelector';
 import { getPackStep } from '../../../util/groupProducts';
+import { getPreOrderMax } from '../../../util/preOrder';
 
 interface CartDrawerProps {
   open: boolean;
@@ -375,7 +376,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                       >
                         <QuantitySelector
                           quantity={product.quantity}
-                          max={isPreOrderRow ? (product.upcoming_stock || Infinity) : (product.pre_order && (product.stock ?? 0) <= 0 ? (product.upcoming_stock || Infinity) : product.stock)}
+                          max={isPreOrderRow ? getPreOrderMax(product.upcoming_stock) : (product.pre_order && (product.stock ?? 0) <= 0 ? getPreOrderMax(product.upcoming_stock) : product.stock)}
                           step={getPackStep(product.name)}
                           onChange={(newQuantity) =>
                             handleQuantityChange(productId, newQuantity, isPreOrderRow)
