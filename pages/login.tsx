@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, useRef } from 'react';
 import {
   TextField,
   Button,
@@ -12,6 +12,7 @@ import {
   Divider,
   Tabs,
   Tab,
+  Alert,
 } from '@mui/material';
 import {
   Visibility,
@@ -49,27 +50,71 @@ const LoginPage = () => {
   const [linkToken, setLinkToken] = useState('');
   const [maskedPhone, setMaskedPhone] = useState('');
   const [resolvingLink, setResolvingLink] = useState(false);
+  const [inAppBrowser, setInAppBrowser] = useState(false);
 
   const apiBase = `${process.env.api_url}`;
+
+  // One tap in WhatsApp should land on the code entry screen with the code already
+  // sent — /start resolves the token, logs the click and sends the OTP in one call.
+  // The ref stops React strict-mode's double effect from sending twice.
+  const startedRef = useRef('');
 
   useEffect(() => {
     if (!router.isReady) return;
     const token = router.query.t;
     if (typeof token !== 'string' || !token) return;
+    if (startedRef.current === token) return;
+    startedRef.current = token;
 
     setMode('mobile');
     setResolvingLink(true);
     axios
-      .get(`${apiBase}/users/login-link/${encodeURIComponent(token)}`)
+      .post(`${apiBase}/users/login-link/${encodeURIComponent(token)}/start`)
       .then((response) => {
         setLinkToken(token);
         setMaskedPhone(response.data.masked_phone);
+        if (response.data.otp_sent || response.data.already_sent) {
+          // Straight to code entry: the code is sitting in the same WhatsApp chat.
+          setOtpSent(true);
+          toast.success(response.data.detail || 'OTP sent to your WhatsApp');
+        } else if (response.data.detail) {
+          toast.error(response.data.detail);
+        }
       })
       .catch((error: any) => {
         toast.error(error?.response?.data?.detail || 'This login link is no longer valid');
       })
       .finally(() => setResolvingLink(false));
   }, [router.isReady, router.query.t]);
+
+  // WhatsApp opens links in an in-app WebView whose cookies are thrown away when
+  // it closes, so a login there doesn't carry over to the real browser. There is
+  // no way to force the system browser from the template, so offer the jump here.
+  useEffect(() => {
+    const ua = navigator.userAgent || '';
+    setInAppBrowser(/WhatsApp/i.test(ua) || /\bwv\b/.test(ua) || /FBAN|FBAV|Instagram/i.test(ua));
+  }, []);
+
+  const openInSystemBrowser = () => {
+    const url = window.location.href;
+    const ua = navigator.userAgent || '';
+
+    if (/android/i.test(ua)) {
+      // Android intent:// hands the URL to Chrome; falls back to the same https URL.
+      const withoutScheme = url.replace(/^https?:\/\//, '');
+      window.location.href =
+        `intent://${withoutScheme}#Intent;scheme=https;package=com.android.chrome;` +
+        `S.browser_fallback_url=${encodeURIComponent(url)};end`;
+      return;
+    }
+
+    // iOS has no reliable "open in Safari" scheme from a WebView, so copying the
+    // link and telling them where to paste it is the honest fallback.
+    navigator.clipboard?.writeText(url).then(
+      () => toast.success('Link copied — paste it in Safari or Chrome'),
+      () => toast.info('Tap the ⋯ menu and choose "Open in browser"')
+    );
+  };
 
   const clearLinkToken = () => {
     setLinkToken('');
@@ -363,6 +408,22 @@ const LoginPage = () => {
               onSubmit={otpSent ? handleVerifyOtp : handleSendOtp}
               sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}
             >
+              {/* A login inside WhatsApp's WebView is lost when it closes, so nudge
+                  them into the real browser before they sign in. */}
+              {linkToken && inAppBrowser && (
+                <Alert
+                  severity='info'
+                  action={
+                    <Button color='inherit' size='small' onClick={openInSystemBrowser}>
+                      Open
+                    </Button>
+                  }
+                  sx={{ borderRadius: '10px' }}
+                >
+                  Open in your browser to stay signed in after closing WhatsApp.
+                </Alert>
+              )}
+
               {linkToken ? (
                 <Box>
                   <TextField
@@ -420,17 +481,31 @@ const LoginPage = () => {
                   />
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
                     <Typography variant='caption' color='text.secondary'>
-                      Sent to your WhatsApp
+                      {linkToken ? 'Sent to this WhatsApp chat — copy it here' : 'Sent to your WhatsApp'}
                     </Typography>
-                    <Link
-                      component='button'
-                      type='button'
-                      variant='body2'
-                      onClick={() => { setOtpSent(false); setOtp(''); clearLinkToken(); }}
-                      sx={{ color: 'primary.main', fontSize: '0.8rem', fontWeight: 500 }}
-                    >
-                      Change number
-                    </Link>
+                    {/* Arriving by link, the number is fixed, so resending beats
+                        offering to change it. */}
+                    {linkToken ? (
+                      <Link
+                        component='button'
+                        type='button'
+                        variant='body2'
+                        onClick={handleSendOtp}
+                        sx={{ color: 'primary.main', fontSize: '0.8rem', fontWeight: 500 }}
+                      >
+                        Resend code
+                      </Link>
+                    ) : (
+                      <Link
+                        component='button'
+                        type='button'
+                        variant='body2'
+                        onClick={() => { setOtpSent(false); setOtp(''); clearLinkToken(); }}
+                        sx={{ color: 'primary.main', fontSize: '0.8rem', fontWeight: 500 }}
+                      >
+                        Change number
+                      </Link>
+                    )}
                   </Box>
                 </Box>
               )}
