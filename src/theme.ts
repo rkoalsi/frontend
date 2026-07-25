@@ -143,8 +143,21 @@ export const createAppTheme = (mode: 'dark' | 'light') =>
     components: {
       MuiCssBaseline: {
         styleOverrides: {
-          html: { scrollBehavior: 'smooth' },
+          html: {
+            scrollBehavior: 'smooth',
+            // iOS Safari zooms the whole page when a focused field has a
+            // font-size below 16px and never zooms back out, which leaves every
+            // later page horizontally shifted / off-centre. Stop the browser
+            // from scaling text on rotation as well.
+            WebkitTextSizeAdjust: '100%',
+            textSizeAdjust: '100%',
+          },
+          body: { overflowX: 'hidden' },
           '*': { scrollBehavior: 'smooth' },
+          // Belt-and-braces for native controls that bypass MUI's InputBase.
+          '@media (max-width:600px)': {
+            'input, select, textarea': { fontSize: '16px' },
+          },
         },
       },
       MuiButton: {
@@ -247,8 +260,12 @@ export const createAppTheme = (mode: 'dark' | 'light') =>
         styleOverrides: {
           root: {
             color: mode === 'dark' ? brand.dkInk : brand.ink,
+            // body1 is 0.95rem (15.2px); anything under 16px makes iOS Safari
+            // zoom in on focus and stay zoomed. Keep phones at 16px.
+            '@media (max-width:600px)': { fontSize: '16px' },
           },
           input: {
+            '@media (max-width:600px)': { fontSize: '16px' },
             '&::placeholder': {
               color: mode === 'dark' ? brand.dkFaint : brand.faint,
               opacity: 1,
