@@ -118,6 +118,7 @@ interface CustomerLogin {
   email?: string;
   phone?: number | string;
   status?: string;
+  has_password?: boolean;
 }
 
 const LOGIN_URL = 'https://marketplace.pupscribe.in/login';
@@ -588,8 +589,10 @@ const CustomerRequests = () => {
       errors.email = 'Invalid email format';
     }
     if (!loginForm.phone.replace(/\D/g, '')) errors.phone = 'Phone is required';
-    if (!loginForm.password.trim()) errors.password = 'Password is required';
-    else if (loginForm.password.trim().length < 6) errors.password = 'Password must be at least 6 characters';
+    // Password is optional - leaving it blank makes the account OTP-only.
+    if (loginForm.password.trim() && loginForm.password.trim().length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
 
     setLoginErrors(errors);
     if (Object.keys(errors).length > 0) return;
@@ -607,8 +610,8 @@ const CustomerRequests = () => {
       );
       setExistingLogin(response.data.login);
       setCreatedPassword(loginForm.password);
-      setShareMethod('password');
-      toast.success('Customer login created successfully');
+      setShareMethod(loginForm.password ? 'password' : 'otp');
+      toast.success(response.data.message || 'Customer login created successfully');
       setSelectedRequest((prev) =>
         prev && prev._id === loginRequest._id ? { ...prev, linked_login: response.data.login } : prev
       );
@@ -1673,7 +1676,9 @@ const CustomerRequests = () => {
                 </ToggleButtonGroup>
                 {!createdPassword && (
                   <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 1 }}>
-                    This login already existed, so its password cannot be shown. Share the Mobile OTP instructions, or reset the password from Customer Management.
+                    {existingLogin.has_password === false
+                      ? 'This account has no password - the customer signs in with a WhatsApp OTP. Set one from Customer Management if they need password login.'
+                      : 'This login already existed, so its password cannot be shown. Share the Mobile OTP instructions, or reset the password from Customer Management.'}
                   </Typography>
                 )}
                 {getSharePhone().length !== 10 && (
@@ -1723,12 +1728,15 @@ const CustomerRequests = () => {
                 helperText={loginErrors.phone}
               />
               <TextField
-                label="Password"
+                label="Password (optional)"
                 fullWidth
                 value={loginForm.password}
                 onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
                 error={!!loginErrors.password}
-                helperText={loginErrors.password || 'Type a password or generate one'}
+                helperText={
+                  loginErrors.password ||
+                  'Leave blank for OTP-only login - the customer signs in with a code on WhatsApp'
+                }
                 InputProps={{
                   endAdornment: (
                     <Tooltip title="Generate Password">
