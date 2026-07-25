@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import {
   TextField,
   Button,
@@ -44,7 +44,37 @@ const LoginPage = () => {
   const [otpSent, setOtpSent] = useState(false);
   const router = useRouter();
 
+  // Login-link token (?t=…) from the onboarding WhatsApp message. It stands in for
+  // the customer's number, which stays server-side — we only ever show it masked.
+  const [linkToken, setLinkToken] = useState('');
+  const [maskedPhone, setMaskedPhone] = useState('');
+  const [resolvingLink, setResolvingLink] = useState(false);
+
   const apiBase = `${process.env.api_url}`;
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    const token = router.query.t;
+    if (typeof token !== 'string' || !token) return;
+
+    setMode('mobile');
+    setResolvingLink(true);
+    axios
+      .get(`${apiBase}/users/login-link/${encodeURIComponent(token)}`)
+      .then((response) => {
+        setLinkToken(token);
+        setMaskedPhone(response.data.masked_phone);
+      })
+      .catch((error: any) => {
+        toast.error(error?.response?.data?.detail || 'This login link is no longer valid');
+      })
+      .finally(() => setResolvingLink(false));
+  }, [router.isReady, router.query.t]);
+
+  const clearLinkToken = () => {
+    setLinkToken('');
+    setMaskedPhone('');
+  };
 
   const handleSubmit = async (event: any) => {
     event.preventDefault();
@@ -62,13 +92,15 @@ const LoginPage = () => {
 
   const handleSendOtp = async (event: any) => {
     event.preventDefault();
-    if (phone.replace(/\D/g, '').length < 10) {
+    if (!linkToken && phone.replace(/\D/g, '').length < 10) {
       toast.error('Enter a valid 10-digit mobile number');
       return;
     }
     setLoading(true);
     try {
-      await axios.post(`${apiBase}/users/otp/request`, { phone, purpose: 'login' });
+      await axios.post(`${apiBase}/users/otp/request`, linkToken
+        ? { token: linkToken, purpose: 'login' }
+        : { phone, purpose: 'login' });
       setOtpSent(true);
       toast.success('OTP sent to your WhatsApp');
     } catch (error: any) {
@@ -83,7 +115,7 @@ const LoginPage = () => {
     if (!otp) return;
     setLoading(true);
     try {
-      await loginWithOtp(phone, otp);
+      await loginWithOtp(phone, otp, linkToken || undefined);
       trackEvent('login', { method: 'otp' });
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'Invalid or expired OTP');
@@ -331,20 +363,46 @@ const LoginPage = () => {
               onSubmit={otpSent ? handleVerifyOtp : handleSendOtp}
               sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}
             >
-              <TextField
-                label='Mobile number'
-                type='tel'
-                fullWidth
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                variant='outlined'
-                autoComplete='tel'
-                disabled={otpSent}
-                placeholder='10-digit WhatsApp number'
-                slotProps={{ input: { startAdornment: <InputAdornment position='start'>+91</InputAdornment> } }}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-              />
+              {linkToken ? (
+                <Box>
+                  <TextField
+                    label='Mobile number'
+                    fullWidth
+                    value={maskedPhone}
+                    variant='outlined'
+                    disabled
+                    helperText='Your registered WhatsApp number'
+                    slotProps={{ input: { readOnly: true, startAdornment: <InputAdornment position='start'>+91</InputAdornment> } }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                  />
+                  {!otpSent && (
+                    <Link
+                      component='button'
+                      type='button'
+                      variant='body2'
+                      onClick={clearLinkToken}
+                      sx={{ color: 'primary.main', fontSize: '0.8rem', fontWeight: 500 }}
+                    >
+                      Use a different number
+                    </Link>
+                  )}
+                </Box>
+              ) : (
+                <TextField
+                  label='Mobile number'
+                  type='tel'
+                  fullWidth
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  variant='outlined'
+                  autoComplete='tel'
+                  disabled={otpSent}
+                  placeholder='10-digit WhatsApp number'
+                  slotProps={{ input: { startAdornment: <InputAdornment position='start'>+91</InputAdornment> } }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                />
+              )}
 
               {otpSent && (
                 <Box>
@@ -368,7 +426,7 @@ const LoginPage = () => {
                       component='button'
                       type='button'
                       variant='body2'
-                      onClick={() => { setOtpSent(false); setOtp(''); }}
+                      onClick={() => { setOtpSent(false); setOtp(''); clearLinkToken(); }}
                       sx={{ color: 'primary.main', fontSize: '0.8rem', fontWeight: 500 }}
                     >
                       Change number
@@ -383,7 +441,7 @@ const LoginPage = () => {
                 color='primary'
                 size='large'
                 fullWidth
-                disabled={loading}
+                disabled={loading || resolvingLink}
                 sx={{
                   textTransform: 'none',
                   fontSize: '1rem',
@@ -394,7 +452,7 @@ const LoginPage = () => {
                   minHeight: 48,
                 }}
               >
-                {loading ? (
+                {loading || resolvingLink ? (
                   <CircularProgress size={22} color='inherit' />
                 ) : otpSent ? (
                   'Verify & sign in'

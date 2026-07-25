@@ -57,8 +57,13 @@ const RegisterPage = () => {
     try {
       // Verifying creates the account and logs the user straight in — the
       // AuthContext handles the redirect to the home page on success.
-      await registerWithOtp(phone, otp);
+      const linked = await registerWithOtp(phone, otp);
       trackEvent('sign_up', { method: 'otp' });
+      if (linked) {
+        // Number already belonged to a customer created by our sales team — the
+        // account is linked to it, so there is no profile to complete.
+        toast.success('Welcome back — we found your existing account and linked it.');
+      }
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Invalid or expired OTP');
       setLoading(false);
