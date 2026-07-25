@@ -25,6 +25,7 @@ import ImageCarousel from "./ImageCarousel";
 import { extractSize, extractWeight, getPackStep } from "../../../util/groupProducts";
 import { getEffectiveMarginPct } from "../../../util/margin";
 import { getTaxPercentage } from "../../../util/tax";
+import { getPreOrderMax, isPreOrderExhausted } from "../../../util/preOrder";
 
 interface SearchResult {
   _id: string;
@@ -175,6 +176,10 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
     const sellingPrice = getSellingPrice(currentVariant);
     const itemTotal = parseFloat((sellingPrice * (quantity || 0)).toFixed(2));
     const isQuantityExceedingStock = !isPreOrderCartGroup && !currentVariant.pre_order && quantity > currentVariant.stock;
+    // Nothing incoming left to pre-order and no on-hand stock to fall back on.
+    const preOrderBlockedGroup =
+      isPreOrderExhausted(currentVariant) &&
+      (isPreOrderCartGroup || (currentVariant.stock ?? 0) <= 0);
 
     // Memoize expensive variant size extraction so it only reruns when products change
     const sortedVariants = useMemo(() => {
@@ -789,13 +794,13 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                 <QuantitySelector
                   quantity={quantity}
                   max={isPreOrderCartGroup
-                    ? (currentVariant.upcoming_stock || Infinity)
-                    : (currentVariant.pre_order && (currentVariant.stock ?? 0) <= 0 ? (currentVariant.upcoming_stock || Infinity) : currentVariant.stock)}
+                    ? getPreOrderMax(currentVariant.upcoming_stock)
+                    : (currentVariant.pre_order && (currentVariant.stock ?? 0) <= 0 ? getPreOrderMax(currentVariant.upcoming_stock) : currentVariant.stock)}
                   step={packStep}
                   onChange={(newQuantity) =>
                     handleQuantityChange(productId, newQuantity, isPreOrderCartGroup)
                   }
-                  disabled={isDisabled}
+                  disabled={isDisabled || (preOrderBlockedGroup && !isInCartGroup)}
                 />
                 {isQuantityExceedingStock && (
                   <Alert
@@ -814,7 +819,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
               </Box>
 
               {/* Action Button */}
-              <Tooltip title={isInCartGroup ? (isPreOrderCartGroup ? "Remove pre-order" : "Remove from cart") : (isPreOrderCartGroup ? "Add as pre-order" : "Add to cart")}>
+              <Tooltip title={isInCartGroup ? (isPreOrderCartGroup ? "Remove pre-order" : "Remove from cart") : (preOrderBlockedGroup ? "No incoming stock left to pre-order" : (isPreOrderCartGroup ? "Add as pre-order" : "Add to cart"))}>
                 <span>
                   <Button
                     variant="contained"
@@ -823,7 +828,7 @@ const ProductGroupCard: React.FC<ProductGroupCardProps> = memo(
                       isInCartGroup ? <RemoveShoppingCart /> : <AddShoppingCart />
                     }
                     onClick={() => handleAddOrRemove(currentVariant)}
-                    disabled={isDisabled}
+                    disabled={isDisabled || (preOrderBlockedGroup && !isInCartGroup)}
                     fullWidth
                     size="medium"
                     sx={{

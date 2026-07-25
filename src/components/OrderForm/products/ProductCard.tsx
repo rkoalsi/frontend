@@ -21,6 +21,7 @@ import ImageCarousel from "./ImageCarousel";
 import { getPackStep } from "../../../util/groupProducts";
 import { getEffectiveMarginPct } from "../../../util/margin";
 import { getTaxPercentage } from "../../../util/tax";
+import { getPreOrderMax, isPreOrderExhausted } from "../../../util/preOrder";
 
 interface SearchResult {
   _id: string;
@@ -141,6 +142,10 @@ const ProductCard: React.FC<ProductCardProps> = memo(
     const isDisabled =
       orderStatus?.toLowerCase().includes("accepted") ||
       orderStatus?.toLowerCase().includes("declined");
+    // Nothing incoming left to pre-order and no on-hand stock to fall back on —
+    // the product can't be added at all.
+    const preOrderBlocked =
+      isPreOrderExhausted(product) && (isPreOrderCart || (product.stock ?? 0) <= 0);
 
     const theme = useTheme();
     const isDark = theme.palette.mode === 'dark';
@@ -555,12 +560,12 @@ const ProductCard: React.FC<ProductCardProps> = memo(
             >
               <QuantitySelector
                 quantity={quantity}
-                max={isPreOrderCart ? (product.upcoming_stock || Infinity) : (product.pre_order && (product.stock ?? 0) <= 0 ? (product.upcoming_stock || Infinity) : product.stock)}
+                max={isPreOrderCart ? getPreOrderMax(product.upcoming_stock) : (product.pre_order && (product.stock ?? 0) <= 0 ? getPreOrderMax(product.upcoming_stock) : product.stock)}
                 step={packStep}
                 onChange={(newQuantity) =>
                   handleQuantityChange(productId, newQuantity, isPreOrderCart)
                 }
-                disabled={isDisabled}
+                disabled={isDisabled || (preOrderBlocked && !isInCart)}
               />
               {isQuantityExceedingStock && (
                 <Alert
@@ -579,7 +584,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
             </Box>
 
             {/* Action Button */}
-            <Tooltip title={isInCart ? (isPreOrderCart ? "Remove pre-order" : "Remove from cart") : (isPreOrderCart ? "Add as pre-order" : "Add to cart")}>
+            <Tooltip title={isInCart ? (isPreOrderCart ? "Remove pre-order" : "Remove from cart") : (preOrderBlocked ? "No incoming stock left to pre-order" : (isPreOrderCart ? "Add as pre-order" : "Add to cart"))}>
               <span>
                 <Button
                   variant="contained"
@@ -588,7 +593,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(
                     isInCart ? <RemoveShoppingCart /> : <AddShoppingCart />
                   }
                   onClick={() => handleAddOrRemove(product)}
-                  disabled={isDisabled}
+                  disabled={isDisabled || (preOrderBlocked && !isInCart)}
                   fullWidth
                   size="medium"
                   sx={{
