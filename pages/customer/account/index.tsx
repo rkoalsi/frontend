@@ -169,7 +169,7 @@ const CustomerAccount = () => {
     }
     setSaving(true);
     try {
-      await axiosInstance.post('/customer_creation_requests/self-service', {
+      const { data } = await axiosInstance.post('/customer_creation_requests/self-service', {
         shop_name: form.shop_name,
         customer_name: form.customer_name,
         email: form.email,
@@ -182,6 +182,14 @@ const CustomerAccount = () => {
         pan_card_url: docs.pan || null,
         aadhar_url: docs.aadhar || null,
       });
+      if (data?.linked_existing_customer) {
+        // We already had this business (created by a salesperson) — the account was
+        // linked instead of raising a duplicate request. Reload so the session picks
+        // up the new customer_id and the ordering flow unlocks.
+        toast.success(data.message || 'Your account has been linked — you can start ordering now.');
+        setTimeout(() => window.location.reload(), 1500);
+        return;
+      }
       toast.success('Details submitted — awaiting approval');
       setSubmitted(true);
       setRequestStatus('pending');
