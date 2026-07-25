@@ -38,6 +38,7 @@ import { Delete, ExpandMore, Refresh, Info } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../../util/axios';
 import capitalize from '../../../util/capitalize';
+import CustomerLoginSection from './CustomerLoginSection';
 
 const TIERS = ['A+', 'A', 'B', 'C', 'D'];
 export interface CustomerDetailsDrawerProps {
@@ -661,6 +662,12 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
               )}
             </Box>
           )}
+          {customer?.contact_id && (
+            <Box sx={{ mt: 2, mb: 2 }}>
+              <CustomerLoginSection contactId={customer.contact_id} />
+            </Box>
+          )}
+
           <Box sx={{ mt: 2, mb: 2 }}>
             <Typography variant='h5' mb={2}>
               Special Margins
