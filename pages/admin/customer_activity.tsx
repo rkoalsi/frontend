@@ -89,6 +89,7 @@ interface ActivityLog {
 
 const ACTION_META: Record<string, { label: string; icon: React.ReactElement; color: string }> = {
   login:                  { label: 'Login',            icon: <Login />,            color: '#16a34a' },
+  login_link_opened:      { label: 'WhatsApp Link',    icon: <TouchApp />,         color: '#25D366' },
   view_dashboard:         { label: 'Dashboard',        icon: <Dashboard />,        color: '#4633B8' },
   view_invoices:          { label: 'Invoices',         icon: <Receipt />,          color: '#7c3aed' },
   view_credit_notes:      { label: 'Credit Notes',     icon: <CreditCard />,       color: '#db2777' },
