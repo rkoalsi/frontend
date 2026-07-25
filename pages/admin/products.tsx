@@ -40,7 +40,7 @@ const Products = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [totalPageCount, setTotalPageCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [rowsPerPage, setRowsPerPage] = useState(200);
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
