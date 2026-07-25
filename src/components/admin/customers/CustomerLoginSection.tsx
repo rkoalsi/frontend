@@ -31,12 +31,27 @@ interface CustomerLogin {
   phone?: number | string;
   status?: string;
   has_password?: boolean;
+  phone_info?: PhoneInfo;
+  created_by_salesperson?: boolean;
 }
 
 interface PhoneInfo {
   phone: string | null;
   valid: boolean;
   reason: string;
+}
+
+/** An account belonging to someone else that already claims this mobile or email. */
+interface LoginConflict {
+  _id: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+  status?: string;
+  customer_id?: string | null;
+  customer_name?: string | null;
+  conflict_on: string[];
 }
 
 /**
@@ -46,11 +61,13 @@ interface PhoneInfo {
  */
 const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) => {
   const [loading, setLoading] = useState(true);
-  const [login, setLogin] = useState<CustomerLogin | null>(null);
+  const [logins, setLogins] = useState<CustomerLogin[]>([]);
   const [phoneInfo, setPhoneInfo] = useState<PhoneInfo | null>(null);
+  const [conflicts, setConflicts] = useState<LoginConflict[]>([]);
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
   const [creating, setCreating] = useState(false);
-  const [sending, setSending] = useState(false);
+  // Holds the _id being sent, so only that row shows a spinner.
+  const [sending, setSending] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [createdPassword, setCreatedPassword] = useState('');
 
@@ -59,9 +76,10 @@ const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) =>
     setLoading(true);
     try {
       const { data } = await axiosInstance.get(`/admin/users/customer-login/${contactId}`);
-      setLogin(data.login);
+      setLogins(data.logins || []);
       setPhoneInfo(data.phone);
-      if (!data.login) {
+      setConflicts(data.conflicts || []);
+      if (!(data.logins || []).length) {
         setForm({
           name: data.customer?.contact_name || data.customer?.name || '',
           email: data.customer?.email || '',
@@ -82,7 +100,7 @@ const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) =>
   }, [fetchLogin]);
 
   const formPhoneInfo = normalizeIndianMobile(form.phone);
-  const effectivePhoneInfo: PhoneInfo = login ? (phoneInfo ?? formPhoneInfo) : formPhoneInfo;
+  const effectivePhoneInfo: PhoneInfo = logins.length ? (phoneInfo ?? formPhoneInfo) : formPhoneInfo;
 
   const handleGeneratePassword = async () => {
     setGenerating(true);
@@ -113,7 +131,6 @@ const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) =>
         phone: form.phone,
         password: form.password || undefined,
       });
-      setLogin(data.login);
       setCreatedPassword(form.password);
       toast.success(data.message);
       fetchLogin();
@@ -124,15 +141,19 @@ const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) =>
     }
   };
 
-  const handleSend = async () => {
-    setSending(true);
+  const handleSend = async (userId: string) => {
+    setSending(userId);
     try {
-      const { data } = await axiosInstance.post(`/admin/users/customer-login/${contactId}/send`);
+      const { data } = await axiosInstance.post(
+        `/admin/users/customer-login/${contactId}/send`,
+        null,
+        { params: { user_id: userId } }
+      );
       toast.success(data.message);
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'Failed to send WhatsApp message');
     } finally {
-      setSending(false);
+      setSending(null);
     }
   };
 
@@ -141,7 +162,7 @@ const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) =>
       'Your Pupscribe marketplace account is ready.',
       '',
       `Login Link: ${LOGIN_URL}`,
-      `Email: ${login?.email}`,
+      `Email: ${logins[0]?.email}`,
     ];
     if (createdPassword) lines.push(`Password: ${createdPassword}`);
     navigator.clipboard.writeText(lines.join('\n')).then(
@@ -171,78 +192,151 @@ const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) =>
         </Alert>
       )}
 
-      {login ? (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5 }}>
-            <Box>
-              <Typography variant="caption" color="text.secondary">Name</Typography>
-              <Typography variant="body2">{login.name || '-'}</Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">Email</Typography>
-              <Typography variant="body2">{login.email || '-'}</Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">Mobile</Typography>
-              <Typography variant="body2">{effectivePhoneInfo.phone || String(login.phone ?? '-')}</Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">Sign-in</Typography>
-              <Box sx={{ display: 'flex', gap: 0.5, mt: 0.25 }}>
-                <Chip
-                  size="small"
-                  label={login.status}
-                  color={login.status === 'active' ? 'success' : 'default'}
-                />
-                <Chip
-                  size="small"
-                  variant="outlined"
-                  label={login.has_password ? 'Password + OTP' : 'OTP only'}
-                />
+      {/* Someone else already holds this mobile/email, so creating would be
+          rejected. Show who, so the right record can be fixed. */}
+      {conflicts.length > 0 && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+            {conflicts.length === 1 ? 'Another account already uses' : 'Other accounts already use'}{' '}
+            this customer&apos;s details
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {conflicts.map((conflict) => (
+              <Box key={conflict._id}>
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {conflict.name || conflict.email || conflict.phone}
+                  </Typography>
+                  {conflict.role && <Chip size="small" label={conflict.role} />}
+                  {conflict.conflict_on.map((field) => (
+                    <Chip key={field} size="small" color="error" variant="outlined" label={`same ${field}`} />
+                  ))}
+                </Box>
+                <Typography variant="caption" color="text.secondary">
+                  {[
+                    conflict.email,
+                    conflict.phone,
+                    conflict.customer_name
+                      ? `linked to ${conflict.customer_name}`
+                      : conflict.customer_id
+                        ? `linked to ${conflict.customer_id}`
+                        : 'not linked to a customer',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Typography>
               </Box>
-            </Box>
+            ))}
           </Box>
+          <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
+            Creating a login here will be rejected. Fix the number or email on the other
+            account first — two accounts on one mobile make OTP login ambiguous.
+          </Typography>
+        </Alert>
+      )}
 
-          {createdPassword && (
-            <Paper variant="outlined" sx={{ p: 1.5 }}>
-              <Typography variant="body2" fontFamily="monospace" whiteSpace="pre-line">
-                {`Login Link: ${LOGIN_URL}\nEmail: ${login.email}\nPassword: ${createdPassword}`}
-              </Typography>
-            </Paper>
+      {logins.length > 0 ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {logins.length > 1 && (
+            <Alert severity="info" sx={{ py: 0.5 }}>
+              {logins.length} logins are linked to this customer. They share one mobile
+              only if the numbers below match — OTP sign-in resolves by number, so
+              duplicates on the same number are worth cleaning up.
+            </Alert>
           )}
 
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Tooltip
-              title={
-                effectivePhoneInfo.valid
-                  ? 'Sends the approved WhatsApp template from our number'
-                  : effectivePhoneInfo.reason
-              }
-            >
-              <span>
-                <Button
-                  variant="contained"
-                  color="success"
-                  size="small"
-                  disabled={sending || !effectivePhoneInfo.valid}
-                  startIcon={sending ? <CircularProgress size={16} /> : <WhatsAppIcon />}
-                  onClick={handleSend}
+          {logins.map((item, index) => {
+            const itemPhone = item.phone_info?.phone || String(item.phone ?? '-');
+            const itemPhoneValid = item.phone_info?.valid ?? false;
+            return (
+              <Paper key={item._id} variant="outlined" sx={{ p: 1.5 }}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                    gap: 1.5,
+                  }}
                 >
-                  Send login link
-                </Button>
-              </span>
-            </Tooltip>
-            {createdPassword && (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<ContentCopyIcon />}
-                onClick={handleCopy}
-              >
-                Copy credentials
-              </Button>
-            )}
-          </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Name</Typography>
+                    <Typography variant="body2">{item.name || '-'}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Email</Typography>
+                    <Typography variant="body2">{item.email || '— (OTP only)'}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Mobile</Typography>
+                    <Typography variant="body2" color={itemPhoneValid ? 'text.primary' : 'error.main'}>
+                      {itemPhone}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Sign-in</Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5, mt: 0.25, flexWrap: 'wrap' }}>
+                      <Chip
+                        size="small"
+                        label={item.status}
+                        color={item.status === 'active' ? 'success' : 'default'}
+                      />
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={item.has_password ? 'Password + OTP' : 'OTP only'}
+                      />
+                      {item.created_by_salesperson && (
+                        <Chip size="small" variant="outlined" label="by salesperson" />
+                      )}
+                    </Box>
+                  </Box>
+                </Box>
+
+                {/* The password is only knowable in the session that set it. */}
+                {index === 0 && createdPassword && (
+                  <Paper variant="outlined" sx={{ p: 1.5, mt: 1.5 }}>
+                    <Typography variant="body2" fontFamily="monospace" whiteSpace="pre-line">
+                      {`Login Link: ${LOGIN_URL}\nEmail: ${item.email}\nPassword: ${createdPassword}`}
+                    </Typography>
+                  </Paper>
+                )}
+
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1.5 }}>
+                  <Tooltip
+                    title={
+                      itemPhoneValid
+                        ? 'Sends the approved WhatsApp template from our number'
+                        : item.phone_info?.reason || 'Unusable mobile number'
+                    }
+                  >
+                    <span>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        size="small"
+                        disabled={sending === item._id || !itemPhoneValid}
+                        startIcon={
+                          sending === item._id ? <CircularProgress size={16} /> : <WhatsAppIcon />
+                        }
+                        onClick={() => handleSend(item._id)}
+                      >
+                        Send login link
+                      </Button>
+                    </span>
+                  </Tooltip>
+                  {index === 0 && createdPassword && (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<ContentCopyIcon />}
+                      onClick={handleCopy}
+                    >
+                      Copy credentials
+                    </Button>
+                  )}
+                </Box>
+              </Paper>
+            );
+          })}
         </Box>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -298,7 +392,7 @@ const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) =>
             <Button
               variant="contained"
               size="small"
-              disabled={creating || !formPhoneInfo.valid}
+              disabled={creating || !formPhoneInfo.valid || conflicts.length > 0}
               startIcon={creating ? <CircularProgress size={16} /> : <KeyIcon />}
               onClick={handleCreate}
             >
