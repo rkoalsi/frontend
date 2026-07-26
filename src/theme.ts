@@ -65,6 +65,10 @@ const buildShadows = (mode: 'dark' | 'light') => {
   return base as unknown as import('@mui/material/styles').Shadows;
 };
 
+// Raw query rather than theme.breakpoints — these overrides are written while
+// the theme is still being constructed. Matches the default `sm` breakpoint.
+const MOBILE_QUERY = '@media (max-width:599.95px)';
+
 export const createAppTheme = (mode: 'dark' | 'light') =>
   createTheme({
     shape: { borderRadius: 12 },
@@ -283,6 +287,12 @@ export const createAppTheme = (mode: 'dark' | 'light') =>
             '&:hover .MuiOutlinedInput-notchedOutline': {
               borderColor: mode === 'dark' ? brand.dkBlue : brand.blueLight,
             },
+            // Widen the notch to match the enlarged mobile label above.
+            [MOBILE_QUERY]: {
+              '& .MuiOutlinedInput-notchedOutline legend': {
+                fontSize: '0.9em',
+              },
+            },
           },
         },
       },
@@ -290,6 +300,31 @@ export const createAppTheme = (mode: 'dark' | 'light') =>
         styleOverrides: {
           root: {
             color: mode === 'dark' ? brand.dkMuted : brand.muted,
+            // The floating label is the only thing naming a field once it has a
+            // value, and at MUI's default scale(0.75) it shrank to ~12px — too
+            // faint to carry that job on a phone. Larger, heavier and higher
+            // contrast below `sm`; the desktop default is left alone.
+            // Outlined only — filled and standard variants float their labels
+            // to different coordinates, so the transform below would misplace them.
+            '&.MuiInputLabel-outlined.MuiInputLabel-shrink': {
+              [MOBILE_QUERY]: {
+                // Pairs with the legend font-size below — the notch in the
+                // outline is measured from the legend, not the label, so the
+                // two must move together or the label overruns the gap.
+                transform: 'translate(14px, -10px) scale(0.9)',
+                fontWeight: 600,
+                letterSpacing: '0.01em',
+                color: mode === 'dark' ? '#FFFFFF' : '#000000',
+                // Focus and error still need to read on the label, so they win
+                // back the colour this rule would otherwise flatten.
+                '&.Mui-focused': {
+                  color: mode === 'dark' ? brand.dkBlue : brand.blue,
+                },
+                '&.Mui-error': {
+                  color: mode === 'dark' ? '#F08A8A' : '#C94444',
+                },
+              },
+            },
           },
         },
       },

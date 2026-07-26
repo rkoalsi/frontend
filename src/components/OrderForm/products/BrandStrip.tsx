@@ -2,6 +2,7 @@ import React from "react";
 import { Box, Typography, useTheme } from "@mui/material";
 import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { COLLECTION_COPY, getBrandAccent, isCollectionKey } from "../../../util/brandAccent";
 
 const SPECIAL_OFFERS_ICON = "https://assets.pupscribe.in/assets/special_offers.png";
@@ -10,6 +11,7 @@ export interface BrandStripEntry {
   brand: string;
   url?: string | null;
   image?: string | null;
+  secondary_image_url?: string | null;
   description?: string | null;
   color?: string | null;
 }
@@ -21,6 +23,8 @@ interface BrandStripProps {
   count: number;
   /** Display name — "Clearance" surfaces as "Special Offers". */
   displayName: string;
+  /** Opens the full brand dialog. */
+  onOpenDetails?: () => void;
 }
 
 /**
@@ -29,7 +33,12 @@ interface BrandStripProps {
  * description from `db.brands`, and the live product count. The rail is for
  * choosing; this is for telling.
  */
-const BrandStrip: React.FC<BrandStripProps> = ({ entry, count, displayName }) => {
+const BrandStrip: React.FC<BrandStripProps> = ({
+  entry,
+  count,
+  displayName,
+  onOpenDetails,
+}) => {
   const theme = useTheme();
   const mode = theme.palette.mode === "dark" ? "dark" : "light";
 
@@ -97,10 +106,22 @@ const BrandStrip: React.FC<BrandStripProps> = ({ entry, count, displayName }) =>
       </Box>
     );
 
+  const interactive = !!onOpenDetails;
+
   return (
     <Box
+      // A button when it opens the dialog, so keyboard and screen readers get
+      // the affordance for free.
+      component={interactive ? "button" : "div"}
+      type={interactive ? "button" : undefined}
+      onClick={onOpenDetails}
+      aria-label={interactive ? `About ${displayName}` : undefined}
       sx={{
         mt: 1.5,
+        width: "100%",
+        textAlign: "left",
+        font: "inherit",
+        color: "inherit",
         display: "flex",
         alignItems: "stretch",
         borderRadius: 2,
@@ -108,6 +129,17 @@ const BrandStrip: React.FC<BrandStripProps> = ({ entry, count, displayName }) =>
         border: "1px solid",
         borderColor: "divider",
         bgcolor: "background.paper",
+        p: 0,
+        cursor: interactive ? "pointer" : "default",
+        transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+        ...(interactive && {
+          "&:hover": { borderColor: accent.main, boxShadow: 1 },
+          "&:focus-visible": {
+            outline: "2px solid",
+            outlineColor: accent.main,
+            outlineOffset: 2,
+          },
+        }),
       }}
     >
       <Box sx={{ flex: "0 0 5px", bgcolor: accent.main }} />
@@ -126,7 +158,11 @@ const BrandStrip: React.FC<BrandStripProps> = ({ entry, count, displayName }) =>
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
             <Typography
-              sx={{ fontWeight: 700, fontSize: { xs: "0.95rem", sm: "1.05rem" }, lineHeight: 1.2 }}
+              sx={{
+                fontWeight: 700,
+                fontSize: { xs: "0.95rem", sm: "1.05rem" },
+                lineHeight: 1.2,
+              }}
             >
               {displayName}
             </Typography>
@@ -167,6 +203,23 @@ const BrandStrip: React.FC<BrandStripProps> = ({ entry, count, displayName }) =>
             </Typography>
           ) : null}
         </Box>
+        {interactive && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              flexShrink: 0,
+              color: accent.main,
+              fontSize: "0.72rem",
+              fontWeight: 700,
+              whiteSpace: "nowrap",
+            }}
+          >
+            <Box component="span">Details</Box>
+            <InfoOutlinedIcon sx={{ fontSize: 20 }} />
+          </Box>
+        )}
       </Box>
     </Box>
   );

@@ -138,6 +138,6 @@ export const COLLECTION_COPY: Record<string, { label: string; description: strin
   Clearance: {
     label: 'Offer',
     description:
-      'Slow-moving and ageing stock, released at a sharper margin than the regular price list.',
+      'Limited-Time Clearance Offers on Selected Products',
   },
 };
