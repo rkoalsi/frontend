@@ -74,12 +74,37 @@ import { getEffectiveMarginPct } from "../../util/margin";
 import { getTaxPercentage } from "../../util/tax";
 import { getPreOrderMax, isPreOrderExhausted } from "../../util/preOrder";
 import AuthContext from "../Auth";
+import BrandStrip from "./products/BrandStrip";
+import { COLLECTION_COPY, getBrandAccent, isCollectionKey } from "../../util/brandAccent";
 
 // The "Clearance" brand is an internal routing/counts key (see backend
 // /products counts). It is surfaced to users as "Special Offers".
 const SPECIAL_OFFERS_ICON = "https://assets.pupscribe.in/assets/special_offers.png";
 const brandDisplayName = (brand?: string) =>
   brand === "Clearance" ? "Special Offers" : brand;
+
+// A rail entry: either one of the three collections or a real brand from
+// `db.brands`. `description` and `color` feed the BrandStrip and the accent.
+interface BrandEntry {
+  brand: string;
+  url: string | null;
+  image?: string | null;
+  description?: string | null;
+  color?: string | null;
+}
+
+// The three collections lead the rail; they are filtered out by
+// filteredBrandList when they have no products.
+const COLLECTION_ENTRIES: BrandEntry[] = [
+  {
+    brand: "New Arrivals",
+    url: "https://assets.pupscribe.in/brands/new-arrivals.svg",
+    description: null,
+    color: null,
+  },
+  { brand: "Pre Orders", url: null, description: null, color: null },
+  { brand: "Clearance", url: null, description: null, color: null },
+];
 
 // ── Stale-while-revalidate cache for the default catalogue init payload ──
 // Brands/counts/categories/first-page-of-New-Arrivals change rarely, so we
@@ -648,9 +673,7 @@ const Products: React.FC<ProductsProps> = ({
   const [productCounts, setProductCounts] = useState<{
     [brand: string]: { [category: string]: number };
   }>({});
-  const [brandList, setBrandList] = useState<{ brand: string; url: string | null }[]>(
-    []
-  );
+  const [brandList, setBrandList] = useState<BrandEntry[]>([]);
   const [groupByCategory, setGroupByCategory] = useState<boolean>(false);
   const [cataloguePage, setCataloguePage]: any = useState();
   const [cataloguePages, setCataloguePages] = useState([]);
@@ -929,24 +952,14 @@ const Products: React.FC<ProductsProps> = ({
       const response = await axios.get(
         `${process.env.api_url}/products/brands`
       );
-      const allBrands: { brand: string; url: string | null }[] =
-        response.data.brands || [];
+      const allBrands: BrandEntry[] = (response.data.brands || []).map((b: any) => ({
+        brand: b.brand,
+        url: b.image ?? b.url ?? null,
+        description: b.description ?? null,
+        color: b.color ?? null,
+      }));
 
-      // Add "New Arrivals", "Pre Orders" and "Clearance" as the first brands.
-      // Pre Orders / Clearance are filtered out by filteredBrandList when empty.
-      const newArrivalsBrand = {
-        brand: "New Arrivals",
-        url: "https://assets.pupscribe.in/brands/new-arrivals.svg"
-      };
-      const preOrdersBrand = {
-        brand: "Pre Orders",
-        url: null
-      };
-      const clearanceBrand = {
-        brand: "Clearance",
-        url: null
-      };
-      const brandsWithNewArrivals = [newArrivalsBrand, preOrdersBrand, clearanceBrand, ...allBrands];
+      const brandsWithNewArrivals = [...COLLECTION_ENTRIES, ...allBrands];
 
       setBrandList(brandsWithNewArrivals);
       if (!activeBrand && brandsWithNewArrivals[0]) {
@@ -1092,16 +1105,13 @@ const Products: React.FC<ProductsProps> = ({
   // init endpoint's category=None / grouped items map exactly to the
   // "New Arrivals-All Products" key, so we can seed products with no mismatch.
   const applyNewArrivalsInit = useCallback((data: any) => {
-    const allBrands: { brand: string; url: string | null }[] = (data.brands || []).map(
-      (b: any) => ({ brand: b.brand, url: b.image ?? b.url ?? null })
-    );
-    const newArrivalsBrand = {
-      brand: "New Arrivals",
-      url: "https://assets.pupscribe.in/brands/new-arrivals.svg",
-    };
-    const preOrdersBrand = { brand: "Pre Orders", url: null };
-    const clearanceBrand = { brand: "Clearance", url: null };
-    const brandsWithNewArrivals = [newArrivalsBrand, preOrdersBrand, clearanceBrand, ...allBrands];
+    const allBrands: BrandEntry[] = (data.brands || []).map((b: any) => ({
+      brand: b.brand,
+      url: b.image ?? b.url ?? null,
+      description: b.description ?? null,
+      color: b.color ?? null,
+    }));
+    const brandsWithNewArrivals = [...COLLECTION_ENTRIES, ...allBrands];
 
     setBrandList(brandsWithNewArrivals);
     if (data.counts) setProductCounts(data.counts);
@@ -1798,6 +1808,33 @@ const Products: React.FC<ProductsProps> = ({
     });
   }, [brandList, productCounts]);
 
+  // Product count for a rail entry, summed across its categories.
+  const brandCountOf = useCallback(
+    (brand: string) =>
+      productCounts[brand]
+        ? Object.values(productCounts[brand]).reduce((a, b) => a + b, 0)
+        : 0,
+    [productCounts]
+  );
+
+  // The entry the BrandStrip describes. Falls back to the first rail entry so
+  // the strip is populated on the very first paint, before a tab is touched.
+  const selectedBrandEntry = useMemo(
+    () =>
+      filteredBrandList.find((b) => b.brand === activeBrand) ||
+      filteredBrandList[0],
+    [filteredBrandList, activeBrand]
+  );
+
+  // Index of the first real brand — the rail draws a divider here so the three
+  // collections read as a separate group rather than three odd brands.
+  const firstBrandIndex = useMemo(
+    () => filteredBrandList.findIndex((b) => !isCollectionKey(b.brand)),
+    [filteredBrandList]
+  );
+
+  const themeMode = theme.palette.mode === "dark" ? "dark" : "light";
+
   const allCategoryCounts = useMemo(() => {
     const counts: { [category: string]: number } = {};
     Object.values(productCounts).forEach((brandCounts) => {
@@ -2054,11 +2091,16 @@ const Products: React.FC<ProductsProps> = ({
                         overflow: 'hidden',
                         p: '2px',
                       } as const;
+                      const selectedAccent = getBrandAccent(
+                        selectedBrand?.brand,
+                        selectedBrand?.color,
+                        themeMode
+                      );
                       return (
                         <Box display="flex" alignItems="center" gap={1}>
                           {selectedBrand?.brand === "Pre Orders" ? (
-                            <Box sx={iconBoxSx}>
-                              <ShoppingCartCheckoutIcon sx={{ fontSize: 34, color: '#d97706' }} />
+                            <Box sx={{ ...iconBoxSx, backgroundColor: selectedAccent.soft, border: "none" }}>
+                              <ShoppingCartCheckoutIcon sx={{ fontSize: 34, color: selectedAccent.main }} />
                             </Box>
                           ) : selectedBrand?.brand === "Clearance" ? (
                             <Box sx={iconBoxSx}>
@@ -2086,20 +2128,36 @@ const Products: React.FC<ProductsProps> = ({
                       );
                     }}
                   >
-                    {filteredBrandList.map((b: any) => {
-                      const brandCount = productCounts[b.brand]
-                        ? Object.values(productCounts[b.brand]).reduce(
-                          (a, b) => a + b,
-                          0
-                        )
-                        : 0;
+                    {filteredBrandList.map((b: any, index: number) => {
+                      const brandCount = brandCountOf(b.brand);
+                      const accent = getBrandAccent(b.brand, b.color, themeMode);
+                      // Same collections/brands split as the desktop rail.
+                      const startsBrands =
+                        firstBrandIndex > 0 && index === firstBrandIndex;
                       return (
-                        <MenuItem key={b.brand} value={b.brand}>
+                        <MenuItem
+                          key={b.brand}
+                          value={b.brand}
+                          sx={{
+                            py: 1,
+                            ...(startsBrands && {
+                              borderTop: "1px solid",
+                              borderTopColor: "divider",
+                              mt: 0.5,
+                              pt: 1.5,
+                            }),
+                            "&&.Mui-selected": {
+                              backgroundColor: accent.soft,
+                              boxShadow: `inset 3px 0 0 ${accent.main}`,
+                            },
+                          }}
+                        >
                           <Box
                             display="flex"
                             alignItems="center"
                             gap={1.5}
                             width="100%"
+                            minWidth={0}
                           >
                             {b.brand === "Pre Orders" ? (
                               <Box
@@ -2107,15 +2165,14 @@ const Products: React.FC<ProductsProps> = ({
                                   width: 56,
                                   height: 56,
                                   borderRadius: '6px',
-                                  backgroundColor: '#ffffff',
-                                  border: '1px solid rgba(0,0,0,0.1)',
+                                  backgroundColor: accent.soft,
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   flexShrink: 0,
                                 }}
                               >
-                                <ShoppingCartCheckoutIcon sx={{ fontSize: 30, color: '#d97706' }} />
+                                <ShoppingCartCheckoutIcon sx={{ fontSize: 30, color: accent.main }} />
                               </Box>
                             ) : b.brand === "Clearance" ? (
                               <Box
@@ -2138,7 +2195,7 @@ const Products: React.FC<ProductsProps> = ({
                                   sx={{ width: '100%', height: '100%', objectFit: 'contain', p: '6px' }}
                                 />
                               </Box>
-                            ) : (b.image || b.url) && (
+                            ) : (b.image || b.url) ? (
                               <Box
                                 sx={{
                                   width: 56,
@@ -2162,14 +2219,61 @@ const Products: React.FC<ProductsProps> = ({
                                   style={{ objectFit: "contain" }}
                                 />
                               </Box>
+                            ) : (
+                              <Box
+                                sx={{
+                                  width: 56,
+                                  height: 56,
+                                  borderRadius: '6px',
+                                  backgroundColor: accent.soft,
+                                  color: accent.main,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                  fontWeight: 800,
+                                  fontSize: '1.05rem',
+                                }}
+                              >
+                                {String(brandDisplayName(b.brand) || "")
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </Box>
                             )}
-                            <Box display="flex" flexDirection="column" flex={1}>
+                            <Box display="flex" flexDirection="column" flex={1} minWidth={0}>
                               <Typography variant="h6" fontWeight="medium">
                                 {brandDisplayName(b.brand)}
                               </Typography>
+                              {/* Description makes the dropdown a real choice
+                                  rather than a logo-recognition test. */}
+                              {(isCollectionKey(b.brand)
+                                ? COLLECTION_COPY[b.brand]?.description
+                                : b.description) && (
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: "vertical",
+                                    overflow: "hidden",
+                                    whiteSpace: "normal",
+                                    lineHeight: 1.35,
+                                  }}
+                                >
+                                  {isCollectionKey(b.brand)
+                                    ? COLLECTION_COPY[b.brand]?.description
+                                    : b.description}
+                                </Typography>
+                              )}
                               <Typography
                                 variant="caption"
-                                color="text.secondary"
+                                sx={{
+                                  mt: 0.25,
+                                  color: accent.main,
+                                  fontWeight: 700,
+                                  fontVariantNumeric: "tabular-nums",
+                                }}
                               >
                                 {brandCount} products
                               </Typography>
@@ -2190,6 +2294,9 @@ const Products: React.FC<ProductsProps> = ({
                     variant="scrollable"
                     scrollButtons="auto"
                     textColor="inherit"
+                    // The selection indicator is drawn per-tab in the brand's
+                    // own accent colour, so the shared one is suppressed.
+                    TabIndicatorProps={{ sx: { display: "none" } }}
                     sx={{
                       mt: 2,
                       ".MuiTab-root": {
@@ -2204,33 +2311,44 @@ const Products: React.FC<ProductsProps> = ({
                         transition: "all 0.2s ease-in-out",
                         color: "text.primary",
                         opacity: 1,
+                        borderBottom: "3px solid transparent",
                         "&:hover": {
                           backgroundColor: "action.hover",
                           transform: "translateY(-2px)",
                         },
                       },
-                      ".Mui-selected": {
-                        color: "primary.main",
-                        "& .brand-image": {
-                          border: "2px solid",
-                          borderColor: "primary.main",
-                          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                        },
-                      },
                     }}
                   >
-                    {filteredBrandList.map((b: any) => {
+                    {filteredBrandList.map((b: any, index: number) => {
                       // Calculate brand count for all brands including "New Arrivals"
-                      const brandCount = productCounts[b.brand]
-                        ? Object.values(productCounts[b.brand]).reduce(
-                          (a, b) => a + b,
-                          0
-                        )
-                        : 0;
+                      const brandCount = brandCountOf(b.brand);
+                      const accent = getBrandAccent(b.brand, b.color, themeMode);
+                      // First real brand after the collections carries the
+                      // group divider on its left edge.
+                      const startsBrands =
+                        firstBrandIndex > 0 && index === firstBrandIndex;
                       return (
                         <Tab
                           key={b.brand}
                           value={b.brand}
+                          sx={{
+                            ...(startsBrands && {
+                              borderLeft: "1px solid",
+                              borderLeftColor: "divider",
+                              ml: 1.5,
+                              pl: "26px !important",
+                            }),
+                            // Doubled ampersand so the per-brand accent outranks
+                            // the shared ".MuiTab-root" rules on the Tabs sx.
+                            "&&.Mui-selected": {
+                              color: accent.main,
+                              borderBottomColor: accent.main,
+                              backgroundColor: accent.soft,
+                            },
+                            "&&.Mui-selected .brand-image": {
+                              boxShadow: `0 0 0 2px ${accent.main}`,
+                            },
+                          }}
                           label={
                             <Box
                               display="flex"
@@ -2245,8 +2363,7 @@ const Products: React.FC<ProductsProps> = ({
                                     width: 80,
                                     height: 80,
                                     borderRadius: '8px',
-                                    backgroundColor: '#ffffff',
-                                    border: '2px solid transparent',
+                                    backgroundColor: accent.soft,
                                     transition: 'all 0.2s ease-in-out',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -2254,7 +2371,7 @@ const Products: React.FC<ProductsProps> = ({
                                     flexShrink: 0,
                                   }}
                                 >
-                                  <ShoppingCartCheckoutIcon sx={{ fontSize: 40, color: '#d97706' }} />
+                                  <ShoppingCartCheckoutIcon sx={{ fontSize: 40, color: accent.main }} />
                                 </Box>
                               ) : b.brand === "Clearance" ? (
                                 <Box
@@ -2264,7 +2381,6 @@ const Products: React.FC<ProductsProps> = ({
                                     height: 80,
                                     borderRadius: '8px',
                                     backgroundColor: '#ffffff',
-                                    border: '2px solid transparent',
                                     transition: 'all 0.2s ease-in-out',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -2279,7 +2395,7 @@ const Products: React.FC<ProductsProps> = ({
                                     sx={{ width: '100%', height: '100%', objectFit: 'contain', p: '6px' }}
                                   />
                                 </Box>
-                              ) : (b.image || b.url) && (
+                              ) : (b.image || b.url) ? (
                                 <Box
                                   className="brand-image"
                                   sx={{
@@ -2287,7 +2403,6 @@ const Products: React.FC<ProductsProps> = ({
                                     height: 80,
                                     borderRadius: '8px',
                                     backgroundColor: '#ffffff',
-                                    border: '2px solid transparent',
                                     transition: 'all 0.2s ease-in-out',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -2303,6 +2418,31 @@ const Products: React.FC<ProductsProps> = ({
                                     height={72}
                                     style={{ objectFit: "contain" }}
                                   />
+                                </Box>
+                              ) : (
+                                // Brands with no logo yet still need a tile the
+                                // same size, or the rail height jumps.
+                                <Box
+                                  className="brand-image"
+                                  sx={{
+                                    width: 80,
+                                    height: 80,
+                                    borderRadius: '8px',
+                                    backgroundColor: accent.soft,
+                                    color: accent.main,
+                                    transition: 'all 0.2s ease-in-out',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
+                                    fontWeight: 800,
+                                    fontSize: '1.4rem',
+                                    letterSpacing: '-0.02em',
+                                  }}
+                                >
+                                  {String(brandDisplayName(b.brand) || "")
+                                    .slice(0, 2)
+                                    .toUpperCase()}
                                 </Box>
                               )}
                               <Box textAlign="center">
@@ -2323,6 +2463,7 @@ const Products: React.FC<ProductsProps> = ({
                                     fontSize: { xs: "0.65rem", sm: "0.75rem" },
                                     display: "block",
                                     mt: 0.5,
+                                    fontVariantNumeric: "tabular-nums",
                                   }}
                                 >
                                   ({brandCount})
@@ -2335,6 +2476,17 @@ const Products: React.FC<ProductsProps> = ({
                     })}
                   </Tabs>
                 )
+              )}
+
+              {/* Says what the selected entry actually is — the rail (or the
+                  dropdown on mobile) is for choosing, this is for telling.
+                  Hidden while searching, where brand context is meaningless. */}
+              {!searchTerm.trim() && (
+                <BrandStrip
+                  entry={selectedBrandEntry}
+                  count={brandCountOf(selectedBrandEntry?.brand || "")}
+                  displayName={brandDisplayName(selectedBrandEntry?.brand) || ""}
+                />
               )}
             </>
           )}
