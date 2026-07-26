@@ -25,6 +25,8 @@ const Brands = () => {
   // States for the currently selected brand and its editable fields
   const [selectedBrand, setSelectedBrand]: any = useState(null);
   const [description, setDescription] = useState('');
+  // Accent colour for the brand's tab in the order-form product rail.
+  const [color, setColor] = useState('');
   const [updating, setUpdating] = useState(false);
   const [popupImageSrc, setPopupImageSrc] = useState('');
 
@@ -133,12 +135,14 @@ const Brands = () => {
   const handleOpenEditModal = (brand: any) => {
     setSelectedBrand(brand);
     setDescription(brand.description || '');
+    setColor(brand.color || '');
     setOpenEditModal(true);
   };
 
   const handleCloseEditModal = () => {
     setSelectedBrand(null);
     setDescription('');
+    setColor('');
     setOpenEditModal(false);
   };
 
@@ -186,17 +190,26 @@ const Brands = () => {
     if (!selectedBrand) return;
     try {
       setUpdating(true);
-      await axiosInstance.put(`/admin/brands/${selectedBrand._id}`, { description });
+      // An empty string clears the colour and returns the brand to the
+      // name-derived accent on the order form.
+      await axiosInstance.put(`/admin/brands/${selectedBrand._id}`, {
+        description,
+        color: color || '',
+      });
       setBrands((prev: any) =>
         prev.map((b: any) =>
-          b._id === selectedBrand._id ? { ...b, description } : b
+          b._id === selectedBrand._id
+            ? { ...b, description, color: color || null }
+            : b
         )
       );
       toast.success('Brand updated successfully.');
       handleCloseEditModal();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Failed to update brand.');
+      toast.error(
+        error?.response?.data?.detail || 'Failed to update brand.'
+      );
     } finally {
       setUpdating(false);
     }
@@ -290,6 +303,8 @@ const Brands = () => {
         handleSecondaryImageUpload={handleSecondaryImageUpload}
         description={description}
         onDescriptionChange={setDescription}
+        color={color}
+        onColorChange={setColor}
       />
 
       <SingleImagePopupDialog
