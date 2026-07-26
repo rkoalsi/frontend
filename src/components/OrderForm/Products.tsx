@@ -57,6 +57,7 @@ import {
   RemoveShoppingCart,
   Search as SearchIcon,
   ShoppingCartCheckout as ShoppingCartCheckoutIcon,
+  InfoOutlined as InfoOutlinedIcon,
 } from "@mui/icons-material";
 import debounce from "lodash.debounce";
 import { toast } from "react-toastify";
@@ -75,6 +76,7 @@ import { getTaxPercentage } from "../../util/tax";
 import { getPreOrderMax, isPreOrderExhausted } from "../../util/preOrder";
 import AuthContext from "../Auth";
 import BrandStrip from "./products/BrandStrip";
+import BrandInfoDialog from "./products/BrandInfoDialog";
 import { COLLECTION_COPY, getBrandAccent, isCollectionKey } from "../../util/brandAccent";
 
 // The "Clearance" brand is an internal routing/counts key (see backend
@@ -83,18 +85,29 @@ const SPECIAL_OFFERS_ICON = "https://assets.pupscribe.in/assets/special_offers.p
 const brandDisplayName = (brand?: string) =>
   brand === "Clearance" ? "Special Offers" : brand;
 
+// Every brand tab is this wide so the two-line clamped descriptions align.
+const TAB_WIDTH = 168;
+
 // A rail entry: either one of the three collections or a real brand from
 // `db.brands`. `description` and `color` feed the BrandStrip and the accent.
 interface BrandEntry {
   brand: string;
   url: string | null;
   image?: string | null;
+  secondary_image_url?: string | null;
   description?: string | null;
   color?: string | null;
 }
 
 // The three collections lead the rail; they are filtered out by
 // filteredBrandList when they have no products.
+// Brands carry their own copy from `db.brands`; the three collections have
+// nowhere to store one, so their copy is hard-coded in COLLECTION_COPY.
+const descriptionOf = (entry?: BrandEntry | null): string =>
+  (entry?.brand && isCollectionKey(entry.brand)
+    ? COLLECTION_COPY[entry.brand]?.description
+    : entry?.description) || "";
+
 const COLLECTION_ENTRIES: BrandEntry[] = [
   {
     brand: "New Arrivals",
@@ -955,6 +968,7 @@ const Products: React.FC<ProductsProps> = ({
       const allBrands: BrandEntry[] = (response.data.brands || []).map((b: any) => ({
         brand: b.brand,
         url: b.image ?? b.url ?? null,
+        secondary_image_url: b.secondary_image_url ?? null,
         description: b.description ?? null,
         color: b.color ?? null,
       }));
@@ -1108,6 +1122,7 @@ const Products: React.FC<ProductsProps> = ({
     const allBrands: BrandEntry[] = (data.brands || []).map((b: any) => ({
       brand: b.brand,
       url: b.image ?? b.url ?? null,
+      secondary_image_url: b.secondary_image_url ?? null,
       description: b.description ?? null,
       color: b.color ?? null,
     }));
@@ -1835,6 +1850,20 @@ const Products: React.FC<ProductsProps> = ({
 
   const themeMode = theme.palette.mode === "dark" ? "dark" : "light";
 
+  const selectedBrandAccent = useMemo(
+    () =>
+      getBrandAccent(
+        selectedBrandEntry?.brand,
+        selectedBrandEntry?.color,
+        themeMode
+      ),
+    [selectedBrandEntry, themeMode]
+  );
+
+  const [brandInfoOpen, setBrandInfoOpen] = useState(false);
+  const openBrandInfo = useCallback(() => setBrandInfoOpen(true), []);
+  const closeBrandInfo = useCallback(() => setBrandInfoOpen(false), []);
+
   const allCategoryCounts = useMemo(() => {
     const counts: { [category: string]: number } = {};
     Object.values(productCounts).forEach((brandCounts) => {
@@ -2065,7 +2094,11 @@ const Products: React.FC<ProductsProps> = ({
           {!groupByCategory && (
             <>
               {isMobile || isTablet ? (
-                <FormControl fullWidth sx={{ mt: 2 }}>
+                // The info button rides alongside the dropdown so the brand's
+                // identity, count and "about" affordance occupy a single row —
+                // on phones a separate strip below pushed the grid off-screen.
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 2 }}>
+                <FormControl fullWidth sx={{ flex: 1, minWidth: 0 }}>
                   <InputLabel id="brand-select-label">Brand</InputLabel>
                   <Select
                     labelId="brand-select-label"
@@ -2079,9 +2112,9 @@ const Products: React.FC<ProductsProps> = ({
                         (b) => b.brand === selected
                       );
                       const iconBoxSx = {
-                        width: 64,
-                        height: 64,
-                        borderRadius: '4px',
+                        width: 44,
+                        height: 44,
+                        borderRadius: '6px',
                         backgroundColor: '#ffffff',
                         border: '1px solid rgba(0,0,0,0.1)',
                         display: 'flex',
@@ -2096,11 +2129,12 @@ const Products: React.FC<ProductsProps> = ({
                         selectedBrand?.color,
                         themeMode
                       );
+                      const selectedCount = brandCountOf(selectedBrand?.brand || "");
                       return (
-                        <Box display="flex" alignItems="center" gap={1}>
+                        <Box display="flex" alignItems="center" gap={1.25} minWidth={0} width="100%">
                           {selectedBrand?.brand === "Pre Orders" ? (
                             <Box sx={{ ...iconBoxSx, backgroundColor: selectedAccent.soft, border: "none" }}>
-                              <ShoppingCartCheckoutIcon sx={{ fontSize: 34, color: selectedAccent.main }} />
+                              <ShoppingCartCheckoutIcon sx={{ fontSize: 24, color: selectedAccent.main }} />
                             </Box>
                           ) : selectedBrand?.brand === "Clearance" ? (
                             <Box sx={iconBoxSx}>
@@ -2121,9 +2155,30 @@ const Products: React.FC<ProductsProps> = ({
                               />
                             </Box>
                           )}
-                          <Typography variant="h6">
-                            {brandDisplayName(selectedBrand?.brand)}
-                          </Typography>
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Typography
+                              variant="h6"
+                              sx={{
+                                fontSize: "1rem",
+                                lineHeight: 1.25,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {brandDisplayName(selectedBrand?.brand)}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: selectedAccent.main,
+                                fontWeight: 700,
+                                fontVariantNumeric: "tabular-nums",
+                              }}
+                            >
+                              {selectedCount} products
+                            </Typography>
+                          </Box>
                         </Box>
                       );
                     }}
@@ -2244,28 +2299,9 @@ const Products: React.FC<ProductsProps> = ({
                               <Typography variant="h6" fontWeight="medium">
                                 {brandDisplayName(b.brand)}
                               </Typography>
-                              {/* Description makes the dropdown a real choice
-                                  rather than a logo-recognition test. */}
-                              {(isCollectionKey(b.brand)
-                                ? COLLECTION_COPY[b.brand]?.description
-                                : b.description) && (
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
-                                  sx={{
-                                    display: "-webkit-box",
-                                    WebkitLineClamp: 2,
-                                    WebkitBoxOrient: "vertical",
-                                    overflow: "hidden",
-                                    whiteSpace: "normal",
-                                    lineHeight: 1.35,
-                                  }}
-                                >
-                                  {isCollectionKey(b.brand)
-                                    ? COLLECTION_COPY[b.brand]?.description
-                                    : b.description}
-                                </Typography>
-                              )}
+                              {/* No description here — the dropdown stays a
+                                  compact picker, and the BrandStrip directly
+                                  below it carries the copy. */}
                               <Typography
                                 variant="caption"
                                 sx={{
@@ -2284,6 +2320,24 @@ const Products: React.FC<ProductsProps> = ({
                     })}
                   </Select>
                 </FormControl>
+                <Tooltip title="About this brand" arrow>
+                  <IconButton
+                    onClick={openBrandInfo}
+                    aria-label={`About ${brandDisplayName(selectedBrandEntry?.brand) || "brand"}`}
+                    size="small"
+                    sx={{
+                      flexShrink: 0,
+                      width: 40,
+                      height: 40,
+                      color: selectedBrandAccent.main,
+                      bgcolor: selectedBrandAccent.soft,
+                      "&:hover": { bgcolor: selectedBrandAccent.soft },
+                    }}
+                  >
+                    <InfoOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                </Box>
               ) : (
                 !searchTerm.trim() && (
                   <Tabs
@@ -2302,7 +2356,7 @@ const Products: React.FC<ProductsProps> = ({
                       ".MuiTab-root": {
                         textTransform: "none",
                         fontWeight: "bold",
-                        padding: "12px 20px",
+                        padding: "12px 14px",
                         minHeight: "auto",
                         display: "flex",
                         flexDirection: "column",
@@ -2312,11 +2366,18 @@ const Products: React.FC<ProductsProps> = ({
                         color: "text.primary",
                         opacity: 1,
                         borderBottom: "3px solid transparent",
+                        // Fixed width keeps the clamped descriptions aligned and
+                        // stops a long brand name from stretching one tab.
+                        width: TAB_WIDTH,
+                        minWidth: TAB_WIDTH,
+                        maxWidth: TAB_WIDTH,
+                        alignSelf: "stretch",
                         "&:hover": {
                           backgroundColor: "action.hover",
                           transform: "translateY(-2px)",
                         },
                       },
+                      ".MuiTabs-flexContainer": { alignItems: "stretch" },
                     }}
                   >
                     {filteredBrandList.map((b: any, index: number) => {
@@ -2327,10 +2388,12 @@ const Products: React.FC<ProductsProps> = ({
                       // group divider on its left edge.
                       const startsBrands =
                         firstBrandIndex > 0 && index === firstBrandIndex;
+                      const tabDescription = descriptionOf(b);
                       return (
                         <Tab
                           key={b.brand}
                           value={b.brand}
+                          title={tabDescription || undefined}
                           sx={{
                             ...(startsBrands && {
                               borderLeft: "1px solid",
@@ -2468,6 +2531,28 @@ const Products: React.FC<ProductsProps> = ({
                                 >
                                   ({brandCount})
                                 </Typography>
+                                {/* Descriptions run 140-280 characters, so the
+                                    tab shows a two-line taste of it and the
+                                    tooltip carries the rest. */}
+                                {tabDescription && (
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{
+                                      mt: 0.5,
+                                      fontSize: "0.68rem",
+                                      lineHeight: 1.35,
+                                      fontWeight: 400,
+                                      display: "-webkit-box",
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: "vertical",
+                                      overflow: "hidden",
+                                      whiteSpace: "normal",
+                                    }}
+                                  >
+                                    {tabDescription}
+                                  </Typography>
+                                )}
                               </Box>
                             </Box>
                           }
@@ -2478,14 +2563,17 @@ const Products: React.FC<ProductsProps> = ({
                 )
               )}
 
-              {/* Says what the selected entry actually is — the rail (or the
-                  dropdown on mobile) is for choosing, this is for telling.
-                  Hidden while searching, where brand context is meaningless. */}
-              {!searchTerm.trim() && (
+              {/* Says what the selected entry actually is — the rail is for
+                  choosing, this is for telling. Desktop only: on phones and
+                  tablets the dropdown row above already carries the mark, name,
+                  count and info button. Hidden while searching, where brand
+                  context is meaningless. */}
+              {!isMobile && !isTablet && !searchTerm.trim() && (
                 <BrandStrip
                   entry={selectedBrandEntry}
                   count={brandCountOf(selectedBrandEntry?.brand || "")}
                   displayName={brandDisplayName(selectedBrandEntry?.brand) || ""}
+                  onOpenDetails={openBrandInfo}
                 />
               )}
             </>
@@ -2799,6 +2887,72 @@ const Products: React.FC<ProductsProps> = ({
             </Box>
           )}
         </Box>
+
+        {/* Brand section heading — names the brand whose products follow and
+            repeats its description in full. Desktop only: on phones the compact
+            strip above already names the brand, and this heading was the main
+            thing pushing the grid below the fold. Suppressed while searching or
+            grouping by category, where the grid spans brands. */}
+        {!isMobile &&
+          !isTablet &&
+          !groupByCategory &&
+          !searchTerm.trim() &&
+          selectedBrandEntry?.brand && (
+            <Box
+              component="button"
+              type="button"
+              onClick={openBrandInfo}
+              aria-label={`About ${brandDisplayName(selectedBrandEntry.brand)}`}
+              sx={{
+                mt: 1,
+                display: "block",
+                width: "100%",
+                textAlign: "left",
+                background: "none",
+                border: 0,
+                p: 0,
+                font: "inherit",
+                cursor: "pointer",
+                "&:hover .brand-heading-name": { textDecoration: "underline" },
+                "&:focus-visible": { outline: "2px solid", outlineOffset: 2 },
+              }}
+            >
+              <Typography
+                className="brand-heading-name"
+                variant="h6"
+                sx={{
+                  fontWeight: 700,
+                  lineHeight: 1.25,
+                  color: getBrandAccent(
+                    selectedBrandEntry.brand,
+                    selectedBrandEntry.color,
+                    themeMode
+                  ).main,
+                }}
+              >
+                {brandDisplayName(selectedBrandEntry.brand)}
+              </Typography>
+              {descriptionOf(selectedBrandEntry) && (
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 0.5, maxWidth: "68ch", lineHeight: 1.5 }}
+                >
+                  {descriptionOf(selectedBrandEntry)}
+                </Typography>
+              )}
+            </Box>
+          )}
+
+        <BrandInfoDialog
+          open={brandInfoOpen}
+          onClose={closeBrandInfo}
+          entry={selectedBrandEntry}
+          displayName={brandDisplayName(selectedBrandEntry?.brand) || ""}
+          count={brandCountOf(selectedBrandEntry?.brand || "")}
+          categoryCounts={productCounts[selectedBrandEntry?.brand || ""]}
+          onCategorySelect={handleCategoryTabChange}
+        />
 
         {/* Products Display */}
         {isMobile || isTablet ? (
