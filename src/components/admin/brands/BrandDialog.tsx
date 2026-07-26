@@ -27,7 +27,10 @@ const ProductDialog = ({
   handleSecondaryImageUpload,
   description,
   onDescriptionChange,
+  color,
+  onColorChange,
 }: any) => {
+  const validColor = /^#[0-9a-fA-F]{6}$/.test(color || '');
   return (
     <Dialog
       open={open}
@@ -72,7 +75,61 @@ const ProductDialog = ({
               value={description}
               onChange={(e) => onDescriptionChange(e.target.value)}
               disabled={updating}
+              helperText='Shown under the brand name on the order form.'
             />
+
+            {/* Accent colour — drives the brand's tab highlight and the strip
+                beside its name on the order form. */}
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 2,
+                flexWrap: 'wrap',
+              }}
+            >
+              <Box
+                component='input'
+                type='color'
+                value={validColor ? color : '#4633b8'}
+                onChange={(e: any) => onColorChange(e.target.value)}
+                disabled={updating}
+                aria-label='Brand accent colour'
+                sx={{
+                  width: 56,
+                  height: 56,
+                  p: 0,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1.5,
+                  bgcolor: 'transparent',
+                  cursor: updating ? 'default' : 'pointer',
+                  flexShrink: 0,
+                }}
+              />
+              <TextField
+                label='Accent Colour'
+                value={color || ''}
+                onChange={(e) => onColorChange(e.target.value)}
+                disabled={updating}
+                placeholder='#4633B8'
+                error={!!color && !validColor}
+                helperText={
+                  color && !validColor
+                    ? 'Use a 6-digit hex value, e.g. #4633B8.'
+                    : 'Leave blank to use an automatic colour derived from the brand name.'
+                }
+                sx={{ flex: 1, minWidth: 220 }}
+              />
+              <Button
+                onClick={() => onColorChange('')}
+                disabled={updating || !color}
+                size='small'
+                sx={{ mt: 1 }}
+              >
+                Clear
+              </Button>
+            </Box>
 
             {/* Images row */}
             <Box
