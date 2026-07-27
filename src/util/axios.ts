@@ -37,6 +37,7 @@ axiosInstance.interceptors.response.use(
       '/catalogues',
       '/catalogues/all_products',
       '/orders/new/',   // prefix-match covers all /orders/new/[id] variants
+      '/cards/',        // public digital business cards
     ];
     const currentPath =
       typeof window !== 'undefined' ? window.location.pathname : '';
