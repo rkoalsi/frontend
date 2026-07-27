@@ -77,6 +77,7 @@ import { getPreOrderMax, isPreOrderExhausted } from "../../util/preOrder";
 import AuthContext from "../Auth";
 import BrandStrip from "./products/BrandStrip";
 import BrandInfoDialog from "./products/BrandInfoDialog";
+import FeatureBanner, { Placement } from "./products/FeatureBanner";
 import { COLLECTION_COPY, getBrandAccent, isCollectionKey } from "../../util/brandAccent";
 
 // The "Clearance" brand is an internal routing/counts key (see backend
@@ -1834,6 +1835,56 @@ const Products: React.FC<ProductsProps> = ({
   }, [groupByProductName, itemsData, displayedProducts]);
 
 
+  // Merchandising placements for the open brand tab. Failures are swallowed —
+  // the catalogue must never depend on them.
+  const [brandBanner, setBrandBanner] = useState<Placement | null>(null);
+  const [inScrollBanners, setInScrollBanners] = useState<Placement[]>([]);
+
+  useEffect(() => {
+    if (!activeBrand) return;
+    let cancelled = false;
+    axios
+      .get(`${process.env.api_url}/promotions/active`, {
+        params: { brand: activeBrand },
+      })
+      .then((res) => {
+        if (cancelled) return;
+        setBrandBanner(res.data?.brand_banner || null);
+        setInScrollBanners(res.data?.in_scroll || []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setBrandBanner(null);
+        setInScrollBanners([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeBrand]);
+
+  // The grid renders from one ordered array, so an in-scroll banner is just a
+  // third entry type alongside 'group' and 'product'. Placements cycle so a
+  // long catalogue doesn't repeat the same artwork every N tiles.
+  const itemsWithPlacements = useMemo(() => {
+    if (!itemsData || !itemsData.length || !inScrollBanners.length) return itemsData;
+    if (searchTerm.trim()) return itemsData;
+
+    const cadence = Math.max(2, inScrollBanners[0]?.after_n_products || 8);
+    const out: any[] = [];
+    let next = 0;
+    itemsData.forEach((item: any, i: number) => {
+      out.push(item);
+      // Never trail the grid with a banner — it would sit under the last row
+      // with nothing after it and read as page furniture.
+      if ((i + 1) % cadence === 0 && i + 1 < itemsData.length) {
+        const promo = inScrollBanners[next % inScrollBanners.length];
+        next += 1;
+        out.push({ type: "placement", promo, placementKey: `p-${promo._id}-${i}` });
+      }
+    });
+    return out;
+  }, [itemsData, inScrollBanners, searchTerm]);
+
   const filteredBrandList = useMemo(() => {
     const preOrderCount = productCounts["Pre Orders"]
       ? Object.values(productCounts["Pre Orders"]).reduce((a, b) => a + b, 0)
@@ -2951,6 +3002,19 @@ const Products: React.FC<ProductsProps> = ({
           onCategorySelect={handleCategoryTabChange}
         />
 
+        {/* Brand banner — one placement directly above the grid for this brand.
+            Hidden while searching, where the grid spans brands and a
+            brand-targeted banner would be misleading. */}
+        {brandBanner && !searchTerm.trim() && (
+          <FeatureBanner
+            placement={brandBanner}
+            brand={activeBrand}
+            onSelectBrand={handleTabChange}
+            onSelectCategory={handleCategoryTabChange}
+            sx={{ mt: 1 }}
+          />
+        )}
+
         {/* Products Display */}
         {isMobile || isTablet ? (
           <Fade in key={productsKey} timeout={250}>
@@ -2980,7 +3044,19 @@ const Products: React.FC<ProductsProps> = ({
                 }}
               >
                 {/* Render items in exact order from backend */}
-                {itemsData.map((item: any, index: number) => {
+                {itemsWithPlacements.map((item: any, index: number) => {
+                  if (item.type === 'placement') {
+                    return (
+                      <FeatureBanner
+                        key={item.placementKey}
+                        placement={item.promo}
+                        brand={activeBrand}
+                        onSelectBrand={handleTabChange}
+                        onSelectCategory={handleCategoryTabChange}
+                        sx={{ gridColumn: '1 / -1' }}
+                      />
+                    );
+                  }
                   if (item.type === 'group') {
                     return (
                       <ProductGroupCard
@@ -3345,7 +3421,19 @@ const Products: React.FC<ProductsProps> = ({
                 }}
               >
                 {/* Render items in exact order from backend */}
-                {itemsData.map((item: any, index: number) => {
+                {itemsWithPlacements.map((item: any, index: number) => {
+                  if (item.type === 'placement') {
+                    return (
+                      <FeatureBanner
+                        key={item.placementKey}
+                        placement={item.promo}
+                        brand={activeBrand}
+                        onSelectBrand={handleTabChange}
+                        onSelectCategory={handleCategoryTabChange}
+                        sx={{ gridColumn: '1 / -1' }}
+                      />
+                    );
+                  }
                   if (item.type === 'group') {
                     return (
                       <ProductGroupCard
