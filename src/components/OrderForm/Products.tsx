@@ -108,6 +108,31 @@ const descriptionOf = (entry?: BrandEntry | null): string =>
     ? COLLECTION_COPY[entry.brand]?.description
     : entry?.description) || "";
 
+// What sits under a brand's name in the rail: the categories it stocks. For the
+// three collections, whose products all sit under a single "All Products"
+// category, a fixed line from COLLECTION_COPY stands in.
+//
+// Only the two biggest categories are named. Brands like Truelove and FOFOS
+// carry seven or more, and listing them all filled the tab with text that wrapped
+// and clipped mid-word — the overflow count says "there's more here" in four
+// characters instead.
+const RAIL_CATEGORY_LIMIT = 2;
+
+const categorySummary = (
+  brand: string,
+  counts: { [category: string]: number } | undefined
+): string => {
+  if (isCollectionKey(brand)) return COLLECTION_COPY[brand]?.short || "";
+  const names = Object.entries(counts || {})
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([category]) => category);
+  if (!names.length) return "";
+  const shown = names.slice(0, RAIL_CATEGORY_LIMIT).join(" · ");
+  const rest = names.length - RAIL_CATEGORY_LIMIT;
+  return rest > 0 ? `${shown} +${rest}` : shown;
+};
+
 const COLLECTION_ENTRIES: BrandEntry[] = [
   {
     brand: "New Arrivals",
@@ -2094,11 +2119,13 @@ const Products: React.FC<ProductsProps> = ({
           {!groupByCategory && (
             <>
               {isMobile || isTablet ? (
-                // The info button rides alongside the dropdown so the brand's
-                // identity, count and "about" affordance occupy a single row —
-                // on phones a separate strip below pushed the grid off-screen.
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 2 }}>
-                <FormControl fullWidth sx={{ flex: 1, minWidth: 0 }}>
+                // The brand field spans the full width; the "about" button sits
+                // on its top-right border as a badge, mirroring the label on the
+                // top-left. On phones a separate strip below pushed the product
+                // grid off-screen, and a sibling button ate width the long brand
+                // names needed.
+                <Box sx={{ position: "relative", mt: 3 }}>
+                <FormControl fullWidth>
                   <InputLabel id="brand-select-label">Brand</InputLabel>
                   <Select
                     labelId="brand-select-label"
@@ -2107,6 +2134,12 @@ const Products: React.FC<ProductsProps> = ({
                     label="Brand"
                     disabled={searchTerm !== ""}
                     onChange={(e) => handleTabChange(e.target.value)}
+                    sx={{
+                      "& .MuiSelect-select": {
+                        whiteSpace: "normal",
+                        py: 1,
+                      },
+                    }}
                     renderValue={(selected) => {
                       const selectedBrand: any = brandList.find(
                         (b) => b.brand === selected
@@ -2159,11 +2192,15 @@ const Products: React.FC<ProductsProps> = ({
                             <Typography
                               variant="h6"
                               sx={{
-                                fontSize: "1rem",
+                                fontSize: "0.95rem",
                                 lineHeight: 1.25,
+                                // Two lines before ellipsis — "Scents of
+                                // Freshness" and friends need the second one.
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
                                 overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
+                                overflowWrap: "anywhere",
                               }}
                             >
                               {brandDisplayName(selectedBrand?.brand)}
@@ -2195,6 +2232,7 @@ const Products: React.FC<ProductsProps> = ({
                           value={b.brand}
                           sx={{
                             py: 1,
+                            whiteSpace: "normal",
                             ...(startsBrands && {
                               borderTop: "1px solid",
                               borderTopColor: "divider",
@@ -2326,15 +2364,25 @@ const Products: React.FC<ProductsProps> = ({
                     aria-label={`About ${brandDisplayName(selectedBrandEntry?.brand) || "brand"}`}
                     size="small"
                     sx={{
-                      flexShrink: 0,
-                      width: 40,
-                      height: 40,
+                      position: "absolute",
+                      top: -16,
+                      right: 12,
+                      zIndex: 1,
+                      width: 32,
+                      height: 32,
                       color: selectedBrandAccent.main,
-                      bgcolor: selectedBrandAccent.soft,
-                      "&:hover": { bgcolor: selectedBrandAccent.soft },
+                      // Paper ground so the badge cuts the outlined border it
+                      // straddles, the same trick the floating label uses.
+                      bgcolor: "background.paper",
+                      border: "1px solid",
+                      borderColor: "divider",
+                      "&:hover": {
+                        bgcolor: selectedBrandAccent.soft,
+                        borderColor: selectedBrandAccent.main,
+                      },
                     }}
                   >
-                    <InfoOutlinedIcon fontSize="small" />
+                    <InfoOutlinedIcon sx={{ fontSize: 18 }} />
                   </IconButton>
                 </Tooltip>
                 </Box>
@@ -2389,6 +2437,10 @@ const Products: React.FC<ProductsProps> = ({
                       const startsBrands =
                         firstBrandIndex > 0 && index === firstBrandIndex;
                       const tabDescription = descriptionOf(b);
+                      const tabCategories = categorySummary(
+                        b.brand,
+                        productCounts[b.brand]
+                      );
                       return (
                         <Tab
                           key={b.brand}
@@ -2531,10 +2583,11 @@ const Products: React.FC<ProductsProps> = ({
                                 >
                                   ({brandCount})
                                 </Typography>
-                                {/* Descriptions run 140-280 characters, so the
-                                    tab shows a two-line taste of it and the
-                                    tooltip carries the rest. */}
-                                {tabDescription && (
+                                {/* The categories this brand stocks. The
+                                    description is too long to clamp usefully
+                                    here — it rides in the hover tooltip and
+                                    the brand dialog instead. */}
+                                {tabCategories && (
                                   <Typography
                                     variant="caption"
                                     color="text.secondary"
@@ -2550,7 +2603,7 @@ const Products: React.FC<ProductsProps> = ({
                                       whiteSpace: "normal",
                                     }}
                                   >
-                                    {tabDescription}
+                                    {tabCategories}
                                   </Typography>
                                 )}
                               </Box>
@@ -2887,62 +2940,6 @@ const Products: React.FC<ProductsProps> = ({
             </Box>
           )}
         </Box>
-
-        {/* Brand section heading — names the brand whose products follow and
-            repeats its description in full. Desktop only: on phones the compact
-            strip above already names the brand, and this heading was the main
-            thing pushing the grid below the fold. Suppressed while searching or
-            grouping by category, where the grid spans brands. */}
-        {!isMobile &&
-          !isTablet &&
-          !groupByCategory &&
-          !searchTerm.trim() &&
-          selectedBrandEntry?.brand && (
-            <Box
-              component="button"
-              type="button"
-              onClick={openBrandInfo}
-              aria-label={`About ${brandDisplayName(selectedBrandEntry.brand)}`}
-              sx={{
-                mt: 1,
-                display: "block",
-                width: "100%",
-                textAlign: "left",
-                background: "none",
-                border: 0,
-                p: 0,
-                font: "inherit",
-                cursor: "pointer",
-                "&:hover .brand-heading-name": { textDecoration: "underline" },
-                "&:focus-visible": { outline: "2px solid", outlineOffset: 2 },
-              }}
-            >
-              <Typography
-                className="brand-heading-name"
-                variant="h6"
-                sx={{
-                  fontWeight: 700,
-                  lineHeight: 1.25,
-                  color: getBrandAccent(
-                    selectedBrandEntry.brand,
-                    selectedBrandEntry.color,
-                    themeMode
-                  ).main,
-                }}
-              >
-                {brandDisplayName(selectedBrandEntry.brand)}
-              </Typography>
-              {descriptionOf(selectedBrandEntry) && (
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 0.5, maxWidth: "68ch", lineHeight: 1.5 }}
-                >
-                  {descriptionOf(selectedBrandEntry)}
-                </Typography>
-              )}
-            </Box>
-          )}
 
         <BrandInfoDialog
           open={brandInfoOpen}
