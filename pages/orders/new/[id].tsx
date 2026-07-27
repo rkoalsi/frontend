@@ -60,6 +60,7 @@ import {
   Close,
   PictureAsPdf,
   Pets,
+  InsertDriveFile,
 } from '@mui/icons-material';
 import useDebounce from '../../../src/util/useDebounce';
 import { getEffectiveMarginPct } from '../../../src/util/margin';
@@ -86,8 +87,8 @@ const ORDERS_TOUR_STEPS: TourStep[] = [
   },
   {
     target: 'order-download',
-    title: 'Download Order',
-    content: "This section lets you open your order as a Google Sheet — handy for offline browsing or sharing a formatted copy. You can also download it as an Excel file.",
+    title: 'Order Sheet',
+    content: "Tap 'Order Sheet' to open your order as a Google Sheet — handy for offline browsing or sharing a formatted copy. You can also download it as an Excel file from there.",
   },
   {
     target: 'order-stepper',
@@ -393,6 +394,15 @@ const NewOrder: React.FC = () => {
   const [specialMargins, setSpecialMargins] = useState<{ [key: string]: string }>({});
   const [specialMarginsList, setSpecialMarginsList] = useState<any[]>([]);
   const [marginDialogOpen, setMarginDialogOpen] = useState(false);
+  const [sheetDialogOpen, setSheetDialogOpen] = useState(false);
+  // The Google Sheet template is a staff tool, and is pointless once the
+  // estimate has been accepted/declined — same gate the old section used.
+  const canUseOrderSheet =
+    !isShared &&
+    !!customer &&
+    !!billingAddress &&
+    !!shippingAddress &&
+    !['accepted', 'declined'].includes(order?.status?.toLowerCase());
 
   // Group special margins by brand; derive brand margin (mode) and flag exceptions
   const specialMarginsByBrand = useMemo(() => {
@@ -1376,7 +1386,7 @@ const NewOrder: React.FC = () => {
               </Typography>
             )}
 
-            {/* Actions row: estimate pills + Share Link + Margins, all inline */}
+            {/* Actions row: estimate pills + Order Sheet + Share Link + Margins, all inline */}
             {(order?.estimate_created ||
               order?.pre_order_estimate_created ||
               (!isShared && customer && billingAddress && shippingAddress) ||
@@ -1413,6 +1423,23 @@ const NewOrder: React.FC = () => {
 
                   {/* Spacer pushes the action buttons to the right on wider screens */}
                   <Box sx={{ flex: 1, display: { xs: 'none', sm: 'block' } }} />
+
+                  {/* Order Google Sheet template — opens the sheet modal */}
+                  {canUseOrderSheet && (
+                    <Tooltip title='Open the Google Sheet order template'>
+                      <NavButton
+                        data-tour='order-download'
+                        size='small'
+                        variant='outlined'
+                        color='success'
+                        startIcon={<InsertDriveFile sx={{ fontSize: 16 }} />}
+                        onClick={() => setSheetDialogOpen(true)}
+                        sx={{ fontSize: '0.75rem', px: 1.5, py: 0.5, flexShrink: 0 }}
+                      >
+                        Order Sheet
+                      </NavButton>
+                    </Tooltip>
+                  )}
 
                   {/* Generate Shared Link — moved here from footer */}
                   {!isShared && customer && billingAddress && shippingAddress && (
@@ -1496,52 +1523,21 @@ const NewOrder: React.FC = () => {
         )}
       </Paper>
 
-      {/* ── Google Sheet section ── */}
-      {!isShared &&
-        customer &&
-        billingAddress &&
-        shippingAddress &&
-        !['accepted', 'declined'].includes(order?.status?.toLowerCase()) && (
-          <Box
-            data-tour='order-download'
-            sx={{
-              width: '100%',
-              maxWidth: PAGE_MAX_WIDTH,
-              alignSelf: 'center',
-              display: 'flex',
-              justifyContent: 'center',
-            }}
-          >
-            {link ? (
-              <SheetsDisplay
-                googleSheetsLink={link}
-                updateCart={updateCart}
-                recreateSheet={handleRecreateSheet}
-                downloadXlsx={handleDownloadXlsx}
-                loading={loading}
-                xlsxLoading={xlsxLoading}
-                sort={handleSortText()}
-              />
-            ) : (
-              <Button
-                variant='contained'
-                color='secondary'
-                disabled={loading}
-                onClick={handleDownload}
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 'bold',
-                  borderRadius: '24px',
-                  marginBottom: '12px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.15)' },
-                }}
-              >
-                {loading ? <CircularProgress size={22} /> : 'Download Order'}
-              </Button>
-            )}
-          </Box>
-        )}
+      {/* ── Google Sheet template modal (opened from the header actions row) ── */}
+      {canUseOrderSheet && (
+        <SheetsDisplay
+          open={sheetDialogOpen}
+          onClose={() => setSheetDialogOpen(false)}
+          googleSheetsLink={link}
+          createSheet={handleDownload}
+          updateCart={updateCart}
+          recreateSheet={handleRecreateSheet}
+          downloadXlsx={handleDownloadXlsx}
+          loading={loading}
+          xlsxLoading={xlsxLoading}
+          sort={handleSortText()}
+        />
+      )}
 
       {/* ── Main stepper card ── */}
       <Box

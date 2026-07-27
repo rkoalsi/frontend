@@ -2,6 +2,9 @@
 import React, { useState } from 'react';
 import {
   Drawer,
+  SwipeableDrawer,
+  useMediaQuery,
+  useTheme,
   Box,
   Typography,
   IconButton,
@@ -63,6 +66,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
   order,
 }) => {
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const theme = useTheme();
+  // Phones and tablets get a bottom sheet they can swipe down to dismiss;
+  // desktop keeps the right-hand side drawer.
+  const isTabletDown = useMediaQuery(theme.breakpoints.down('md'));
 
   const isDisabled =
     orderStatus?.toLowerCase().includes('accepted') ||
@@ -83,25 +90,35 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
     setConfirmModalOpen(false);
   };
 
-  return (
-    <Drawer
-      anchor='right'
-      open={open}
-      onClose={onClose}
-      ModalProps={{ keepMounted: true }}
-      slotProps={{
-        paper: {
-          sx: {
-            width: isMobile ? '100%' : 480,
+  // Shared drawer body — rendered inside a bottom SwipeableDrawer on
+  // mobile/tablet and a right-anchored Drawer on desktop.
+  const content = (
+    <>
+      {/* Swipe-down handle — bottom sheet only */}
+      {isTabletDown && (
+        <Box
+          sx={{
+            flexShrink: 0,
+            pt: 1,
+            pb: 0.5,
             display: 'flex',
-            flexDirection: 'column',
-            height: '100%',
-            bgcolor: 'background.default',
-          },
-        },
-      }}
-      transitionDuration={{ enter: 250, exit: 200 }}
-    >
+            justifyContent: 'center',
+            bgcolor: 'background.paper',
+            cursor: 'grab',
+          }}
+        >
+          <Box
+            sx={{
+              width: 40,
+              height: 5,
+              borderRadius: 3,
+              bgcolor: 'text.disabled',
+              opacity: 0.5,
+            }}
+          />
+        </Box>
+      )}
+
       {/* Header */}
       <Box
         sx={{
@@ -536,6 +553,63 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
           </Button>
         </DialogActions>
       </Dialog>
+    </>
+  );
+
+  const paperSx = {
+    display: 'flex',
+    flexDirection: 'column',
+    bgcolor: 'background.default',
+    ...(isTabletDown
+      ? {
+          width: '100%',
+          // Full-screen sheet; the grab handle is what advertises swipe-to-dismiss.
+          height: '100dvh',
+          maxHeight: '100dvh',
+          overflow: 'hidden',
+          // Keep the handle clear of the notch and the checkout button clear
+          // of the iOS home indicator.
+          pt: 'env(safe-area-inset-top)',
+          pb: 'env(safe-area-inset-bottom)',
+        }
+      : {
+          width: 480,
+          height: '100%',
+        }),
+  };
+
+  if (isTabletDown) {
+    return (
+      <SwipeableDrawer
+        anchor='bottom'
+        open={open}
+        onClose={onClose}
+        onOpen={() => {}}
+        // The cart is opened by the FAB, never by an edge swipe. Closing by
+        // swiping down still works from anywhere on the sheet — MUI yields to
+        // the item list while it can still scroll, so only a swipe at the top
+        // of the list (or on the handle/header) dismisses it.
+        disableSwipeToOpen
+        disableDiscovery
+        ModalProps={{ keepMounted: true }}
+        slotProps={{ paper: { sx: paperSx } }}
+        transitionDuration={{ enter: 250, exit: 200 }}
+      >
+        {content}
+      </SwipeableDrawer>
+    );
+  }
+
+  return (
+    <Drawer
+      anchor='right'
+      open={open}
+      onClose={onClose}
+      ModalProps={{ keepMounted: true }}
+      slotProps={{ paper: { sx: paperSx } }}
+      transitionDuration={{ enter: 250, exit: 200 }}
+    >
+      {content}
     </Drawer>
   );
 };

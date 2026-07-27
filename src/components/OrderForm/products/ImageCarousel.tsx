@@ -1,8 +1,9 @@
 import {
   ChevronLeft,
   ChevronRight,
+  PlayCircleFilled,
 } from '@mui/icons-material';
-import { Box, IconButton, useMediaQuery, useTheme } from '@mui/material';
+import { Box, IconButton, Tooltip, useMediaQuery, useTheme } from '@mui/material';
 import React, { useState } from 'react';
 
 interface Props {
@@ -28,6 +29,9 @@ function ImageCarousel(props: Props) {
   ];
 
   const hasMultipleImages = mediaItems.length > 1;
+  // Index of the first video in the combined media list (-1 when the product
+  // has none) — drives the "Video" badge and its jump-to-video shortcut.
+  const firstVideoIndex = images.length > 0 && videos.length > 0 ? images.length : videos.length > 0 ? 0 : -1;
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null);
@@ -226,22 +230,75 @@ function ImageCarousel(props: Props) {
           ))}
         </Box>
       )} */}
-      {/* Image Counter */}
-      {hasMultipleImages && (
+      {/* Top-left overlay row: media counter + "has video" indicator */}
+      {(hasMultipleImages || firstVideoIndex >= 0) && (
         <Box
           sx={{
             position: 'absolute',
             top: 8,
             left: 8,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            color: 'white',
-            padding: '2px 6px',
-            borderRadius: 1,
-            fontSize: '0.75rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
             zIndex: 2,
           }}
         >
-          {currentImageIndex + 1} / {mediaItems.length}
+          {hasMultipleImages && (
+            <Box
+              sx={{
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                color: 'white',
+                padding: '2px 6px',
+                borderRadius: 1,
+                fontSize: '0.75rem',
+                lineHeight: 1.4,
+              }}
+            >
+              {currentImageIndex + 1} / {mediaItems.length}
+            </Box>
+          )}
+
+          {firstVideoIndex >= 0 && (
+            <Tooltip title={small ? 'Video available' : 'Watch product video'}>
+              <Box
+                role='button'
+                tabIndex={0}
+                aria-label='Jump to product video'
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  setCurrentImageIndex(firstVideoIndex);
+                }}
+                onKeyDown={(e: React.KeyboardEvent) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setCurrentImageIndex(firstVideoIndex);
+                  }
+                }}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.25,
+                  cursor: 'pointer',
+                  backgroundColor:
+                    mediaItems[currentImageIndex]?.type === 'video'
+                      ? theme.palette.primary.main
+                      : 'rgba(0, 0, 0, 0.7)',
+                  color: 'white',
+                  padding: small ? '2px 4px' : '2px 6px',
+                  borderRadius: 1,
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  lineHeight: 1.4,
+                  letterSpacing: '0.02em',
+                  '&:hover': { backgroundColor: theme.palette.primary.dark },
+                }}
+              >
+                <PlayCircleFilled sx={{ fontSize: small ? 12 : 14 }} />
+                {!small && 'Video'}
+              </Box>
+            </Tooltip>
+          )}
         </Box>
       )}
     </Box>
