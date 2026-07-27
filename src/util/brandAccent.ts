@@ -125,18 +125,27 @@ export function getBrandAccent(
  * `db.brands`; the collections have nowhere to store one, and they are the
  * entries people most often misread as brands.
  */
-export const COLLECTION_COPY: Record<string, { label: string; description: string }> = {
+export const COLLECTION_COPY: Record<
+  string,
+  { label: string; short: string; description: string }
+> = {
   'New Arrivals': {
     label: 'New',
+    // `short` stands in for the category list on the rail tabs — collections
+    // are all filed under a single "All Products" category, so listing it
+    // would say nothing.
+    short: 'Added in the last 3 months',
     description: 'Products added to the catalogue in the last three months.',
   },
   'Pre Orders': {
     label: 'Pre-order',
+    short: 'Incoming stock',
     description:
       'Stock already on its way to us. Reserve it now and it ships as soon as the shipment lands.',
   },
   Clearance: {
     label: 'Offer',
+    short: 'Limited-Time Savings',
     description:
       'Limited-Time Clearance Offers on Selected Products',
   },
