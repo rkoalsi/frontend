@@ -39,7 +39,7 @@ const Layout = ({ children }: any) => {
 
   const [originalPath, setOriginalPath] = useState(null);
 
-  const publicPaths = ['/login', '/register', '/forgot_password', '/reset_password', '/catalogues/all_products', '/catalogues'];
+  const publicPaths = ['/login', '/register', '/forgot_password', '/reset_password', '/catalogues/all_products', '/catalogues', '/cards/[id]'];
 
   useEffect(() => {
     if (router.isReady) {

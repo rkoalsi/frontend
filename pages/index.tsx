@@ -18,6 +18,10 @@ import {
   Dialog,
   DialogContent,
   DialogActions,
+  Drawer,
+  Divider,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import { useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import AuthContext from '../src/components/Auth';
@@ -57,6 +61,9 @@ import {
   Key,
   Download,
   Badge,
+  QrCode2,
+  Storefront,
+  Language,
 } from '@mui/icons-material';
 import { QRCodeCanvas } from 'qrcode.react';
 import axiosInstance from '../src/util/axios';
@@ -97,7 +104,41 @@ const CUSTOMER_TOUR_STEPS: TourStep[] = [
 ];
 
 const BLOG_URL = (process.env.blog_url || 'https://barkbutler.in').replace(/\/$/, '');
-const cardPublicUrl = (slug?: string) => (slug ? `${BLOG_URL}/card/${slug}` : '');
+
+// The same card is served from two places. The marketplace copy is the one we
+// hand out now; the blog copy stays live so QR codes already in the wild keep
+// working. Both read the same record from /admin/cards.
+type CardHost = 'marketplace' | 'blog';
+
+const CARD_HOSTS: Array<{
+  id: CardHost;
+  label: string;
+  domain: string;
+  helper: string;
+  icon: typeof Storefront;
+}> = [
+  {
+    id: 'marketplace',
+    label: 'Marketplace',
+    domain: 'marketplace.pupscribe.in',
+    helper: 'The card we hand out now.',
+    icon: Storefront,
+  },
+  {
+    id: 'blog',
+    label: 'BarkButler',
+    domain: 'barkbutler.in',
+    helper: 'Where older QR codes still point.',
+    icon: Language,
+  },
+];
+
+const cardPublicUrl = (slug?: string, host: CardHost = 'marketplace') => {
+  if (!slug) return '';
+  return host === 'blog'
+    ? `${BLOG_URL}/card/${slug}`
+    : `${typeof window !== 'undefined' ? window.location.origin : 'https://marketplace.pupscribe.in'}/cards/${slug}`;
+};
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -462,6 +503,7 @@ const Home = () => {
   const [perfData, setPerfData] = useState<any>(null);
   const [myCard, setMyCard] = useState<any>(null);
   const [cardModalOpen, setCardModalOpen] = useState(false);
+  const [cardHost, setCardHost] = useState<CardHost>('marketplace');
 
   // Digital business card linked to this staff account (managed in /admin/cards).
   useEffect(() => {
@@ -480,20 +522,23 @@ const Home = () => {
     };
   }, [isCustomer, user?._id]);
 
-  const copyCardLink = useCallback((slug?: string) => {
-    const url = cardPublicUrl(slug);
-    if (!url) return;
-    navigator.clipboard
-      .writeText(url)
-      .then(() => toast.success('Card link copied!'))
-      .catch(() => toast.error('Failed to copy link'));
-  }, []);
+  const copyCardLink = useCallback(
+    (slug?: string, host: CardHost = 'marketplace') => {
+      const url = cardPublicUrl(slug, host);
+      if (!url) return;
+      navigator.clipboard
+        .writeText(url)
+        .then(() => toast.success('Card link copied!'))
+        .catch(() => toast.error('Failed to copy link'));
+    },
+    []
+  );
 
-  const downloadCardQr = useCallback((slug?: string) => {
+  const downloadCardQr = useCallback((slug?: string, host: CardHost = 'marketplace') => {
     const canvas = document.getElementById('home-card-qr') as HTMLCanvasElement | null;
     if (!canvas) return;
     const link = document.createElement('a');
-    link.download = `${slug || 'card'}-qr.png`;
+    link.download = `${slug || 'card'}-${host}-qr.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
   }, []);
@@ -1102,74 +1147,152 @@ const Home = () => {
         </motion.div>
       </Container>
 
-      {/* My Digital Card modal */}
-      <Dialog open={cardModalOpen} onClose={() => setCardModalOpen(false)} maxWidth='xs' fullWidth>
-        <DialogContent sx={{ textAlign: 'center', pt: 3 }}>
-          <Avatar
-            src={myCard?.photo_url}
-            sx={{ width: 64, height: 64, mx: 'auto', mb: 1.25 }}
-          >
-            {myCard?.name?.[0]}
-          </Avatar>
-          <Box display='flex' alignItems='center' justifyContent='center' gap={0.75}>
-            <Typography fontWeight={700}>{myCard?.name || 'My card'}</Typography>
-            {myCard?.is_active === false && (
-              <Chip size='small' label='Hidden' sx={{ height: 20 }} />
-            )}
-          </Box>
-          {(myCard?.title || myCard?.company) && (
-            <Typography variant='caption' color='text.secondary' sx={{ display: 'block' }}>
-              {[myCard?.title, myCard?.company].filter(Boolean).join(' · ')}
-            </Typography>
-          )}
-          <Typography variant='caption' color='text.secondary' sx={{ display: 'block', mt: 2, mb: 1.5 }}>
-            Scan to open this card
-          </Typography>
-          {myCard?.slug && (
-            <Box
-              sx={{
-                p: 2,
-                display: 'inline-block',
-                bgcolor: '#fff',
-                borderRadius: 2.5,
-                boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
-              }}
-            >
-              <QRCodeCanvas
-                id='home-card-qr'
-                value={`${cardPublicUrl(myCard.slug)}?src=qr`}
-                size={200}
-                level='M'
-              />
+      {/* My Digital Card — the same card is published on two domains, so the
+          drawer lets you pick which link to share before copying or scanning. */}
+      <Drawer
+        anchor='bottom'
+        open={cardModalOpen}
+        onClose={() => setCardModalOpen(false)}
+        PaperProps={{
+          sx: {
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            maxWidth: 520,
+            mx: 'auto',
+            width: '100%',
+          },
+        }}
+      >
+        <Box sx={{ px: 3, pt: 2, pb: 3 }}>
+          {/* Grab handle */}
+          <Box
+            sx={{
+              width: 40,
+              height: 4,
+              borderRadius: 2,
+              bgcolor: 'divider',
+              mx: 'auto',
+              mb: 2,
+            }}
+          />
+
+          <Stack direction='row' spacing={1.5} alignItems='center'>
+            <Avatar src={myCard?.photo_url} sx={{ width: 48, height: 48 }}>
+              {myCard?.name?.[0]}
+            </Avatar>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Stack direction='row' alignItems='center' spacing={0.75}>
+                <Typography fontWeight={700} noWrap>
+                  {myCard?.name || 'My card'}
+                </Typography>
+                {myCard?.is_active === false && (
+                  <Chip size='small' label='Hidden' sx={{ height: 20 }} />
+                )}
+              </Stack>
+              {(myCard?.title || myCard?.company) && (
+                <Typography variant='caption' color='text.secondary' noWrap display='block'>
+                  {[myCard?.title, myCard?.company].filter(Boolean).join(' · ')}
+                </Typography>
+              )}
             </Box>
-          )}
+          </Stack>
+
+          <Divider sx={{ my: 2 }} />
+
           <Typography
             variant='caption'
             color='text.secondary'
-            sx={{ display: 'block', mt: 1.5, wordBreak: 'break-all' }}
+            sx={{ display: 'block', mb: 1, fontWeight: 600 }}
           >
-            {cardPublicUrl(myCard?.slug).replace(/^https?:\/\//, '')}
+            Which link do you want to share?
           </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
-          <Button
-            variant='contained'
-            startIcon={<OpenInNew />}
-            component='a'
-            href={cardPublicUrl(myCard?.slug)}
-            target='_blank'
-            rel='noopener noreferrer'
+
+          <ToggleButtonGroup
+            exclusive
+            fullWidth
+            size='small'
+            value={cardHost}
+            onChange={(_, value) => value && setCardHost(value)}
+            sx={{ mb: 1 }}
           >
-            View card
-          </Button>
-          <Button variant='outlined' startIcon={<ContentCopy />} onClick={() => copyCardLink(myCard?.slug)}>
-            Copy link
-          </Button>
-          <Button variant='outlined' startIcon={<Download />} onClick={() => downloadCardQr(myCard?.slug)}>
-            QR
-          </Button>
-        </DialogActions>
-      </Dialog>
+            {CARD_HOSTS.map((host) => {
+              const HostIcon = host.icon;
+              return (
+                <ToggleButton
+                  key={host.id}
+                  value={host.id}
+                  sx={{ textTransform: 'none', gap: 0.75, py: 1 }}
+                >
+                  <HostIcon fontSize='small' />
+                  {host.label}
+                </ToggleButton>
+              );
+            })}
+          </ToggleButtonGroup>
+
+          <Typography variant='caption' color='text.secondary' sx={{ display: 'block', mb: 2 }}>
+            {CARD_HOSTS.find((h) => h.id === cardHost)?.helper}
+          </Typography>
+
+          <Box sx={{ textAlign: 'center' }}>
+            {myCard?.slug && (
+              <Box
+                sx={{
+                  p: 2,
+                  display: 'inline-block',
+                  bgcolor: '#fff',
+                  borderRadius: 2.5,
+                  boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
+                }}
+              >
+                <QRCodeCanvas
+                  id='home-card-qr'
+                  value={`${cardPublicUrl(myCard.slug, cardHost)}?src=qr`}
+                  size={180}
+                  level='M'
+                />
+              </Box>
+            )}
+            <Typography
+              variant='caption'
+              color='text.secondary'
+              sx={{ display: 'block', mt: 1.5, wordBreak: 'break-all' }}
+            >
+              {cardPublicUrl(myCard?.slug, cardHost).replace(/^https?:\/\//, '')}
+            </Typography>
+          </Box>
+
+          <Stack direction='row' spacing={1} sx={{ mt: 2.5 }}>
+            <Button
+              variant='contained'
+              startIcon={<OpenInNew />}
+              component='a'
+              href={cardPublicUrl(myCard?.slug, cardHost)}
+              target='_blank'
+              rel='noopener noreferrer'
+              sx={{ flex: 1 }}
+            >
+              View card
+            </Button>
+            <Tooltip title='Copy link'>
+              <IconButton
+                onClick={() => copyCardLink(myCard?.slug, cardHost)}
+                sx={{ border: 1, borderColor: 'divider', borderRadius: 1.5 }}
+              >
+                <ContentCopy fontSize='small' />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title='Download QR'>
+              <IconButton
+                onClick={() => downloadCardQr(myCard?.slug, cardHost)}
+                sx={{ border: 1, borderColor: 'divider', borderRadius: 1.5 }}
+              >
+                <Download fontSize='small' />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        </Box>
+      </Drawer>
 
       {/* Customer Creation Request Form Dialog */}
       <CustomerCreationRequestForm

@@ -262,7 +262,11 @@ export default function MyApp(props: AppProps) {
     props.router?.pathname === '/customer' ||
     props.router?.pathname.startsWith('/customer/');
 
+  // Public digital business cards render on their own — no nav, no sidebar.
+  const isBareRoute = props.router?.pathname === '/cards/[id]';
+
   const getLayoutComponent = () => {
+    if (isBareRoute) return React.Fragment;
     if (isAdminRoute) return AdminLayout;
     if (isCustomerRoute) return CustomerLayout;
     return Layout;
