@@ -41,6 +41,8 @@ import {
   CalendarToday,
   Clear,
   LocationCity,
+  ShoppingCart,
+  RemoveShoppingCart,
 } from '@mui/icons-material';
 
 interface CustomerTableProps {
@@ -131,6 +133,22 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
   const calculateGrowth = (current: number, previous: number) => {
     if (previous === 0) return current > 0 ? 100 : 0;
     return ((current - previous) / previous) * 100;
+  };
+
+  // Order-form usage: an order row is created the moment someone clicks
+  // "Create Order", so an order with no products means the user only browsed.
+  const getCartConfig = (customer: any) => {
+    const cart = customer.cartActivity || {};
+    switch (cart.engagement) {
+      case 'converted':
+        return { ...cart, color: '#2e7d32', bg: '#e8f5e8', label: 'Ordered' };
+      case 'abandoned':
+        return { ...cart, color: '#ed6c02', bg: '#fff4e6', label: 'Cart, not finalised' };
+      case 'browsing_only':
+        return { ...cart, color: '#d32f2f', bg: '#ffebee', label: 'Browsed only' };
+      default:
+        return { ...cart, color: '#757575', bg: '#f5f5f5', label: 'Never used' };
+    }
   };
 
   const highlightSearchTerm = (text: any, searchTerm: string) => {
@@ -305,6 +323,18 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
                 borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
                 color: theme.palette.text.primary,
                 fontSize: '0.875rem',
+              }}>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <ShoppingCart sx={{ fontSize: 18, color: theme.palette.primary.main }} />
+                  <span>Order Form Usage</span>
+                </Stack>
+              </TableCell>
+              <TableCell sx={{
+                fontWeight: 700,
+                backgroundColor: alpha(theme.palette.primary.main, 0.02),
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                color: theme.palette.text.primary,
+                fontSize: '0.875rem',
                 textAlign: 'center',
               }}>
                 Actions
@@ -314,7 +344,7 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
           <TableBody>
             {customers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} sx={{ textAlign: 'center', py: 8 }}>
+                <TableCell colSpan={5} sx={{ textAlign: 'center', py: 8 }}>
                   <Stack alignItems="center" spacing={2}>
                     <Search sx={{ fontSize: 48, color: theme.palette.text.disabled }} />
                     <Typography variant="h6" color="text.secondary">
@@ -333,6 +363,7 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
                 const tierConfig = getTierConfig(customer.tier);
                 const activityConfig = getActivityConfig(customer);
                 const paymentConfig = getPaymentStatus(customer);
+                const cartConfig = getCartConfig(customer);
                 const growth = calculateGrowth(
                   customer.billingTillDateCurrentYear,
                   customer.totalSalesLastFY
@@ -353,7 +384,7 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
                     }}
                   >
                     {/* Customer Details Column */}
-                    <TableCell sx={{ width: '35%', py: 3 }}>
+                    <TableCell sx={{ width: '28%', py: 3 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
                         <Badge
                           badgeContent={`Tier ${customer.tier}`}
@@ -470,7 +501,7 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
                     </TableCell>
 
                     {/* Sales Performance Column */}
-                    <TableCell sx={{ width: '30%', py: 3 }}>
+                    <TableCell sx={{ width: '24%', py: 3 }}>
                       <Stack spacing={2}>
                         <Paper
                           elevation={0}
@@ -540,7 +571,7 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
                     </TableCell>
 
                     {/* Activity & Payments Column */}
-                    <TableCell sx={{ width: '25%', py: 3 }}>
+                    <TableCell sx={{ width: '23%', py: 3 }}>
                       <Stack spacing={2}>
                         <Box>
                           <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600 }}>
@@ -627,6 +658,65 @@ const CustomerAnalyticsTable: React.FC<CustomerTableProps> = ({
                             />
                           )}
                         </Stack>
+                      </Stack>
+                    </TableCell>
+
+                    {/* Order Form Usage Column */}
+                    <TableCell sx={{ width: '15%', py: 3 }}>
+                      <Stack spacing={1.5}>
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: 1.5,
+                            backgroundColor: cartConfig.bg,
+                            borderRadius: 2,
+                            border: `1px solid ${alpha(cartConfig.color, 0.2)}`,
+                          }}
+                        >
+                          <Stack direction="row" alignItems="center" spacing={1}>
+                            {cartConfig.engagement === 'browsing_only'
+                              ? <RemoveShoppingCart sx={{ color: cartConfig.color, fontSize: 16 }} />
+                              : <ShoppingCart sx={{ color: cartConfig.color, fontSize: 16 }} />}
+                            <Typography
+                              variant="body2"
+                              sx={{ color: cartConfig.color, fontWeight: 600, fontSize: '0.75rem' }}
+                            >
+                              {cartConfig.label}
+                            </Typography>
+                          </Stack>
+                        </Paper>
+
+                        {(cartConfig.ordersCreated || 0) > 0 && (
+                          <>
+                            <Tooltip
+                              title={`${cartConfig.ordersWithProducts || 0} of ${cartConfig.ordersCreated} orders had products added to the cart`}
+                              arrow
+                            >
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {cartConfig.ordersWithProducts || 0}/{cartConfig.ordersCreated} with cart
+                              </Typography>
+                            </Tooltip>
+
+                            {(cartConfig.emptyOrders || 0) > 0 && (
+                              <Chip
+                                size="small"
+                                label={`${cartConfig.emptyOrders} empty`}
+                                sx={{
+                                  alignSelf: 'flex-start',
+                                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(211,47,47,0.25)' : '#ffebee',
+                                  color: '#ef5350',
+                                  fontSize: '0.65rem',
+                                  height: 20,
+                                  fontWeight: 600,
+                                }}
+                              />
+                            )}
+
+                            <Typography variant="caption" color="text.secondary">
+                              Last order: {formatDate(cartConfig.lastOrderAt)}
+                            </Typography>
+                          </>
+                        )}
                       </Stack>
                     </TableCell>
 

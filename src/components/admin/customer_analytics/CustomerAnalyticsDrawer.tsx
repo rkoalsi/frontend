@@ -81,6 +81,8 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
   const [customerAddresses, setCustomerAddresses] = useState<any[]>([]);
   const [addressDetailMap, setAddressDetailMap] = useState<Record<string, any>>({});
   const [investmentLoading, setInvestmentLoading] = useState(false);
+  const [cartOrders, setCartOrders] = useState<any[]>([]);
+  const [cartOrdersLoading, setCartOrdersLoading] = useState(false);
 
   useEffect(() => {
     if (open && customer) {
@@ -126,11 +128,22 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
             setAddressDetailMap({});
           })
           .finally(() => setInvestmentLoading(false));
+
+        // Order-form orders: shows which orders actually had products added.
+        setCartOrdersLoading(true);
+        axiosInstance
+          .get(`/admin/customer_analytics/cart-orders`, {
+            params: { customer_id: mongoId, limit: 25 },
+          })
+          .then((res) => setCartOrders(res.data.orders || []))
+          .catch(() => setCartOrders([]))
+          .finally(() => setCartOrdersLoading(false));
       }
     } else {
       setBrandBreakdown([]);
       setCustomerAddresses([]);
       setAddressDetailMap({});
+      setCartOrders([]);
     }
   }, [open, customer]);
 
@@ -187,6 +200,20 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
     customer.billingTillDateCurrentYear,
     customer.totalSalesLastFY
   );
+
+  const cart = customer.cartActivity || {};
+  const cartConfig = (() => {
+    switch (cart.engagement) {
+      case 'converted':
+        return { color: '#2e7d32', bg: '#e8f5e8', label: 'Finalised an order' };
+      case 'abandoned':
+        return { color: '#ed6c02', bg: '#fff4e6', label: 'Added to cart, not finalised' };
+      case 'browsing_only':
+        return { color: '#d32f2f', bg: '#ffebee', label: 'Browsed only — nothing added' };
+      default:
+        return { color: '#757575', bg: '#f5f5f5', label: 'Never used the order form' };
+    }
+  })();
 
   const getActivityScore = () => {
     let score = 0;
@@ -556,6 +583,136 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                   </>
                 );
               })()}
+            </CardContent>
+          </Card>
+        </Fade>
+
+        {/* Order Form (cart) Activity */}
+        <Fade in timeout={500}>
+          <Card sx={{ mb: 3, boxShadow: 2 }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                  Order Form Activity
+                </Typography>
+                <Chip
+                  size="small"
+                  label={cartConfig.label}
+                  sx={{ backgroundColor: cartConfig.bg, color: cartConfig.color, fontWeight: 700 }}
+                />
+              </Box>
+
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                An order row is created the moment someone clicks &quot;Create Order&quot; — orders with
+                no products mean the catalogue was browsed but nothing was added to the cart.
+              </Typography>
+
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
+                  gap: 1.5,
+                  mb: 3,
+                }}
+              >
+                {[
+                  { label: 'Orders Created', value: cart.ordersCreated || 0, color: 'text.primary' },
+                  { label: 'With Products', value: cart.ordersWithProducts || 0, color: '#2e7d32' },
+                  { label: 'Empty (Browsed)', value: cart.emptyOrders || 0, color: '#d32f2f' },
+                  { label: 'Finalised', value: cart.ordersFinalised || 0, color: '#1976d2' },
+                ].map((stat) => (
+                  <Box
+                    key={stat.label}
+                    sx={{
+                      p: 1.5,
+                      borderRadius: 2,
+                      border: `1px solid ${theme.palette.divider}`,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: stat.color }}>
+                      {stat.value}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {stat.label}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+
+              {cartOrdersLoading ? (
+                <Skeleton variant="rectangular" height={140} />
+              ) : cartOrders.length === 0 ? (
+                <Alert severity="info">This customer has never opened an order on the order form.</Alert>
+              ) : (
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Cart</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Added By</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Created By</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {cartOrders.map((o: any) => (
+                        <TableRow key={o.orderId} hover>
+                          <TableCell>{formatDate(o.createdAt)}</TableCell>
+                          <TableCell>
+                            {o.addedToCart ? (
+                              <Chip
+                                size="small"
+                                label={`${o.items} item${o.items === 1 ? '' : 's'} • ${o.units} units`}
+                                sx={{
+                                  backgroundColor: isDark ? 'rgba(46,125,50,0.25)' : '#e8f5e8',
+                                  color: '#4caf50',
+                                  fontWeight: 600,
+                                }}
+                              />
+                            ) : (
+                              <Chip
+                                size="small"
+                                label="Nothing added"
+                                sx={{
+                                  backgroundColor: isDark ? 'rgba(211,47,47,0.25)' : '#ffebee',
+                                  color: '#ef5350',
+                                  fontWeight: 600,
+                                }}
+                              />
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {!o.addedToCart
+                              ? '—'
+                              : [
+                                  o.itemsByCustomer ? `Customer (${o.itemsByCustomer})` : '',
+                                  o.itemsBySalesPerson ? `Sales (${o.itemsBySalesPerson})` : '',
+                                ]
+                                  .filter(Boolean)
+                                  .join(', ')}
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="caption">
+                              {o.createdBy}
+                              {o.createdByRole ? ` (${o.createdByRole})` : ''}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              size="small"
+                              variant="outlined"
+                              color={o.finalised ? 'success' : 'default'}
+                              label={o.finalised ? o.estimateNumber || 'Finalised' : o.status || 'draft'}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
             </CardContent>
           </Card>
         </Fade>
