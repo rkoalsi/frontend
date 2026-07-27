@@ -28,6 +28,7 @@ import {
     Analytics,
     BusinessCenter,
     WorkspacePremium,
+    ShoppingCart,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -79,6 +80,8 @@ const CustomerAnalytics = () => {
         sales_person: [] as string[],
         gst_type: '',
         unassigned: false,
+        cart_activity: 'all',
+        cart_days: '' as string | number,
     });
     const [openFilterDrawer, setOpenFilterDrawer] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
@@ -162,6 +165,8 @@ const CustomerAnalytics = () => {
             due_status: 'all',
             sales_person: [],
             sort_by: false,
+            cart_activity: 'all',
+            cart_days: '',
         } as any);
         setPage(0);
     };
@@ -188,6 +193,9 @@ const CustomerAnalytics = () => {
                 ...filterOptions,
                 sales_person: filterOptions.sales_person.join(','),
             };
+
+            // cart_days is an optional int on the backend — an empty string 422s.
+            if (!params.cart_days) delete params.cart_days;
 
             const response = await axiosInstance.get(`/admin/customer_analytics`, { 
                 params,
@@ -328,7 +336,9 @@ const CustomerAnalytics = () => {
                 gst_type: filterOptions.gst_type,
                 sort: 'asc',
                 include_brand_breakdown: true,
+                cart_activity: filterOptions.cart_activity || 'all',
             };
+            if (filterOptions.cart_days) params.cart_days = filterOptions.cart_days;
 
             if (selectedBrands.length > 0 && selectedBrands.length < availableBrands.length) {
                 params.brands = selectedBrands.join(',');
@@ -399,8 +409,28 @@ const CustomerAnalytics = () => {
         };
     }, [filteredCustomers]);
 
+    // Order-form usage split — how many customers only browse vs actually
+    // build a cart. Rows are per (customer, address), so dedupe by customer.
+    const cartStats = useMemo(() => {
+        const seen = new Set<string>();
+        const counts = { converted: 0, abandoned: 0, browsing_only: 0, none: 0 };
+        filteredCustomers.forEach(c => {
+            const key = c.customerMongoId || c.customerId || c.customerName;
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            const engagement = c.cartActivity?.engagement || 'none';
+            if (engagement in counts) (counts as any)[engagement]++;
+        });
+        const total = seen.size || 1;
+        return {
+            ...counts,
+            total: seen.size,
+            pct: (n: number) => Math.round((n / total) * 100),
+        };
+    }, [filteredCustomers]);
+
     const theme = useTheme();
-    
+
     return (
         <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 4 } }}>
             {/* Header Section */}
@@ -557,6 +587,46 @@ const CustomerAnalytics = () => {
                                     </Box>
                                 </Box>
                             ))}
+                        </Box>
+                    </Box>
+                )}
+
+                {/* Order Form Usage Bar */}
+                {!initialLoading && cartStats.total > 0 && (
+                    <Box sx={{ px: 3, pt: 2, pb: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                            <ShoppingCart sx={{ fontSize: 18, color: theme.palette.primary.main }} />
+                            <Typography variant='subtitle2' fontWeight={600}>
+                                Order Form Usage ({cartStats.total} customers
+                                {filterOptions.cart_days ? ` • last ${filterOptions.cart_days} days` : ''})
+                            </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+                            {[
+                                { label: 'Finalised an order', count: cartStats.converted, color: '#2e7d32', bg: '#e8f5e8' },
+                                { label: 'Cart, not finalised', count: cartStats.abandoned, color: '#ed6c02', bg: '#fff4e6' },
+                                { label: 'Browsed only', count: cartStats.browsing_only, color: '#d32f2f', bg: '#ffebee' },
+                                { label: 'Never used', count: cartStats.none, color: '#616161', bg: '#f5f5f5' },
+                            ].map(({ label, count, color, bg }) => {
+                                const pct = cartStats.pct(count);
+                                return (
+                                    <Box key={label} sx={{ flex: 1 }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                            <Chip
+                                                label={label}
+                                                size='small'
+                                                sx={{ backgroundColor: bg, color, fontWeight: 700, fontSize: '0.7rem', height: 20 }}
+                                            />
+                                            <Typography variant='caption' fontWeight={600} sx={{ color }}>
+                                                {count} ({pct}%)
+                                            </Typography>
+                                        </Box>
+                                        <Box sx={{ height: 8, borderRadius: 4, backgroundColor: theme.palette.divider, overflow: 'hidden' }}>
+                                            <Box sx={{ height: '100%', width: `${pct}%`, backgroundColor: color, borderRadius: 4, transition: 'width 0.5s ease' }} />
+                                        </Box>
+                                    </Box>
+                                );
+                            })}
                         </Box>
                     </Box>
                 )}

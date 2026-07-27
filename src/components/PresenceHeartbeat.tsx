@@ -40,10 +40,17 @@ const PresenceHeartbeat = () => {
   const { user, loading } = useContext(AuthContext);
   const router = useRouter();
 
+  // Resolved URL (e.g. /orders/new/68f0a1... instead of /orders/new/[id]) so
+  // admins can tell exactly which order/product a user is looking at. asPath is
+  // only reliable once the router has hydrated the dynamic params.
+  const currentPage = router.isReady
+    ? router.asPath.split(/[?#]/)[0]
+    : router.pathname;
+
   // Refs so the interval callback always sees current values without
   // re-creating the interval on every route change.
-  const pathRef = useRef(router.pathname);
-  pathRef.current = router.pathname;
+  const pathRef = useRef(currentPage);
+  pathRef.current = currentPage;
   const sharedRef = useRef(router.query.shared === 'true');
   sharedRef.current = router.query.shared === 'true';
   const lastSentRef = useRef(0);
@@ -104,17 +111,17 @@ const PresenceHeartbeat = () => {
     const req =
       mode === 'auth'
         ? axiosInstance.post('/presence/heartbeat', {
-            current_page: router.pathname,
+            current_page: currentPage,
           })
         : axiosInstance.post('/presence/heartbeat/guest', {
             visitor_id: getVisitorId(),
-            current_page: router.pathname,
+            current_page: currentPage,
             shared: router.query.shared === 'true',
           });
     req.catch(() => {
       // Intentionally silent
     });
-  }, [mode, router.pathname]);
+  }, [mode, currentPage]);
 
   return null;
 };
