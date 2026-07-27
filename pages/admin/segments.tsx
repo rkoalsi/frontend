@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Paper,
@@ -36,6 +36,7 @@ import {
   DeleteOutline,
   VisibilityOutlined,
   PeopleAltOutlined,
+  FileDownloadOutlined,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
@@ -50,6 +51,19 @@ const DORMANCY_LABELS: Record<string, string> = {
   not_last_45_days: 'Dormant > 45 days',
   not_last_2_months: 'Dormant > 2 months',
   not_last_3_months: 'Dormant > 3 months',
+};
+
+/** Billing bounds are rupee amounts — negatives are never valid. */
+const nonNegative = (v: string) => {
+  if (v === '') return '';
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '';
+  return String(Math.max(0, n));
+};
+
+/** `type="number"` still lets "-" and "e" through the keyboard; block them. */
+const blockNegativeKeys = (e: any) => {
+  if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault();
 };
 
 const emptyForm = () => ({
@@ -81,7 +95,44 @@ const SegmentsPage = () => {
 
   // Preview state
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [preview, setPreview] = useState<{ count: number; sample: any[] } | null>(null);
+  const [preview, setPreview] = useState<
+    { count: number; total_matched: number; without_phone: number; sample: any[] } | null
+  >(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+
+  // Rules are stored/matched on the salesperson *code* (what invoices carry);
+  // the name is shown only as a label.
+  const salespersonOptions = useMemo(
+    () =>
+      (options.salespeople || []).map((s: any) =>
+        typeof s === 'string'
+          ? { value: s, label: s }
+          : {
+              value: s.code,
+              label: `${s.name}${s.name === s.code ? '' : ` (${s.code})`}${s.status === 'inactive' ? ' — inactive' : ''
+                }`,
+            }
+      ),
+    [options.salespeople]
+  );
+
+  // Shown when a preview comes back empty, so it is obvious which filter narrowed it.
+  const activeFilterLabels = useMemo(() => {
+    const r: any = form.rule;
+    if (form.source === 'b2c') {
+      return [r.only_non_b2b && 'pure B2C', r.reviewed_only && 'reviewed only'].filter(Boolean);
+    }
+    const num = (v: any) => (Number(v) > 0 ? Number(v) : null);
+    return [
+      r.tier && `Tier ${r.tier}`,
+      r.dormancy && r.dormancy !== 'all' && (DORMANCY_LABELS[r.dormancy] || r.dormancy),
+      r.brands?.length && `brands: ${r.brands.join(', ')}`,
+      r.salespersons?.length && `${r.salespersons.length} salesperson(s)`,
+      num(r.min_billing_current_fy) && `billing ≥ ₹${num(r.min_billing_current_fy)}`,
+      num(r.max_billing_current_fy) && `billing ≤ ₹${num(r.max_billing_current_fy)}`,
+    ].filter(Boolean) as string[];
+  }, [form.rule, form.source]);
 
   const fetchSegments = async () => {
     setLoading(true);
@@ -124,7 +175,13 @@ const SegmentsPage = () => {
       name: s.name || '',
       description: s.description || '',
       source: s.source || 'b2b',
-      rule: { ...base.rule, ...(s.rule || {}) },
+      rule: {
+        ...base.rule,
+        ...(s.rule || {}),
+        // Saved rules store `null` for "no limit"; TextField needs '' to stay controlled.
+        min_billing_current_fy: s.rule?.min_billing_current_fy ?? '',
+        max_billing_current_fy: s.rule?.max_billing_current_fy ?? '',
+      },
     });
     setPreview(null);
     setEditorOpen(true);
@@ -132,12 +189,24 @@ const SegmentsPage = () => {
 
   const setRule = (changes: any) => setForm((f) => ({ ...f, rule: { ...f.rule, ...changes } }));
 
+  const billingRangeInverted = useMemo(() => {
+    const min = Number(form.rule.min_billing_current_fy);
+    const max = Number(form.rule.max_billing_current_fy);
+    return Number.isFinite(min) && Number.isFinite(max) && min > 0 && max > 0 && min > max;
+  }, [form.rule.min_billing_current_fy, form.rule.max_billing_current_fy]);
+
   const buildPayload = () => {
     const r: any = { ...form.rule };
     // Strip empty values so the backend rule stays clean.
     if (!r.tier) delete r.tier;
-    r.min_billing_current_fy = r.min_billing_current_fy === '' ? null : Number(r.min_billing_current_fy);
-    r.max_billing_current_fy = r.max_billing_current_fy === '' ? null : Number(r.max_billing_current_fy);
+    // A bound of 0 (or blank) is not a real limit — "≤ ₹0" would silently empty the
+    // audience, and "≥ ₹0" matches everyone — so both are sent as "no limit".
+    const bound = (v: any) => {
+      const n = Number(v);
+      return v === '' || v === null || !Number.isFinite(n) || n <= 0 ? null : n;
+    };
+    r.min_billing_current_fy = bound(r.min_billing_current_fy);
+    r.max_billing_current_fy = bound(r.max_billing_current_fy);
     if (form.source === 'b2b') {
       delete r.only_non_b2b;
       delete r.reviewed_only;
@@ -197,10 +266,59 @@ const SegmentsPage = () => {
   const resolveSaved = async (s: any) => {
     try {
       const res = await axiosInstance.post(`/admin/segments/${s._id}/resolve`);
-      toast.success(`${s.name}: ${res.data.count} recipients.`);
+      toast.success(
+        `${s.name}: ${res.data.total_matched} in audience, ${res.data.count} reachable.`
+      );
       fetchSegments();
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Resolve failed.');
+    }
+  };
+
+  const triggerDownload = (data: BlobPart, filename: string) => {
+    const url = window.URL.createObjectURL(new Blob([data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const slug = (s: string) => (s || 'audience').replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_|_$/g, '') || 'audience';
+
+  const exportPreview = async () => {
+    setExporting(true);
+    try {
+      const { source, rule } = buildPayload();
+      const name = form.name.trim() || 'audience';
+      const res = await axiosInstance.post(
+        '/admin/segments/export',
+        { source, rule, name },
+        { responseType: 'blob' }
+      );
+      triggerDownload(res.data, `${slug(name)}_${new Date().toISOString().split('T')[0]}.xlsx`);
+      toast.success('Audience downloaded.');
+    } catch {
+      toast.error('Failed to download audience.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const exportSaved = async (s: any) => {
+    setExportingId(s._id);
+    try {
+      const res = await axiosInstance.get(`/admin/segments/${s._id}/export`, {
+        responseType: 'blob',
+      });
+      triggerDownload(res.data, `${slug(s.name)}_${new Date().toISOString().split('T')[0]}.xlsx`);
+      toast.success('Audience downloaded.');
+    } catch {
+      toast.error('Failed to download audience.');
+    } finally {
+      setExportingId(null);
     }
   };
 
@@ -234,7 +352,7 @@ const SegmentsPage = () => {
                   <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Source</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Rule summary</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Last count</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Audience size</TableCell>
                   <TableCell sx={{ fontWeight: 600 }} align='right'>Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -250,13 +368,33 @@ const SegmentsPage = () => {
                     <TableCell><Chip size='small' label={(s.source || 'b2b').toUpperCase()} color={s.source === 'b2c' ? 'success' : 'primary'} /></TableCell>
                     <TableCell><RuleSummary source={s.source} rule={s.rule} /></TableCell>
                     <TableCell>
-                      {typeof s.last_resolved_count === 'number'
-                        ? <Chip size='small' icon={<PeopleAltOutlined />} label={s.last_resolved_count} />
-                        : <Typography variant='caption' color='text.secondary'>—</Typography>}
+                      {typeof s.last_resolved_count === 'number' ? (
+                        <Stack spacing={0.5} alignItems='flex-start'>
+                          <Chip
+                            size='small'
+                            icon={<PeopleAltOutlined />}
+                            label={`${s.last_matched_count ?? s.last_resolved_count} total`}
+                          />
+                          <Typography variant='caption' color='text.secondary'>
+                            {s.last_resolved_count} reachable
+                          </Typography>
+                        </Stack>
+                      ) : (
+                        <Typography variant='caption' color='text.secondary'>—</Typography>
+                      )}
                     </TableCell>
                     <TableCell align='right' sx={{ whiteSpace: 'nowrap' }}>
                       <Tooltip title='Resolve now (recount)'>
                         <IconButton size='small' onClick={() => resolveSaved(s)}><PeopleAltOutlined fontSize='small' /></IconButton>
+                      </Tooltip>
+                      <Tooltip title='Download audience (XLSX)'>
+                        <span>
+                          <IconButton size='small' disabled={exportingId === s._id} onClick={() => exportSaved(s)}>
+                            {exportingId === s._id
+                              ? <CircularProgress size={16} />
+                              : <FileDownloadOutlined fontSize='small' />}
+                          </IconButton>
+                        </span>
                       </Tooltip>
                       <Tooltip title='Edit'>
                         <IconButton size='small' onClick={() => openEdit(s)}><EditOutlined fontSize='small' /></IconButton>
@@ -321,7 +459,7 @@ const SegmentsPage = () => {
                 />
                 <MultiSelect
                   label='Salespeople'
-                  options={options.salespeople}
+                  options={salespersonOptions}
                   value={form.rule.salespersons}
                   onChange={(v: string[]) => setRule({ salespersons: v })}
                 />
@@ -330,16 +468,27 @@ const SegmentsPage = () => {
                   <TextField
                     size='small' type='number' label='Min billing (current FY)'
                     value={form.rule.min_billing_current_fy}
-                    onChange={(e) => setRule({ min_billing_current_fy: e.target.value })}
+                    onChange={(e) => setRule({ min_billing_current_fy: nonNegative(e.target.value) })}
+                    onKeyDown={blockNegativeKeys}
+                    inputProps={{ min: 0, step: 1000 }}
+                    helperText='Blank or 0 = no lower limit'
                     fullWidth
                   />
                   <TextField
                     size='small' type='number' label='Max billing (current FY)'
                     value={form.rule.max_billing_current_fy}
-                    onChange={(e) => setRule({ max_billing_current_fy: e.target.value })}
+                    onChange={(e) => setRule({ max_billing_current_fy: nonNegative(e.target.value) })}
+                    onKeyDown={blockNegativeKeys}
+                    inputProps={{ min: 0, step: 1000 }}
+                    helperText='Blank or 0 = no upper limit'
                     fullWidth
                   />
                 </Box>
+                {billingRangeInverted && (
+                  <Alert severity='warning'>
+                    Min billing is higher than max billing — no customer can match both.
+                  </Alert>
+                )}
               </>
             ) : (
               <Stack spacing={1}>
@@ -355,40 +504,83 @@ const SegmentsPage = () => {
             )}
 
             <Divider />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
               <Button variant='outlined' startIcon={<VisibilityOutlined />} onClick={runPreview} disabled={previewLoading}>
                 {previewLoading ? 'Resolving…' : 'Preview audience'}
               </Button>
-              {preview && (
-                <Alert severity='info' sx={{ py: 0 }}>
-                  <strong>{preview.count}</strong> recipient(s) match this rule.
-                </Alert>
-              )}
+              <Button
+                variant='outlined'
+                color='secondary'
+                startIcon={exporting ? <CircularProgress size={16} /> : <FileDownloadOutlined />}
+                onClick={exportPreview}
+                disabled={exporting}
+              >
+                {exporting ? 'Preparing…' : 'Download XLSX'}
+              </Button>
+              {previewLoading && <CircularProgress size={22} />}
             </Box>
-            {previewLoading && <CircularProgress size={22} />}
+
+            {preview && (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+                  gap: 1.5,
+                }}
+              >
+                <StatTile label='Total audience' value={preview.total_matched} highlight />
+                <StatTile label='Reachable (has phone)' value={preview.count} />
+                <StatTile label='Missing phone' value={preview.without_phone} />
+              </Box>
+            )}
+            {preview && preview.total_matched === 0 && (
+              <Alert severity='warning'>
+                No customers match this rule. Active filters:{' '}
+                {activeFilterLabels.length ? activeFilterLabels.join(' · ') : 'none'}. Try
+                relaxing one of them.
+              </Alert>
+            )}
             {preview && preview.sample.length > 0 && (
-              <TableContainer component={Paper} variant='outlined' sx={{ maxHeight: 240 }}>
-                <Table size='small' stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Name</TableCell>
-                      <TableCell>Phone</TableCell>
-                      {form.source === 'b2b' && <TableCell>Tier</TableCell>}
-                      {form.source === 'b2b' && <TableCell>Last bill</TableCell>}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {preview.sample.map((r, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{r.name || '-'}</TableCell>
-                        <TableCell>{r.phone || '-'}</TableCell>
-                        {form.source === 'b2b' && <TableCell>{r.tier || '-'}</TableCell>}
-                        {form.source === 'b2b' && <TableCell>{r.lastBillDate || '-'}</TableCell>}
+              <>
+                <Typography variant='caption' color='text.secondary'>
+                  Showing the first {preview.sample.length} of {preview.total_matched}. Download the
+                  XLSX for the full list.
+                </Typography>
+                <TableContainer component={Paper} variant='outlined' sx={{ maxHeight: 300 }}>
+                  <Table size='small' stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Phone</TableCell>
+                        {form.source === 'b2b' && <TableCell>Sales Person</TableCell>}
+                        {form.source === 'b2b' && <TableCell>Tier</TableCell>}
+                        {form.source === 'b2b' && <TableCell>Last bill</TableCell>}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                    </TableHead>
+                    <TableBody>
+                      {preview.sample.map((r, i) => (
+                        <TableRow key={i}>
+                          <TableCell>{r.name || '-'}</TableCell>
+                          <TableCell>{r.phone || '-'}</TableCell>
+                          {form.source === 'b2b' && (
+                            <TableCell>
+                              {r.salesPersonName ? (
+                                <Tooltip title={r.salesPerson || ''}>
+                                  <span>{r.salesPersonName}</span>
+                                </Tooltip>
+                              ) : (
+                                '-'
+                              )}
+                            </TableCell>
+                          )}
+                          {form.source === 'b2b' && <TableCell>{r.tier || '-'}</TableCell>}
+                          {form.source === 'b2b' && <TableCell>{r.lastBillDate || '-'}</TableCell>}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </>
             )}
           </Stack>
         </DialogContent>
@@ -403,30 +595,56 @@ const SegmentsPage = () => {
   );
 };
 
-const MultiSelect = ({ label, options, value, onChange }: any) => (
-  <FormControl size='small' fullWidth>
-    <InputLabel>{label}</InputLabel>
-    <Select
-      multiple
-      label={label}
-      value={value}
-      onChange={(e) => onChange(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
-      input={<OutlinedInput label={label} />}
-      renderValue={(selected: any) => (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-          {(selected as string[]).map((v: string) => <Chip key={v} label={v} size='small' />)}
-        </Box>
-      )}
-    >
-      {(options || []).map((o: string) => (
-        <MenuItem key={o} value={o}>
-          <Checkbox checked={value.indexOf(o) > -1} />
-          <ListItemText primary={o} />
-        </MenuItem>
-      ))}
-    </Select>
-  </FormControl>
+const StatTile = ({ label, value, highlight }: any) => (
+  <Paper
+    variant='outlined'
+    sx={{
+      p: 1.5,
+      borderRadius: 2,
+      borderColor: highlight ? 'primary.main' : undefined,
+      bgcolor: highlight ? 'action.hover' : undefined,
+    }}
+  >
+    <Typography variant='caption' color='text.secondary' display='block'>
+      {label}
+    </Typography>
+    <Typography variant='h5' sx={{ fontWeight: 700, color: highlight ? 'primary.main' : 'text.primary' }}>
+      {Number(value ?? 0).toLocaleString('en-IN')}
+    </Typography>
+  </Paper>
 );
+
+/** `options` accepts plain strings or `{ value, label }` pairs. */
+const MultiSelect = ({ label, options, value, onChange }: any) => {
+  const items = (options || []).map((o: any) =>
+    typeof o === 'string' ? { value: o, label: o } : o
+  );
+  const labelFor = (v: string) => items.find((i: any) => i.value === v)?.label || v;
+  return (
+    <FormControl size='small' fullWidth>
+      <InputLabel>{label}</InputLabel>
+      <Select
+        multiple
+        label={label}
+        value={value}
+        onChange={(e) => onChange(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+        input={<OutlinedInput label={label} />}
+        renderValue={(selected: any) => (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {(selected as string[]).map((v: string) => <Chip key={v} label={labelFor(v)} size='small' />)}
+          </Box>
+        )}
+      >
+        {items.map((o: any) => (
+          <MenuItem key={o.value} value={o.value}>
+            <Checkbox checked={value.indexOf(o.value) > -1} />
+            <ListItemText primary={o.label} />
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  );
+};
 
 const RuleSummary = ({ source, rule }: any) => {
   if (!rule) return <>—</>;
