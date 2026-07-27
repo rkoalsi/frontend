@@ -53,6 +53,56 @@ const roleColor = (
   return 'default';
 };
 
+/**
+ * Dynamic routes are reported as resolved URLs (/orders/new/68f0...), so split
+ * them into a readable label plus the record id an admin actually needs.
+ */
+const DYNAMIC_PAGE_LABELS: { pattern: RegExp; label: string }[] = [
+  { pattern: /^\/orders\/new\/([^/]+)$/, label: 'Order Form' },
+  { pattern: /^\/orders\/past\/payment_due\/([^/]+)$/, label: 'Payment Due' },
+  { pattern: /^\/orders\/past\/([^/]+)$/, label: 'Past Order' },
+  { pattern: /^\/customer\/orders\/([^/]+)$/, label: 'Customer Order' },
+  { pattern: /^\/customer_analytics\/([^/]+)$/, label: 'Customer Analytics' },
+  { pattern: /^\/daily_visits\/([^/]+)$/, label: 'Daily Visit' },
+  { pattern: /^\/shipments\/([^/]+)$/, label: 'Shipment' },
+];
+
+const describePage = (page?: string | null) => {
+  if (!page) return null;
+  for (const { pattern, label } of DYNAMIC_PAGE_LABELS) {
+    const match = page.match(pattern);
+    if (match) return { label, id: match[1], path: page };
+  }
+  return { label: page, id: null as string | null, path: page };
+};
+
+const PageCell = ({ page }: { page?: string | null }) => {
+  const info = describePage(page);
+  if (!info) return <>-</>;
+  return (
+    <Tooltip title={info.path}>
+      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+        <Typography variant='body2' sx={{ wordBreak: 'break-all' }}>
+          {info.label}
+        </Typography>
+        {info.id && (
+          <Chip
+            size='small'
+            variant='outlined'
+            label={info.id}
+            sx={{
+              fontFamily: 'monospace',
+              fontSize: '0.7rem',
+              height: 20,
+              maxWidth: 240,
+            }}
+          />
+        )}
+      </Box>
+    </Tooltip>
+  );
+};
+
 const lastSeenText = (secondsAgo: number) => {
   if (secondsAgo < 10) return 'just now';
   if (secondsAgo < 60) return `${secondsAgo}s ago`;
@@ -210,13 +260,9 @@ const ActiveUsersPage = () => {
                 />
               </Box>
               {u.current_page && (
-                <Typography
-                  variant='body2'
-                  color='text.secondary'
-                  sx={{ wordBreak: 'break-all' }}
-                >
-                  {u.current_page}
-                </Typography>
+                <Box sx={{ color: 'text.secondary' }}>
+                  <PageCell page={u.current_page} />
+                </Box>
               )}
               <Typography variant='caption' color='text.secondary'>
                 Last seen {lastSeenText(u.seconds_ago)}
@@ -252,7 +298,7 @@ const ActiveUsersPage = () => {
                   </TableCell>
                   <TableCell>{u.email || '-'}</TableCell>
                   <TableCell sx={{ wordBreak: 'break-all' }}>
-                    {u.current_page || '-'}
+                    <PageCell page={u.current_page} />
                   </TableCell>
                   <TableCell>{lastSeenText(u.seconds_ago)}</TableCell>
                 </TableRow>

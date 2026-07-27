@@ -64,6 +64,8 @@ const CustomerAnalyticsFilter = ({
         if (filterOptions.due_status && filterOptions.due_status !== 'all') count++;
         if (filterOptions.last_billed && filterOptions.last_billed !== 'all') count++;
         if (filterOptions.sales_person?.length > 0) count++;
+        if (filterOptions.cart_activity && filterOptions.cart_activity !== 'all') count++;
+        if (filterOptions.cart_days) count++;
         if (filterOptions.sort_by !== undefined) count++;
         return count;
     };
@@ -220,6 +222,41 @@ const CustomerAnalyticsFilter = ({
                                         <MenuItem value="not_last_45_days">Not in Last 45 Days</MenuItem>
                                         <MenuItem value="not_last_2_months">Not in Last 2 Months</MenuItem>
                                         <MenuItem value="not_last_3_months">Not in Last 3 Months</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </CardContent>
+                        </Card>
+
+                        {/* Order Form (cart) Usage Filter */}
+                        <Card elevation={0} sx={{ border: `1px solid ${theme.palette.divider}` }}>
+                            <CardContent>
+                                <FormControl fullWidth>
+                                    <InputLabel>Order Form Usage</InputLabel>
+                                    <Select
+                                        value={filterOptions.cart_activity || 'all'}
+                                        onChange={(e) => handleFilterChange('cart_activity', e.target.value)}
+                                        label="Order Form Usage"
+                                    >
+                                        <MenuItem value="all">All Customers</MenuItem>
+                                        <MenuItem value="browsing_only">Browsed only (no products added)</MenuItem>
+                                        <MenuItem value="abandoned">Added to cart, never finalised</MenuItem>
+                                        <MenuItem value="converted">Finalised an order</MenuItem>
+                                        <MenuItem value="none">Never opened the order form</MenuItem>
+                                    </Select>
+                                </FormControl>
+
+                                <FormControl fullWidth sx={{ mt: 2 }}>
+                                    <InputLabel>Order Form Window</InputLabel>
+                                    <Select
+                                        value={filterOptions.cart_days || ''}
+                                        onChange={(e) => handleFilterChange('cart_days', e.target.value)}
+                                        label="Order Form Window"
+                                    >
+                                        <MenuItem value="">All Time</MenuItem>
+                                        <MenuItem value={30}>Last 30 Days</MenuItem>
+                                        <MenuItem value={60}>Last 60 Days</MenuItem>
+                                        <MenuItem value={90}>Last 90 Days</MenuItem>
+                                        <MenuItem value={180}>Last 6 Months</MenuItem>
                                     </Select>
                                 </FormControl>
                             </CardContent>
