@@ -39,6 +39,7 @@ import { format } from 'date-fns';
 import { trackActivity } from '../../../src/util/trackActivity';
 import OrderReturnDialog from '../../../src/components/common/OrderReturnDialog';
 import { headerGradient } from '../../../src/util/surfaces';
+import { formatCurrency } from '../../../src/util/format';
 
 interface OrderProduct {
   _id: string;
@@ -500,10 +501,13 @@ const CustomerOrderDetail = () => {
                   </Typography>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant='body2' color='text.secondary'>
-                      {product.quantity} × ₹{product.price?.toFixed(2) || '0.00'}
+                      {product.quantity} × {formatCurrency(product.price ?? 0, 2)}
                     </Typography>
                     <Typography fontWeight={700} sx={{ fontSize: '0.95rem' }}>
-                      ₹{(product.total ?? (product.price ?? 0) * (product.quantity ?? 0)).toFixed(2)}
+                      {formatCurrency(
+                        product.total ?? (product.price ?? 0) * (product.quantity ?? 0),
+                        2
+                      )}
                     </Typography>
                   </Box>
                 </Paper>
@@ -546,10 +550,13 @@ const CustomerOrderDetail = () => {
                       </TableCell>
                       <TableCell align='center'>{product.quantity}</TableCell>
                       <TableCell align='right'>
-                        ₹{product.price?.toFixed(2) || '0.00'}
+                        {formatCurrency(product.price ?? 0, 2)}
                       </TableCell>
                       <TableCell align='right'>
-                        ₹{(product.total ?? (product.price ?? 0) * (product.quantity ?? 0)).toFixed(2)}
+                        {formatCurrency(
+                          product.total ?? (product.price ?? 0) * (product.quantity ?? 0),
+                          2
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -591,7 +598,7 @@ const CustomerOrderDetail = () => {
                 Order Total
               </Typography>
               <Typography variant='h5' fontWeight={700} color='primary'>
-                ₹{(order.total ?? order.total_amount ?? 0).toLocaleString('en-IN')}
+                {formatCurrency(order.total ?? order.total_amount ?? 0, 2)}
               </Typography>
             </Paper>
           )}

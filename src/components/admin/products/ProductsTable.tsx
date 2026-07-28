@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import { Edit as EditIcon, Collections } from '@mui/icons-material';
 import { toast } from 'react-toastify';
+import { formatCurrency, formatNumber } from '../../../util/format';
 
 type MediaItem = { src: string; type: 'image' | 'video' };
 
@@ -172,7 +173,7 @@ const StockText = ({ product }: { product: any }) => {
       sx={{ fontWeight: 600 }}
       color={stock > 0 ? 'success.main' : 'error.main'}
     >
-      {product.stock ?? 0}
+      {formatNumber(stock)}
     </Typography>
   );
 };
@@ -192,7 +193,7 @@ const PreOrderCell = ({ product, handleTogglePreOrder }: any) => (
         color={product.upcoming_stock > 0 ? 'warning.main' : 'text.disabled'}
       >
         {product.upcoming_stock > 0
-          ? `Upcoming: ${product.upcoming_stock}`
+          ? `Upcoming: ${formatNumber(product.upcoming_stock)}`
           : 'No PO found'}
       </Typography>
     )}
@@ -374,7 +375,7 @@ const ProductTable = ({
                       }}
                     >
                       <Typography variant='body2' sx={{ fontWeight: 700 }}>
-                        ₹{product.rate}
+                        {formatCurrency(product.rate, 2)}
                       </Typography>
                       <Typography variant='caption' color='text.secondary'>
                         Stock:
@@ -571,7 +572,7 @@ const ProductTable = ({
 
                   <TableCell align='right'>
                     <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                      ₹{product.rate}
+                      {formatCurrency(product.rate, 2)}
                     </Typography>
                   </TableCell>
 

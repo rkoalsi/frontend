@@ -28,6 +28,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'; // Changed import
+import { formatCurrency, formatNumber } from '../../../util/format';
 
 const ProductDialog = ({
   open,
@@ -695,7 +696,7 @@ const ProductDialog = ({
                       {selectedProduct?.pre_order && (
                         <Typography variant='caption' color={selectedProduct.upcoming_stock > 0 ? 'warning.main' : 'text.disabled'} sx={{ ml: 1.5, fontWeight: 600 }}>
                           {selectedProduct.upcoming_stock > 0
-                            ? `Upcoming stock: ${selectedProduct.upcoming_stock} units`
+                            ? `Upcoming stock: ${formatNumber(selectedProduct.upcoming_stock)} units`
                             : 'No open PO found'}
                         </Typography>
                       )}
@@ -840,7 +841,7 @@ const ProductDialog = ({
                           variant='body1'
                           sx={{ mt: 0.5, fontWeight: 600 }}
                         >
-                          ₹{selectedProduct.rate}
+                          {formatCurrency(selectedProduct.rate, 2)}
                         </Typography>
                       </Box>
                     </Box>
@@ -905,7 +906,7 @@ const ProductDialog = ({
                           Stock
                         </Typography>
                         <Typography variant='body1' sx={{ mt: 0.5 }}>
-                          {selectedProduct.stock} units
+                          {formatNumber(selectedProduct.stock)} units
                         </Typography>
                       </Box>
 
