@@ -20,6 +20,7 @@ import {
   DarkMode,
   LightMode,
   PersonAddAlt,
+  LoginOutlined,
 } from '@mui/icons-material';
 import { useColorMode } from '../context/ColorModeContext';
 import NotificationBell from '../components/common/NotificationBell';
@@ -49,7 +50,9 @@ const Layout = ({ children }: any) => {
 
   const [originalPath, setOriginalPath] = useState(null);
 
-  const publicPaths = ['/login', '/register', '/wholesale-pet-supplies', '/forgot_password', '/reset_password', '/catalogues/all_products', '/catalogues', '/cards/[id]'];
+  // '/' renders the marketing landing for guests (GuestLanding) instead of
+  // redirecting to /login, so it is public too.
+  const publicPaths = ['/', '/login', '/register', '/wholesale-pet-supplies', '/forgot_password', '/reset_password', '/catalogues/all_products', '/catalogues', '/cards/[id]'];
 
   useEffect(() => {
     if (router.isReady) {
@@ -136,17 +139,26 @@ const Layout = ({ children }: any) => {
 
           {/* Right Side Actions */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
-            {/* Register — shown to logged-out visitors on public pages */}
-            {!loading &&
-              !user &&
-              !['/register', '/login'].includes(router.pathname) && (
-                <TopbarAction
-                  icon={<PersonAddAlt fontSize='small' />}
-                  label='Register'
-                  onClick={() => router.push('/register')}
-                  compact={isMobileOrTablet}
-                />
-              )}
+            {/* Logged-out visitors always get a way in: Sign in as a ghost
+                pill, Register as the filled CTA. Each is hidden only on its
+                own page. */}
+            {!loading && !user && router.pathname !== '/login' && (
+              <TopbarAction
+                icon={<LoginOutlined fontSize='small' />}
+                label='Sign in'
+                onClick={() => router.push('/login')}
+                compact={isMobileOrTablet}
+              />
+            )}
+            {!loading && !user && router.pathname !== '/register' && (
+              <TopbarAction
+                icon={<PersonAddAlt fontSize='small' />}
+                label='Register'
+                onClick={() => router.push('/register')}
+                compact={isMobileOrTablet}
+                variant='cta'
+              />
+            )}
             {user && (
               user.role?.includes('admin') ||
               user.role?.includes('catalogue_manager') ||

@@ -18,12 +18,16 @@ import {
   Visibility,
   VisibilityOff,
   CheckCircleOutline,
+  ArrowForward,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import AuthContext from '../src/components/Auth';
 import { useRouter } from 'next/router';
 import { event as trackEvent } from '../src/util/gtag';
+
+// Same wordmark the digital business card uses (pages/cards/[id].tsx).
+const WORDMARK_SRC = 'https://assets.pupscribe.in/cards/pupscribe-wordmark.svg';
 
 const FEATURES = [
   'Place wholesale orders online, anytime',
@@ -222,24 +226,16 @@ const LoginPage = () => {
           }} />
 
           <Box sx={{ position: 'relative', zIndex: 1 }}>
-            {/* Logo mark */}
+            {/* The wordmark artwork from the business card (pages/cards/[id]).
+                It is drawn in solid white, so it only works on a dark panel —
+                which is exactly what this is. No separate mark: the topbar and
+                the favicon already carry it. */}
             <Box
-              sx={{
-                width: 56, height: 56, borderRadius: '14px',
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.18)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                mb: 4,
-              }}
-            >
-              <Typography sx={{ fontSize: 26, fontWeight: 800, color: 'white', lineHeight: 1 }}>
-                P
-              </Typography>
-            </Box>
-
-            <Typography variant='h4' fontWeight={700} color='white' mb={1} lineHeight={1.2}>
-              Pupscribe
-            </Typography>
+              component='img'
+              src={WORDMARK_SRC}
+              alt='Pupscribe'
+              sx={{ height: 34, display: 'block', mb: 1.5 }}
+            />
             <Typography variant='h6' fontWeight={400} sx={{ color: 'rgba(255,255,255,0.5)', mb: 4, fontSize: '1rem' }}>
               Marketplace
             </Typography>
@@ -564,15 +560,20 @@ const LoginPage = () => {
               so this is the one place a first-time retailer reliably lands —
               give them a way through to what the marketplace actually does. */}
           <Button
-            variant='text'
+            variant='outlined'
             fullWidth
             onClick={() => router.push('/wholesale-pet-supplies')}
+            endIcon={<ArrowForward fontSize='small' />}
             sx={{
-              mt: 1,
+              mt: 1.5,
               textTransform: 'none',
-              fontSize: '0.875rem',
+              fontSize: '0.95rem',
               fontWeight: 600,
+              py: 1.25,
               borderRadius: '10px',
+              borderColor: 'divider',
+              color: 'text.primary',
+              '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
             }}
           >
             See what the marketplace does

@@ -24,6 +24,7 @@ import {
 import { useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AuthContext from '../src/components/Auth';
 import ProfileIncompleteBanner from '../src/components/ProfileIncompleteBanner';
+import GuestLanding from '../src/components/marketing/GuestLanding';
 import { useRouter } from 'next/router';
 import {
   CalendarMonth,
@@ -938,6 +939,12 @@ const Home = () => {
       </Stack>
     </>
   );
+
+  // Logged-out visitors get the marketing landing rather than a redirect to
+  // /login. `/` is the URL Google shows for brand searches, and it used to
+  // server-render as an empty shell because the dashboard is auth-gated.
+  // Declared after every hook above, so hook order is unaffected.
+  if (!user) return <GuestLanding />;
 
   return (
     <Box

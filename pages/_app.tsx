@@ -155,25 +155,33 @@ function getPageTitle(pathname: string): string {
 // SEO for the public (indexable) pages. Everything else is behind auth and is
 // marked noindex — only these pages should ever appear in Google results.
 const SITE_URL = 'https://marketplace.pupscribe.in';
+
+// Public, but deliberately kept out of the index: sign-in and password-reset
+// screens have no search value and are thin, near-identical pages. On a young
+// subdomain they compete for crawl budget with the pages that matter and read
+// as low-value, so they get `noindex, follow` — crawlable (links still pass)
+// but never indexed. They are also excluded from public/sitemap.xml.
+const NOINDEX_PUBLIC_PATHS = ['/login', '/forgot_password', '/reset_password'];
 const DEFAULT_SEO_DESCRIPTION =
   'Pupscribe Marketplace — the online wholesale ordering portal for pet ' +
-  'retailers in India. Pet shops, breeders, kennels and clinics browse the ' +
+  'retailers in India. Sign up with just your WhatsApp number to browse the ' +
   'full catalogue of pet food, treats, toys and accessories, check live stock ' +
-  'and place bulk orders direct from the distributor.';
+  'and order direct from the distributor.';
 const PAGE_SEO: Record<string, { title: string; description: string }> = {
-  // The root URL is what Google surfaces for brand searches. Guests are
-  // redirected to /login client-side, but the SSR HTML carries the brand SEO
-  // so the domain result shows a proper title + description.
+  // The root URL is what Google surfaces for brand searches, and it now renders
+  // the marketing landing (src/components/marketing/GuestLanding) for logged-out
+  // visitors, so there is real content behind this title and description.
   //
-  // Titles and descriptions carry the terms buyers actually search: "wholesale",
-  // "bulk", "distributor", "for pet shops / retailers" on the trade side, and
-  // "buy in bulk", "direct from distributor" on the non-trade side. Keep the two
-  // audiences on their own pages (/register vs /bulk-orders) — mixed copy ranks
-  // for neither.
+  // Titles and descriptions carry the terms buyers actually search — "wholesale",
+  // "distributor", "for pet retailers" — plus the one-line objection remover:
+  // signing up needs nothing but a WhatsApp number.
   '/': {
     title:
-      'Pupscribe Marketplace | Wholesale Pet Supplies & B2B Ordering Portal for Pet Retailers',
-    description: DEFAULT_SEO_DESCRIPTION,
+      'Pupscribe Marketplace | Wholesale Pet Supplies for Pet Retailers in India',
+    description:
+      'Order wholesale pet food, treats, toys and accessories direct from ' +
+      'Pupscribe, the distributor. Live stock, invoices and WhatsApp order ' +
+      'updates. All you need to sign up is a WhatsApp number — no paperwork.',
   },
   '/login': {
     title: 'Login | Pupscribe Marketplace — Wholesale Pet Supplies Ordering',
@@ -186,17 +194,17 @@ const PAGE_SEO: Record<string, { title: string; description: string }> = {
     title:
       'Register Your Pet Store | Wholesale Pet Supplies Supplier for Retailers | Pupscribe',
     description:
-      'Register your pet shop with Pupscribe and order pet food, treats, toys ' +
-      'and accessories at wholesale rates. Become a stockist, get GST invoicing, ' +
-      'live stock and dealer pricing across every brand we distribute in India.',
+      'Register your pet shop with Pupscribe in under a minute — all you need ' +
+      'is a WhatsApp number. Order pet food, treats, toys and accessories at ' +
+      'wholesale rates, with GST invoicing and live stock across every brand.',
   },
   '/wholesale-pet-supplies': {
     title:
       'Wholesale Pet Supplies for Retailers | Order Direct from the Distributor | Pupscribe',
     description:
       'Order wholesale pet food, treats, toys and accessories direct from ' +
-      'Pupscribe — the distributor. Live stock, invoices and statements on ' +
-      'demand, shipment tracking and order updates on WhatsApp, in one portal.',
+      'Pupscribe — the distributor. Live stock, invoices and shipment tracking, ' +
+      'with order updates on WhatsApp. Sign up with just a WhatsApp number.',
   },
   '/catalogues': {
     title:
@@ -318,7 +326,20 @@ export default function MyApp(props: AppProps) {
             <Head>
               <title>{getPageTitle(router.pathname)}</title>
               <meta name='viewport' content='initial-scale=1, width=device-width' />
-              {isPublicPath(router.pathname) || router.pathname === '/' ? (
+              {NOINDEX_PUBLIC_PATHS.includes(router.pathname) ? (
+                // Public utility screens: crawlable so their links still count,
+                // but never indexed. Description kept for link previews.
+                <>
+                  <meta name='robots' content='noindex, follow' />
+                  <meta
+                    name='description'
+                    content={
+                      PAGE_SEO[router.pathname]?.description ??
+                      DEFAULT_SEO_DESCRIPTION
+                    }
+                  />
+                </>
+              ) : isPublicPath(router.pathname) || router.pathname === '/' ? (
                 <>
                   <meta
                     name='description'

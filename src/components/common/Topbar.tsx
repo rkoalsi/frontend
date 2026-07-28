@@ -96,6 +96,30 @@ export const topbarPillSx = {
   },
 } as const;
 
+/**
+ * Filled call-to-action pill for the one action we actively want a logged-out
+ * visitor to take (Register). Yellow on the purple bar carries the brand
+ * without competing with the pink hairline.
+ */
+export const topbarCtaSx = {
+  textTransform: 'none',
+  fontWeight: 700,
+  fontSize: '0.85rem',
+  px: 1.75,
+  py: 0.6,
+  borderRadius: '8px',
+  whiteSpace: 'nowrap',
+  color: '#241F4B',
+  backgroundColor: BRAND_YELLOW,
+  boxShadow: 'none',
+  '& .MuiButton-startIcon': { mr: 0.6 },
+  '&:hover': {
+    backgroundColor: '#FFE22E',
+    boxShadow: '0 4px 14px rgba(237,209,0,0.28)',
+    transform: 'translateY(-1px)',
+  },
+} as const;
+
 /** Logout / destructive icon button. */
 export const topbarDangerIconSx = {
   ...topbarIconSx,
@@ -125,18 +149,32 @@ export const TopbarAction: React.FC<{
   onClick: () => void;
   /** Collapse to an icon-only button (mobile / tablet). */
   compact?: boolean;
-}> = ({ icon, label, onClick, compact = false }) =>
-  compact ? (
-    <Tooltip title={label} arrow>
-      <IconButton onClick={onClick} size='small' aria-label={label} sx={topbarIconSx}>
-        {icon}
-      </IconButton>
-    </Tooltip>
-  ) : (
-    <Button size='small' onClick={onClick} startIcon={icon} sx={topbarPillSx}>
+  /** 'cta' renders the filled yellow pill — use it for one action at most. */
+  variant?: 'ghost' | 'cta';
+}> = ({ icon, label, onClick, compact = false, variant = 'ghost' }) => {
+  const isCta = variant === 'cta';
+  // The CTA keeps its label on mobile — an icon-only Register is invisible as
+  // an invitation, which is the whole point of the button.
+  if (compact && !isCta) {
+    return (
+      <Tooltip title={label} arrow>
+        <IconButton onClick={onClick} size='small' aria-label={label} sx={topbarIconSx}>
+          {icon}
+        </IconButton>
+      </Tooltip>
+    );
+  }
+  return (
+    <Button
+      size='small'
+      onClick={onClick}
+      startIcon={compact ? undefined : icon}
+      sx={isCta ? topbarCtaSx : topbarPillSx}
+    >
       {label}
     </Button>
   );
+};
 
 /**
  * The Pupscribe P-mark (dog silhouette in the P) — a 96px PNG on the CDN. The
