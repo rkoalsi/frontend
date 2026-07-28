@@ -52,7 +52,7 @@ const Layout = ({ children }: any) => {
 
   // '/' renders the marketing landing for guests (GuestLanding) instead of
   // redirecting to /login, so it is public too.
-  const publicPaths = ['/', '/login', '/register', '/wholesale-pet-supplies', '/forgot_password', '/reset_password', '/catalogues/all_products', '/catalogues', '/cards/[id]'];
+  const publicPaths = ['/', '/login', '/register', '/forgot_password', '/reset_password', '/catalogues/all_products', '/catalogues', '/cards/[id]'];
 
   useEffect(() => {
     if (router.isReady) {

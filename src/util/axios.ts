@@ -35,7 +35,6 @@ axiosInstance.interceptors.response.use(
       '/',
       '/login',
       '/register',
-      '/wholesale-pet-supplies',
       '/forgot_password',
       '/reset_password',
       '/catalogues',

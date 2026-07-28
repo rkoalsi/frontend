@@ -562,7 +562,7 @@ const LoginPage = () => {
           <Button
             variant='outlined'
             fullWidth
-            onClick={() => router.push('/wholesale-pet-supplies')}
+            onClick={() => router.push('/')}
             endIcon={<ArrowForward fontSize='small' />}
             sx={{
               mt: 1.5,

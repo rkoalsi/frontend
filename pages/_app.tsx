@@ -62,7 +62,6 @@ const PAGE_TITLES: Record<string, string> = {
   '/forgot_password': 'Forgot Password',
   '/reset_password': 'Reset Password',
   '/customer_requests': 'Customer Requests',
-  '/wholesale-pet-supplies': 'Wholesale Pet Supplies',
   // Admin
   '/admin': 'Admin Dashboard',
   '/admin/active_users': 'Active Users',
@@ -177,11 +176,11 @@ const PAGE_SEO: Record<string, { title: string; description: string }> = {
   // signing up needs nothing but a WhatsApp number.
   '/': {
     title:
-      'Pupscribe Marketplace | Wholesale Pet Supplies for Pet Retailers in India',
+      'Wholesale Pet Supplies for Retailers | Order Direct from the Distributor | Pupscribe Marketplace',
     description:
       'Order wholesale pet food, treats, toys and accessories direct from ' +
-      'Pupscribe, the distributor. Live stock, invoices and WhatsApp order ' +
-      'updates. All you need to sign up is a WhatsApp number — no paperwork.',
+      'Pupscribe, the distributor. Live stock, invoices, shipment tracking and ' +
+      'WhatsApp order updates. Sign up with just a WhatsApp number.',
   },
   '/login': {
     title: 'Login | Pupscribe Marketplace — Wholesale Pet Supplies Ordering',
@@ -197,14 +196,6 @@ const PAGE_SEO: Record<string, { title: string; description: string }> = {
       'Register your pet shop with Pupscribe in under a minute — all you need ' +
       'is a WhatsApp number. Order pet food, treats, toys and accessories at ' +
       'wholesale rates, with GST invoicing and live stock across every brand.',
-  },
-  '/wholesale-pet-supplies': {
-    title:
-      'Wholesale Pet Supplies for Retailers | Order Direct from the Distributor | Pupscribe',
-    description:
-      'Order wholesale pet food, treats, toys and accessories direct from ' +
-      'Pupscribe — the distributor. Live stock, invoices and shipment tracking, ' +
-      'with order updates on WhatsApp. Sign up with just a WhatsApp number.',
   },
   '/catalogues': {
     title:

@@ -14,6 +14,18 @@ module.exports = {
       },
     ],
   },
+  async redirects() {
+    return [
+      // The marketing page used to live at its own URL; it is now the homepage
+      // for logged-out visitors. Permanent, so the indexed URL and any links
+      // to it fold into `/` rather than 404ing.
+      {
+        source: '/wholesale-pet-supplies',
+        destination: '/',
+        permanent: true,
+      },
+    ];
+  },
   env: {
     api_url: 'https://marketplace.pupscribe.in/api',
     support_email: 'enquiries@pupscribe.in',

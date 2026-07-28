@@ -24,7 +24,7 @@ import {
 import { useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AuthContext from '../src/components/Auth';
 import ProfileIncompleteBanner from '../src/components/ProfileIncompleteBanner';
-import GuestLanding from '../src/components/marketing/GuestLanding';
+import GuestLanding, { Brand } from '../src/components/marketing/GuestLanding';
 import { useRouter } from 'next/router';
 import {
   CalendarMonth,
@@ -66,6 +66,7 @@ import {
 import { QRCodeCanvas } from 'qrcode.react';
 import axiosInstance from '../src/util/axios';
 import axios from 'axios';
+import type { GetServerSideProps } from 'next';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomerCreationRequestForm from '../src/components/CustomerCreationRequestForm';
 import { toast } from 'react-toastify';
@@ -465,7 +466,7 @@ const menuSections = [
   },
 ];
 
-const Home = () => {
+const Home = ({ brands = [] }: { brands?: Brand[] }) => {
   const router = useRouter();
   const { user }: any = useContext(AuthContext);
   const theme = useTheme();
@@ -944,7 +945,7 @@ const Home = () => {
   // /login. `/` is the URL Google shows for brand searches, and it used to
   // server-render as an empty shell because the dashboard is auth-gated.
   // Declared after every hook above, so hook order is unaffected.
-  if (!user) return <GuestLanding />;
+  if (!user) return <GuestLanding brands={brands} />;
 
   return (
     <Box
@@ -1388,3 +1389,28 @@ const Home = () => {
 };
 
 export default Home;
+
+// `/` is the marketing page for logged-out visitors, and its brand wall is
+// rendered server-side so the brand names ship in the HTML for crawlers.
+// Logged-in users get the dashboard, so the fetch is skipped when the auth
+// cookie is present — no API call and no cache header on their requests.
+export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
+  if (req.cookies?.access_token) return { props: {} };
+
+  // Vary on the cookie: the same URL serves the dashboard to logged-in users,
+  // so a shared cache must not hand this guest HTML to them.
+  res.setHeader('Vary', 'Cookie');
+  res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=3600');
+
+  let brands: Brand[] = [];
+  try {
+    const { data } = await axios.get(
+      `${process.env.api_url || 'http://localhost:8000/api'}/products/brands`,
+      { timeout: 8000 }
+    );
+    brands = (data?.brands || []).filter((b: Brand) => b?.image);
+  } catch {
+    // The brand wall is supporting content — never let it break the page.
+  }
+  return { props: { brands } };
+};
