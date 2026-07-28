@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -17,6 +17,8 @@ import {
   Refresh as RefreshIcon,
   ContentCopy as ContentCopyIcon,
   WhatsApp as WhatsAppIcon,
+  PersonAdd as PersonAddIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../../util/axios';
@@ -41,7 +43,7 @@ interface PhoneInfo {
   reason: string;
 }
 
-/** An account belonging to someone else that already claims this mobile or email. */
+/** An account that already claims the mobile or email being used. */
 interface LoginConflict {
   _id: string;
   name?: string;
@@ -51,41 +53,61 @@ interface LoginConflict {
   status?: string;
   customer_id?: string | null;
   customer_name?: string | null;
+  same_customer?: boolean;
   conflict_on: string[];
 }
 
+interface PhoneCheck {
+  available: boolean;
+  phone: PhoneInfo;
+  conflicts: LoginConflict[];
+}
+
+const EMPTY_FORM = { name: '', email: '', phone: '', password: '' };
+
 /**
- * Create and share a marketplace login for a customer, from the customer record
- * itself. Mirrors the flow on /admin/customer_requests; accounts created here
- * show up in /admin/customer_management the same way.
+ * Create and share marketplace logins for a customer, from the customer record
+ * itself. A customer can hold several logins — one per number/contact person —
+ * which is how a shop whose primary number is already taken still gets access.
  */
 const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) => {
   const [loading, setLoading] = useState(true);
   const [logins, setLogins] = useState<CustomerLogin[]>([]);
-  const [phoneInfo, setPhoneInfo] = useState<PhoneInfo | null>(null);
+  const [customer, setCustomer] = useState<any>(null);
   const [conflicts, setConflicts] = useState<LoginConflict[]>([]);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [showForm, setShowForm] = useState(false);
   const [creating, setCreating] = useState(false);
   // Holds the _id being sent, so only that row shows a spinner.
   const [sending, setSending] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
-  const [createdPassword, setCreatedPassword] = useState('');
+  // Password of the login created in THIS session, keyed by its _id — it is
+  // unknowable once the drawer is reopened.
+  const [createdPassword, setCreatedPassword] = useState<{ id: string; password: string } | null>(
+    null
+  );
+  const [phoneCheck, setPhoneCheck] = useState<PhoneCheck | null>(null);
+  const [checking, setChecking] = useState(false);
 
   const fetchLogin = useCallback(async () => {
     if (!contactId) return;
     setLoading(true);
     try {
       const { data } = await axiosInstance.get(`/admin/users/customer-login/${contactId}`);
-      setLogins(data.logins || []);
-      setPhoneInfo(data.phone);
+      const list: CustomerLogin[] = data.logins || [];
+      setLogins(list);
+      setCustomer(data.customer);
       setConflicts(data.conflicts || []);
-      if (!(data.logins || []).length) {
+      if (!list.length) {
+        setShowForm(true);
         setForm({
           name: data.customer?.contact_name || data.customer?.name || '',
           email: data.customer?.email || '',
           phone: data.customer?.raw_phone ? String(data.customer.raw_phone) : '',
           password: '',
         });
+      } else {
+        setShowForm(false);
       }
     } catch (error: any) {
       console.error('Error loading customer login:', error);
@@ -95,12 +117,52 @@ const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) =>
   }, [contactId]);
 
   useEffect(() => {
-    setCreatedPassword('');
+    setCreatedPassword(null);
     fetchLogin();
   }, [fetchLogin]);
 
-  const formPhoneInfo = normalizeIndianMobile(form.phone);
-  const effectivePhoneInfo: PhoneInfo = logins.length ? (phoneInfo ?? formPhoneInfo) : formPhoneInfo;
+  const formPhoneInfo = useMemo(() => normalizeIndianMobile(form.phone), [form.phone]);
+
+  // Check the typed number against every existing account before the POST —
+  // this is what tells the admin "try the customer's other number".
+  useEffect(() => {
+    if (!showForm || !formPhoneInfo.valid) {
+      setPhoneCheck(null);
+      return;
+    }
+    let cancelled = false;
+    setChecking(true);
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await axiosInstance.get(
+          `/admin/users/customer-login/${contactId}/check-phone`,
+          { params: { phone: form.phone, email: form.email.trim() || undefined } }
+        );
+        if (!cancelled) setPhoneCheck(data);
+      } catch {
+        if (!cancelled) setPhoneCheck(null);
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      setChecking(false);
+    };
+  }, [contactId, form.phone, form.email, formPhoneInfo.valid, showForm]);
+
+  const openAddForm = () => {
+    // Blank number on purpose: the point of a second login is a DIFFERENT number.
+    setForm({
+      name: customer?.contact_name || customer?.name || '',
+      email: '',
+      phone: '',
+      password: '',
+    });
+    setPhoneCheck(null);
+    setShowForm(true);
+  };
 
   const handleGeneratePassword = async () => {
     setGenerating(true);
@@ -131,8 +193,13 @@ const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) =>
         phone: form.phone,
         password: form.password || undefined,
       });
-      setCreatedPassword(form.password);
+      if (form.password) {
+        setCreatedPassword({ id: data.login._id, password: form.password });
+      }
       toast.success(data.message);
+      setShowForm(false);
+      setForm(EMPTY_FORM);
+      setPhoneCheck(null);
       fetchLogin();
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'Failed to create login');
@@ -157,19 +224,67 @@ const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) =>
     }
   };
 
-  const handleCopy = () => {
+  const handleCopy = (login: CustomerLogin) => {
     const lines = [
       'Your Pupscribe marketplace account is ready.',
       '',
       `Login Link: ${LOGIN_URL}`,
-      `Email: ${logins[0]?.email}`,
     ];
-    if (createdPassword) lines.push(`Password: ${createdPassword}`);
+    if (login.email) lines.push(`Email: ${login.email}`);
+    if (createdPassword?.id === login._id) lines.push(`Password: ${createdPassword.password}`);
     navigator.clipboard.writeText(lines.join('\n')).then(
       () => toast.success('Credentials copied'),
       () => toast.error('Failed to copy')
     );
   };
+
+  const renderConflicts = (items: LoginConflict[], title: string, note: string) => (
+    <Alert severity="error" sx={{ mb: 2 }}>
+      <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+        {title}
+      </Typography>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {items.map((conflict) => (
+          <Box key={conflict._id}>
+            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                {conflict.name || conflict.email || conflict.phone}
+              </Typography>
+              {conflict.role && <Chip size="small" label={conflict.role} />}
+              {conflict.conflict_on.map((field) => (
+                <Chip
+                  key={field}
+                  size="small"
+                  color="error"
+                  variant="outlined"
+                  label={`same ${field}`}
+                />
+              ))}
+              {conflict.same_customer && (
+                <Chip size="small" variant="outlined" label="this customer" />
+              )}
+            </Box>
+            <Typography variant="caption" color="text.secondary">
+              {[
+                conflict.email,
+                conflict.phone,
+                conflict.customer_name
+                  ? `linked to ${conflict.customer_name}`
+                  : conflict.customer_id
+                    ? `linked to ${conflict.customer_id}`
+                    : 'not linked to a customer',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+      <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
+        {note}
+      </Typography>
+    </Alert>
+  );
 
   if (loading) {
     return (
@@ -179,75 +294,31 @@ const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) =>
     );
   }
 
+  const blockedByPhone = !!phoneCheck && !phoneCheck.available;
+
   return (
     <Box>
       <Typography variant="h6" sx={{ mb: 1 }}>
         Marketplace Login
       </Typography>
 
-      {/* Phone usability is the first thing to know - it gates the WhatsApp send. */}
-      {!effectivePhoneInfo.valid && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          This number can&apos;t receive WhatsApp: {effectivePhoneInfo.reason}
-        </Alert>
-      )}
+      {/* Someone else holds the customer's own number/email — shown even before
+          the form is opened, since it explains why the obvious number won't work. */}
+      {!logins.length &&
+        conflicts.length > 0 &&
+        renderConflicts(
+          conflicts,
+          `${conflicts.length === 1 ? 'Another account already uses' : 'Other accounts already use'} this customer's details`,
+          'Use one of the customer’s other numbers below, or fix the number on the other account — two accounts on one mobile make OTP login ambiguous.'
+        )}
 
-      {/* Someone else already holds this mobile/email, so creating would be
-          rejected. Show who, so the right record can be fixed. */}
-      {conflicts.length > 0 && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-            {conflicts.length === 1 ? 'Another account already uses' : 'Other accounts already use'}{' '}
-            this customer&apos;s details
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {conflicts.map((conflict) => (
-              <Box key={conflict._id}>
-                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {conflict.name || conflict.email || conflict.phone}
-                  </Typography>
-                  {conflict.role && <Chip size="small" label={conflict.role} />}
-                  {conflict.conflict_on.map((field) => (
-                    <Chip key={field} size="small" color="error" variant="outlined" label={`same ${field}`} />
-                  ))}
-                </Box>
-                <Typography variant="caption" color="text.secondary">
-                  {[
-                    conflict.email,
-                    conflict.phone,
-                    conflict.customer_name
-                      ? `linked to ${conflict.customer_name}`
-                      : conflict.customer_id
-                        ? `linked to ${conflict.customer_id}`
-                        : 'not linked to a customer',
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-          <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
-            Creating a login here will be rejected. Fix the number or email on the other
-            account first — two accounts on one mobile make OTP login ambiguous.
-          </Typography>
-        </Alert>
-      )}
-
-      {logins.length > 0 ? (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          {logins.length > 1 && (
-            <Alert severity="info" sx={{ py: 0.5 }}>
-              {logins.length} logins are linked to this customer. They share one mobile
-              only if the numbers below match — OTP sign-in resolves by number, so
-              duplicates on the same number are worth cleaning up.
-            </Alert>
-          )}
-
-          {logins.map((item, index) => {
+      {logins.length > 0 && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
+          {logins.map((item) => {
             const itemPhone = item.phone_info?.phone || String(item.phone ?? '-');
             const itemPhoneValid = item.phone_info?.valid ?? false;
+            const shownPassword =
+              createdPassword?.id === item._id ? createdPassword.password : null;
             return (
               <Paper key={item._id} variant="outlined" sx={{ p: 1.5 }}>
                 <Box
@@ -292,10 +363,10 @@ const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) =>
                 </Box>
 
                 {/* The password is only knowable in the session that set it. */}
-                {index === 0 && createdPassword && (
+                {shownPassword && (
                   <Paper variant="outlined" sx={{ p: 1.5, mt: 1.5 }}>
                     <Typography variant="body2" fontFamily="monospace" whiteSpace="pre-line">
-                      {`Login Link: ${LOGIN_URL}\nEmail: ${item.email}\nPassword: ${createdPassword}`}
+                      {`Login Link: ${LOGIN_URL}\nEmail: ${item.email}\nPassword: ${shownPassword}`}
                     </Typography>
                   </Paper>
                 )}
@@ -323,32 +394,50 @@ const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) =>
                       </Button>
                     </span>
                   </Tooltip>
-                  {index === 0 && createdPassword && (
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<ContentCopyIcon />}
-                      onClick={handleCopy}
-                    >
-                      Copy credentials
-                    </Button>
-                  )}
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<ContentCopyIcon />}
+                    onClick={() => handleCopy(item)}
+                  >
+                    Copy credentials
+                  </Button>
                 </Box>
               </Paper>
             );
           })}
         </Box>
-      ) : (
+      )}
+
+      {showForm ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Typography variant="body2" color="text.secondary">
-            No login yet. Creating one lets this customer order online; it also appears in Customer Management.
+            {logins.length
+              ? 'Add another login on a different mobile number — useful when the shop has several contacts, or when the first number is already taken by another account.'
+              : 'No login yet. Creating one lets this customer order online; it also appears in Customer Management.'}
           </Typography>
+
+          {/* Live verdict on the typed number. */}
+          {blockedByPhone &&
+            phoneCheck!.conflicts.length > 0 &&
+            renderConflicts(
+              phoneCheck!.conflicts,
+              'This mobile number is already in use',
+              'Every account signs in by OTP on its own number, so a number can back only one login. Enter one of the customer’s other numbers.'
+            )}
+          {phoneCheck?.available && (
+            <Alert severity="success" sx={{ py: 0.25 }}>
+              {phoneCheck.phone.phone} is free — this login can be created.
+            </Alert>
+          )}
+
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
             <TextField
               size="small"
               label="Name"
               value={form.name}
               onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              helperText={logins.length ? 'Who at the shop this login belongs to' : ' '}
             />
             <TextField
               size="small"
@@ -362,11 +451,15 @@ const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) =>
               label="Mobile"
               value={form.phone}
               onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-              error={!formPhoneInfo.valid}
+              error={!!form.phone && !formPhoneInfo.valid}
               helperText={
-                formPhoneInfo.valid
-                  ? `Saved as ${formPhoneInfo.phone}`
-                  : formPhoneInfo.reason
+                !form.phone
+                  ? 'Must differ from every other login'
+                  : formPhoneInfo.valid
+                    ? checking
+                      ? 'Checking availability…'
+                      : `Saved as ${formPhoneInfo.phone}`
+                    : formPhoneInfo.reason
               }
             />
             <TextField
@@ -388,18 +481,35 @@ const CustomerLoginSection: React.FC<{ contactId: string }> = ({ contactId }) =>
               }}
             />
           </Box>
-          <Box>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             <Button
               variant="contained"
               size="small"
-              disabled={creating || !formPhoneInfo.valid || conflicts.length > 0}
+              disabled={creating || checking || !formPhoneInfo.valid || blockedByPhone}
               startIcon={creating ? <CircularProgress size={16} /> : <KeyIcon />}
               onClick={handleCreate}
             >
-              Create login
+              {logins.length ? 'Create additional login' : 'Create login'}
             </Button>
+            {logins.length > 0 && (
+              <Button
+                variant="text"
+                size="small"
+                startIcon={<CloseIcon />}
+                onClick={() => {
+                  setShowForm(false);
+                  setPhoneCheck(null);
+                }}
+              >
+                Cancel
+              </Button>
+            )}
           </Box>
         </Box>
+      ) : (
+        <Button variant="outlined" size="small" startIcon={<PersonAddIcon />} onClick={openAddForm}>
+          Add another login
+        </Button>
       )}
       <Divider sx={{ mt: 3 }} />
     </Box>
