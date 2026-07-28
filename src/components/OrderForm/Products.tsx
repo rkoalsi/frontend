@@ -2013,7 +2013,7 @@ const Products: React.FC<ProductsProps> = ({
           {/* Toolbar: out-of-stock toggle + clear cart share one row */}
           <Box
             display="flex"
-            justifyContent={{ xs: "stretch", sm: "flex-end" }}
+            justifyContent={{ xs: "flex-start", sm: "flex-end" }}
             alignItems="center"
             flexWrap="wrap"
             gap={1}
@@ -2041,7 +2041,8 @@ const Products: React.FC<ProductsProps> = ({
                     height: 40,
                     whiteSpace: 'nowrap',
                     fontSize: '0.8rem',
-                    flex: { xs: 1, sm: 'none' },
+                    flex: { xs: '1 1 auto', sm: '0 0 auto' },
+                    minWidth: 'fit-content',
                   }}
                 >
                   Group by Category
@@ -2068,7 +2069,8 @@ const Products: React.FC<ProductsProps> = ({
                   height: 40,
                   whiteSpace: 'nowrap',
                   fontSize: '0.8rem',
-                  flex: { xs: 1, sm: 'none' },
+                  flex: { xs: '1 1 auto', sm: '0 0 auto' },
+                  minWidth: 'fit-content',
                 }}
               >
                 {hideOutOfStock ? "Show Out of Stock" : "Hide Out of Stock"}
@@ -2077,7 +2079,7 @@ const Products: React.FC<ProductsProps> = ({
             <Tooltip title="Remove all products from your cart and start fresh" arrow>
               <Box
                 component="span"
-                sx={{ display: 'flex', flex: { xs: 1, sm: '0 0 auto' } }}
+                sx={{ display: 'flex', flex: { xs: '1 1 auto', sm: '0 0 auto' }, minWidth: 'fit-content' }}
               >
                 <Button
                   variant="contained"
@@ -3027,7 +3029,19 @@ const Products: React.FC<ProductsProps> = ({
             brand={activeBrand}
             onSelectBrand={handleTabChange}
             onSelectCategory={handleCategoryTabChange}
-            sx={{ mt: { xs: 2, md: 2.5 }, mb: { xs: 2, md: 2.5 } }}
+            sx={{
+              mt: { xs: 2, md: 2.5 },
+              mb: { xs: 2, md: 2.5 },
+              // On phones, run the banner out to the card's inner edge rather
+              // than sitting inside the gutters. Cancels CardContent's 12px and
+              // this component's own 8px, so it gains 40px of width — the only
+              // way a fixed-ratio image gets bigger without being cropped.
+              mx: { xs: '-20px', sm: 0 },
+              width: { xs: 'calc(100% + 40px)', sm: '100%' },
+              borderRadius: { xs: 0, sm: 2 },
+              borderLeftWidth: { xs: 0, sm: '1px' },
+              borderRightWidth: { xs: 0, sm: '1px' },
+            }}
           />
         )}
 
