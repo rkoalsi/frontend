@@ -38,7 +38,13 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 
-const BLOG_URL = (process.env.blog_url || 'https://barkbutler.in').replace(/\/$/, '');
+// Cards are handed out as marketplace links. The blog copy at
+// barkbutler.in/card/<slug> stays live for QR codes already printed, but
+// nothing here should point at it any more.
+const MARKETPLACE_URL = 'https://marketplace.pupscribe.in';
+
+const cardOrigin = () =>
+  typeof window !== 'undefined' ? window.location.origin : MARKETPLACE_URL;
 
 const SOCIAL_OPTIONS = ['instagram', 'linkedin', 'facebook', 'youtube'] as const;
 
@@ -123,13 +129,20 @@ const emptyCard = (): Card => ({
   is_active: true,
 });
 
-const publicUrl = (slug?: string) => (slug ? `${BLOG_URL}/card/${slug}` : '');
+const publicUrl = (slug?: string) => (slug ? `${cardOrigin()}/cards/${slug}` : '');
 
 const BusinessCardsAdmin: React.FC = () => {
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
+  // Held in state rather than read inline so the server and first client
+  // render agree; the real origin lands right after mount.
+  const [publicOrigin, setPublicOrigin] = useState(MARKETPLACE_URL);
+
+  useEffect(() => {
+    setPublicOrigin(window.location.origin);
+  }, []);
 
   // Edit dialog state
   const [editOpen, setEditOpen] = useState(false);
@@ -371,7 +384,7 @@ const BusinessCardsAdmin: React.FC = () => {
             Digital Business Cards
           </Typography>
           <Typography variant='body2' color='text.secondary'>
-            Published at {BLOG_URL}/card/&lt;slug&gt;
+            Published at {publicOrigin.replace(/^https?:\/\//, '')}/cards/&lt;slug&gt;
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
@@ -440,7 +453,7 @@ const BusinessCardsAdmin: React.FC = () => {
                   color='text.secondary'
                   sx={{ wordBreak: 'break-all' }}
                 >
-                  /card/{card.slug}
+                  /cards/{card.slug}
                 </Typography>
 
                 <Box>
@@ -557,7 +570,7 @@ const BusinessCardsAdmin: React.FC = () => {
               {selectedUser?.has_card && (
                 <Alert severity='warning' sx={{ mt: 1 }}>
                   {selectedUser.name} already has a card
-                  {selectedUser.card_slug ? ` (/card/${selectedUser.card_slug})` : ''}.
+                  {selectedUser.card_slug ? ` (/cards/${selectedUser.card_slug})` : ''}.
                   Saving will be blocked — edit the existing card instead.
                 </Alert>
               )}
