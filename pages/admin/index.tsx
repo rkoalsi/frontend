@@ -52,6 +52,7 @@ import { useRouter } from 'next/router';
 import axiosInstance from '../../src/util/axios';
 import { format } from 'date-fns';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
+import { headerGradient, onHeaderText } from '../../src/util/surfaces';
 
 // Define TypeScript interfaces for better type safety
 interface Stats {
@@ -1007,8 +1008,8 @@ const AdminDashboard = () => {
         {/* Header section */}
         <Box
           sx={{
-            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-            color: 'white',
+            background: headerGradient,
+            color: onHeaderText,
             padding: { xs: 3, md: 4 },
             position: 'relative',
             overflow: 'hidden',

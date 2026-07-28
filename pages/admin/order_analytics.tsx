@@ -175,6 +175,12 @@ const fmtPeriod = (p: string) => {
 const pct = (num: number, den: number) =>
   den > 0 ? Math.round((num / den) * 100) : 0;
 
+// Fulfilment is value-based: invoiced amount / estimate amount.
+const fulfilPct = (invoicedValue: number, estimateValue: number) =>
+  estimateValue > 0
+    ? Math.round(((invoicedValue ?? 0) / estimateValue) * 1000) / 10
+    : 0;
+
 // Local-time YYYY-MM-DD (toISOString would shift the date in IST).
 const fmtDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
@@ -686,10 +692,10 @@ const OrderAnalyticsPage = () => {
               color={COLORS.finalised}
               label="Finalised (Invoiced)"
               value={fmtInt(s.finalisedOrders)}
-              sub={`${pct(
-                s.finalisedOrders,
-                s.estimateOrders
-              )}% fulfilment of estimates · ${fmtMoney(s.finalisedValue)}`}
+              sub={`${fulfilPct(
+                s.finalisedValue,
+                s.estimateValue
+              )}% fulfilment by value · ${fmtMoney(s.finalisedValue)}`}
             />
             <StatCard
               icon={<PaidIcon />}
@@ -746,10 +752,10 @@ const OrderAnalyticsPage = () => {
                   <Chip
                     color="success"
                     variant="outlined"
-                    label={`Overall fulfilment: ${pct(
-                      s.finalisedOrders,
-                      s.estimateOrders
-                    )}% (invoiced / estimates)`}
+                    label={`Overall fulfilment: ${fulfilPct(
+                      s.finalisedValue,
+                      s.estimateValue
+                    )}% (invoiced value / estimate value)`}
                   />
                   <Chip
                     color="primary"
@@ -1231,7 +1237,9 @@ const OrderAnalyticsPage = () => {
                           <TableCell align="right">Estimates</TableCell>
                           <TableCell align="right">Invoiced</TableCell>
                           <TableCell align="right">Paid</TableCell>
-                          <TableCell align="right">Fulfilment %</TableCell>
+                          <TableCell align="right">
+                            Fulfilment % (value)
+                          </TableCell>
                           <TableCell align="right">Cust. Products</TableCell>
                           <TableCell align="right">Estimate Value</TableCell>
                           <TableCell align="right">Invoiced Value</TableCell>
@@ -1272,7 +1280,7 @@ const OrderAnalyticsPage = () => {
                                 {fmtInt(p.paidOrders)}
                               </TableCell>
                               <TableCell align="right">
-                                {pct(p.finalisedOrders, p.estimateOrders)}%
+                                {fulfilPct(p.finalisedValue, p.estimateValue)}%
                               </TableCell>
                               <TableCell align="right">
                                 {fmtInt(p.customerAddedItems)}
@@ -1395,6 +1403,14 @@ const PeriodDetail: React.FC<{ p: Period }> = ({ p }) => (
     <DetailRow label="Total order value" value={fmtMoney(p.totalValue)} />
     <DetailRow label="Estimate value" value={fmtMoney(p.estimateValue)} />
     <DetailRow label="Finalised value" value={fmtMoney(p.finalisedValue)} />
+    <DetailRow
+      label="Fulfilment % (invoiced / estimate value)"
+      value={`${fulfilPct(p.finalisedValue, p.estimateValue)}%`}
+    />
+    <DetailRow
+      label="Shortfall vs estimates"
+      value={fmtMoney(Math.max(0, p.estimateValue - p.finalisedValue))}
+    />
     <DetailRow label="Paid value" value={fmtMoney(p.paidValue)} />
     <DetailRow
       label="Payments due value"

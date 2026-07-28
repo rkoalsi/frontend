@@ -67,6 +67,7 @@ import {
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
 import { useColorMode } from '../context/ColorModeContext';
+import { appShellBg, headerGradient } from '../util/surfaces';
 import NotificationBell from './common/NotificationBell';
 import {
   BrandLockup,
@@ -256,15 +257,15 @@ const AdminLayout = ({ children }: any) => {
     router.push(path);
   };
 
-  const mainBg = isDark
-    ? 'linear-gradient(135deg, #6A5AD1, #4633B8, #2A2168)'
-    : '#f0f4f8';
+  // Shares the customer portal's shell so admin/sales/customer all sit on the
+  // same purple in dark mode.
+  const mainBg = appShellBg(isDark);
 
-  const sidebarBg = isDark ? '#37279C' : '#e8eef5';
-  const sidebarText = isDark ? 'white' : '#191536';
-  const activeItemBg = isDark ? '#78354f' : 'rgba(120, 53, 79, 0.15)';
-  const activeItemText = isDark ? 'white' : '#78354f';
-  const hoverItemBg = isDark ? '#78354f' : 'rgba(120, 53, 79, 0.1)';
+  const sidebarBg = isDark ? '#221E48' : '#FFFFFF';
+  const sidebarText = isDark ? 'rgba(241,238,255,0.92)' : '#1C1A33';
+  const activeItemBg = isDark ? 'rgba(167,150,255,0.2)' : 'rgba(70,51,184,0.1)';
+  const activeItemText = isDark ? '#BCAFFF' : '#4633B8';
+  const hoverItemBg = isDark ? 'rgba(167,150,255,0.12)' : 'rgba(70,51,184,0.06)';
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100dvh', background: mainBg }}>
@@ -518,7 +519,7 @@ const AdminLayout = ({ children }: any) => {
                 height: 36,
                 fontSize: 15,
                 fontWeight: 700,
-                background: 'linear-gradient(135deg, #6A5AD1, #37279C)',
+                background: headerGradient,
                 color: '#fff',
               }}
             >

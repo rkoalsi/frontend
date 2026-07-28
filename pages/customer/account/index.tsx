@@ -1,5 +1,5 @@
 'use client';
-import { useContext, useState, useEffect } from 'react';
+import { useContext, useState, useEffect, useMemo } from 'react';
 import {
   Typography,
   Box,
@@ -27,6 +27,7 @@ import { toast } from 'react-toastify';
 import axiosInstance from '../../../src/util/axios';
 import ContactSupport from '../../../src/components/ContactSupport';
 import { trackActivity } from '../../../src/util/trackActivity';
+import { headerGradient } from '../../../src/util/surfaces';
 
 const INDIAN_STATES = [
   'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
@@ -38,6 +39,38 @@ const INDIAN_STATES = [
 ];
 
 const emptyAddress = { attention: '', address: '', street2: '', city: '', state: '', zip: '', phone: '' };
+
+/**
+ * Fingerprint of an address ignoring its identity/metadata keys, so the same
+ * physical address duplicated in Zoho under two `address_id`s collapses to one
+ * entry. Values are trimmed and lower-cased because Zoho copies often differ
+ * only in casing or trailing whitespace.
+ */
+const IGNORED_ADDRESS_KEYS = new Set([
+  'address_id', 'id', '_id', 'is_primary', 'created_time', 'last_modified_time',
+]);
+
+const addressFingerprint = (addr: any) =>
+  Object.keys(addr || {})
+    .filter((k) => !IGNORED_ADDRESS_KEYS.has(k))
+    .sort()
+    .map((k) => {
+      const v = addr[k];
+      const norm = v === null || v === undefined ? '' : String(v).trim().toLowerCase();
+      return `${k}=${norm}`;
+    })
+    .filter((pair) => !pair.endsWith('='))
+    .join('|');
+
+const dedupeAddresses = (list: any[]) => {
+  const seen = new Set<string>();
+  return list.filter((a) => {
+    const key = addressFingerprint(a);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
 
 const CustomerAccount = () => {
   const { user }: any = useContext(AuthContext);
@@ -244,8 +277,12 @@ const CustomerAccount = () => {
     border: '1px solid', borderColor: 'divider', borderRadius: 2, mb: 4,
   } as const;
 
-  const addresses: any[] = customer?.addresses || [];
-  const selectedAddr = addresses[selectedAddrIdx];
+  const addresses: any[] = useMemo(
+    () => dedupeAddresses(customer?.addresses || []),
+    [customer?.addresses]
+  );
+  // Guard against a stale index if the list shrinks after a refetch.
+  const selectedAddr = addresses[selectedAddrIdx] || addresses[0];
 
   return (
     <Container maxWidth='lg' sx={{ py: { xs: 1.5, md: 4 }, px: { xs: 1.5, sm: 2, md: 3 } }}>
@@ -256,7 +293,7 @@ const CustomerAccount = () => {
         {/* Header */}
         <Box
           sx={{
-            background: 'linear-gradient(135deg, #221E48 0%, #37279C 100%)',
+            background: headerGradient,
             color: 'white', padding: { xs: 2.5, sm: 3, md: 4 },
           }}
         >
@@ -414,21 +451,25 @@ const CustomerAccount = () => {
                 <Alert severity='info' sx={{ borderRadius: 2 }}>No addresses on file yet.</Alert>
               ) : (
                 <Paper elevation={0} sx={cardSx}>
-                  <FormControl fullWidth size='small' sx={{ mb: 2, maxWidth: 420 }}>
-                    <InputLabel id='addr-select-label'>Select address</InputLabel>
-                    <Select
-                      labelId='addr-select-label'
-                      label='Select address'
-                      value={selectedAddrIdx}
-                      onChange={(e) => setSelectedAddrIdx(Number(e.target.value))}
-                    >
-                      {addresses.map((a, i) => (
-                        <MenuItem key={a.address_id || i} value={i}>
-                          {[a.attention, a.address, a.city].filter(Boolean).join(', ') || `Address ${i + 1}`}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  {/* Only offer a picker when there is genuinely more than one
+                      address — duplicates are already collapsed above. */}
+                  {addresses.length > 1 && (
+                    <FormControl fullWidth size='small' sx={{ mb: 2, maxWidth: 420 }}>
+                      <InputLabel id='addr-select-label'>Select address</InputLabel>
+                      <Select
+                        labelId='addr-select-label'
+                        label='Select address'
+                        value={selectedAddrIdx < addresses.length ? selectedAddrIdx : 0}
+                        onChange={(e) => setSelectedAddrIdx(Number(e.target.value))}
+                      >
+                        {addresses.map((a, i) => (
+                          <MenuItem key={a.address_id || i} value={i}>
+                            {[a.attention, a.address, a.city].filter(Boolean).join(', ') || `Address ${i + 1}`}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
                   {selectedAddr && (
                     <Box sx={{ pl: 0.5, color: 'text.primary' }}>
                       {selectedAddr.attention && <Typography variant='body2' fontWeight={600}>{selectedAddr.attention}</Typography>}
