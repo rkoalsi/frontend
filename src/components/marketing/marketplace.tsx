@@ -14,16 +14,13 @@ import {
 import { event as trackEvent } from '../../util/gtag';
 
 /**
- * Shared marketing sections for the two public landing surfaces:
+ * Building blocks for the public marketing page, which a logged-out visitor
+ * sees at `/` (src/components/marketing/GuestLanding.tsx). Kept separate from
+ * the page itself so the hero, feature grid and CTA can be reused or reordered
+ * without touching the content sections.
  *
- *   /                        — what a logged-out visitor sees instead of the
- *                              dashboard (hero + features + CTA only)
- *   /wholesale-pet-supplies  — the full page (adds brands, steps, buyer types,
- *                              categories and the FAQ)
- *
- * Both are kept in one place so the copy can never drift between them. The
- * wording follows pupscribe.in/marketplace so a visitor arriving from the main
- * site reads one consistent story.
+ * The wording follows pupscribe.in/marketplace so a visitor arriving from the
+ * main site reads one consistent story.
  */
 
 // Three brand accents, each with a light- and a dark-mode value. The saturated

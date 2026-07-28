@@ -188,7 +188,7 @@ const RegisterPage = () => {
           <Link
             component='button'
             type='button'
-            onClick={() => router.push('/wholesale-pet-supplies')}
+            onClick={() => router.push('/')}
             sx={{ fontWeight: 600 }}
           >
             See what the marketplace does
