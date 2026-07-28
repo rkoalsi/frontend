@@ -560,6 +560,24 @@ const LoginPage = () => {
             Register as a new B2B client
           </Button>
 
+          {/* Logged-out visitors are redirected here from every private route,
+              so this is the one place a first-time retailer reliably lands —
+              give them a way through to what the marketplace actually does. */}
+          <Button
+            variant='text'
+            fullWidth
+            onClick={() => router.push('/wholesale-pet-supplies')}
+            sx={{
+              mt: 1,
+              textTransform: 'none',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              borderRadius: '10px',
+            }}
+          >
+            See what the marketplace does
+          </Button>
+
           <Typography
             variant='caption'
             color='text.disabled'

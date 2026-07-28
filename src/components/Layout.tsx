@@ -12,10 +12,8 @@ import {
   Tooltip,
   IconButton,
   Divider,
-  Button,
 } from '@mui/material';
 import {
-  Pets,
   Logout,
   AdminPanelSettings,
   LineAxisOutlined,
@@ -25,6 +23,16 @@ import {
 } from '@mui/icons-material';
 import { useColorMode } from '../context/ColorModeContext';
 import NotificationBell from '../components/common/NotificationBell';
+import {
+  BrandLockup,
+  TopbarAction,
+  topbarDangerIconSx,
+  topbarDividerSx,
+  topbarIconSx,
+  topbarSx,
+  topbarToolbarSx,
+  useTopbarScrolled,
+} from '../components/common/Topbar';
 
 const Layout = ({ children }: any) => {
   const { user = {}, loading, logout }: any = useContext(Auth);
@@ -33,13 +41,15 @@ const Layout = ({ children }: any) => {
   const isMobileOrTablet = useMediaQuery(theme.breakpoints.down('md'));
   const { mode, toggleColorMode } = useColorMode();
   const isDark = mode === 'dark';
+  // Must sit above the early returns below — hooks can't be conditional.
+  const scrolled = useTopbarScrolled();
 
   const [isRouterReady, setIsRouterReady] = useState(false);
   const { shared } = router.query;
 
   const [originalPath, setOriginalPath] = useState(null);
 
-  const publicPaths = ['/login', '/register', '/forgot_password', '/reset_password', '/catalogues/all_products', '/catalogues', '/cards/[id]'];
+  const publicPaths = ['/login', '/register', '/wholesale-pet-supplies', '/forgot_password', '/reset_password', '/catalogues/all_products', '/catalogues', '/cards/[id]'];
 
   useEffect(() => {
     if (router.isReady) {
@@ -71,17 +81,21 @@ const Layout = ({ children }: any) => {
     }
   }, [shared, originalPath, router, publicPaths]);
 
+  const pathIsPublic = publicPaths.includes(router.pathname);
+
   useEffect(() => {
     if (!isRouterReady) return;
-
-    const pathIsPublic = publicPaths.includes(router.pathname);
 
     if (!loading && !user && !shared && !pathIsPublic) {
       router.replace('/login');
     }
-  }, [user, loading, shared, isRouterReady, router, publicPaths]);
+  }, [user, loading, shared, isRouterReady, router, pathIsPublic]);
 
-  if (!isRouterReady || (loading && !user)) {
+  // Public pages render immediately instead of waiting for the router and the
+  // auth check. They do not depend on `user`, and gating them behind the
+  // loading state meant the server-rendered HTML for /register, /catalogues and
+  // the marketing page was just "Loading..." — nothing for a crawler to index.
+  if (!pathIsPublic && (!isRouterReady || (loading && !user))) {
     return (
       <Box
         sx={{
@@ -103,26 +117,6 @@ const Layout = ({ children }: any) => {
 
   const mainBg = theme.palette.background.default;
 
-  // Shared ghost-pill style so labeled header actions (Admin / Dashboard) match
-  // the translucent icon buttons (theme toggle, notifications, logout) on the bar.
-  const headerActionSx = {
-    color: 'rgba(255,255,255,0.85)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.14)',
-    borderRadius: '8px',
-    textTransform: 'none',
-    fontWeight: 600,
-    px: 1.5,
-    boxShadow: 'none',
-    '& .MuiButton-startIcon': { mr: 0.5 },
-    '&:hover': {
-      backgroundColor: 'rgba(255,255,255,0.16)',
-      color: '#fff',
-      borderColor: 'rgba(255,255,255,0.24)',
-      boxShadow: 'none',
-    },
-  } as const;
-
   return (
     <Box
       sx={{
@@ -133,89 +127,25 @@ const Layout = ({ children }: any) => {
       }}
     >
       {/* Top Navigation Bar */}
-      <AppBar
-        position='sticky'
-        elevation={0}
-        sx={{
-          backgroundColor: '#191536',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-          backdropFilter: 'blur(8px)',
-        }}
-      >
-        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', minHeight: { xs: 56, sm: 64 } }}>
-          {/* Brand Logo */}
-          <Box
-            onClick={() => { if (!shared) router.push('/'); }}
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              cursor: shared ? 'default' : 'pointer',
-              userSelect: 'none',
-            }}
-          >
-            <Box
-              sx={{
-                width: 34,
-                height: 34,
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, #6A5AD1, #37279C)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-              }}
-            >
-              <Pets sx={{ fontSize: 18, color: '#fff' }} />
-            </Box>
-            <Box>
-              <Typography
-                variant='subtitle1'
-                fontWeight={700}
-                sx={{ color: '#fff', lineHeight: 1.1, letterSpacing: '-0.01em' }}
-              >
-                Pupscribe
-              </Typography>
-              <Typography
-                variant='caption'
-                sx={{ color: 'rgba(255,255,255,0.45)', lineHeight: 1, fontSize: '0.65rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}
-              >
-                Marketplace
-              </Typography>
-            </Box>
-          </Box>
+      <AppBar position='sticky' elevation={0} sx={topbarSx(scrolled)}>
+        <Toolbar sx={topbarToolbarSx}>
+          <BrandLockup
+            descriptor='Marketplace'
+            onClick={shared ? undefined : () => router.push('/')}
+          />
 
           {/* Right Side Actions */}
-          <Box display='flex' alignItems='center' gap={1}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
             {/* Register — shown to logged-out visitors on public pages */}
             {!loading &&
               !user &&
               !['/register', '/login'].includes(router.pathname) && (
-                isMobileOrTablet ? (
-                  <Tooltip title='Register' arrow>
-                    <IconButton
-                      onClick={() => router.push('/register')}
-                      size='small'
-                      sx={{
-                        color: 'rgba(255,255,255,0.8)',
-                        backgroundColor: 'rgba(255,255,255,0.08)',
-                        borderRadius: '8px',
-                        '&:hover': { backgroundColor: 'rgba(255,255,255,0.15)' },
-                      }}
-                    >
-                      <PersonAddAlt fontSize='small' />
-                    </IconButton>
-                  </Tooltip>
-                ) : (
-                  <Button
-                    size='small'
-                    startIcon={<PersonAddAlt fontSize='small' />}
-                    onClick={() => router.push('/register')}
-                    sx={headerActionSx}
-                  >
-                    Register
-                  </Button>
-                )
+                <TopbarAction
+                  icon={<PersonAddAlt fontSize='small' />}
+                  label='Register'
+                  onClick={() => router.push('/register')}
+                  compact={isMobileOrTablet}
+                />
               )}
             {user && (
               user.role?.includes('admin') ||
@@ -223,58 +153,20 @@ const Layout = ({ children }: any) => {
               user.role?.includes('marketing_manager') ||
               user.role?.includes('hr')
             ) && !router.pathname.includes('admin') && (
-              isMobileOrTablet ? (
-                <Tooltip title='Admin Panel' arrow>
-                  <IconButton
-                    onClick={() => router.push('/admin')}
-                    size='small'
-                    sx={{
-                      color: 'rgba(255,255,255,0.8)',
-                      backgroundColor: 'rgba(255,255,255,0.08)',
-                      borderRadius: '8px',
-                      '&:hover': { backgroundColor: 'rgba(255,255,255,0.15)' },
-                    }}
-                  >
-                    <AdminPanelSettings fontSize='small' />
-                  </IconButton>
-                </Tooltip>
-              ) : (
-                <Button
-                  size='small'
-                  startIcon={<AdminPanelSettings fontSize='small' />}
-                  onClick={() => router.push('/admin')}
-                  sx={headerActionSx}
-                >
-                  Admin
-                </Button>
-              )
+              <TopbarAction
+                icon={<AdminPanelSettings fontSize='small' />}
+                label='Admin'
+                onClick={() => router.push('/admin')}
+                compact={isMobileOrTablet}
+              />
             )}
             {user && user.role === 'customer' && !router.pathname.includes('customer') && (
-              isMobileOrTablet ? (
-                <Tooltip title='Dashboard' arrow>
-                  <IconButton
-                    onClick={() => router.push('/customer')}
-                    size='small'
-                    sx={{
-                      color: 'rgba(255,255,255,0.8)',
-                      backgroundColor: 'rgba(255,255,255,0.08)',
-                      borderRadius: '8px',
-                      '&:hover': { backgroundColor: 'rgba(255,255,255,0.15)' },
-                    }}
-                  >
-                    <LineAxisOutlined fontSize='small' />
-                  </IconButton>
-                </Tooltip>
-              ) : (
-                <Button
-                  size='small'
-                  startIcon={<LineAxisOutlined fontSize='small' />}
-                  onClick={() => router.push('/customer')}
-                  sx={headerActionSx}
-                >
-                  Dashboard
-                </Button>
-              )
+              <TopbarAction
+                icon={<LineAxisOutlined fontSize='small' />}
+                label='Dashboard'
+                onClick={() => router.push('/customer')}
+                compact={isMobileOrTablet}
+              />
             )}
 
             {/* Dark/Light Mode Toggle */}
@@ -282,12 +174,8 @@ const Layout = ({ children }: any) => {
               <IconButton
                 onClick={toggleColorMode}
                 size='small'
-                sx={{
-                  color: 'rgba(255,255,255,0.8)',
-                  backgroundColor: 'rgba(255,255,255,0.08)',
-                  borderRadius: '8px',
-                  '&:hover': { backgroundColor: 'rgba(255,255,255,0.15)', color: '#fff' },
-                }}
+                aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                sx={topbarIconSx}
               >
                 {isDark ? <LightMode fontSize='small' /> : <DarkMode fontSize='small' />}
               </IconButton>
@@ -297,18 +185,9 @@ const Layout = ({ children }: any) => {
 
             {user && (
               <>
-                <Divider orientation='vertical' flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)', mx: 0.5 }} />
+                <Divider orientation='vertical' flexItem sx={topbarDividerSx} />
                 <Tooltip title='Logout' arrow>
-                  <IconButton
-                    onClick={logout}
-                    size='small'
-                    sx={{
-                      color: 'rgba(255,255,255,0.7)',
-                      backgroundColor: 'rgba(217,83,79,0.12)',
-                      borderRadius: '8px',
-                      '&:hover': { backgroundColor: 'rgba(217,83,79,0.25)', color: '#ff6b6b' },
-                    }}
-                  >
+                  <IconButton onClick={logout} size='small' aria-label='Logout' sx={topbarDangerIconSx}>
                     <Logout fontSize='small' />
                   </IconButton>
                 </Tooltip>
