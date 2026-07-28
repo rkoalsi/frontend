@@ -18,7 +18,6 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
-  Drawer,
   FormControl,
   InputLabel,
   Select,
@@ -26,6 +25,7 @@ import {
   FormControlLabel,
   Checkbox,
 } from '@mui/material';
+import Drawer from '../../src/components/common/ResponsiveDrawer';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import { FilterAlt } from '@mui/icons-material';

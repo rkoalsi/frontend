@@ -10,7 +10,6 @@ import {
   TableHead,
   TableRow,
   CircularProgress,
-  Drawer,
   capitalize,
   TablePagination,
   TextField,
@@ -22,6 +21,7 @@ import {
   IconButton,
   useTheme,
 } from '@mui/material';
+import Drawer from '../../src/components/common/ResponsiveDrawer';
 import { Visibility } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
