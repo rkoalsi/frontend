@@ -11,7 +11,6 @@ export const GA_ID = 'G-B3B84C0Y76';
 export const PUBLIC_PATHS = [
   '/login',
   '/register',
-  '/wholesale-pet-supplies',
   '/forgot_password',
   '/reset_password',
   '/catalogues',
