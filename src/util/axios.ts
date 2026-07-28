@@ -29,7 +29,10 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
-    const PUBLIC_PATHS = [
+    // Exact paths, plus prefixes for the dynamic public routes. '/' has to be
+    // matched exactly — as a prefix it would swallow every path on the site.
+    const PUBLIC_EXACT = [
+      '/',
       '/login',
       '/register',
       '/wholesale-pet-supplies',
@@ -37,12 +40,16 @@ axiosInstance.interceptors.response.use(
       '/reset_password',
       '/catalogues',
       '/catalogues/all_products',
-      '/orders/new/',   // prefix-match covers all /orders/new/[id] variants
+    ];
+    const PUBLIC_PREFIXES = [
+      '/orders/new/',   // covers all /orders/new/[id] variants
       '/cards/',        // public digital business cards
     ];
     const currentPath =
       typeof window !== 'undefined' ? window.location.pathname : '';
-    const alreadyOnLogin = PUBLIC_PATHS.some((p) => currentPath.startsWith(p));
+    const alreadyOnLogin =
+      PUBLIC_EXACT.includes(currentPath) ||
+      PUBLIC_PREFIXES.some((p) => currentPath.startsWith(p));
 
     if ((status === 403 || status === 401) && !alreadyOnLogin) {
       toast.error('Your session has expired. Please log in again.');
