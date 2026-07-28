@@ -28,6 +28,11 @@ gtag('config', 'G-B3B84C0Y76', { send_page_view: false });`,
         <meta name="robots" content="noindex, nofollow" />
         {/* PWA primary color */}
         <meta name="theme-color" content={theme.palette.primary.main} />
+        {/* The P-mark, same artwork as the topbar logo (BRAND_MARK_SRC). The
+            local .ico is the same mark but 264 KB, so it stays only as the
+            fallback for browsers that request /favicon.ico regardless. */}
+        <link rel="icon" type="image/png" href="https://assets.pupscribe.in/branding/P-v2.png" />
+        <link rel="apple-touch-icon" href="https://assets.pupscribe.in/branding/P-v2.png" />
         <link rel="shortcut icon" href="/favicon.ico" />
         <meta name="emotion-insertion-point" content="" />
         <DocumentHeadTags {...props} />

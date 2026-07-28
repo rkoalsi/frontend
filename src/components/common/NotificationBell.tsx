@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { NotificationsOutlined, DoneAll, OpenInNew } from '@mui/icons-material';
 import { useNotifications, AppNotification } from '../../hooks/useNotifications';
+import { topbarIconSx } from './Topbar';
 
 // Server stores naive UTC datetimes (no Z suffix). Append Z so the browser
 // always parses them as UTC instead of treating them as local time (IST).
@@ -62,12 +63,8 @@ const NotificationBell = () => {
         <IconButton
           onClick={handleOpen}
           size='small'
-          sx={{
-            color: 'rgba(255,255,255,0.8)',
-            backgroundColor: 'rgba(255,255,255,0.08)',
-            borderRadius: '8px',
-            '&:hover': { backgroundColor: 'rgba(255,255,255,0.15)', color: '#fff' },
-          }}
+          aria-label='Notifications'
+          sx={topbarIconSx}
         >
           <Badge badgeContent={unreadCount > 0 ? unreadCount : undefined} color='error' max={99}>
             <NotificationsOutlined fontSize='small' />

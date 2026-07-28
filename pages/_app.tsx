@@ -62,6 +62,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/forgot_password': 'Forgot Password',
   '/reset_password': 'Reset Password',
   '/customer_requests': 'Customer Requests',
+  '/wholesale-pet-supplies': 'Wholesale Pet Supplies',
   // Admin
   '/admin': 'Admin Dashboard',
   '/admin/active_users': 'Active Users',
@@ -155,39 +156,63 @@ function getPageTitle(pathname: string): string {
 // marked noindex — only these pages should ever appear in Google results.
 const SITE_URL = 'https://marketplace.pupscribe.in';
 const DEFAULT_SEO_DESCRIPTION =
-  'Pupscribe Marketplace — the B2B ordering portal for pet retailers. ' +
-  'Registered retailers can browse the full Pupscribe catalogue, check live ' +
-  'stock and place wholesale orders directly online.';
+  'Pupscribe Marketplace — the online wholesale ordering portal for pet ' +
+  'retailers in India. Pet shops, breeders, kennels and clinics browse the ' +
+  'full catalogue of pet food, treats, toys and accessories, check live stock ' +
+  'and place bulk orders direct from the distributor.';
 const PAGE_SEO: Record<string, { title: string; description: string }> = {
   // The root URL is what Google surfaces for brand searches. Guests are
   // redirected to /login client-side, but the SSR HTML carries the brand SEO
   // so the domain result shows a proper title + description.
+  //
+  // Titles and descriptions carry the terms buyers actually search: "wholesale",
+  // "bulk", "distributor", "for pet shops / retailers" on the trade side, and
+  // "buy in bulk", "direct from distributor" on the non-trade side. Keep the two
+  // audiences on their own pages (/register vs /bulk-orders) — mixed copy ranks
+  // for neither.
   '/': {
-    title: 'Pupscribe Marketplace | B2B Ordering Portal for Pet Retailers',
+    title:
+      'Pupscribe Marketplace | Wholesale Pet Supplies & B2B Ordering Portal for Pet Retailers',
     description: DEFAULT_SEO_DESCRIPTION,
   },
   '/login': {
-    title: 'Login | Pupscribe Marketplace',
-    description: DEFAULT_SEO_DESCRIPTION,
+    title: 'Login | Pupscribe Marketplace — Wholesale Pet Supplies Ordering',
+    description:
+      'Sign in to Pupscribe Marketplace to place wholesale pet supply orders, ' +
+      'check live stock and track your deliveries. New here? Register your pet ' +
+      'store or create a bulk-buyer account in minutes.',
   },
   '/register': {
-    title: 'Register Your Store | Pupscribe Marketplace',
+    title:
+      'Register Your Pet Store | Wholesale Pet Supplies Supplier for Retailers | Pupscribe',
     description:
-      'Register your pet store on Pupscribe Marketplace and start placing ' +
-      'wholesale B2B orders directly — browse brands, live stock and pricing ' +
-      'made for retailers.',
+      'Register your pet shop with Pupscribe and order pet food, treats, toys ' +
+      'and accessories at wholesale rates. Become a stockist, get GST invoicing, ' +
+      'live stock and dealer pricing across every brand we distribute in India.',
+  },
+  '/wholesale-pet-supplies': {
+    title:
+      'Wholesale Pet Supplies for Retailers | Order Direct from the Distributor | Pupscribe',
+    description:
+      'Order wholesale pet food, treats, toys and accessories direct from ' +
+      'Pupscribe — the distributor. Live stock, invoices and statements on ' +
+      'demand, shipment tracking and order updates on WhatsApp, in one portal.',
   },
   '/catalogues': {
-    title: 'Product Catalogues | Pupscribe Marketplace',
+    title:
+      'Pet Product Catalogues | Wholesale Pet Food, Treats & Accessories | Pupscribe',
     description:
-      'Browse Pupscribe product catalogues — pet food, treats, toys and ' +
-      'accessories available to B2B retailers on Pupscribe Marketplace.',
+      'Browse Pupscribe brand catalogues — wholesale dog food, cat food, treats, ' +
+      'toys, grooming and pet accessories available to retailers and bulk buyers ' +
+      'across India.',
   },
   '/catalogues/all_products': {
-    title: 'All Products | Pupscribe Marketplace',
+    title:
+      'All Products | Wholesale Pet Supplies Price List for Retailers | Pupscribe',
     description:
-      'Explore all products available to retailers on Pupscribe Marketplace, ' +
-      'the B2B ordering portal for pet stores.',
+      'Explore the full Pupscribe range of pet food, treats, chews, toys, ' +
+      'grooming products and accessories available to order wholesale by pet ' +
+      'shops, breeders and bulk buyers in India.',
   },
   '/forgot_password': {
     title: 'Forgot Password | Pupscribe Marketplace',
@@ -216,6 +241,17 @@ const STRUCTURED_DATA = JSON.stringify([
     name: 'Pupscribe',
     url: 'https://pupscribe.in',
     sameAs: [SITE_URL],
+    description:
+      'Pupscribe is a pet product distributor in India, supplying pet food, ' +
+      'treats, toys, grooming products and accessories to pet retailers and ' +
+      'bulk buyers through its online marketplace.',
+    areaServed: { '@type': 'Country', name: 'India' },
+    knowsAbout: [
+      'Wholesale pet supplies',
+      'Pet food distribution',
+      'Bulk pet product ordering',
+      'Pet retail supply',
+    ],
   },
 ]);
 

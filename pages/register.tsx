@@ -182,6 +182,18 @@ const RegisterPage = () => {
             Sign in
           </Link>
         </Typography>
+
+        <Typography variant='body2' color='text.secondary' sx={{ mt: 1.5, textAlign: 'center' }}>
+          New to Pupscribe?{' '}
+          <Link
+            component='button'
+            type='button'
+            onClick={() => router.push('/wholesale-pet-supplies')}
+            sx={{ fontWeight: 600 }}
+          >
+            See what the marketplace does
+          </Link>
+        </Typography>
       </Paper>
     </Box>
   );

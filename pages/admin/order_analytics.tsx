@@ -17,8 +17,6 @@ import {
   Chip,
   Stack,
   Alert,
-  ToggleButton,
-  ToggleButtonGroup,
   FormControl,
   InputLabel,
   Select,
@@ -177,7 +175,74 @@ const fmtPeriod = (p: string) => {
 const pct = (num: number, den: number) =>
   den > 0 ? Math.round((num / den) * 100) : 0;
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
+// Local-time YYYY-MM-DD (toISOString would shift the date in IST).
+const fmtDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate()
+  ).padStart(2, '0')}`;
+
+const todayStr = () => fmtDate(new Date());
+
+// ── Date range presets ───────────────────────────────────────────────────
+interface RangePreset {
+  key: string;
+  label: string;
+  range: () => { start: string; end: string };
+}
+
+const monthRange = (monthsAgo: number) => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
+  const lastDay = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+  const end = lastDay > now ? now : lastDay;
+  return { start: fmtDate(start), end: fmtDate(end) };
+};
+
+const daysBackRange = (days: number) => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1));
+  return { start: fmtDate(start), end: fmtDate(now) };
+};
+
+// Financial year runs April → March.
+const fyRange = (yearsAgo: number) => {
+  const now = new Date();
+  const fyStartYear =
+    (now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1) - yearsAgo;
+  const start = new Date(fyStartYear, 3, 1);
+  const fyEnd = new Date(fyStartYear + 1, 2, 31);
+  const end = fyEnd > now ? now : fyEnd;
+  return { start: fmtDate(start), end: fmtDate(end) };
+};
+
+const RANGE_PRESETS: RangePreset[] = [
+  { key: 'this_month', label: 'This month', range: () => monthRange(0) },
+  { key: 'prev_month', label: 'Previous month', range: () => monthRange(1) },
+  { key: 'month_2', label: '2 months ago', range: () => monthRange(2) },
+  { key: 'month_3', label: '3 months ago', range: () => monthRange(3) },
+  { key: 'last_7', label: 'Last 7 days', range: () => daysBackRange(7) },
+  { key: 'last_30', label: 'Last 30 days', range: () => daysBackRange(30) },
+  {
+    key: 'month_last_year',
+    label: 'This month last year',
+    range: () => {
+      const now = new Date();
+      const start = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+      const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+      return { start: fmtDate(start), end: fmtDate(end) };
+    },
+  },
+  { key: 'this_fy', label: 'This financial year', range: () => fyRange(0) },
+  { key: 'last_fy', label: 'Last financial year', range: () => fyRange(1) },
+];
+
+// Short ranges are more useful day-wise, long ones month-wise.
+const deriveGranularity = (start: string, end: string): 'month' | 'day' => {
+  if (!start || !end) return 'month';
+  const days =
+    (new Date(end).getTime() - new Date(start).getTime()) / 86400000 + 1;
+  return days <= 62 ? 'day' : 'month';
+};
 
 // ── Summary card ─────────────────────────────────────────────────────────
 const StatCard: React.FC<{
@@ -368,6 +433,7 @@ const OrderAnalyticsPage = () => {
   const [granularity, setGranularity] = useState<'month' | 'day'>('month');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [preset, setPreset] = useState<string | null>(null);
   const [createdBy, setCreatedBy] = useState<'all' | 'customer' | 'sales_person'>(
     'all'
   );
@@ -407,14 +473,18 @@ const OrderAnalyticsPage = () => {
     }
   };
 
-  const fetchData = async () => {
+  const fetchData = async (override?: { start: string; end: string }) => {
+    const start = override ? override.start : startDate;
+    const end = override ? override.end : endDate;
+    const gran = deriveGranularity(start, end);
+    setGranularity(gran);
     try {
       setLoading(true);
       const res = await axiosInstance.get('/admin/order_analytics', {
         params: {
-          granularity,
-          start_date: startDate || undefined,
-          end_date: endDate || undefined,
+          granularity: gran,
+          start_date: start || undefined,
+          end_date: end || undefined,
           created_by: createdBy,
         },
       });
@@ -476,6 +546,26 @@ const OrderAnalyticsPage = () => {
       {/* ── Filters ── */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap mb={2}>
+            {RANGE_PRESETS.map((p) => (
+              <Chip
+                key={p.key}
+                label={p.label}
+                size="small"
+                color={preset === p.key ? 'primary' : 'default'}
+                variant={preset === p.key ? 'filled' : 'outlined'}
+                onClick={() => {
+                  const { start, end } = p.range();
+                  setStartDate(start);
+                  setEndDate(end);
+                  setPreset(p.key);
+                  setPeriodPage(0);
+                  fetchData({ start, end });
+                }}
+              />
+            ))}
+          </Stack>
+
           <Stack
             direction={{ xs: 'column', md: 'row' }}
             spacing={2}
@@ -483,22 +573,15 @@ const OrderAnalyticsPage = () => {
             flexWrap="wrap"
             useFlexGap
           >
-            <ToggleButtonGroup
-              size="small"
-              exclusive
-              value={granularity}
-              onChange={(_, v) => v && setGranularity(v)}
-            >
-              <ToggleButton value="month">Monthly</ToggleButton>
-              <ToggleButton value="day">Daily</ToggleButton>
-            </ToggleButtonGroup>
-
             <TextField
               type="date"
               label="From"
               size="small"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setPreset(null);
+              }}
               InputLabelProps={{ shrink: true }}
               inputProps={{ max: todayStr() }}
               sx={{ width: { xs: '100%', md: 170 } }}
@@ -508,7 +591,10 @@ const OrderAnalyticsPage = () => {
               label="To"
               size="small"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setPreset(null);
+              }}
               InputLabelProps={{ shrink: true }}
               inputProps={{ max: todayStr() }}
               sx={{ width: { xs: '100%', md: 170 } }}
@@ -529,7 +615,10 @@ const OrderAnalyticsPage = () => {
 
             <Button
               variant="contained"
-              onClick={fetchData}
+              onClick={() => {
+                setPeriodPage(0);
+                fetchData();
+              }}
               disabled={loading}
               startIcon={
                 loading ? (
@@ -545,6 +634,7 @@ const OrderAnalyticsPage = () => {
                 onClick={() => {
                   setStartDate('');
                   setEndDate('');
+                  setPreset(null);
                 }}
               >
                 Clear dates
