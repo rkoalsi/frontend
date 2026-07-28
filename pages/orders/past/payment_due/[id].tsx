@@ -35,6 +35,7 @@ import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../../../src/util/axios';
+import { formatCurrency } from '../../../../src/util/format';
 import ImagePopupDialog from '../../../../src/components/common/ImagePopUp';
 import AuthContext from '../../../../src/components/Auth';
 import SingleImagePopupDialog from '../../../../src/components/common/SingleImagePopUp';
@@ -437,10 +438,11 @@ const OrderDetails = () => {
             />
           </Typography>
           <Typography variant='body1' sx={{ mb: 1 }}>
-            <strong>Amount:</strong> ₹{invoiceData?.total || '0'}
+            <strong>Amount:</strong> {formatCurrency(invoiceData?.total ?? 0, 2)}
           </Typography>
           <Typography variant='body1' sx={{ mb: 1 }}>
-            <strong>Balance:</strong> ₹{invoiceData?.balance || '0'}
+            <strong>Balance:</strong>{' '}
+            {formatCurrency(invoiceData?.balance ?? 0, 2)}
           </Typography>
           {invoiceData?.open_credit_note_amt > 0 && (
             <Typography variant='body1' sx={{ mb: 1 }}>
@@ -449,9 +451,7 @@ const OrderDetails = () => {
                 size='small'
                 color='success'
                 variant='outlined'
-                label={`₹${Number(
-                  invoiceData.open_credit_note_amt
-                ).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                label={formatCurrency(invoiceData.open_credit_note_amt)}
                 sx={{ ml: 1, fontWeight: 600 }}
               />
             </Typography>
@@ -493,14 +493,8 @@ const OrderDetails = () => {
                     </Typography>
                     <Typography variant='caption' color='text.secondary'>
                       {cn.date ? new Date(cn.date).toLocaleDateString('en-IN') : ''}{' '}
-                      · Open ₹
-                      {Number(cn.balance ?? 0).toLocaleString('en-IN', {
-                        maximumFractionDigits: 2,
-                      })}{' '}
-                      of ₹
-                      {Number(cn.total ?? 0).toLocaleString('en-IN', {
-                        maximumFractionDigits: 2,
-                      })}
+                      · Open {formatCurrency(cn.balance ?? 0, 2)} of{' '}
+                      {formatCurrency(cn.total ?? 0, 2)}
                     </Typography>
                   </Box>
                   <Chip
@@ -586,10 +580,10 @@ const OrderDetails = () => {
                               }}
                             >
                               <Typography variant='body2' color='textSecondary'>
-                                Price: ₹{item.rate} per unit
+                                Price: {formatCurrency(item.rate, 2)} per unit
                               </Typography>
                               <Typography variant='body2' fontWeight={500}>
-                                Total: ₹{item.rate * item.quantity}
+                                Total: {formatCurrency(item.rate * item.quantity, 2)}
                               </Typography>
                             </Box>
                           }
