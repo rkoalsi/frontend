@@ -21,7 +21,7 @@ import {
   Drawer,
   Divider,
 } from '@mui/material';
-import { useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AuthContext from '../src/components/Auth';
 import ProfileIncompleteBanner from '../src/components/ProfileIncompleteBanner';
 import { useRouter } from 'next/router';
@@ -739,6 +739,7 @@ const Home = () => {
       case 'my_digital_card':
         // Always open on the card itself; the QR flip is opt-in each time.
         setCardView('card');
+        setCardFrameLoaded(false);
         setCardModalOpen(true);
         break;
       default:
@@ -747,13 +748,57 @@ const Home = () => {
     }
   };
 
+  // Swipe-down-to-close for the phone/tablet sheet. The card body is an
+  // iframe, so its touch events never reach this document — the drag has to
+  // live on the header strip (handle + name row), which is also where a thumb
+  // naturally lands.
+  const cardDragStartRef = useRef<number | null>(null);
+  const cardDragYRef = useRef(0);
+  const [cardDragY, setCardDragY] = useState(0);
+  const [cardDragging, setCardDragging] = useState(false);
+
+  const handleCardDragStart = (e: React.TouchEvent) => {
+    cardDragStartRef.current = e.touches[0].clientY;
+    setCardDragging(true);
+  };
+
+  const handleCardDragMove = (e: React.TouchEvent) => {
+    if (cardDragStartRef.current === null) return;
+    // Downward only — dragging up shouldn't stretch the sheet.
+    const dy = Math.max(0, e.touches[0].clientY - cardDragStartRef.current);
+    cardDragYRef.current = dy;
+    setCardDragY(dy);
+  };
+
+  const handleCardDragEnd = () => {
+    if (cardDragStartRef.current === null) return;
+    const dy = cardDragYRef.current;
+    cardDragStartRef.current = null;
+    cardDragYRef.current = 0;
+    setCardDragging(false);
+    setCardDragY(0);
+    if (dy > 120) setCardModalOpen(false);
+  };
+
   // Header + body + actions for the digital card, shared by the phone/tablet
   // sheet and the desktop dialog below.
   const digitalCardPanel = (
     <>
-      <Box sx={{ px: 2.5, pt: isCardDesktop ? 2 : 1.5, pb: 1.5, flexShrink: 0 }}>
+      <Box
+        onTouchStart={isCardDesktop ? undefined : handleCardDragStart}
+        onTouchMove={isCardDesktop ? undefined : handleCardDragMove}
+        onTouchEnd={isCardDesktop ? undefined : handleCardDragEnd}
+        onTouchCancel={isCardDesktop ? undefined : handleCardDragEnd}
+        sx={{
+          px: 2.5,
+          pt: isCardDesktop ? 2 : 1.5,
+          pb: 1.5,
+          flexShrink: 0,
+          touchAction: isCardDesktop ? undefined : 'none',
+        }}
+      >
         {!isCardDesktop && (
-          /* Grab handle */
+          /* Grab handle — also the swipe-down target */
           <Box
             sx={{
               width: 40,
@@ -1290,6 +1335,10 @@ const Home = () => {
             borderRadius: 0,
             display: 'flex',
             flexDirection: 'column',
+            // Follows the thumb while dragging, springs back if the swipe was
+            // too short to close.
+            transform: cardDragY ? `translateY(${cardDragY}px)` : undefined,
+            transition: cardDragging ? 'none' : 'transform .25s ease',
           },
         }}
       >
