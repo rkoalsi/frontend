@@ -33,7 +33,6 @@ import {
   Select,
   MenuItem,
   Menu,
-  Checkbox,
   FormControlLabel,
   Switch,
   Dialog,
@@ -58,6 +57,7 @@ import {
   Search as SearchIcon,
   ShoppingCartCheckout as ShoppingCartCheckoutIcon,
   InfoOutlined as InfoOutlinedIcon,
+  CategoryOutlined as CategoryIcon,
 } from "@mui/icons-material";
 import debounce from "lodash.debounce";
 import { toast } from "react-toastify";
@@ -1936,6 +1936,22 @@ const Products: React.FC<ProductsProps> = ({
     [selectedBrandEntry, themeMode]
   );
 
+  // Browsing by category rather than by brand. Turning it off has to restore a
+  // concrete brand + category, otherwise the grid is left with no active tab.
+  const toggleGroupByCategory = useCallback(() => {
+    setGroupByCategory((prev) => {
+      const next = !prev;
+      if (!next) {
+        const defaultBrand = brandList[0]?.brand || "";
+        const defaultCategory = categoriesByBrand[defaultBrand]?.[0] || "";
+        setActiveBrand(defaultBrand);
+        setActiveCategory(defaultCategory);
+        resetPaginationAndFetch(defaultBrand, defaultCategory);
+      }
+      return next;
+    });
+  }, [brandList, categoriesByBrand, resetPaginationAndFetch]);
+
   const [brandInfoOpen, setBrandInfoOpen] = useState(false);
   const openBrandInfo = useCallback(() => setBrandInfoOpen(true), []);
   const closeBrandInfo = useCallback(() => setBrandInfoOpen(false), []);
@@ -2002,6 +2018,36 @@ const Products: React.FC<ProductsProps> = ({
             flexWrap="wrap"
             gap={1}
           >
+            {/* Browse mode. It lives here beside the other view toggles rather
+                than floating above the grid, and deliberately not inside "Sort
+                By" — sorting and grouping are independent, so you can group by
+                category and still sort by price. */}
+            {sortOrder !== "catalogue" && activeBrand !== "Pre Orders" && (
+              <Tooltip
+                title="View all products organized by category instead of by brand. Useful for finding products across different brands in the same category."
+                arrow
+              >
+                <Button
+                  variant={groupByCategory ? "contained" : "outlined"}
+                  color="secondary"
+                  size="small"
+                  onClick={toggleGroupByCategory}
+                  startIcon={<CategoryIcon sx={{ fontSize: 18 }} />}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    borderRadius: '24px',
+                    px: 2.5,
+                    height: 40,
+                    whiteSpace: 'nowrap',
+                    fontSize: '0.8rem',
+                    flex: { xs: 1, sm: 'none' },
+                  }}
+                >
+                  Group by Category
+                </Button>
+              </Tooltip>
+            )}
             <Tooltip
               title={hideOutOfStock
                 ? "Show products that are currently out of stock at the bottom of the list"
@@ -2960,36 +3006,6 @@ const Products: React.FC<ProductsProps> = ({
               </Box>
             )
           )}
-          {sortOrder !== "catalogue" && activeBrand !== "Pre Orders" && (
-            <Box display="flex" justifyContent="flex-end" gap={2}>
-              <Tooltip
-                title="View all products organized by category instead of by brand. Useful for finding products across different brands in the same category."
-                arrow
-              >
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={groupByCategory}
-                      onChange={(e) => {
-                        const newValue = e.target.checked;
-                        setGroupByCategory(newValue);
-                        if (!newValue) {
-                          const defaultBrand = brandList[0]?.brand || "";
-                          const defaultCategory =
-                            categoriesByBrand[defaultBrand]?.[0] || "";
-                          setActiveBrand(defaultBrand);
-                          setActiveCategory(defaultCategory);
-                          resetPaginationAndFetch(defaultBrand, defaultCategory);
-                        }
-                      }}
-                      color="primary"
-                    />
-                  }
-                  label="Group by Category"
-                />
-              </Tooltip>
-            </Box>
-          )}
         </Box>
 
         <BrandInfoDialog
@@ -3011,7 +3027,7 @@ const Products: React.FC<ProductsProps> = ({
             brand={activeBrand}
             onSelectBrand={handleTabChange}
             onSelectCategory={handleCategoryTabChange}
-            sx={{ mt: 1 }}
+            sx={{ mt: { xs: 2, md: 2.5 }, mb: { xs: 2, md: 2.5 } }}
           />
         )}
 
