@@ -3030,17 +3030,14 @@ const Products: React.FC<ProductsProps> = ({
             onSelectBrand={handleTabChange}
             onSelectCategory={handleCategoryTabChange}
             sx={{
-              mt: { xs: 2, md: 2.5 },
-              mb: { xs: 2, md: 2.5 },
-              // On phones, run the banner out to the card's inner edge rather
-              // than sitting inside the gutters. Cancels CardContent's 12px and
-              // this component's own 8px, so it gains 40px of width — the only
-              // way a fixed-ratio image gets bigger without being cropped.
-              mx: { xs: '-20px', sm: 0 },
-              width: { xs: 'calc(100% + 40px)', sm: '100%' },
-              borderRadius: { xs: 0, sm: 2 },
-              borderLeftWidth: { xs: 0, sm: '1px' },
-              borderRightWidth: { xs: 0, sm: '1px' },
+              mt: { xs: 2.5, md: 3 },
+              mb: { xs: 2.5, md: 3 },
+              // Reclaims this component's own 8px of padding on phones so the
+              // banner is wider than the form fields above it, while keeping
+              // the 12px card gutter — flush against the card border read as
+              // cramped rather than generous.
+              mx: { xs: '-8px', sm: 0 },
+              width: { xs: 'calc(100% + 16px)', sm: '100%' },
             }}
           />
         )}
@@ -3083,7 +3080,10 @@ const Products: React.FC<ProductsProps> = ({
                         brand={activeBrand}
                         onSelectBrand={handleTabChange}
                         onSelectCategory={handleCategoryTabChange}
-                        sx={{ gridColumn: '1 / -1' }}
+                        // Aligned to the product cards either side of it —
+                        // a band poking past them would look misaligned, not
+                        // wider. The grid gap supplies its breathing room.
+                        sx={{ gridColumn: '1 / -1', my: { xs: 0.5, sm: 1 } }}
                       />
                     );
                   }
@@ -3460,7 +3460,10 @@ const Products: React.FC<ProductsProps> = ({
                         brand={activeBrand}
                         onSelectBrand={handleTabChange}
                         onSelectCategory={handleCategoryTabChange}
-                        sx={{ gridColumn: '1 / -1' }}
+                        // Aligned to the product cards either side of it —
+                        // a band poking past them would look misaligned, not
+                        // wider. The grid gap supplies its breathing room.
+                        sx={{ gridColumn: '1 / -1', my: { xs: 0.5, sm: 1 } }}
                       />
                     );
                   }
