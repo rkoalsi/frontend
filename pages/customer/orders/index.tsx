@@ -41,6 +41,7 @@ import { format } from 'date-fns';
 import axios from 'axios';
 import { trackActivity } from '../../../src/util/trackActivity';
 import { toast } from 'react-toastify';
+import { headerGradient } from '../../../src/util/surfaces';
 
 interface Order {
   _id: string;
@@ -177,7 +178,7 @@ const CustomerOrders = () => {
         {/* Header section */}
         <Box
           sx={{
-            background: 'linear-gradient(135deg, #221E48 0%, #37279C 100%)',
+            background: headerGradient,
             color: 'white',
             padding: { xs: 2, sm: 3, md: 4 },
           }}

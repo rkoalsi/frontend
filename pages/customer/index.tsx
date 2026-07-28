@@ -44,6 +44,7 @@ import { format } from 'date-fns';
 import axios from 'axios';
 import { trackActivity } from '../../src/util/trackActivity';
 import CustomerTour, { TourStep } from '../../src/components/common/CustomerTour';
+import { headerGradient } from '../../src/util/surfaces';
 
 const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
@@ -411,7 +412,7 @@ const CustomerDashboard = () => {
         {/* Header */}
         <Box
           sx={{
-            background: 'linear-gradient(135deg, #221E48 0%, #37279C 100%)',
+            background: headerGradient,
             color: 'white',
             padding: { xs: 2.5, sm: 3, md: 4 },
             position: 'relative',

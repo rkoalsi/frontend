@@ -38,6 +38,7 @@ import axiosInstance from '../../../src/util/axios';
 import { format } from 'date-fns';
 import { trackActivity } from '../../../src/util/trackActivity';
 import OrderReturnDialog from '../../../src/components/common/OrderReturnDialog';
+import { headerGradient } from '../../../src/util/surfaces';
 
 interface OrderProduct {
   _id: string;
@@ -259,7 +260,7 @@ const CustomerOrderDetail = () => {
         {/* Header section */}
         <Box
           sx={{
-            background: 'linear-gradient(135deg, #221E48 0%, #37279C 100%)',
+            background: headerGradient,
             color: 'white',
             padding: { xs: 3, md: 4 },
           }}

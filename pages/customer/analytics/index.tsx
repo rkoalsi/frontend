@@ -43,6 +43,7 @@ import {
   AreaChart,
   Area,
 } from 'recharts';
+import { headerGradient, headerIconButtonSx } from '../../../src/util/surfaces';
 
 interface AnalyticsData {
   total_orders: number;
@@ -340,7 +341,7 @@ const CustomerAnalytics = () => {
         {/* Header */}
         <Box
           sx={{
-            background: 'linear-gradient(135deg, #221E48 0%, #37279C 100%)',
+            background: headerGradient,
             color: 'white',
             padding: { xs: 2, sm: 3, md: 4 },
           }}
@@ -348,7 +349,7 @@ const CustomerAnalytics = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <IconButton
               onClick={() => router.push('/customer')}
-              sx={{ bgcolor: 'action.hover' }}
+              sx={headerIconButtonSx}
               size={isMobile ? 'small' : 'medium'}
             >
               <ArrowBack />
