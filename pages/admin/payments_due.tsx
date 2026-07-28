@@ -28,6 +28,7 @@ import {
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
+import { formatCurrency } from '../../src/util/format';
 import ImagePopupDialog from '../../src/components/common/ImagePopUp';
 import axios from 'axios';
 import SingleImagePopupDialog from '../../src/components/common/SingleImagePopUp';
@@ -442,7 +443,7 @@ const PaymentsDue = () => {
                     <Paper key={label} elevation={0} sx={{ flex: 1, p: 2, borderRadius: 2, border: `1px solid ${color}40`, backgroundColor: bg }}>
                       <Typography variant='caption' fontWeight={600} sx={{ color, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</Typography>
                       <Typography variant='h5' fontWeight={700} sx={{ color, my: 0.5 }}>{count}</Typography>
-                      <Typography variant='body2' color='text.secondary'>₹{balance.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</Typography>
+                      <Typography variant='body2' color='text.secondary'>{formatCurrency(balance)}</Typography>
                     </Paper>
                   ))}
                 </Stack>
@@ -594,8 +595,8 @@ const PaymentsDue = () => {
                               {cf_sales_person || salesperson_name || '-'}
                             </TableCell>
                             <TableCell>{created_by_name}</TableCell>
-                            <TableCell>₹{total || 0}</TableCell>
-                            <TableCell>₹{balance || 0}</TableCell>
+                            <TableCell>{formatCurrency(total, 2)}</TableCell>
+                            <TableCell>{formatCurrency(balance, 2)}</TableCell>
                             <TableCell>
                               <Checkbox
                                 checked={additional_info !== ''}
@@ -632,10 +633,7 @@ const PaymentsDue = () => {
                             </TableCell>
                             <TableCell>
                               {open_credit_note_amt > 0
-                                ? `₹${Number(open_credit_note_amt).toLocaleString(
-                                    'en-IN',
-                                    { maximumFractionDigits: 0 }
-                                  )}`
+                                ? formatCurrency(open_credit_note_amt)
                                 : '-'}
                             </TableCell>
                             <TableCell>
@@ -652,11 +650,9 @@ const PaymentsDue = () => {
                                       size='small'
                                       color={creditNoteStatusColor(cn.status)}
                                       variant='outlined'
-                                      label={`${cn.creditnote_number} · ₹${Number(
+                                      label={`${cn.creditnote_number} · ${formatCurrency(
                                         cn.balance ?? cn.total ?? 0
-                                      ).toLocaleString('en-IN', {
-                                        maximumFractionDigits: 0,
-                                      })} · ${cn.status}`}
+                                      )} · ${cn.status}`}
                                       sx={{ fontSize: '0.68rem', justifyContent: 'flex-start' }}
                                     />
                                   ))}
@@ -803,11 +799,12 @@ const PaymentsDue = () => {
                     {selectedOrder.created_by_name || 'Unknown'}
                   </Typography>
                   <Typography>
-                    <strong>Total Amount:</strong> ₹
-                    {selectedOrder.total || '0.00'}
+                    <strong>Total Amount:</strong>{' '}
+                    {formatCurrency(selectedOrder.total ?? 0, 2)}
                   </Typography>
                   <Typography>
-                    <strong>Balance:</strong> ₹{selectedOrder.balance || '0.00'}
+                    <strong>Balance:</strong>{' '}
+                    {formatCurrency(selectedOrder.balance ?? 0, 2)}
                   </Typography>
                   <Typography>
                     <strong>Created At:</strong>{' '}
@@ -892,14 +889,8 @@ const PaymentsDue = () => {
                               {cn.date
                                 ? new Date(cn.date).toLocaleDateString()
                                 : ''}{' '}
-                              · Open ₹
-                              {Number(cn.balance ?? 0).toLocaleString('en-IN', {
-                                maximumFractionDigits: 2,
-                              })}{' '}
-                              of ₹
-                              {Number(cn.total ?? 0).toLocaleString('en-IN', {
-                                maximumFractionDigits: 2,
-                              })}
+                              · Open {formatCurrency(cn.balance ?? 0, 2)} of{' '}
+                              {formatCurrency(cn.total ?? 0, 2)}
                             </Typography>
                           </Box>
                           <Chip
@@ -929,9 +920,9 @@ const PaymentsDue = () => {
                       color='success'
                       variant='outlined'
                       sx={{ mb: 2, fontWeight: 600 }}
-                      label={`Open Credit Note Amt.: ₹${Number(
+                      label={`Open Credit Note Amt.: ${formatCurrency(
                         selectedOrder.open_credit_note_amt
-                      ).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                      )}`}
                     />
                   )}
                   <Box display='flex' flexDirection='column' gap={2}>
@@ -1009,7 +1000,7 @@ const PaymentsDue = () => {
                         <TableRow key={product.item_id}>
                           <TableCell>{product.name}</TableCell>
                           <TableCell>{product.quantity}</TableCell>
-                          <TableCell>₹{product.rate}</TableCell>
+                          <TableCell>{formatCurrency(product.rate, 2)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

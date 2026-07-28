@@ -53,6 +53,7 @@ import axiosInstance from '../../src/util/axios';
 import { formatHumanDateTime } from '../../src/util/date';
 import { expandOrderProductRows } from '../../src/util/orderRows';
 import { parseMarginPct, getEffectiveMarginPct } from '../../src/util/margin';
+import { formatCurrency } from '../../src/util/format';
 import axios from 'axios';
 import SingleImagePopupDialog from '../../src/components/common/SingleImagePopUp';
 import AuthContext from '../../src/components/Auth';
@@ -968,7 +969,7 @@ const Orders = () => {
                           </TableCell>
                           <TableCell>{getCreatedByLabel(order)}</TableCell>
                           <TableCell align='right' sx={{ whiteSpace: 'nowrap' }}>
-                            ₹{order.total_amount || 0}
+                            {formatCurrency(order.total_amount || 0)}
                           </TableCell>
                           <TableCell sx={{ width: 160 }}>
                             <Box
@@ -1286,12 +1287,12 @@ const Orders = () => {
                     {selectedOrder.created_by_info?.name || 'Unknown'}
                   </Typography>
                   <Typography>
-                    <strong>Total Amount:</strong> ₹
-                    {selectedOrder.total_amount?.toFixed(2) || '0.00'}
+                    <strong>Total Amount:</strong>{' '}
+                    {formatCurrency(selectedOrder.total_amount ?? 0, 2)}
                   </Typography>
                   <Typography>
-                    <strong>Total GST:</strong> ₹
-                    {selectedOrder.total_gst?.toFixed(2) || '0.00'}
+                    <strong>Total GST:</strong>{' '}
+                    {formatCurrency(selectedOrder.total_gst ?? 0, 2)}
                   </Typography>
                   <Typography>
                     <strong>Created At:</strong>{' '}
@@ -1606,12 +1607,13 @@ const Orders = () => {
                     )}
                     {selectedOrder.payment.amount_paid != null && (
                       <Typography>
-                        <strong>Amount Paid:</strong> ₹
-                        {Number(selectedOrder.payment.amount_paid).toLocaleString(
-                          'en-IN'
-                        )}
+                        <strong>Amount Paid:</strong>{' '}
+                        {formatCurrency(selectedOrder.payment.amount_paid, 2)}
                         {selectedOrder.payment.fee != null &&
-                          ` (gateway fee ₹${selectedOrder.payment.fee})`}
+                          ` (gateway fee ${formatCurrency(
+                            selectedOrder.payment.fee,
+                            2
+                          )})`}
                       </Typography>
                     )}
                     {(selectedOrder.payment.email ||
@@ -1970,14 +1972,14 @@ const Orders = () => {
                                         flexDirection='column'
                                       >
                                         <span>
-                                          ₹{lineSellingPrice(product).toFixed(2)}
+                                          {formatCurrency(lineSellingPrice(product), 2)}
                                         </span>
                                         <Typography
                                           variant='caption'
                                           color='text.disabled'
                                           sx={{ textDecoration: 'line-through' }}
                                         >
-                                          ₹{Number(product.price ?? 0).toFixed(2)}
+                                          {formatCurrency(product.price ?? 0, 2)}
                                         </Typography>
                                       </Box>
                                     </TableCell>
@@ -2006,7 +2008,7 @@ const Orders = () => {
                             variant='body2'
                             sx={{ fontWeight: 700, color: section.color }}
                           >
-                            ₹{Math.round(subtotal).toLocaleString('en-IN')}
+                            {formatCurrency(subtotal)}
                           </Typography>
                         </Box>
                       </Box>
