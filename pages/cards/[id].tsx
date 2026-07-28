@@ -12,6 +12,7 @@ import { GetServerSideProps } from 'next';
 import axios from 'axios';
 import { QRCodeCanvas } from 'qrcode.react';
 import Box from '@mui/material/Box';
+import GlobalStyles from '@mui/material/GlobalStyles';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import IconButton from '@mui/material/IconButton';
@@ -350,6 +351,23 @@ const CardPage = ({ card, brands }: { card: Card | null; brands: Brand[] }) => {
         {card.photo_url && <meta property='og:image' content={card.photo_url} />}
         <meta name='theme-color' content={NAVY} />
       </Head>
+
+      {/* The default light scrollbar reads as a grey stripe against the navy —
+          jarring on the page itself and worse when it's framed inside the app.
+          Tint it to the card's own ground instead. */}
+      <GlobalStyles
+        styles={{
+          html: { scrollbarWidth: 'thin', scrollbarColor: `rgba(255,255,255,0.22) ${NAVY_DEEP}` },
+          body: { backgroundColor: NAVY_DEEP },
+          '*::-webkit-scrollbar': { width: 8, height: 8 },
+          '*::-webkit-scrollbar-track': { backgroundColor: NAVY_DEEP },
+          '*::-webkit-scrollbar-thumb': {
+            backgroundColor: 'rgba(255,255,255,0.22)',
+            borderRadius: 8,
+          },
+          '*::-webkit-scrollbar-thumb:hover': { backgroundColor: 'rgba(255,255,255,0.34)' },
+        }}
+      />
 
       {/* On phones the card fills the screen. From md up it becomes an object:
           a navy panel on a darker ground, with the two printed faces side by
