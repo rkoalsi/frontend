@@ -75,6 +75,13 @@ const emptyForm = {
   priority: 0,
 };
 
+// axiosInstance defaults to `Content-Type: application/json`. Axios v1 sees a
+// JSON content type on a FormData body and serialises it to JSON instead of
+// sending multipart — FastAPI then receives no form fields at all and 422s with
+// every Form() field null. Naming multipart explicitly defeats that path; the
+// browser fills in the boundary. Every FormData request here needs this.
+const MULTIPART = { headers: { 'Content-Type': 'multipart/form-data' } };
+
 const fmtDate = (value?: string | null) => {
   if (!value) return null;
   const d = new Date(value);
@@ -192,10 +199,10 @@ const Promotions = () => {
       if (editing) body.append('clear_mobile_image', String(clearMobileImage));
 
       if (editing) {
-        await axiosInstance.put(`/admin/promotions/${editing._id}`, body);
+        await axiosInstance.put(`/admin/promotions/${editing._id}`, body, MULTIPART);
         toast.success('Banner updated.');
       } else {
-        await axiosInstance.post('/admin/promotions', body);
+        await axiosInstance.post('/admin/promotions', body, MULTIPART);
         toast.success('Banner created.');
       }
       setDialogOpen(false);
@@ -224,7 +231,7 @@ const Promotions = () => {
     body.append('ends_at', toInputValue(promo.ends_at));
     body.append('priority', String(promo.priority ?? 0));
     try {
-      await axiosInstance.put(`/admin/promotions/${promo._id}`, body);
+      await axiosInstance.put(`/admin/promotions/${promo._id}`, body, MULTIPART);
       setPromotions((prev) =>
         prev.map((p) => (p._id === promo._id ? { ...p, is_active: !p.is_active } : p))
       );

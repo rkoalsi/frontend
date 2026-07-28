@@ -558,39 +558,37 @@ const ContactFormLeadsTab = () => {
         </Box>
       ) : (
         <>
-          <Box sx={{ overflowX: 'auto' }}>
-            <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', minWidth: 900 }}>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ bgcolor: 'action.hover' }}>
-                    <TableCell sx={{ fontWeight: 600 }}>#</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Company</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Business Type</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>City</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Message</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Notes</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Created At</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {contacts.map((contact, index) => (
-                    <ContactRow
-                      key={contact._id}
-                      contact={contact}
-                      index={page * rowsPerPage + index + 1}
-                      saving={savingId === contact._id}
-                      onStatusChange={handleStatusChange}
-                      onSaveNotes={handleSaveNotes}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
+          <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflowX: 'auto' }}>
+            <Table sx={{ minWidth: 1400 }}>
+              <TableHead>
+                <TableRow sx={{ bgcolor: 'action.hover' }}>
+                  <TableCell sx={{ fontWeight: 600 }}>#</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Company</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Business Type</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>City</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Message</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Notes</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Created At</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {contacts.map((contact, index) => (
+                  <ContactRow
+                    key={contact._id}
+                    contact={contact}
+                    index={page * rowsPerPage + index + 1}
+                    saving={savingId === contact._id}
+                    onStatusChange={handleStatusChange}
+                    onSaveNotes={handleSaveNotes}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
           <PaginationFooter
             totalCount={totalCount}
             totalPages={totalPages}
@@ -1032,9 +1030,9 @@ const B2BRegistrationsTab = () => {
         </Box>
       ) : (
         <>
-          <Box sx={{ overflowX: 'auto' }}>
-            <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', minWidth: 900 }}>
-              <Table>
+          <Box>
+            <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflowX: 'auto' }}>
+              <Table sx={{ minWidth: 1100 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: 'action.hover' }}>
                     <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>

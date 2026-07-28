@@ -567,6 +567,7 @@ const AdminLayout = ({ children }: any) => {
         component='main'
         sx={{
           flexGrow: 1,
+          minWidth: 0,
           background: mainBg,
           minHeight: '100dvh',
           padding: { xs: 1, sm: 2, md: 3 },
