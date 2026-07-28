@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Drawer,
   Box,
   Typography,
   IconButton,
@@ -32,6 +31,7 @@ import {
   Tab,
   Tabs,
 } from '@mui/material';
+import Drawer from '../../common/ResponsiveDrawer';
 import {
   Close,
   Person,

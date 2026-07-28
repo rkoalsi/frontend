@@ -1,7 +1,8 @@
 import {
-  Drawer, Box, Typography, Divider, Chip, Stack, Button, Link, IconButton,
+  Box, Typography, Divider, Chip, Stack, Button, Link, IconButton,
   CircularProgress, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
+import Drawer from '../common/ResponsiveDrawer';
 import { useState } from 'react';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../util/axios';

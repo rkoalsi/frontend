@@ -11,7 +11,6 @@ import {
   TableRow,
   CircularProgress,
   Button,
-  Drawer,
   capitalize,
   TablePagination,
   TextField,
@@ -35,6 +34,7 @@ import {
   FormGroup,
   Divider,
 } from '@mui/material';
+import Drawer from '../../src/components/common/ResponsiveDrawer';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
 import {

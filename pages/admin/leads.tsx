@@ -26,8 +26,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Drawer,
 } from '@mui/material';
+import Drawer from '../../src/components/common/ResponsiveDrawer';
 import { FileDownloadOutlined, CheckOutlined, CloseOutlined, EditOutlined, FilterAlt } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';

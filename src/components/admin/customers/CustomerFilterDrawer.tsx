@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Drawer,
   Box,
   Typography,
   FormControl,
@@ -13,6 +12,7 @@ import {
   OutlinedInput,
   Chip,
 } from '@mui/material';
+import Drawer from '../../common/ResponsiveDrawer';
 
 export interface FilterOptions {
   status: string;

@@ -18,9 +18,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Drawer,
   Switch,
 } from '@mui/material';
+import Drawer from '../../src/components/common/ResponsiveDrawer';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import formatAddress from '../../src/util/formatAddress';

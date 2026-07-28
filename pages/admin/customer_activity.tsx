@@ -11,7 +11,6 @@ import {
   TableHead,
   TableRow,
   Chip,
-  Drawer,
   IconButton,
   Divider,
   TextField,
@@ -31,6 +30,7 @@ import {
   capitalize,
   useTheme,
 } from '@mui/material';
+import Drawer from '../../src/components/common/ResponsiveDrawer';
 import NextLink from 'next/link';
 import { OpenInNew } from '@mui/icons-material';
 import {
