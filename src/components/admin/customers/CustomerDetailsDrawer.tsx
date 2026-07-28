@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Drawer,
   Box,
   Typography,
   TextField,
@@ -34,6 +33,7 @@ import {
   InputAdornment,
   Autocomplete,
 } from '@mui/material';
+import Drawer from '../../common/ResponsiveDrawer';
 import { Delete, ExpandMore, Refresh, Info } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../../util/axios';
@@ -429,7 +429,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
       sx={{ '& .MuiDrawer-paper': { width: 600, display: 'flex', flexDirection: 'column' } }}
     >
       {customer && (
-        <Box sx={{ flex: 1, overflowY: 'auto', p: 3, pt: '80px' }}>
+        <Box sx={{ flex: 1, overflowY: 'auto', p: 3, pt: { xs: 2, sm: '80px' } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
             <Typography variant='h5' sx={{ fontWeight: 'bold', flex: 1 }}>
               Customer Details

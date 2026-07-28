@@ -14,7 +14,6 @@ import {
   Button,
   TablePagination,
   TextField,
-  Drawer,
   Chip,
   IconButton,
   Divider,
@@ -22,6 +21,7 @@ import {
   Avatar,
   Tooltip,
 } from '@mui/material';
+import Drawer from '../../src/components/common/ResponsiveDrawer';
 import Header from '../../src/components/common/Header';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -765,7 +765,7 @@ const DailyVisits = () => {
       <Drawer anchor='right' open={drawerOpen} onClose={handleCloseDrawer}>
         <Box
           sx={{
-            width: { xs: '95vw', sm: 480, md: 560 },
+            width: { xs: '100%', sm: 480, md: 560 },
             maxWidth: '100vw',
             p: 3,
             overflowX: 'hidden',
@@ -794,7 +794,7 @@ const DailyVisits = () => {
                       .slice(0, 2)
                       .toUpperCase()}
                   </Avatar>
-                  <Box>
+                  <Box sx={{ minWidth: 0 }}>
                     <Typography variant='subtitle2' fontWeight='bold'>
                       {selectedVisit.created_by?.name || selectedVisit.created_by || 'N/A'}
                     </Typography>
@@ -802,6 +802,29 @@ const DailyVisits = () => {
                       {new Date(selectedVisit.created_at).toLocaleString()}
                     </Typography>
                   </Box>
+                  {selectedVisit.selfie && (
+                    <Tooltip title='View selfie'>
+                      <Box
+                        component='img'
+                        onClick={() => handleImageClick(selectedVisit.selfie)}
+                        src={selectedVisit.selfie}
+                        alt='Selfie'
+                        sx={{
+                          ml: 'auto',
+                          flexShrink: 0,
+                          width: 64,
+                          height: 64,
+                          objectFit: 'cover',
+                          borderRadius: 1.5,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          cursor: 'zoom-in',
+                          transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                          '&:hover': { transform: 'scale(1.04)', boxShadow: 2 },
+                        }}
+                      />
+                    </Tooltip>
+                  )}
                 </Box>
                 {selectedVisit.updated_at !== selectedVisit.created_at && (
                   <Typography variant='caption' color='text.secondary'>
@@ -810,21 +833,6 @@ const DailyVisits = () => {
                 )}
               </Paper>
 
-              {selectedVisit.selfie && (
-                <Box
-                  component='img'
-                  onClick={() => handleImageClick(selectedVisit.selfie)}
-                  src={selectedVisit.selfie}
-                  alt='Selfie'
-                  sx={{
-                    width: '100%',
-                    borderRadius: 2,
-                    mb: 2,
-                    cursor: 'zoom-in',
-                    '&:hover': { opacity: 0.9 },
-                  }}
-                />
-              )}
               {/* Admin Comments for Daily Visit */}
               <Box sx={{ mt: 3 }}>
                 <Typography variant='h6' sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

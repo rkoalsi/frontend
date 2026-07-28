@@ -9,7 +9,6 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
-  Drawer,
   FormControl,
   FormControlLabel,
   IconButton,
@@ -29,6 +28,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import Drawer from '../../src/components/common/ResponsiveDrawer';
 import {
   Add,
   BarChart,

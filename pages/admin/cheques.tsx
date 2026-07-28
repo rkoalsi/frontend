@@ -24,10 +24,10 @@ import {
   Tooltip,
   Stack,
   alpha,
-  Drawer,
   Avatar,
   Badge,
 } from '@mui/material';
+import Drawer from '../../src/components/common/ResponsiveDrawer';
 import Header from '../../src/components/common/Header';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import DeleteIcon from '@mui/icons-material/Delete';

@@ -1,7 +1,6 @@
 import {
   Box,
   RadioGroup,
-  Drawer,
   FormControl,
   FormControlLabel,
   Radio,
@@ -12,6 +11,7 @@ import {
   Typography,
   Button,
 } from '@mui/material';
+import Drawer from '../../common/ResponsiveDrawer';
 
 const FilterDrawerComponent = ({
   open,

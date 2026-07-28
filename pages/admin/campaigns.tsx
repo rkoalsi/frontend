@@ -26,9 +26,9 @@ import {
   Alert,
   Stack,
   Divider,
-  Drawer,
   LinearProgress,
 } from '@mui/material';
+import Drawer from '../../src/components/common/ResponsiveDrawer';
 import {
   AddOutlined,
   EditOutlined,

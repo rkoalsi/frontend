@@ -11,7 +11,6 @@ import {
   TableRow,
   CircularProgress,
   Button,
-  Drawer,
   capitalize,
   TablePagination,
   TextField,
@@ -26,6 +25,7 @@ import {
   useTheme,
   alpha,
 } from '@mui/material';
+import Drawer from '../../src/components/common/ResponsiveDrawer';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 import { formatCurrency } from '../../src/util/format';

@@ -14,7 +14,6 @@ import {
   TableRow,
   CircularProgress,
   Button,
-  Drawer,
   Switch,
   Checkbox,
   Dialog,
@@ -31,6 +30,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
+import Drawer from '../../src/components/common/ResponsiveDrawer';
 import { toast } from 'react-toastify';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { green, red } from '@mui/material/colors';
