@@ -105,11 +105,6 @@ const FeatureBanner: React.FC<FeatureBannerProps> = ({
   if (failed) return null;
 
   const clickable = placement.target_type !== "none";
-  // Wide artwork (roughly 3:1) shrinks to a thin, unreadable strip at phone
-  // widths. With no dedicated mobile crop uploaded, give the slot a 16:9 box on
-  // xs and let the wide image fill it — cropping the sides reads far better
-  // than a 60px-tall sliver. Above `sm` the image keeps its natural ratio.
-  const cropOnMobile = !placement.mobile_image_url;
 
   return (
     <Box
@@ -130,7 +125,6 @@ const FeatureBanner: React.FC<FeatureBannerProps> = ({
         font: "inherit",
         cursor: clickable ? "pointer" : "default",
         lineHeight: 0,
-        aspectRatio: cropOnMobile ? { xs: "16 / 9", sm: "auto" } : "auto",
         transition: "box-shadow 0.18s ease, transform 0.18s ease",
         ...(clickable && {
           "&:hover": { boxShadow: 3, transform: "translateY(-2px)" },
@@ -151,14 +145,7 @@ const FeatureBanner: React.FC<FeatureBannerProps> = ({
         alt={placement.alt_text || placement.name}
         loading="lazy"
         onError={() => setFailed(true)}
-        sx={{
-          width: "100%",
-          // `object-fit` only bites where a height is actually constrained —
-          // at `auto` the image just draws at its natural ratio.
-          height: cropOnMobile ? { xs: "100%", sm: "auto" } : "auto",
-          objectFit: "cover",
-          display: "block",
-        }}
+        sx={{ width: "100%", height: "auto", display: "block" }}
       />
     </Box>
   );
