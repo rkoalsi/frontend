@@ -23,6 +23,7 @@ import {
   LoginOutlined,
 } from '@mui/icons-material';
 import { useColorMode } from '../context/ColorModeContext';
+import { appShellBg } from '../util/surfaces';
 import NotificationBell from '../components/common/NotificationBell';
 import {
   BrandLockup,
@@ -118,7 +119,7 @@ const Layout = ({ children }: any) => {
     return null;
   }
 
-  const mainBg = theme.palette.background.default;
+  const mainBg = appShellBg(isDark);
 
   return (
     <Box

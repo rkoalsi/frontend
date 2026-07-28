@@ -37,6 +37,7 @@ import {
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
 import { useColorMode } from '../context/ColorModeContext';
+import { appShellBg } from '../util/surfaces';
 import NotificationBell from './common/NotificationBell';
 import {
   BrandLockup,
@@ -124,9 +125,7 @@ const CustomerLayout = ({ children }: any) => {
           justifyContent: 'center',
           alignItems: 'center',
           height: '100dvh',
-          background: isDark
-            ? 'linear-gradient(135deg, #191536 0%, #221E48 100%)'
-            : '#F9F8FD',
+          background: appShellBg(isDark),
         }}
       >
         <CircularProgress color='primary' />
@@ -155,9 +154,7 @@ const CustomerLayout = ({ children }: any) => {
 
   const menuItems = getMenuItems();
 
-  const mainBg = isDark
-    ? 'linear-gradient(135deg, #191536 0%, #221E48 100%)'
-    : '#F9F8FD';
+  const mainBg = appShellBg(isDark);
 
   const sidebarBg = isDark ? '#221E48' : '#FFFFFF';
   const sidebarText = isDark ? 'rgba(241,238,255,0.92)' : '#1C1A33';

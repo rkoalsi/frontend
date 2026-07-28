@@ -19,6 +19,7 @@ import {
 } from '@mui/icons-material';
 import AuthContext from '../../../src/components/Auth';
 import axiosInstance from '../../../src/util/axios';
+import { headerGradient } from '../../../src/util/surfaces';
 
 interface Address {
   address_id?: string;
@@ -194,7 +195,7 @@ const CustomerAddressesPage = () => {
         {/* Header */}
         <Box
           sx={{
-            background: 'linear-gradient(135deg, #221E48 0%, #37279C 100%)',
+            background: headerGradient,
             color: 'white',
             p: { xs: 3, md: 4 },
             display: 'flex',
