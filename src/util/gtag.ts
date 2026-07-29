@@ -15,6 +15,7 @@ export const PUBLIC_PATHS = [
   '/reset_password',
   '/catalogues',
   '/catalogues/all_products',
+  '/distributors',
 ];
 
 export const isPublicPath = (pathname: string): boolean =>

@@ -13,15 +13,19 @@ import {
   Tabs,
   Tab,
   Alert,
+  ButtonBase,
 } from '@mui/material';
 import {
   Visibility,
   VisibilityOff,
   CheckCircleOutline,
-  ArrowForward,
+  ChevronRight,
+  PersonAddAlt,
+  LocalShippingOutlined,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import NextLink from 'next/link';
 import AuthContext from '../src/components/Auth';
 import { useRouter } from 'next/router';
 import { event as trackEvent } from '../src/util/gtag';
@@ -34,6 +38,78 @@ const FEATURES = [
   'Live stock and retailer pricing',
   'Track orders, invoices and payments',
 ];
+
+// Logged-out visitors are redirected here from every private route, so this is
+// the one page a first-time retailer — or a brand looking for a distributor —
+// reliably lands on. Real <a> tags (NextLink) so both stay crawlable.
+// Single-line on purpose: the card has to clear the fold on a laptop and on a
+// phone, and a subtitle per tile costs ~34px each that the sign-in form needs.
+// The marketplace tour is not here — it is a topbar action on every logged-out
+// route now (src/components/Layout.tsx).
+const DESTINATIONS = [
+  {
+    href: '/register',
+    icon: <PersonAddAlt sx={{ fontSize: 18 }} />,
+    title: 'Register as a new B2B client',
+    emphasis: true,
+  },
+  {
+    href: '/distributors',
+    icon: <LocalShippingOutlined sx={{ fontSize: 18 }} />,
+    title: 'Become a distributor',
+  },
+];
+
+// A 768p laptop leaves roughly 670px under the topbar — enough for the card
+// only if the breathing room comes off. Keyed on viewport height rather than
+// width so a tall phone keeps the roomier spacing.
+const SHORT = '@media (max-height: 780px)';
+// Below this the card cannot fit at all without giving something up, so the
+// decorative bits (copyright, brand-panel prose) go rather than the form.
+const TINY = '@media (max-height: 700px)';
+
+const DestinationTile = ({
+  href,
+  icon,
+  title,
+  emphasis = false,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  title: string;
+  /** The primary next step for a new visitor — carries the brand outline. */
+  emphasis?: boolean;
+}) => (
+  <ButtonBase
+    component={NextLink}
+    href={href}
+    sx={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 1,
+      width: '100%',
+      textAlign: 'left',
+      px: 1.25,
+      py: 1.25,
+      borderRadius: '10px',
+      border: '1px solid',
+      borderColor: emphasis ? 'primary.main' : 'divider',
+      transition: 'border-color 120ms, background-color 120ms',
+      '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
+    }}
+  >
+    <Box sx={{ display: 'flex', color: 'primary.main', flexShrink: 0 }}>{icon}</Box>
+    {/* Wraps rather than truncates: the longest label needs ~290px and a
+        360px phone leaves the text about 200px. */}
+    <Typography
+      sx={{ fontSize: '0.8125rem', fontWeight: 600, lineHeight: 1.35, flex: 1, minWidth: 0 }}
+      color={emphasis ? 'primary.main' : 'text.primary'}
+    >
+      {title}
+    </Typography>
+    <ChevronRight sx={{ fontSize: 18, color: 'text.disabled', flexShrink: 0 }} />
+  </ButtonBase>
+);
 
 const LoginPage = () => {
   const { login, loginWithOtp }: any = useContext(AuthContext);
@@ -176,13 +252,19 @@ const LoginPage = () => {
   return (
     <Box
       sx={{
+        // The topbar is sticky and 64px, so this is exactly the space left. The
+        // card is sized to fit inside it — see the tightened spacing below —
+        // rather than pushing the page into a scroll. dvh so mobile browser
+        // chrome collapsing does not leave a dead gap.
         minHeight: 'calc(100vh - 64px)',
+        '@supports (min-height: 100dvh)': { minHeight: 'calc(100dvh - 64px)' },
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
-        py: { xs: 3, md: 5 },
+        py: { xs: 2, md: 3 },
         px: { xs: 2, sm: 3 },
+        [SHORT]: { py: 1.5 },
       }}
     >
       <Paper
@@ -207,6 +289,7 @@ const LoginPage = () => {
             flex: '0 0 380px',
             background: 'linear-gradient(160deg, #191536 0%, #100D26 100%)',
             p: 6,
+            [SHORT]: { p: 4.5 },
             position: 'relative',
             overflow: 'hidden',
           }}
@@ -265,31 +348,18 @@ const LoginPage = () => {
         <Box
           sx={{
             flex: 1,
-            p: { xs: 3, sm: 5 },
+            p: { xs: 2.5, sm: 4 },
+            [SHORT]: { p: { xs: 2, sm: 3 } },
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
             bgcolor: 'background.paper',
-            minHeight: { xs: 'auto', md: 520 },
           }}
         >
-          {/* Mobile logo */}
-          <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1.5, mb: 4 }}>
-            <Box
-              sx={{
-                width: 38, height: 38, borderRadius: '10px',
-                background: 'linear-gradient(135deg, #37279C, #191536)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <Typography sx={{ fontSize: 17, fontWeight: 800, color: 'white' }}>P</Typography>
-            </Box>
-            <Typography fontWeight={700} color='primary.main' fontSize='1.1rem'>
-              Pupscribe
-            </Typography>
-          </Box>
-
-          <Box mb={3}>
+          {/* No in-card logo below md: the topbar wordmark is right above it,
+              and the ~60px it cost was the difference between fitting a phone
+              screen and scrolling. */}
+          <Box mb={2.5}>
             <Typography variant='h5' fontWeight={700} color='text.primary' mb={0.75}>
               Welcome back
             </Typography>
@@ -306,7 +376,7 @@ const LoginPage = () => {
               setOtp('');
             }}
             variant='fullWidth'
-            sx={{ mb: 3, minHeight: 40, '& .MuiTab-root': { textTransform: 'none', fontWeight: 600, minHeight: 40 } }}
+            sx={{ mb: 2.5, minHeight: 40, '& .MuiTab-root': { textTransform: 'none', fontWeight: 600, minHeight: 40 } }}
           >
             <Tab value='email' label='Email & Password' />
             <Tab value='mobile' label='Mobile OTP' />
@@ -316,7 +386,7 @@ const LoginPage = () => {
             <Box
               component='form'
               onSubmit={handleSubmit}
-              sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}
+              sx={{ display: 'flex', flexDirection: 'column', gap: 2, [SHORT]: { gap: 1.75 }, [TINY]: { gap: 1.5 } }}
             >
               <TextField
                 label='Email address'
@@ -402,7 +472,7 @@ const LoginPage = () => {
             <Box
               component='form'
               onSubmit={otpSent ? handleVerifyOtp : handleSendOtp}
-              sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}
+              sx={{ display: 'flex', flexDirection: 'column', gap: 2, [SHORT]: { gap: 1.75 }, [TINY]: { gap: 1.5 } }}
             >
               {/* A login inside WhatsApp's WebView is lost when it closes, so nudge
                   them into the real browser before they sign in. */}
@@ -534,55 +604,27 @@ const LoginPage = () => {
             </Box>
           )}
 
-          <Divider sx={{ my: 3 }}>
+          <Divider sx={{ my: 2.5, [SHORT]: { my: 2 } }}>
             <Typography variant='caption' color='text.secondary'>
               New here?
             </Typography>
           </Divider>
 
-          <Button
-            variant='outlined'
-            color='primary'
-            fullWidth
-            onClick={() => router.push('/register')}
-            sx={{
-              textTransform: 'none',
-              fontSize: '0.95rem',
-              py: 1.25,
-              borderRadius: '10px',
-              fontWeight: 600,
-            }}
-          >
-            Register as a new B2B client
-          </Button>
-
-          {/* Logged-out visitors are redirected here from every private route,
-              so this is the one place a first-time retailer reliably lands —
-              give them a way through to what the marketplace actually does. */}
-          <Button
-            variant='outlined'
-            fullWidth
-            onClick={() => router.push('/')}
-            endIcon={<ArrowForward fontSize='small' />}
-            sx={{
-              mt: 1.5,
-              textTransform: 'none',
-              fontSize: '0.95rem',
-              fontWeight: 600,
-              py: 1.25,
-              borderRadius: '10px',
-              borderColor: 'divider',
-              color: 'text.primary',
-              '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
-            }}
-          >
-            See what the marketplace does
-          </Button>
+          {/* Both onward routes as tiles of the same shape — full width rather
+              than two-up, since neither label survives a half-width tile at
+              the desktop card size without being cut off. */}
+          <Box sx={{ display: 'grid', gap: 1 }}>
+            {DESTINATIONS.map((d) => (
+              <DestinationTile key={d.href} {...d} />
+            ))}
+          </Box>
 
           <Typography
             variant='caption'
             color='text.disabled'
-            sx={{ mt: 3, textAlign: 'center', display: 'block' }}
+            // Base declarations first: emotion emits them in key order, so a
+            // `display` after the media query would override the hide.
+            sx={{ mt: 2.5, textAlign: 'center', display: 'block', [SHORT]: { mt: 2 }, [TINY]: { display: 'none' } }}
           >
             © {new Date().getFullYear()} Pupscribe. All rights reserved.
           </Typography>

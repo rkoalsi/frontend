@@ -194,6 +194,20 @@ const RegisterPage = () => {
             See what the marketplace does
           </Link>
         </Typography>
+
+        {/* This page is for retailers buying from us; a brand that wants us to
+            distribute it needs the other form entirely. */}
+        <Typography variant='body2' color='text.secondary' sx={{ mt: 1.5, textAlign: 'center' }}>
+          Are you a brand or distributor?{' '}
+          <Link
+            component='button'
+            type='button'
+            onClick={() => router.push('/distributors')}
+            sx={{ fontWeight: 600 }}
+          >
+            Become a distributor
+          </Link>
+        </Typography>
       </Paper>
     </Box>
   );

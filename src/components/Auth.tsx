@@ -192,6 +192,7 @@ export const AuthProvider = ({ children }: any) => {
       '/reset_password',
       '/catalogues/all_products',
       '/catalogues',
+      '/distributors',
     ];
     if (PUBLIC_PATHS.includes(router.pathname)) {
       setLoading(false);

@@ -197,6 +197,15 @@ const PAGE_SEO: Record<string, { title: string; description: string }> = {
       'is a WhatsApp number. Order pet food, treats, toys and accessories at ' +
       'wholesale rates, with GST invoicing and live stock across every brand.',
   },
+  '/distributors': {
+    title:
+      'Become a Distribution Partner | Pet Food, Cat Litter & Grooming Distributors | Pupscribe',
+    description:
+      'Pupscribe is onboarding pet food distributors, dog and cat food ' +
+      'distributors, cat litter distributors and grooming (dog/cat shampoo) ' +
+      'distributors across India — and any other pet category. Register your ' +
+      'brand to distribute through the Pupscribe Marketplace.',
+  },
   '/catalogues': {
     title:
       'Pet Product Catalogues | Wholesale Pet Food, Treats & Accessories | Pupscribe',
