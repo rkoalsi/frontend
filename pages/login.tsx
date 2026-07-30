@@ -21,7 +21,6 @@ import {
   CheckCircleOutline,
   ChevronRight,
   PersonAddAlt,
-  LocalShippingOutlined,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -52,11 +51,6 @@ const DESTINATIONS = [
     icon: <PersonAddAlt sx={{ fontSize: 18 }} />,
     title: 'Register as a new B2B client',
     emphasis: true,
-  },
-  {
-    href: '/distributors',
-    icon: <LocalShippingOutlined sx={{ fontSize: 18 }} />,
-    title: 'Become a distributor',
   },
 ];
 

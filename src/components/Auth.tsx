@@ -192,7 +192,9 @@ export const AuthProvider = ({ children }: any) => {
       '/reset_password',
       '/catalogues/all_products',
       '/catalogues',
-      '/distributors',
+      // Invite-only, but the token in the URL is the authorisation — the brand
+      // filling it in has no Pupscribe login.
+      '/distributor_registration/[token]',
     ];
     if (PUBLIC_PATHS.includes(router.pathname)) {
       setLoading(false);
