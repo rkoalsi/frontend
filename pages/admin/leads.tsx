@@ -48,15 +48,6 @@ import { useRouter } from 'next/router';
 
 const DATE_KEYS = new Set(['created_at', 'verified_at']);
 
-/** Flatten a structured address (billing_address / ship_from_address) into the
- *  single cell an XLSX column can hold. */
-function formatAddress(a: any): string {
-  if (!a || typeof a !== 'object') return '-';
-  return [a.attention, a.address, a.street2, a.city, a.state, a.zip, a.country, a.phone]
-    .filter(Boolean)
-    .join(', ') || '-';
-}
-
 function buildXLSXRow(record: any, columns: { key: string; header: string }[]) {
   const row: Record<string, string> = {};
   for (const col of columns) {
@@ -65,7 +56,6 @@ function buildXLSXRow(record: any, columns: { key: string; header: string }[]) {
     else if (DATE_KEYS.has(col.key)) row[col.header] = formatIST(val);
     else if (Array.isArray(val)) row[col.header] = val.join(', ');
     else if (typeof val === 'boolean') row[col.header] = val ? 'Yes' : 'No';
-    else if (typeof val === 'object') row[col.header] = formatAddress(val);
     else row[col.header] = String(val);
   }
   return row;
@@ -79,10 +69,8 @@ function triggerXLSXDownload(data: any[], columns: { key: string; header: string
   XLSX.writeFile(wb, filename);
 }
 
-// Keyed by tab index, not positional — only some tabs have an XLSX report, and
-// the ones that do are not contiguous.
-const REPORT_CONFIGS: Record<number, { label: string; fetch: () => Promise<any[]>; columns: { key: string; header: string }[] }> = {
-  0: {
+const REPORT_CONFIGS = [
+  {
     label: 'Brand Leads',
     fetch: async () => {
       const res = await axiosInstance.get('/admin/brand_leads', { params: { page: 0, limit: 100000 } });
@@ -97,7 +85,7 @@ const REPORT_CONFIGS: Record<number, { label: string; fetch: () => Promise<any[]
       { key: 'notes', header: 'Notes' },
     ],
   },
-  1: {
+  {
     label: 'Catalogue Leads',
     fetch: async () => {
       const res = await axiosInstance.get('/admin/catalogue_leads', { params: { page: 0, limit: 100000 } });
@@ -111,7 +99,7 @@ const REPORT_CONFIGS: Record<number, { label: string; fetch: () => Promise<any[]
       { key: 'notes', header: 'Notes' },
     ],
   },
-  2: {
+  {
     label: 'Contact Form Leads',
     fetch: async () => {
       const res = await axiosInstance.get('/admin/contact_submissions', { params: { page: 0, limit: 100000 } });
@@ -130,31 +118,7 @@ const REPORT_CONFIGS: Record<number, { label: string; fetch: () => Promise<any[]
       { key: 'created_at', header: 'Created At (IST)' },
     ],
   },
-  5: {
-    label: 'Distributor Applications',
-    fetch: async () => {
-      const res = await axiosInstance.get('/admin/distributor_registrations', { params: { page: 0, limit: 100000 } });
-      return res.data.distributor_registrations;
-    },
-    columns: [
-      { key: 'company_name', header: 'Company' },
-      { key: 'brand_name', header: 'Brand' },
-      { key: 'categories', header: 'Categories' },
-      { key: 'distribution_states', header: 'Distribution States' },
-      { key: 'margin', header: 'Margin' },
-      { key: 'contact_person_name', header: 'Contact Person' },
-      { key: 'phone', header: 'Phone' },
-      { key: 'email', header: 'Email' },
-      { key: 'gst_number', header: 'GST' },
-      { key: 'pan_number', header: 'PAN' },
-      { key: 'billing_address', header: 'Billing Address' },
-      { key: 'ship_from_address', header: 'Ship-From Address' },
-      { key: 'status', header: 'Status' },
-      { key: 'notes', header: 'Notes' },
-      { key: 'created_at', header: 'Created At (IST)' },
-    ],
-  },
-};
+];
 
 const formatIST = (dateStr: string | null | undefined) =>
   formatHumanDateTime(dateStr, { assumeUTC: true, tz: 'Asia/Kolkata' });
@@ -1489,24 +1453,22 @@ const DistributorDrawer = ({
 
 // ─── Main Leads Page ──────────────────────────────────────────────────────────
 
-const TAB_LABELS = ['Pupscribe.in Brand Leads', 'Pupscribe.in Catalogue Leads', 'Pupscribe.in Contact Form Leads', 'Potential Customers', 'B2B Registrations', 'Distributor Applications'];
+const TAB_LABELS = ['Pupscribe.in Brand Leads', 'Pupscribe.in Catalogue Leads', 'Pupscribe.in Contact Form Leads', 'Potential Customers', 'B2B Registrations'];
 
 const LeadsPage = () => {
   const router = useRouter();
   const { tab: tabParam } = router.query;
   const [downloading, setDownloading] = useState(false);
 
-  const TAB_SLUGS = ['brand', 'catalogue', 'contact', 'potential', 'b2b', 'distributors'];
-  const tabIndex = Math.max(TAB_SLUGS.indexOf(tabParam as string), 0);
+  const tabIndex = tabParam === 'catalogue' ? 1 : tabParam === 'contact' ? 2 : tabParam === 'potential' ? 3 : tabParam === 'b2b' ? 4 : 0;
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
-    const tabMap = TAB_SLUGS;
+    const tabMap = ['brand', 'catalogue', 'contact', 'potential', 'b2b'];
     router.replace({ pathname: router.pathname, query: { tab: tabMap[newValue] } }, undefined, { shallow: true });
   };
 
   const handleDownload = async () => {
     const report = REPORT_CONFIGS[tabIndex];
-    if (!report) return;
     setDownloading(true);
     try {
       const data = await report.fetch();
@@ -1528,7 +1490,7 @@ const LeadsPage = () => {
           <Typography variant='h4' gutterBottom sx={{ fontWeight: 'bold' }}>
             Leads
           </Typography>
-          {REPORT_CONFIGS[tabIndex] && (
+          {tabIndex < 3 && (
             <Tooltip title={`Download ${REPORT_CONFIGS[tabIndex].label} as XLSX`} placement='left'>
               <span>
                 <IconButton onClick={handleDownload} disabled={downloading} sx={{ color: '#37279C' }}>
@@ -1539,15 +1501,12 @@ const LeadsPage = () => {
           )}
         </Box>
         <Typography variant='body1' sx={{ mb: 3 }} color='text.secondary'>
-          View and manage all leads from brand signups, catalogue downloads, contact form submissions and distributor applications.
+          View and manage all leads from brand signups, catalogue downloads, and contact form submissions.
         </Typography>
 
         <Tabs
           value={tabIndex}
           onChange={handleTabChange}
-          variant='scrollable'
-          scrollButtons='auto'
-          allowScrollButtonsMobile
           sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
           textColor='primary'
           indicatorColor='primary'
@@ -1562,7 +1521,6 @@ const LeadsPage = () => {
         {tabIndex === 2 && <ContactFormLeadsTab />}
         {tabIndex === 3 && <PotentialCustomersTab />}
         {tabIndex === 4 && <B2BRegistrationsTab />}
-        {tabIndex === 5 && <DistributorApplicationsTab />}
       </Paper>
     </Box>
   );
