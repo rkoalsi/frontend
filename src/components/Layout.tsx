@@ -54,7 +54,9 @@ const Layout = ({ children }: any) => {
 
   // '/' renders the marketing landing for guests (GuestLanding) instead of
   // redirecting to /login, so it is public too.
-  const publicPaths = ['/', '/login', '/register', '/forgot_password', '/reset_password', '/catalogues/all_products', '/catalogues', '/cards/[id]'];
+  // '/distributor_registration/[token]' is invite-only rather than public, but
+  // the token is the authorisation — a brand filling it in has no login.
+  const publicPaths = ['/', '/login', '/register', '/forgot_password', '/reset_password', '/catalogues/all_products', '/catalogues', '/cards/[id]', '/distributor_registration/[token]'];
 
   useEffect(() => {
     if (router.isReady) {

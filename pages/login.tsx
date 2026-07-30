@@ -38,6 +38,22 @@ const FEATURES = [
   'Track orders, invoices and payments',
 ];
 
+// Logged-out visitors are redirected here from every private route, so this is
+// the one page a first-time retailer — or a brand looking for a distributor —
+// reliably lands on. Real <a> tags (NextLink) so both stay crawlable.
+// Single-line on purpose: the card has to clear the fold on a laptop and on a
+// phone, and a subtitle per tile costs ~34px each that the sign-in form needs.
+// The marketplace tour is not here — it is a topbar action on every logged-out
+// route now (src/components/Layout.tsx).
+const DESTINATIONS = [
+  {
+    href: '/register',
+    icon: <PersonAddAlt sx={{ fontSize: 18 }} />,
+    title: 'Register as a new B2B client',
+    emphasis: true,
+  },
+];
+
 // A 768p laptop leaves roughly 670px under the topbar — enough for the card
 // only if the breathing room comes off. Keyed on viewport height rather than
 // width so a tall phone keeps the roomier spacing.
