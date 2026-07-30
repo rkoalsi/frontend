@@ -21,6 +21,7 @@ import {
   LightMode,
   PersonAddAlt,
   LoginOutlined,
+  ExploreOutlined,
 } from '@mui/icons-material';
 import { useColorMode } from '../context/ColorModeContext';
 import { appShellBg } from '../util/surfaces';
@@ -143,6 +144,17 @@ const Layout = ({ children }: any) => {
             {/* Logged-out visitors always get a way in: Sign in as a ghost
                 pill, Register as the filled CTA. Each is hidden only on its
                 own page. */}
+            {/* The way back to the marketing page. It used to live on the
+                login card, but every logged-out route needs it, not just that
+                one — icon-only on mobile so it survives the narrow bar. */}
+            {!loading && !user && router.pathname !== '/' && (
+              <TopbarAction
+                icon={<ExploreOutlined fontSize='small' />}
+                label='Explore marketplace'
+                onClick={() => router.push('/')}
+                compact={isMobileOrTablet}
+              />
+            )}
             {!loading && !user && router.pathname !== '/login' && (
               <TopbarAction
                 icon={<LoginOutlined fontSize='small' />}
