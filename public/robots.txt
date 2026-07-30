@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+# Private, admin-issued invite links — the page also sends noindex
+Disallow: /distributor_registration/
 
 Sitemap: https://marketplace.pupscribe.in/sitemap.xml

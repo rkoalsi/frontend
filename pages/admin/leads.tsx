@@ -28,7 +28,16 @@ import {
   DialogActions,
 } from '@mui/material';
 import Drawer from '../../src/components/common/ResponsiveDrawer';
-import { FileDownloadOutlined, CheckOutlined, CloseOutlined, EditOutlined, FilterAlt } from '@mui/icons-material';
+import {
+  FileDownloadOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  EditOutlined,
+  FilterAlt,
+  DeleteOutline,
+  ArrowUpward,
+  ArrowDownward,
+} from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 import axiosInstance from '../../src/util/axios';
@@ -1101,6 +1110,346 @@ const B2BRegistrationsTab = () => {
     </>
   );
 };
+
+// ─── Distributor Applications Tab ─────────────────────────────────────────────
+
+const DISTRIBUTOR_STATUS_META: Record<string, { label: string; color: 'default' | 'warning' | 'success' | 'error' }> = {
+  not_contacted: { label: 'Not Contacted', color: 'warning' },
+  contacted: { label: 'Contacted', color: 'default' },
+  onboarded: { label: 'Onboarded', color: 'success' },
+  declined: { label: 'Declined', color: 'error' },
+};
+
+/** Chips for the multi-value columns, collapsed past the first few so a brand
+ *  distributing to 30 states does not blow the row height out. */
+const ChipList = ({ values, max = 3 }: { values?: string[]; max?: number }) => {
+  if (!values || values.length === 0) return <>-</>;
+  const shown = values.slice(0, max);
+  const rest = values.length - shown.length;
+  return (
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, maxWidth: 260 }}>
+      {shown.map((v) => (
+        <Chip key={v} label={v} size='small' variant='outlined' />
+      ))}
+      {rest > 0 && (
+        <Tooltip title={values.slice(max).join(', ')} placement='top' arrow>
+          <Chip label={`+${rest}`} size='small' />
+        </Tooltip>
+      )}
+    </Box>
+  );
+};
+
+const DistributorApplicationsTab = () => {
+  const [rows, setRows] = useState<any[]>([]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [skipPage, setSkipPage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<any>(null);
+
+  useEffect(() => {
+    const h = setTimeout(() => setDebouncedSearch(searchQuery), 500);
+    return () => clearTimeout(h);
+  }, [searchQuery]);
+
+  const fetchRows = async () => {
+    setLoading(true);
+    try {
+      const params: Record<string, unknown> = { page, limit: rowsPerPage };
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+      if (statusFilter) params.status = statusFilter;
+      const response = await axiosInstance.get('/admin/distributor_registrations', { params });
+      const { distributor_registrations, total_count, total_pages } = response.data;
+      setRows(distributor_registrations);
+      setTotalCount(total_count);
+      setTotalPages(total_pages);
+    } catch {
+      toast.error('Error fetching distributor applications.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchRows(); }, [page, rowsPerPage, debouncedSearch, statusFilter]); // eslint-disable-line
+
+  const handleSkipPage = () => {
+    const p = parseInt(skipPage, 10);
+    if (isNaN(p) || p < 1) { toast.error('Invalid page number'); return; }
+    setPage(p - 1); setSkipPage('');
+  };
+
+  const handleStatusChange = async (id: string, status: string) => {
+    setRows((prev) => prev.map((r) => r._id === id ? { ...r, status } : r));
+    setSavingId(id);
+    try {
+      await axiosInstance.patch(`/admin/distributor_registrations/${id}`, { status });
+    } catch {
+      toast.error('Failed to update status.');
+      fetchRows();
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const handleSaveNotes = async (id: string, notes: string) => {
+    try {
+      await axiosInstance.patch(`/admin/distributor_registrations/${id}`, { notes });
+      setRows((prev) => prev.map((r) => r._id === id ? { ...r, notes } : r));
+      setSelected((prev: any) => prev && prev._id === id ? { ...prev, notes } : prev);
+    } catch {
+      toast.error('Failed to save notes.');
+      throw new Error('save failed');
+    }
+  };
+
+  return (
+    <>
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+        <TextField
+          label='Search by company, brand, contact, email or phone'
+          variant='outlined'
+          value={searchQuery}
+          onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
+          size='small'
+          sx={{ flex: '1 1 320px' }}
+        />
+        <FormControl size='small' sx={{ minWidth: 190 }}>
+          <InputLabel>Status</InputLabel>
+          <Select
+            value={statusFilter}
+            label='Status'
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
+          >
+            <MenuItem value=''>All</MenuItem>
+            {Object.entries(DISTRIBUTOR_STATUS_META).map(([value, meta]) => (
+              <MenuItem key={value} value={value}>{meta.label}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
+      ) : rows.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Typography variant='h6' color='text.secondary'>No distributor applications found.</Typography>
+        </Box>
+      ) : (
+        <>
+          <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflowX: 'auto' }}>
+            <Table sx={{ minWidth: 1300 }}>
+              <TableHead>
+                <TableRow sx={{ bgcolor: 'action.hover' }}>
+                  <TableCell sx={{ fontWeight: 600 }}>Company</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Brand</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Categories</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>States</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Margin</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Contact</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Notes</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Applied At (IST)</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow
+                    key={row._id}
+                    hover
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => setSelected(row)}
+                  >
+                    <TableCell sx={{ fontWeight: 500 }}>{row.company_name || '-'}</TableCell>
+                    <TableCell>{row.brand_name || '-'}</TableCell>
+                    <TableCell><ChipList values={row.categories} max={2} /></TableCell>
+                    <TableCell><ChipList values={row.distribution_states} max={2} /></TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.margin || '-'}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      <Typography variant='body2'>{row.contact_person_name || '-'}</Typography>
+                      <Typography variant='caption' color='text.secondary'>{row.phone || '-'}</Typography>
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <FormControl size='small' sx={{ minWidth: 150 }}>
+                        <Select
+                          value={row.status || 'not_contacted'}
+                          onChange={(e) => handleStatusChange(row._id, e.target.value)}
+                          disabled={savingId === row._id}
+                          renderValue={(val: string) => (
+                            <Chip
+                              label={DISTRIBUTOR_STATUS_META[val]?.label ?? val}
+                              color={DISTRIBUTOR_STATUS_META[val]?.color ?? 'default'}
+                              size='small'
+                              sx={{ cursor: 'pointer' }}
+                            />
+                          )}
+                          sx={{ '& .MuiOutlinedInput-notchedOutline': { border: 'none' } }}
+                        >
+                          {Object.entries(DISTRIBUTOR_STATUS_META).map(([value, meta]) => (
+                            <MenuItem key={value} value={value}>{meta.label}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <NotesCell value={row.notes} onSave={(notes) => handleSaveNotes(row._id, notes)} />
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatIST(row.created_at)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <PaginationFooter
+            totalCount={totalCount}
+            totalPages={totalPages}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            skipPage={skipPage}
+            setSkipPage={setSkipPage}
+            onPageChange={(_, p) => { setPage(p); setSkipPage(''); }}
+            onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); setSkipPage(''); }}
+            onSkipPage={handleSkipPage}
+          />
+        </>
+      )}
+
+      <DistributorDrawer
+        row={selected}
+        onClose={() => setSelected(null)}
+        onSaveNotes={handleSaveNotes}
+      />
+    </>
+  );
+};
+
+// ─── Distributor Detail Drawer ────────────────────────────────────────────────
+
+/** Multi-line rendering of the same address object, for the drawer. */
+const formatAddressBlock = (a: any): string => {
+  if (!a || typeof a !== 'object') return '-';
+  const lines = [
+    a.attention,
+    a.address,
+    a.street2,
+    [a.city, a.state, a.zip].filter(Boolean).join(', '),
+    a.country,
+    a.phone ? `Phone: ${a.phone}` : '',
+  ].filter(Boolean);
+  return lines.length ? lines.join('\n') : '-';
+};
+
+const DetailRow = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '150px 1fr' }, gap: { xs: 0.25, sm: 2 }, py: 1.25 }}>
+    <Typography variant='body2' color='text.secondary' sx={{ fontWeight: 500 }}>
+      {label}
+    </Typography>
+    <Box sx={{ minWidth: 0 }}>{children}</Box>
+  </Box>
+);
+
+const DistributorDrawer = ({
+  row,
+  onClose,
+  onSaveNotes,
+}: {
+  row: any;
+  onClose: () => void;
+  onSaveNotes: (id: string, notes: string) => Promise<void>;
+}) => (
+  <Drawer
+    anchor='right'
+    open={Boolean(row)}
+    onClose={onClose}
+    sx={{ '& .MuiDrawer-paper': { width: { xs: '100%', sm: 520 } } }}
+  >
+    {row && (
+      <Box sx={{ p: 3, height: '100%', overflowY: 'auto' }}>
+        <Typography variant='h6' sx={{ fontWeight: 700 }}>{row.brand_name}</Typography>
+        <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
+          {row.company_name}
+        </Typography>
+        <Chip
+          label={DISTRIBUTOR_STATUS_META[row.status]?.label ?? row.status}
+          color={DISTRIBUTOR_STATUS_META[row.status]?.color ?? 'default'}
+          size='small'
+          sx={{ mb: 2 }}
+        />
+
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+          <Button
+            variant='contained'
+            size='small'
+            href={`https://wa.me/91${String(row.phone || '').replace(/\D/g, '').slice(-10)}`}
+            target='_blank'
+            rel='noopener noreferrer'
+            sx={{ textTransform: 'none' }}
+          >
+            WhatsApp
+          </Button>
+          <Button variant='outlined' size='small' href={`tel:+91${row.phone}`} sx={{ textTransform: 'none' }}>
+            Call
+          </Button>
+          <Button variant='outlined' size='small' href={`mailto:${row.email}`} sx={{ textTransform: 'none' }}>
+            Email
+          </Button>
+        </Box>
+
+        <Box sx={{ '& > *:not(:last-child)': { borderBottom: 1, borderColor: 'divider' } }}>
+          <DetailRow label='Contact person'>
+            <Typography variant='body2'>{row.contact_person_name || '-'}</Typography>
+          </DetailRow>
+          <DetailRow label='Phone'>
+            <Typography variant='body2'>
+              {row.phone || '-'}{' '}
+              {row.phone_verified && <Chip label='WhatsApp verified' color='success' size='small' sx={{ ml: 0.5 }} />}
+            </Typography>
+          </DetailRow>
+          <DetailRow label='Email'>
+            <Typography variant='body2' sx={{ wordBreak: 'break-word' }}>{row.email || '-'}</Typography>
+          </DetailRow>
+          <DetailRow label='GST'>
+            <Typography variant='body2'>{row.gst_number || '-'}</Typography>
+          </DetailRow>
+          <DetailRow label='PAN'>
+            <Typography variant='body2'>{row.pan_number || '-'}</Typography>
+          </DetailRow>
+          <DetailRow label='Billing address'>
+            <Typography variant='body2' sx={{ whiteSpace: 'pre-wrap' }}>
+              {formatAddressBlock(row.billing_address)}
+            </Typography>
+          </DetailRow>
+          <DetailRow label='Ship-from address'>
+            <Typography variant='body2' sx={{ whiteSpace: 'pre-wrap' }}>
+              {formatAddressBlock(row.ship_from_address)}
+            </Typography>
+          </DetailRow>
+          <DetailRow label='Categories'>
+            <ChipList values={row.categories} max={99} />
+          </DetailRow>
+          <DetailRow label='Distribution states'>
+            <ChipList values={row.distribution_states} max={99} />
+          </DetailRow>
+          <DetailRow label='Margin'>
+            <Typography variant='body2'>{row.margin || '-'}</Typography>
+          </DetailRow>
+          <DetailRow label='Applied at'>
+            <Typography variant='body2'>{formatIST(row.created_at)}</Typography>
+          </DetailRow>
+          <DetailRow label='Notes'>
+            <NotesCell value={row.notes} onSave={(notes) => onSaveNotes(row._id, notes)} />
+          </DetailRow>
+        </Box>
+      </Box>
+    )}
+  </Drawer>
+);
 
 // ─── Main Leads Page ──────────────────────────────────────────────────────────
 

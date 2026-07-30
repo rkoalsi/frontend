@@ -60,6 +60,7 @@ import {
   LightMode,
   ReceiptLong,
   Sensors,
+  AddLink,
   Search as SearchIcon,
   ExpandLess,
   ExpandMore,
@@ -114,6 +115,7 @@ const iconMap: { [key: string]: React.ReactElement } = {
   Security: <Security />,
   ReceiptLong: <ReceiptLong />,
   Sensors: <Sensors />,
+  AddLink: <AddLink />,
   Receipt: <OrdersIcon />,
 };
 
