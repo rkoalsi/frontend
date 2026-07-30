@@ -21,7 +21,6 @@ import {
   LightMode,
   PersonAddAlt,
   LoginOutlined,
-  StorefrontOutlined,
   ExploreOutlined,
 } from '@mui/icons-material';
 import { useColorMode } from '../context/ColorModeContext';
@@ -55,7 +54,7 @@ const Layout = ({ children }: any) => {
 
   // '/' renders the marketing landing for guests (GuestLanding) instead of
   // redirecting to /login, so it is public too.
-  const publicPaths = ['/', '/login', '/register', '/forgot_password', '/reset_password', '/catalogues/all_products', '/catalogues', '/cards/[id]', '/distributors'];
+  const publicPaths = ['/', '/login', '/register', '/forgot_password', '/reset_password', '/catalogues/all_products', '/catalogues', '/cards/[id]'];
 
   useEffect(() => {
     if (router.isReady) {
@@ -154,16 +153,6 @@ const Layout = ({ children }: any) => {
                 label='Explore marketplace'
                 onClick={() => router.push('/')}
                 compact={isMobileOrTablet}
-              />
-            )}
-            {/* The supply side of the marketplace. Ghost pill so it never
-                competes with Register, and dropped on tablet/mobile where the
-                bar is already tight — the landing page carries it there. */}
-            {!loading && !user && !isMobileOrTablet && router.pathname !== '/distributors' && (
-              <TopbarAction
-                icon={<StorefrontOutlined fontSize='small' />}
-                label='Become a distributor'
-                onClick={() => router.push('/distributors')}
               />
             )}
             {!loading && !user && router.pathname !== '/login' && (

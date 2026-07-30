@@ -21,7 +21,6 @@ import {
   CheckCircleOutline,
   ChevronRight,
   PersonAddAlt,
-  LocalShippingOutlined,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -39,27 +38,6 @@ const FEATURES = [
   'Track orders, invoices and payments',
 ];
 
-// Logged-out visitors are redirected here from every private route, so this is
-// the one page a first-time retailer — or a brand looking for a distributor —
-// reliably lands on. Real <a> tags (NextLink) so both stay crawlable.
-// Single-line on purpose: the card has to clear the fold on a laptop and on a
-// phone, and a subtitle per tile costs ~34px each that the sign-in form needs.
-// The marketplace tour is not here — it is a topbar action on every logged-out
-// route now (src/components/Layout.tsx).
-const DESTINATIONS = [
-  {
-    href: '/register',
-    icon: <PersonAddAlt sx={{ fontSize: 18 }} />,
-    title: 'Register as a new B2B client',
-    emphasis: true,
-  },
-  {
-    href: '/distributors',
-    icon: <LocalShippingOutlined sx={{ fontSize: 18 }} />,
-    title: 'Become a distributor',
-  },
-];
-
 // A 768p laptop leaves roughly 670px under the topbar — enough for the card
 // only if the breathing room comes off. Keyed on viewport height rather than
 // width so a tall phone keeps the roomier spacing.
@@ -68,21 +46,18 @@ const SHORT = '@media (max-height: 780px)';
 // decorative bits (copyright, brand-panel prose) go rather than the form.
 const TINY = '@media (max-height: 700px)';
 
-const DestinationTile = ({
-  href,
-  icon,
-  title,
-  emphasis = false,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  title: string;
-  /** The primary next step for a new visitor — carries the brand outline. */
-  emphasis?: boolean;
-}) => (
+/**
+ * The one onward route from the sign-in card. Logged-out visitors are
+ * redirected here from every private route, so this is where a first-time
+ * retailer reliably lands. A real <a> (NextLink) so it stays crawlable, and a
+ * single compact row rather than a second full-height button — the card has to
+ * clear the fold on a laptop and on a phone. The marketplace tour is not here:
+ * it is a topbar action on every logged-out route (src/components/Layout.tsx).
+ */
+const RegisterTile = () => (
   <ButtonBase
     component={NextLink}
-    href={href}
+    href='/register'
     sx={{
       display: 'flex',
       alignItems: 'center',
@@ -93,19 +68,18 @@ const DestinationTile = ({
       py: 1.25,
       borderRadius: '10px',
       border: '1px solid',
-      borderColor: emphasis ? 'primary.main' : 'divider',
+      borderColor: 'primary.main',
       transition: 'border-color 120ms, background-color 120ms',
-      '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
+      '&:hover': { bgcolor: 'action.hover' },
     }}
   >
-    <Box sx={{ display: 'flex', color: 'primary.main', flexShrink: 0 }}>{icon}</Box>
-    {/* Wraps rather than truncates: the longest label needs ~290px and a
-        360px phone leaves the text about 200px. */}
+    <PersonAddAlt sx={{ fontSize: 18, color: 'primary.main', flexShrink: 0 }} />
+    {/* Wraps rather than truncates: a 360px phone leaves the text ~200px. */}
     <Typography
       sx={{ fontSize: '0.8125rem', fontWeight: 600, lineHeight: 1.35, flex: 1, minWidth: 0 }}
-      color={emphasis ? 'primary.main' : 'text.primary'}
+      color='primary.main'
     >
-      {title}
+      Register as a new B2B client
     </Typography>
     <ChevronRight sx={{ fontSize: 18, color: 'text.disabled', flexShrink: 0 }} />
   </ButtonBase>
@@ -610,14 +584,7 @@ const LoginPage = () => {
             </Typography>
           </Divider>
 
-          {/* Both onward routes as tiles of the same shape — full width rather
-              than two-up, since neither label survives a half-width tile at
-              the desktop card size without being cut off. */}
-          <Box sx={{ display: 'grid', gap: 1 }}>
-            {DESTINATIONS.map((d) => (
-              <DestinationTile key={d.href} {...d} />
-            ))}
-          </Box>
+          <RegisterTile />
 
           <Typography
             variant='caption'

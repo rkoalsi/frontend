@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import NextLink from 'next/link';
-import { Box, Button, Paper, Typography, Divider } from '@mui/material';
+import { Box, Paper, Typography, Divider } from '@mui/material';
 import {
   StorefrontOutlined,
   PetsOutlined,
@@ -190,65 +189,6 @@ const BrandTile = ({ brand }: { brand: Brand }) => {
 
 
 
-/**
- * The other side of the marketplace: everything above sells it to buyers, this
- * band speaks to the brands and distributors we want to stock. Sits just before
- * the closing CTA so it never competes with the retailer sign-up.
- */
-const DistributorBand = () => (
-  <Box
-    component='section'
-    sx={{
-      mt: { xs: 6, md: 9 },
-      p: { xs: 3, sm: 4.5 },
-      borderRadius: '20px',
-      border: '1px solid',
-      borderColor: 'divider',
-      bgcolor: 'background.paper',
-      display: 'flex',
-      flexDirection: { xs: 'column', md: 'row' },
-      alignItems: { xs: 'flex-start', md: 'center' },
-      justifyContent: 'space-between',
-      gap: 3,
-    }}
-  >
-    <Box>
-      <Typography
-        variant='h2'
-        component='h2'
-        sx={{ fontWeight: 700, fontSize: 'clamp(20px, 2.4vw, 27px)', mb: 1 }}
-        color='text.primary'
-      >
-        Are you a brand or distributor?
-      </Typography>
-      <Typography sx={{ fontSize: 15, lineHeight: 1.6, maxWidth: 620 }} color='text.secondary'>
-        We are currently looking for a few pet food distributors, dog and cat food
-        distributors, cat litter distributors, and grooming distributors for dog and
-        cat shampoo — and we will happily look at any other pet category. Register
-        your brand and our distribution team will get in touch.
-      </Typography>
-    </Box>
-    <Button
-      component={NextLink}
-      href='/distributors'
-      variant='contained'
-      size='large'
-      sx={{
-        textTransform: 'none',
-        fontWeight: 600,
-        borderRadius: '10px',
-        px: 3.25,
-        py: 1.4,
-        minHeight: 50,
-        flexShrink: 0,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      Become a distributor
-    </Button>
-  </Box>
-);
-
 const GuestLanding = ({ brands = [] }: { brands?: Brand[] }) => (
   <Box sx={{ width: '100%', maxWidth: 1200, mx: 'auto', pb: { xs: 6, md: 10 } }}>
     {/* JSON-LD lives in the body rather than next/head — valid for Google and
@@ -284,10 +224,6 @@ const GuestLanding = ({ brands = [] }: { brands?: Brand[] }) => (
         </Box>
       </Box>
     )}
-
-    {/* Sits right after the brands rail: a visitor who has just read which
-        brands we carry is exactly the one thinking "could mine be here too?" */}
-    <DistributorBand />
 
     {/* How it works */}
     <Box component='section' sx={{ mt: { xs: 6, md: 9 } }}>
