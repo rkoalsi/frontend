@@ -11,6 +11,7 @@ import { AuthProvider } from '../src/components/Auth';
 import Layout from '../src/components/Layout';
 import AdminLayout from '../src/components/AdminLayout';
 import CustomerLayout from '../src/components/CustomerLayout';
+import DistributorLayout from '../src/components/DistributorLayout';
 import ErrorBoundary from '../src/components/ErrorBoundary';
 import PresenceHeartbeat from '../src/components/PresenceHeartbeat';
 import { ToastContainer } from 'react-toastify';
@@ -296,6 +297,9 @@ export default function MyApp(props: AppProps) {
   const isCustomerRoute =
     props.router?.pathname === '/customer' ||
     props.router?.pathname.startsWith('/customer/');
+  const isDistributorRoute =
+    props.router?.pathname === '/distributor' ||
+    props.router?.pathname.startsWith('/distributor/');
 
   // Public digital business cards render on their own — no nav, no sidebar.
   const isBareRoute = props.router?.pathname === '/cards/[id]';
@@ -304,6 +308,7 @@ export default function MyApp(props: AppProps) {
     if (isBareRoute) return React.Fragment;
     if (isAdminRoute) return AdminLayout;
     if (isCustomerRoute) return CustomerLayout;
+    if (isDistributorRoute) return DistributorLayout;
     return Layout;
   };
 

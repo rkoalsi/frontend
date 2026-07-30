@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   Typography,
   Box,
@@ -26,6 +26,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Alert,
 } from '@mui/material';
 import Drawer from '../../src/components/common/ResponsiveDrawer';
 import {
@@ -1446,10 +1447,170 @@ const DistributorDrawer = ({
             <NotesCell value={row.notes} onSave={(notes) => onSaveNotes(row._id, notes)} />
           </DetailRow>
         </Box>
+
+        <DistributorLoginPanel registrationId={row._id} email={row.email} />
       </Box>
     )}
   </Drawer>
 );
+
+// Turning an approved application into a portal login. Deliberately a separate
+// action from the status dropdown so nobody grants portal access by mis-clicking
+// a status. The generated password is returned once and cannot be read back, so
+// it stays on screen until dismissed.
+const DistributorLoginPanel = ({
+  registrationId,
+  email,
+}: {
+  registrationId: string;
+  email?: string;
+}) => {
+  const [login, setLogin] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [issued, setIssued] = useState<{ email: string; password: string } | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await axiosInstance.get(
+        `/admin/distributor_registrations/${registrationId}/login`
+      );
+      setLogin(res.data.login);
+    } catch {
+      setLogin(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [registrationId]);
+
+  useEffect(() => {
+    setIssued(null);
+    load();
+  }, [load]);
+
+  const createLogin = async () => {
+    setBusy(true);
+    try {
+      const res = await axiosInstance.post(
+        `/admin/distributor_registrations/${registrationId}/login`,
+        {}
+      );
+      setIssued({ email: res.data.email, password: res.data.password });
+      toast.success('Distributor login created.');
+      await load();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Could not create the login.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resetPassword = async () => {
+    setBusy(true);
+    try {
+      const res = await axiosInstance.post(
+        `/admin/distributor_registrations/${registrationId}/login/reset-password`,
+        {}
+      );
+      setIssued({ email: res.data.email, password: res.data.password });
+      toast.success('New password issued.');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Could not reset the password.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleStatus = async () => {
+    const next = login?.status === 'active' ? 'inactive' : 'active';
+    setBusy(true);
+    try {
+      await axiosInstance.patch(
+        `/admin/distributor_registrations/${registrationId}/login/status`,
+        { status: next }
+      );
+      toast.success(next === 'active' ? 'Portal access enabled.' : 'Portal access disabled.');
+      await load();
+    } catch {
+      toast.error('Could not update access.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Box sx={{ mt: 3, pt: 2, borderTop: 2, borderColor: 'divider' }}>
+      <Typography variant='subtitle2' sx={{ fontWeight: 700, mb: 1 }}>
+        Distributor Portal Login
+      </Typography>
+
+      {loading ? (
+        <CircularProgress size={20} />
+      ) : login ? (
+        <>
+          <Typography variant='body2' sx={{ wordBreak: 'break-word' }}>
+            {login.email}
+          </Typography>
+          <Chip
+            label={login.status === 'active' ? 'Active' : 'Disabled'}
+            color={login.status === 'active' ? 'success' : 'default'}
+            size='small'
+            sx={{ mt: 0.5 }}
+          />
+          <Box sx={{ display: 'flex', gap: 1, mt: 1.5, flexWrap: 'wrap' }}>
+            <Button size='small' variant='outlined' disabled={busy} onClick={resetPassword}>
+              Reset password
+            </Button>
+            <Button
+              size='small'
+              variant='outlined'
+              color={login.status === 'active' ? 'error' : 'success'}
+              disabled={busy}
+              onClick={toggleStatus}
+            >
+              {login.status === 'active' ? 'Disable access' : 'Enable access'}
+            </Button>
+          </Box>
+        </>
+      ) : (
+        <>
+          <Typography variant='body2' color='text.secondary' sx={{ mb: 1.5 }}>
+            No portal login yet. Creating one lets this distributor sign in and see their
+            products and orders.
+            {!email && ' This application has no email — add one before creating a login.'}
+          </Typography>
+          <Button
+            size='small'
+            variant='contained'
+            disabled={busy || !email}
+            onClick={createLogin}
+            sx={{ textTransform: 'none' }}
+          >
+            Create login
+          </Button>
+        </>
+      )}
+
+      {issued && (
+        <Alert severity='success' sx={{ mt: 2 }} onClose={() => setIssued(null)}>
+          <Typography variant='body2' sx={{ fontWeight: 600 }}>
+            Share these credentials now
+          </Typography>
+          <Typography variant='body2' sx={{ wordBreak: 'break-all' }}>
+            Email: {issued.email}
+          </Typography>
+          <Typography variant='body2' sx={{ fontFamily: 'monospace' }}>
+            Password: {issued.password}
+          </Typography>
+          <Typography variant='caption' color='text.secondary'>
+            The password is stored hashed and cannot be shown again.
+          </Typography>
+        </Alert>
+      )}
+    </Box>
+  );
+};
 
 // ─── Main Leads Page ──────────────────────────────────────────────────────────
 

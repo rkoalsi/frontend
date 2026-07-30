@@ -480,6 +480,15 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
   const isCustomer = user?.role === 'customer';
   const isSalesPerson = user?.role === 'sales_person' || user?.role === 'sales_admin';
 
+  // Distributors are external and have nothing to do on the main app shell —
+  // send them straight to their portal. Login always lands on '/', so this is
+  // the single place that has to know.
+  useEffect(() => {
+    if (user?.role === 'distributor') {
+      router.replace('/distributor');
+    }
+  }, [user?.role, router]);
+
   const [perfData, setPerfData] = useState<any>(null);
   const [myCard, setMyCard] = useState<any>(null);
   const [cardModalOpen, setCardModalOpen] = useState(false);
