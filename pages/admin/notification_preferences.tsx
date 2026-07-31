@@ -4,24 +4,29 @@ import {
   Typography,
   Box,
   Paper,
-  Switch,
-  FormControlLabel,
   CircularProgress,
   Button,
   Divider,
   Stack,
-  Chip,
   Alert,
   Container,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
   useTheme,
 } from '@mui/material';
-import { NotificationsActive, NotificationsOff, Save } from '@mui/icons-material';
+import {
+  NotificationsActive,
+  NotificationsOff,
+  NotificationsNone,
+  Save,
+} from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../src/util/axios';
 
 const CATEGORY_MAP: Record<string, string[]> = {
   Orders: ['order_placed', 'order_edited'],
-  'Catalogue & Products': ['new_catalogue', 'product_back_in_stock'],
+  'Catalogue & Products': ['new_catalogue', 'product_back_in_stock', 'new_product'],
   Returns: ['return_order_created'],
   'Customer Requests': [
     'customer_request_submitted',
@@ -29,16 +34,28 @@ const CATEGORY_MAP: Record<string, string[]> = {
     'customer_request_comment',
     'customer_request_reply',
   ],
+  'Registrations & Leads': ['b2b_user_verified', 'new_lead'],
   'Daily Visits': ['daily_visit_created', 'daily_visit_updated', 'daily_visit_comment'],
+  'Expense Estimates': [
+    'expense_submitted',
+    'expense_approved_stage',
+    'expense_rejected',
+    'expense_advance_released',
+    'expense_actuals_submitted',
+  ],
+  Cheques: ['cheque_uploaded', 'cheque_comment'],
   Broadcasts: ['new_training', 'new_announcement'],
   Shipments: ['shipment_dispatched', 'shipment_delivered'],
-  'Zoho Events': ['estimate_accepted', 'draft_sales_order', 'draft_invoice', 'new_product'],
+  'Zoho Events': ['estimate_accepted', 'draft_sales_order', 'draft_invoice'],
 };
+
+type PrefState = 'default' | 'always' | 'muted';
 
 const NotificationPreferences = () => {
   const theme = useTheme();
   const [allTypes, setAllTypes] = useState<Record<string, string>>({});
-  const [disabled, setDisabled] = useState<Set<string>>(new Set());
+  const [states, setStates] = useState<Record<string, PrefState>>({});
+  const [canSubscribe, setCanSubscribe] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -46,8 +63,20 @@ const NotificationPreferences = () => {
   const fetchPreferences = useCallback(async () => {
     try {
       const { data } = await axiosInstance.get('/notifications/preferences');
-      setAllTypes(data.all_types || {});
-      setDisabled(new Set(data.disabled_types || []));
+      const types: Record<string, string> = data.all_types || {};
+      const next: Record<string, PrefState> = {};
+      Object.keys(types).forEach(t => {
+        next[t] = 'default';
+      });
+      (data.subscribed_types || []).forEach((t: string) => {
+        next[t] = 'always';
+      });
+      (data.disabled_types || []).forEach((t: string) => {
+        next[t] = 'muted';
+      });
+      setAllTypes(types);
+      setStates(next);
+      setCanSubscribe(data.can_subscribe !== false);
     } catch (err) {
       toast.error('Failed to load notification preferences');
     } finally {
@@ -59,11 +88,12 @@ const NotificationPreferences = () => {
     fetchPreferences();
   }, [fetchPreferences]);
 
-  const toggle = (type: string) => {
-    setDisabled(prev => {
-      const next = new Set(prev);
-      if (next.has(type)) next.delete(type);
-      else next.add(type);
+  const setState = (types: string[], value: PrefState) => {
+    setStates(prev => {
+      const next = { ...prev };
+      types.forEach(t => {
+        next[t] = value;
+      });
       return next;
     });
     setDirty(true);
@@ -72,8 +102,10 @@ const NotificationPreferences = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const entries = Object.entries(states);
       await axiosInstance.put('/notifications/preferences', {
-        disabled_types: Array.from(disabled),
+        disabled_types: entries.filter(([, s]) => s === 'muted').map(([t]) => t),
+        subscribed_types: entries.filter(([, s]) => s === 'always').map(([t]) => t),
       });
       toast.success('Notification preferences saved');
       setDirty(false);
@@ -84,23 +116,12 @@ const NotificationPreferences = () => {
     }
   };
 
-  const muteAll = (types: string[]) => {
-    setDisabled(prev => {
-      const next = new Set(prev);
-      types.forEach(t => next.add(t));
-      return next;
-    });
-    setDirty(true);
-  };
-
-  const enableAll = (types: string[]) => {
-    setDisabled(prev => {
-      const next = new Set(prev);
-      types.forEach(t => next.delete(t));
-      return next;
-    });
-    setDirty(true);
-  };
+  // Anything the backend knows about but this page hasn't categorised — so new
+  // notification types are never silently unconfigurable.
+  const categories: Record<string, string[]> = { ...CATEGORY_MAP };
+  const mapped = new Set(Object.values(CATEGORY_MAP).flat());
+  const uncategorised = Object.keys(allTypes).filter(t => !mapped.has(t));
+  if (uncategorised.length) categories.Other = uncategorised;
 
   return (
     <Container maxWidth='md' sx={{ py: { xs: 2, md: 4 } }}>
@@ -141,15 +162,23 @@ const NotificationPreferences = () => {
           ) : (
             <>
               <Alert severity='info' sx={{ mb: 3, borderRadius: 2 }}>
-                Muted notification types will no longer appear in your bell notification feed. They will still be sent to other users.
+                <strong>Default</strong> follows the normal routing rules — you get the
+                notification only if it is addressed to you (your role, your customers,
+                your requests).{' '}
+                {canSubscribe && (
+                  <>
+                    <strong>Always</strong> subscribes you to every notification of that
+                    type across the platform, even when it isn&apos;t addressed to you.{' '}
+                  </>
+                )}
+                <strong>Muted</strong> keeps it out of your bell feed entirely. Other
+                users are unaffected either way.
               </Alert>
 
               <Stack spacing={3}>
-                {Object.entries(CATEGORY_MAP).map(([category, types]) => {
+                {Object.entries(categories).map(([category, types]) => {
                   const relevant = types.filter(t => t in allTypes);
                   if (!relevant.length) return null;
-                  const allMuted = relevant.every(t => disabled.has(t));
-                  const allEnabled = relevant.every(t => !disabled.has(t));
                   return (
                     <Paper
                       key={category}
@@ -171,21 +200,32 @@ const NotificationPreferences = () => {
                           {category}
                         </Typography>
                         <Stack direction='row' spacing={1}>
+                          {canSubscribe && (
+                            <Button
+                              size='small'
+                              variant='text'
+                              onClick={() => setState(relevant, 'always')}
+                              disabled={relevant.every(t => states[t] === 'always')}
+                              sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+                            >
+                              Always all
+                            </Button>
+                          )}
                           <Button
                             size='small'
                             variant='text'
-                            onClick={() => enableAll(relevant)}
-                            disabled={allEnabled}
+                            onClick={() => setState(relevant, 'default')}
+                            disabled={relevant.every(t => states[t] === 'default')}
                             sx={{ textTransform: 'none', fontSize: '0.75rem' }}
                           >
-                            Enable all
+                            Reset all
                           </Button>
                           <Button
                             size='small'
                             variant='text'
                             color='error'
-                            onClick={() => muteAll(relevant)}
-                            disabled={allMuted}
+                            onClick={() => setState(relevant, 'muted')}
+                            disabled={relevant.every(t => states[t] === 'muted')}
                             sx={{ textTransform: 'none', fontSize: '0.75rem' }}
                           >
                             Mute all
@@ -194,7 +234,8 @@ const NotificationPreferences = () => {
                       </Box>
                       <Stack divider={<Divider />}>
                         {relevant.map(type => {
-                          const isMuted = disabled.has(type);
+                          const state = states[type] || 'default';
+                          const isMuted = state === 'muted';
                           return (
                             <Box
                               key={type}
@@ -204,13 +245,17 @@ const NotificationPreferences = () => {
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
+                                gap: 1.5,
+                                flexWrap: 'wrap',
                               }}
                             >
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                 {isMuted ? (
                                   <NotificationsOff sx={{ fontSize: 18, color: 'text.disabled' }} />
+                                ) : state === 'always' ? (
+                                  <NotificationsActive sx={{ fontSize: 18, color: 'success.main' }} />
                                 ) : (
-                                  <NotificationsActive sx={{ fontSize: 18, color: 'primary.main' }} />
+                                  <NotificationsNone sx={{ fontSize: 18, color: 'primary.main' }} />
                                 )}
                                 <Box>
                                   <Typography variant='body2' fontWeight={500} color={isMuted ? 'text.disabled' : 'text.primary'}>
@@ -221,25 +266,30 @@ const NotificationPreferences = () => {
                                   </Typography>
                                 </Box>
                               </Box>
-                              <FormControlLabel
-                                control={
-                                  <Switch
-                                    checked={!isMuted}
-                                    onChange={() => toggle(type)}
-                                    size='small'
-                                  />
-                                }
-                                label={
-                                  <Chip
-                                    size='small'
-                                    label={isMuted ? 'Muted' : 'On'}
-                                    color={isMuted ? 'default' : 'success'}
-                                    sx={{ fontWeight: 600, height: 20, fontSize: '0.65rem' }}
-                                  />
-                                }
-                                labelPlacement='start'
-                                sx={{ mr: 0 }}
-                              />
+                              <ToggleButtonGroup
+                                size='small'
+                                exclusive
+                                value={state}
+                                onChange={(_, value) => value && setState([type], value)}
+                                sx={{
+                                  '& .MuiToggleButton-root': {
+                                    textTransform: 'none',
+                                    fontSize: '0.7rem',
+                                    py: 0.25,
+                                    px: 1.25,
+                                  },
+                                }}
+                              >
+                                <ToggleButton value='default'>Default</ToggleButton>
+                                {canSubscribe && (
+                                  <ToggleButton value='always'>
+                                    <Tooltip title='Receive every notification of this type, platform-wide'>
+                                      <span>Always</span>
+                                    </Tooltip>
+                                  </ToggleButton>
+                                )}
+                                <ToggleButton value='muted'>Muted</ToggleButton>
+                              </ToggleButtonGroup>
                             </Box>
                           );
                         })}

@@ -45,7 +45,6 @@ import {
   Radar,
   Repeat,
   ShoppingCart,
-  WorkHistory,
   Link,
   LineAxis,
   Rocket,
@@ -395,12 +394,6 @@ const menuSections = [
         action: 'customer_analytics',
       },
       {
-        icon: <WorkHistory />,
-        text: 'Customer Margins',
-        color: '#6366f1',
-        action: 'customer_margins',
-      },
-      {
         icon: <Repeat />,
         text: 'Expected Reorders',
         color: '#14b8a6',
@@ -710,9 +703,6 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
         break;
       case 'targeted_customer':
         router.push('/targeted_customer');
-        break;
-      case 'customer_margins':
-        router.push('/customer_margins');
         break;
       case 'return_orders':
         router.push('/return_orders');

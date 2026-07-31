@@ -11,6 +11,7 @@ import {
   AccordionDetails,
   Divider,
   IconButton,
+  Paper,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
@@ -19,7 +20,7 @@ import InboxIcon from '@mui/icons-material/Inbox';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useTheme, alpha } from '@mui/material/styles';
 import { useRouter } from 'next/router';
-import axios from 'axios';
+import axiosInstance from '../../src/util/axios';
 import AuthContext from '../../src/components/Auth';
 import Header from '../../src/components/common/Header';
 
@@ -42,6 +43,11 @@ interface CustomerOrder {
   placed_by_customer?: boolean;
 }
 
+interface SelfServeStats {
+  customers_with_orders: number;
+  orders_finalized: number;
+}
+
 interface CustomerGroup {
   _id: string;
   customer_name?: string;
@@ -62,19 +68,26 @@ const CustomerOrdersPage: React.FC = () => {
   const { user }: any = useContext(AuthContext);
 
   const [groups, setGroups] = useState<CustomerGroup[]>([]);
+  const [stats, setStats] = useState<SelfServeStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [onlyCustomerOrders, setOnlyCustomerOrders] = useState(false);
+  // Customer-placed orders are the point of this page, so lead with them —
+  // the chip toggles off to show every order for the customer.
+  const [onlyCustomerOrders, setOnlyCustomerOrders] = useState(true);
+
+  const isStaff = user?.role !== 'customer';
 
   const getData = async () => {
-    if (!user?.code) {
+    // Admins have no salesperson code — the backend then returns every active
+    // customer's orders. Salespeople are scoped to their own code server-side.
+    if (!user || (!user.code && !isStaff)) {
       setLoading(false);
       return;
     }
     try {
       setLoading(true);
-      const resp = await axios.get(`${process.env.api_url}/orders/by_salesperson`, {
-        params: { code: user.code },
+      const resp = await axiosInstance.get('/orders/by_salesperson', {
+        params: user.code ? { code: user.code } : {},
       });
       setGroups(resp.data || []);
     } catch (error) {
@@ -84,10 +97,26 @@ const CustomerOrdersPage: React.FC = () => {
     }
   };
 
+  // Self-serve counts come from customer_activity_logs (same source as the
+  // /admin/customer_activity cards) rather than being derived here, so the two
+  // pages can't drift apart. Scoped server-side: admins see all, salespeople
+  // see their own customers.
+  const getStats = async () => {
+    try {
+      const resp = await axiosInstance.get('/customer_activity/self_serve_stats');
+      setStats(resp.data);
+    } catch (error) {
+      console.error('Error fetching self-serve stats:', error);
+    }
+  };
+
   useEffect(() => {
     getData();
+    if (user && isStaff) getStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.code]);
+    // `user` is null until /me resolves; admins never get a `code`, so the
+    // fetch has to be keyed on the user landing, not just on the code.
+  }, [user?._id, user?.code]);
 
   const filteredGroups = groups
     .filter((g) =>
@@ -135,6 +164,51 @@ const CustomerOrdersPage: React.FC = () => {
       <Typography variant='body2' color='text.secondary'>
         Orders placed by your customers, most recent customer first.
       </Typography>
+
+      {isStaff && !loading && stats && (
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
+            gap: 1.5,
+          }}
+        >
+          {[
+            {
+              label: 'Customers ordering directly',
+              value: stats.customers_with_orders,
+              color: '#15803d',
+            },
+            {
+              label: 'Orders finalised by customers',
+              value: stats.orders_finalized,
+              color: '#0d9488',
+            },
+            {
+              label: 'Customers with orders',
+              value: groups.length,
+              color: '#4633B8',
+            },
+          ].map((s) => (
+            <Paper
+              key={s.label}
+              elevation={0}
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                border: `1px solid ${theme.palette.divider}`,
+              }}
+            >
+              <Typography variant='h5' fontWeight={800} sx={{ color: s.color }}>
+                {s.value}
+              </Typography>
+              <Typography variant='caption' color='text.secondary'>
+                {s.label}
+              </Typography>
+            </Paper>
+          ))}
+        </Box>
+      )}
 
       <TextField
         fullWidth
