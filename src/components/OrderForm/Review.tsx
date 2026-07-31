@@ -160,6 +160,9 @@ interface Props {
   setActiveStep: (step: number) => void;
   isShared: boolean;
   isCustomerRole?: boolean;
+  // Staff (admin / sales) may still edit an order the customer has paid for or
+  // confirmed as COD; the backend applies the same exemption.
+  canEditConfirmedOrder?: boolean;
   order: any;
   referenceNumber: any;
   onPaymentSuccess?: () => void | Promise<void>;
@@ -192,6 +195,7 @@ const Review: React.FC<Props> = React.memo((props) => {
     setActiveStep,
     isShared,
     isCustomerRole,
+    canEditConfirmedOrder = false,
     order,
     referenceNumber,
     isSelfRegistered = false,
@@ -618,14 +622,23 @@ const Review: React.FC<Props> = React.memo((props) => {
     );
   }
 
-  // A paid order is accepted on the backend; treat paidLocally as locked too so
-  // the buttons disable immediately without waiting for a refetch. COD orders
-  // stay in draft but are equally committed — the customer confirmed them.
-  const isOrderLocked =
-    paidLocally ||
-    codLocally ||
-    ['paid', 'cod'].includes((order?.payment?.status || '').toLowerCase()) ||
-    ['accepted', 'declined', 'invoiced'].includes(order?.status?.toLowerCase());
+  // Two independent reasons an order stops being editable:
+  //   1. Payment committed (paid / COD). Locked for the customer, but staff can
+  //      still amend it — the backend exempts admin / sales roles from the
+  //      PUT /orders/{id} guard, so mirror that here.
+  //   2. The estimate has moved on in Zoho (accepted / declined / invoiced).
+  //      That's locked for everyone.
+  // paidLocally / codLocally disable the buttons immediately, without waiting
+  // for the order to refetch.
+  const isPaymentLocked =
+    !canEditConfirmedOrder &&
+    (paidLocally ||
+      codLocally ||
+      ['paid', 'cod'].includes((order?.payment?.status || '').toLowerCase()));
+  const isStatusLocked = ['accepted', 'declined', 'invoiced'].includes(
+    order?.status?.toLowerCase()
+  );
+  const isOrderLocked = isPaymentLocked || isStatusLocked;
 
   // Aggregate everything blocking submission so it's visible as a banner
   // (the disabled submit button's tooltip is easy to miss on touch devices)
@@ -857,7 +870,21 @@ const Review: React.FC<Props> = React.memo((props) => {
       {/* ── Locked-order banner ── */}
       {isOrderLocked && (
         <Alert severity="warning" sx={{ mb: 2, borderRadius: 2, fontWeight: 500 }}>
-          This order is <strong>{order.status.toLowerCase()}</strong> and cannot be modified.
+          {isStatusLocked ? (
+            <>
+              This order is <strong>{order.status.toLowerCase()}</strong> and cannot be modified.
+            </>
+          ) : (
+            <>
+              This order has been{' '}
+              <strong>
+                {codLocally || (order?.payment?.status || '').toLowerCase() === 'cod'
+                  ? 'placed with pay on delivery'
+                  : 'paid for'}
+              </strong>{' '}
+              and cannot be modified.
+            </>
+          )}
         </Alert>
       )}
 
