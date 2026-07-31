@@ -431,12 +431,38 @@ const NewOrder: React.FC = () => {
   const [estimateTypes, setEstimateTypes] = useState({ stock: true, pre_order: true });
   const [pendingAction, setPendingAction] = useState<'draft' | 'accepted' | 'declined'>('draft');
 
+  // Once the customer has paid or confirmed COD the order is locked (PUT
+  // /orders/{id} responds 400 "This order has been confirmed and can no longer
+  // be edited"), otherwise the auto-saves fire against a locked order and fail
+  // silently. Staff keep edit rights on COD orders only — those stay in draft;
+  // paying moves the order to 'accepted', which nobody edits. The backend
+  // applies exactly this rule.
+  const isStaffEditor =
+    !!user?.role &&
+    ['admin', 'sales_admin', 'sales_person'].some((r) => (user.role as string).includes(r));
+  const paymentStatus = (order?.payment?.status || '').toLowerCase();
+  const canEditConfirmedOrder = isStaffEditor && paymentStatus === 'cod';
+  const isOrderLocked =
+    !canEditConfirmedOrder && ['paid', 'cod'].includes(paymentStatus);
+  // Ref mirror so saveOrder doesn't have to take `order` as a dependency
+  // (which would rebuild every effect that depends on it on each cart change).
+  const isOrderLockedRef = useRef(false);
+  useEffect(() => {
+    isOrderLockedRef.current = isOrderLocked;
+  }, [isOrderLocked]);
+
   // Auto-save indicator — wraps updateOrderData so the UI can show
   // "Saving… / All changes saved / Save failed" near the stepper.
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const saveStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveOrder = useCallback(
     async (data: any, options: { silent?: boolean } = {}) => {
+      if (isOrderLockedRef.current) {
+        if (!options.silent) {
+          toast.info('This order has been confirmed and can no longer be edited.');
+        }
+        return false;
+      }
       if (saveStatusTimer.current) clearTimeout(saveStatusTimer.current);
       setSaveStatus('saving');
       const ok = await updateOrderData(id as string, data, options);
@@ -1029,20 +1055,22 @@ const NewOrder: React.FC = () => {
     }
   }, [order, isShared, router]);
 
-  // A paid or COD-confirmed order is locked — customers can no longer edit it.
-  // Send them to the read-only order details view. (Admins/sales can still
-  // open it if needed.)
+  // A paid or COD-confirmed order is locked (the backend rejects every edit).
+  // Send any logged-in viewer — customer, sales or admin — to the read-only
+  // order details view instead of leaving them on a form whose saves 400.
+  // Shared-link guests have no past-order page, so they just get the notice
+  // (saveOrder short-circuits for them).
+  const lockNoticeShown = useRef(false);
   useEffect(() => {
-    if (!order || !isCustomerUser) return;
-    const paymentStatus = (order?.payment?.status || '').toLowerCase();
-    if (paymentStatus === 'paid') {
-      toast.info('This order has been paid and can no longer be edited.');
-      router.push(`/orders/past/${order._id}`);
-    } else if (paymentStatus === 'cod') {
-      toast.info('This order has been placed (pay on delivery) and can no longer be edited.');
-      router.push(`/orders/past/${order._id}`);
-    }
-  }, [order, isCustomerUser, router]);
+    if (!order || !isOrderLocked || lockNoticeShown.current) return;
+    lockNoticeShown.current = true;
+    toast.info(
+      paymentStatus === 'paid'
+        ? 'This order has been paid and can no longer be edited.'
+        : 'This order has been placed (pay on delivery) and can no longer be edited.'
+    );
+    if (user && !isSharedGuest) router.push(`/orders/past/${order._id}`);
+  }, [order, isOrderLocked, paymentStatus, user, isSharedGuest, router]);
 
   // Count cart "rows": split products with both quantities set contribute 2 rows
   const cartRowCount = selectedProducts.reduce((n: number, p: any) => {
@@ -1843,6 +1871,7 @@ const NewOrder: React.FC = () => {
                       specialMargins={specialMargins}
                       isShared={isShared}
                       isCustomerRole={isCustomerUser}
+                      canEditConfirmedOrder={canEditConfirmedOrder}
                       order={order}
                       referenceNumber={referenceNumber}
                       onPaymentSuccess={getOrder}
