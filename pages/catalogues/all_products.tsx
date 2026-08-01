@@ -36,7 +36,44 @@ import CatalogueProductGroupCard from '../../src/components/OrderForm/products/C
 import CatalogueFilters from '../../src/components/OrderForm/products/CatalogueFilters';
 import CatalogueToolbar, { type ViewDensity, type SortOption } from '../../src/components/OrderForm/products/CatalogueToolbar';
 import QuickViewModal from '../../src/components/OrderForm/products/QuickViewModal';
+import BrandStrip from '../../src/components/OrderForm/products/BrandStrip';
+import BrandSpotlight from '../../src/components/OrderForm/products/BrandSpotlight';
+import BrandInfoDialog from '../../src/components/OrderForm/products/BrandInfoDialog';
+import {
+  COLLECTION_COPY,
+  getBrandAccent,
+  isCollectionKey,
+  type BrandRailEntry,
+} from '../../src/util/brandAccent';
 import { useIntersectionObserver } from '../../src/hooks/useIntersectionObserver';
+
+// The "Clearance" brand is an internal routing/counts key — it surfaces to
+// users as "Special Offers", exactly as it does on the order form.
+const brandDisplayName = (brand?: string) =>
+  brand === 'Clearance' ? 'Special Offers' : brand || '';
+
+// Every brand tab is this wide so the clamped category lines stay aligned.
+const TAB_WIDTH = 168;
+
+// What sits under a brand's name on the rail: the categories it stocks. The
+// collections file everything under one "All Products" category, so a fixed
+// line from COLLECTION_COPY stands in for them.
+const RAIL_CATEGORY_LIMIT = 2;
+
+const categorySummary = (
+  brand: string,
+  counts: { [category: string]: number } | undefined
+): string => {
+  if (isCollectionKey(brand)) return COLLECTION_COPY[brand]?.short || '';
+  const names = Object.entries(counts || {})
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([category]) => category);
+  if (!names.length) return '';
+  const shown = names.slice(0, RAIL_CATEGORY_LIMIT).join(' · ');
+  const rest = names.length - RAIL_CATEGORY_LIMIT;
+  return rest > 0 ? `${shown} +${rest}` : shown;
+};
 
 interface Product extends GroupProduct {
   category: string;
@@ -89,9 +126,7 @@ export default function AllProductsCatalouge() {
   // Search term is stored raw (not hyphen-encoded) so searches containing "-" work.
   const [searchTerm, setSearchTerm] = useState(() => getUrlParam('search'));
   const [inputValue, setInputValue] = useState(() => getUrlParam('search'));
-  const [brandList, setBrandList] = useState<{ brand: string; url: string }[]>(
-    []
-  );
+  const [brandList, setBrandList] = useState<BrandRailEntry[]>([]);
   const [productsByBrandCategory, setProductsByBrandCategory] = useState<{
     [key: string]: { items: CatalogueItem[] };
   }>({});
@@ -323,7 +358,7 @@ export default function AllProductsCatalouge() {
         { params: { brand: initialBrand } }
       );
 
-      const allBrands: { brand: string; url: string }[] = response.data.brands || [];
+      const allBrands: BrandRailEntry[] = response.data.brands || [];
       const newArrivalsBrand = {
         brand: 'New Arrivals',
         url: 'https://assets.pupscribe.in/brands/new-arrivals.svg',
@@ -642,6 +677,35 @@ export default function AllProductsCatalouge() {
     };
   }, [viewDensity]);
 
+  const themeMode = theme.palette.mode === 'dark' ? 'dark' : 'light';
+
+  // Product count for a rail entry, summed across its categories.
+  const brandCountOf = useCallback(
+    (brand: string) =>
+      productCounts[brand]
+        ? Object.values(productCounts[brand]).reduce((a, c) => a + c, 0)
+        : 0,
+    [productCounts]
+  );
+
+  // The entry the spotlight describes. Falls back to the first rail entry so
+  // the card is populated on the very first paint, before a tab is touched.
+  const selectedBrandEntry = useMemo(
+    () => brandList.find((b) => b.brand === activeBrand) || brandList[0],
+    [brandList, activeBrand]
+  );
+
+  // Index of the first real brand — the rail draws a divider here so the
+  // collections read as a separate group rather than odd brands.
+  const firstBrandIndex = useMemo(
+    () => brandList.findIndex((b) => !isCollectionKey(b.brand)),
+    [brandList]
+  );
+
+  const [brandInfoOpen, setBrandInfoOpen] = useState(false);
+  const openBrandInfo = useCallback(() => setBrandInfoOpen(true), []);
+  const closeBrandInfo = useCallback(() => setBrandInfoOpen(false), []);
+
   const isPriceFiltered = priceRange[0] > 0 || priceRange[1] < maxPrice;
   const activeFilterCount =
     selectedFilterCategories.length +
@@ -804,18 +868,23 @@ export default function AllProductsCatalouge() {
                 label="Brand"
                 disabled={isSearching}
                 onChange={(e) => handleBrandTabChange(e.target.value)}
+                sx={{ '& .MuiSelect-select': { whiteSpace: 'normal', py: 1 } }}
                 renderValue={(selected) => {
-                  const selectedBrand: any = brandList.find(
-                    (b: any) => b.brand === selected
+                  const selectedBrand = brandList.find((b) => b.brand === selected);
+                  const selectedAccent = getBrandAccent(
+                    selectedBrand?.brand,
+                    selectedBrand?.color,
+                    themeMode
                   );
+                  const selectedCount = brandCountOf(selectedBrand?.brand || '');
                   return (
-                    <Box display="flex" alignItems="center" gap={1}>
-                      {(selectedBrand?.image || selectedBrand?.url) && (
+                    <Box display="flex" alignItems="center" gap={1.25} minWidth={0} width="100%">
+                      {(selectedBrand?.image || selectedBrand?.url) ? (
                         <Box
                           sx={{
-                            width: 64,
-                            height: 64,
-                            borderRadius: '4px',
+                            width: 44,
+                            height: 44,
+                            borderRadius: '6px',
                             backgroundColor: '#ffffff',
                             border: '1px solid rgba(0,0,0,0.1)',
                             display: 'flex',
@@ -828,33 +897,88 @@ export default function AllProductsCatalouge() {
                         >
                           <Box
                             component="img"
-                            src={selectedBrand.image || selectedBrand.url}
+                            src={selectedBrand.image || selectedBrand.url || ''}
                             alt={selectedBrand.brand}
                             loading="lazy"
                             sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
                           />
                         </Box>
+                      ) : (
+                        <Box
+                          sx={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: '6px',
+                            backgroundColor: selectedAccent.soft,
+                            color: selectedAccent.main,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            fontWeight: 800,
+                          }}
+                        >
+                          {brandDisplayName(selectedBrand?.brand).slice(0, 2).toUpperCase()}
+                        </Box>
                       )}
-                      <Typography variant="h6">
-                        {selectedBrand?.brand}
-                      </Typography>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            fontSize: '0.95rem',
+                            lineHeight: 1.25,
+                            // Two lines before ellipsis — the longer brand names
+                            // need the second one.
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            overflowWrap: 'anywhere',
+                          }}
+                        >
+                          {brandDisplayName(selectedBrand?.brand)}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: selectedAccent.main,
+                            fontWeight: 700,
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          {selectedCount} products
+                        </Typography>
+                      </Box>
                     </Box>
                   );
                 }}
               >
-                {brandList.map((b: any) => {
-                  const brandCount = productCounts[b.brand]
-                    ? Object.values(productCounts[b.brand]).reduce((a, c) => a + c, 0)
-                    : 0;
+                {brandList.map((b, index) => {
+                  const brandCount = brandCountOf(b.brand);
+                  const accent = getBrandAccent(b.brand, b.color, themeMode);
+                  // Same collections/brands split as the desktop rail.
+                  const startsBrands = firstBrandIndex > 0 && index === firstBrandIndex;
                   return (
-                    <MenuItem key={b.brand} value={b.brand}>
-                      <Box
-                        display="flex"
-                        alignItems="center"
-                        gap={1.5}
-                        width="100%"
-                      >
-                        {(b.image || b.url) && (
+                    <MenuItem
+                      key={b.brand}
+                      value={b.brand}
+                      sx={{
+                        py: 1,
+                        whiteSpace: 'normal',
+                        ...(startsBrands && {
+                          borderTop: '1px solid',
+                          borderTopColor: 'divider',
+                          mt: 0.5,
+                          pt: 1.5,
+                        }),
+                        '&&.Mui-selected': {
+                          backgroundColor: accent.soft,
+                          boxShadow: `inset 3px 0 0 ${accent.main}`,
+                        },
+                      }}
+                    >
+                      <Box display="flex" alignItems="center" gap={1.5} width="100%" minWidth={0}>
+                        {(b.image || b.url) ? (
                           <Box
                             sx={{
                               width: 56,
@@ -871,21 +995,46 @@ export default function AllProductsCatalouge() {
                             }}
                           >
                             <Image
-                              src={b.image || b.url}
+                              src={(b.image || b.url) as string}
                               alt={b.brand}
                               width={48}
                               height={48}
-                              style={{ objectFit: "contain" }}
+                              style={{ objectFit: 'contain' }}
                             />
                           </Box>
+                        ) : (
+                          <Box
+                            sx={{
+                              width: 56,
+                              height: 56,
+                              borderRadius: '6px',
+                              backgroundColor: accent.soft,
+                              color: accent.main,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                              fontWeight: 800,
+                              fontSize: '1.05rem',
+                            }}
+                          >
+                            {brandDisplayName(b.brand).slice(0, 2).toUpperCase()}
+                          </Box>
                         )}
-                        <Box display="flex" flexDirection="column" flex={1}>
+                        <Box display="flex" flexDirection="column" flex={1} minWidth={0}>
                           <Typography variant="h6" fontWeight="medium">
-                            {b.brand}
+                            {brandDisplayName(b.brand)}
                           </Typography>
+                          {/* No description here — the dropdown stays a compact
+                              picker, and the spotlight below carries the copy. */}
                           <Typography
                             variant="caption"
-                            color="text.secondary"
+                            sx={{
+                              mt: 0.25,
+                              color: accent.main,
+                              fontWeight: 700,
+                              fontVariantNumeric: 'tabular-nums',
+                            }}
                           >
                             {brandCount} products
                           </Typography>
@@ -909,100 +1058,163 @@ export default function AllProductsCatalouge() {
                 variant="scrollable"
                 scrollButtons="auto"
                 textColor="inherit"
+                // The selection indicator is drawn per-tab in the brand's own
+                // accent colour, so the shared one is suppressed.
+                TabIndicatorProps={{ sx: { display: "none" } }}
                 sx={{
-                  bgcolor: "background.paper",
-                  borderRadius: 3,
-                  p: 1,
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-                  border: "1px solid",
-                  borderColor: "divider",
+                  mt: 2,
                   ".MuiTab-root": {
                     textTransform: "none",
-                    fontWeight: 600,
-                    padding: "10px 16px",
+                    fontWeight: "bold",
+                    padding: "12px 14px",
                     minHeight: "auto",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
-                    gap: 0.75,
-                    color: "text.secondary",
+                    gap: 1,
+                    transition: "all 0.2s ease-in-out",
+                    color: "text.primary",
                     opacity: 1,
-                    borderRadius: 2,
-                    transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+                    borderBottom: "3px solid transparent",
+                    // Fixed width keeps the clamped category lines aligned and
+                    // stops a long brand name from stretching one tab.
+                    width: TAB_WIDTH,
+                    minWidth: TAB_WIDTH,
+                    maxWidth: TAB_WIDTH,
+                    alignSelf: "stretch",
                     "&:hover": {
                       backgroundColor: "action.hover",
-                      color: "text.primary",
-                      "& .brand-logo": {
-                        boxShadow: "0 0 0 2px rgba(70,51,184,0.2)",
-                      },
+                      transform: "translateY(-2px)",
                     },
                   },
-                  ".Mui-selected": {
-                    color: "primary.main !important" as any,
-                    "& .brand-logo": {
-                      boxShadow: theme.palette.mode === 'dark'
-                        ? "0 0 0 2.5px #7fa8cc"
-                        : "0 0 0 2.5px #4633B8",
-                    },
-                    "& .MuiTypography-root": {
-                      color: "primary.main !important" as any,
-                      fontWeight: 700,
-                    },
-                  },
-                  ".MuiTabs-indicator": { display: "none" },
+                  ".MuiTabs-flexContainer": { alignItems: "stretch" },
                 }}
               >
-                {brandList.map((b: any) => {
-                  const brandCount = productCounts[b.brand]
-                    ? Object.values(productCounts[b.brand]).reduce((a, c) => a + c, 0)
-                    : 0;
+                {brandList.map((b, index) => {
+                  const brandCount = brandCountOf(b.brand);
+                  const accent = getBrandAccent(b.brand, b.color, themeMode);
+                  // First real brand after the collections carries the group
+                  // divider on its left edge.
+                  const startsBrands = firstBrandIndex > 0 && index === firstBrandIndex;
+                  const tabDescription = isCollectionKey(b.brand)
+                    ? COLLECTION_COPY[b.brand]?.description
+                    : b.description || '';
+                  const tabCategories = categorySummary(b.brand, productCounts[b.brand]);
                   return (
                     <Tab
                       key={b.brand}
                       value={b.brand}
+                      title={tabDescription || undefined}
+                      sx={{
+                        ...(startsBrands && {
+                          borderLeft: "1px solid",
+                          borderLeftColor: "divider",
+                          ml: 1.5,
+                          pl: "26px !important",
+                        }),
+                        // Doubled ampersand so the per-brand accent outranks the
+                        // shared ".MuiTab-root" rules on the Tabs sx.
+                        "&&.Mui-selected": {
+                          color: accent.main,
+                          borderBottomColor: accent.main,
+                          backgroundColor: accent.soft,
+                        },
+                        "&&.Mui-selected .brand-image": {
+                          boxShadow: `0 0 0 2px ${accent.main}`,
+                        },
+                      }}
                       label={
-                        <Box display="flex" flexDirection="column" alignItems="center" gap={0.75}>
-                          {(b.image || b.url) && (
+                        <Box display="flex" flexDirection="column" alignItems="center" gap={1}>
+                          {(b.image || b.url) ? (
                             <Box
-                              className="brand-logo"
+                              className="brand-image"
                               sx={{
-                                width: 52,
-                                height: 52,
-                                borderRadius: '50%',
+                                width: 80,
+                                height: 80,
+                                borderRadius: '8px',
                                 backgroundColor: '#ffffff',
-                                transition: 'box-shadow 0.2s ease',
+                                transition: 'all 0.2s ease-in-out',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 overflow: 'hidden',
-                                p: '3px',
-                                border: '1px solid',
-                                borderColor: 'divider',
+                                p: '4px',
                               }}
                             >
                               <Image
-                                src={b.image || b.url}
+                                src={(b.image || b.url) as string}
                                 alt={b.brand}
-                                width={46}
-                                height={46}
-                                style={{ objectFit: "contain", borderRadius: '50%' }}
+                                width={72}
+                                height={72}
+                                style={{ objectFit: "contain" }}
                               />
+                            </Box>
+                          ) : (
+                            // Brands with no logo yet still need a tile the same
+                            // size, or the rail height jumps.
+                            <Box
+                              className="brand-image"
+                              sx={{
+                                width: 80,
+                                height: 80,
+                                borderRadius: '8px',
+                                backgroundColor: accent.soft,
+                                color: accent.main,
+                                transition: 'all 0.2s ease-in-out',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                fontWeight: 800,
+                                fontSize: '1.4rem',
+                                letterSpacing: '-0.02em',
+                              }}
+                            >
+                              {brandDisplayName(b.brand).slice(0, 2).toUpperCase()}
                             </Box>
                           )}
                           <Box textAlign="center">
                             <Typography
-                              variant="caption"
-                              sx={{ fontSize: '0.78rem', lineHeight: 1.2, display: 'block' }}
+                              variant="body2"
+                              fontWeight="bold"
+                              sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, lineHeight: 1.2 }}
                             >
-                              {b.brand}
+                              {brandDisplayName(b.brand)}
                             </Typography>
                             <Typography
                               variant="caption"
-                              color="text.disabled"
-                              sx={{ fontSize: '0.65rem', display: "block" }}
+                              color="text.secondary"
+                              sx={{
+                                fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                                display: 'block',
+                                mt: 0.5,
+                                fontVariantNumeric: 'tabular-nums',
+                              }}
                             >
-                              {brandCount}
+                              ({brandCount})
                             </Typography>
+                            {/* The categories this brand stocks. The description
+                                is too long to clamp usefully here — it rides in
+                                the hover tooltip and the brand dialog instead. */}
+                            {tabCategories && (
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{
+                                  mt: 0.5,
+                                  fontSize: '0.68rem',
+                                  lineHeight: 1.35,
+                                  fontWeight: 400,
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  whiteSpace: 'normal',
+                                }}
+                              >
+                                {tabCategories}
+                              </Typography>
+                            )}
                           </Box>
                         </Box>
                       }
@@ -1012,6 +1224,43 @@ export default function AllProductsCatalouge() {
               </Tabs>
             )
           )}
+
+          {/* Says what the selected entry actually is — the rail is for
+              choosing, this is for telling. Desktop gets the compact strip
+              (the rail above already shows every brand); phones and tablets,
+              where the rail is a one-at-a-time dropdown, get the swipeable
+              spotlight. Hidden while searching, where brand context is
+              meaningless. */}
+          {!isSearching &&
+            (isMobile || isTablet ? (
+              <BrandSpotlight
+                entries={brandList}
+                activeBrand={selectedBrandEntry?.brand || activeBrand}
+                onSelectBrand={handleBrandTabChange}
+                countsByBrand={productCounts}
+                displayNameOf={brandDisplayName}
+                onSelectCategory={handleCategoryTabChange}
+                onOpenDetails={openBrandInfo}
+              />
+            ) : (
+              <BrandStrip
+                entry={selectedBrandEntry}
+                count={brandCountOf(selectedBrandEntry?.brand || '')}
+                displayName={brandDisplayName(selectedBrandEntry?.brand)}
+                onOpenDetails={openBrandInfo}
+              />
+            ))}
+
+          <BrandInfoDialog
+            open={brandInfoOpen}
+            onClose={closeBrandInfo}
+            entries={brandList}
+            activeBrand={selectedBrandEntry?.brand || activeBrand}
+            onSelectBrand={handleBrandTabChange}
+            countsByBrand={productCounts}
+            displayNameOf={brandDisplayName}
+            onCategorySelect={handleCategoryTabChange}
+          />
 
           {/* Category Controls */}
           <Box>
@@ -1070,19 +1319,32 @@ export default function AllProductsCatalouge() {
                     {categoriesByBrand[activeBrand].map((cat) => {
                       const catCount = productCounts[activeBrand]?.[cat] || 0;
                       const isActive = (activeCategory || categoriesByBrand[activeBrand][0]) === cat;
+                      // Categories inherit the selected brand's accent, so the
+                      // whole brand→category path reads as one colour.
+                      const accent = getBrandAccent(
+                        selectedBrandEntry?.brand,
+                        selectedBrandEntry?.color,
+                        themeMode
+                      );
                       return (
                         <Chip
                           key={cat}
                           label={`${cat} (${catCount})`}
                           onClick={() => handleCategoryTabChange(cat)}
-                          color={isActive ? 'primary' : 'default'}
-                          variant={isActive ? 'filled' : 'outlined'}
+                          variant="outlined"
                           sx={{
                             fontWeight: 600,
                             fontSize: '0.875rem',
                             cursor: 'pointer',
                             transition: 'all 0.2s ease',
-                            '&:hover': { boxShadow: 1 },
+                            borderColor: isActive ? accent.main : 'divider',
+                            color: isActive ? accent.main : 'text.primary',
+                            bgcolor: isActive ? accent.soft : 'transparent',
+                            '&:hover': {
+                              boxShadow: 1,
+                              bgcolor: accent.soft,
+                              borderColor: accent.main,
+                            },
                           }}
                         />
                       );

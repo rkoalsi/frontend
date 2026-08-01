@@ -56,7 +56,6 @@ import {
   RemoveShoppingCart,
   Search as SearchIcon,
   ShoppingCartCheckout as ShoppingCartCheckoutIcon,
-  InfoOutlined as InfoOutlinedIcon,
   CategoryOutlined as CategoryIcon,
 } from "@mui/icons-material";
 import debounce from "lodash.debounce";
@@ -76,9 +75,15 @@ import { getTaxPercentage } from "../../util/tax";
 import { getPreOrderMax, isPreOrderExhausted } from "../../util/preOrder";
 import AuthContext from "../Auth";
 import BrandStrip from "./products/BrandStrip";
+import BrandSpotlight from "./products/BrandSpotlight";
 import BrandInfoDialog from "./products/BrandInfoDialog";
 import FeatureBanner, { Placement } from "./products/FeatureBanner";
-import { COLLECTION_COPY, getBrandAccent, isCollectionKey } from "../../util/brandAccent";
+import {
+  COLLECTION_COPY,
+  getBrandAccent,
+  isCollectionKey,
+  type BrandRailEntry,
+} from "../../util/brandAccent";
 
 // The "Clearance" brand is an internal routing/counts key (see backend
 // /products counts). It is surfaced to users as "Special Offers".
@@ -90,15 +95,8 @@ const brandDisplayName = (brand?: string) =>
 const TAB_WIDTH = 168;
 
 // A rail entry: either one of the three collections or a real brand from
-// `db.brands`. `description` and `color` feed the BrandStrip and the accent.
-interface BrandEntry {
-  brand: string;
-  url: string | null;
-  image?: string | null;
-  secondary_image_url?: string | null;
-  description?: string | null;
-  color?: string | null;
-}
+// `db.brands`. `description` and `color` feed the spotlight and the accent.
+type BrandEntry = BrandRailEntry;
 
 // The three collections lead the rail; they are filtered out by
 // filteredBrandList when they have no products.
@@ -1926,15 +1924,6 @@ const Products: React.FC<ProductsProps> = ({
 
   const themeMode = theme.palette.mode === "dark" ? "dark" : "light";
 
-  const selectedBrandAccent = useMemo(
-    () =>
-      getBrandAccent(
-        selectedBrandEntry?.brand,
-        selectedBrandEntry?.color,
-        themeMode
-      ),
-    [selectedBrandEntry, themeMode]
-  );
 
   // Browsing by category rather than by brand. Turning it off has to restore a
   // concrete brand + category, otherwise the grid is left with no active tab.
@@ -2457,33 +2446,8 @@ const Products: React.FC<ProductsProps> = ({
                     })}
                   </Select>
                 </FormControl>
-                <Tooltip title="About this brand" arrow>
-                  <IconButton
-                    onClick={openBrandInfo}
-                    aria-label={`About ${brandDisplayName(selectedBrandEntry?.brand) || "brand"}`}
-                    size="small"
-                    sx={{
-                      position: "absolute",
-                      top: -16,
-                      right: 12,
-                      zIndex: 1,
-                      width: 32,
-                      height: 32,
-                      color: selectedBrandAccent.main,
-                      // Paper ground so the badge cuts the outlined border it
-                      // straddles, the same trick the floating label uses.
-                      bgcolor: "background.paper",
-                      border: "1px solid",
-                      borderColor: "divider",
-                      "&:hover": {
-                        bgcolor: selectedBrandAccent.soft,
-                        borderColor: selectedBrandAccent.main,
-                      },
-                    }}
-                  >
-                    <InfoOutlinedIcon sx={{ fontSize: 18 }} />
-                  </IconButton>
-                </Tooltip>
+                {/* No info badge here — the spotlight card directly below now
+                    carries the brand story and its own "Brand info" button. */}
                 </Box>
               ) : (
                 !searchTerm.trim() && (
@@ -2716,18 +2680,33 @@ const Products: React.FC<ProductsProps> = ({
               )}
 
               {/* Says what the selected entry actually is — the rail is for
-                  choosing, this is for telling. Desktop only: on phones and
-                  tablets the dropdown row above already carries the mark, name,
-                  count and info button. Hidden while searching, where brand
-                  context is meaningless. */}
-              {!isMobile && !isTablet && !searchTerm.trim() && (
-                <BrandStrip
-                  entry={selectedBrandEntry}
-                  count={brandCountOf(selectedBrandEntry?.brand || "")}
-                  displayName={brandDisplayName(selectedBrandEntry?.brand) || ""}
-                  onOpenDetails={openBrandInfo}
-                />
-              )}
+                  choosing, this is for telling. Hidden while searching, where
+                  brand context is meaningless.
+
+                  Two forms. Desktop gets the compact strip: the rail above it
+                  already shows every brand at once, so a full-bleed card would
+                  only repeat it. Phones and tablets, where the rail is a
+                  one-at-a-time dropdown, get the swipeable spotlight instead —
+                  that carousel *is* how brands are browsed there. */}
+              {!searchTerm.trim() &&
+                (isMobile || isTablet ? (
+                  <BrandSpotlight
+                    entries={filteredBrandList}
+                    activeBrand={selectedBrandEntry?.brand || activeBrand}
+                    onSelectBrand={handleTabChange}
+                    countsByBrand={productCounts}
+                    displayNameOf={(b) => brandDisplayName(b) || ""}
+                    onSelectCategory={handleCategoryTabChange}
+                    onOpenDetails={openBrandInfo}
+                  />
+                ) : (
+                  <BrandStrip
+                    entry={selectedBrandEntry}
+                    count={brandCountOf(selectedBrandEntry?.brand || "")}
+                    displayName={brandDisplayName(selectedBrandEntry?.brand) || ""}
+                    onOpenDetails={openBrandInfo}
+                  />
+                ))}
             </>
           )}
           {/* Category Controls */}
@@ -3013,10 +2992,11 @@ const Products: React.FC<ProductsProps> = ({
         <BrandInfoDialog
           open={brandInfoOpen}
           onClose={closeBrandInfo}
-          entry={selectedBrandEntry}
-          displayName={brandDisplayName(selectedBrandEntry?.brand) || ""}
-          count={brandCountOf(selectedBrandEntry?.brand || "")}
-          categoryCounts={productCounts[selectedBrandEntry?.brand || ""]}
+          entries={filteredBrandList}
+          activeBrand={selectedBrandEntry?.brand || activeBrand}
+          onSelectBrand={handleTabChange}
+          countsByBrand={productCounts}
+          displayNameOf={(b) => brandDisplayName(b) || ""}
           onCategorySelect={handleCategoryTabChange}
         />
 

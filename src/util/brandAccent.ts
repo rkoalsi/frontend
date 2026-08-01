@@ -8,6 +8,19 @@
 
 export type ThemeMode = 'light' | 'dark';
 
+/**
+ * One entry on the brand rail: either a collection or a real brand from
+ * `db.brands`. Shared by the rail, the spotlight carousel and the info dialog.
+ */
+export interface BrandRailEntry {
+  brand: string;
+  url?: string | null;
+  image?: string | null;
+  secondary_image_url?: string | null;
+  description?: string | null;
+  color?: string | null;
+}
+
 export interface BrandAccent {
   /** Foreground/border accent, already tuned for the active theme. */
   main: string;
