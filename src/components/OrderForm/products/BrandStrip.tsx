@@ -3,18 +3,16 @@ import { Box, Typography, useTheme } from "@mui/material";
 import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { COLLECTION_COPY, getBrandAccent, isCollectionKey } from "../../../util/brandAccent";
+import {
+  COLLECTION_COPY,
+  getBrandAccent,
+  isCollectionKey,
+  type BrandRailEntry,
+} from "../../../util/brandAccent";
 
 const SPECIAL_OFFERS_ICON = "https://assets.pupscribe.in/assets/special_offers.png";
 
-export interface BrandStripEntry {
-  brand: string;
-  url?: string | null;
-  image?: string | null;
-  secondary_image_url?: string | null;
-  description?: string | null;
-  color?: string | null;
-}
+export type BrandStripEntry = BrandRailEntry;
 
 interface BrandStripProps {
   /** The rail entry currently selected. */
