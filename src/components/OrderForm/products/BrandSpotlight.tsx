@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Box, Button, IconButton, Typography, useTheme } from "@mui/material";
 import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
@@ -112,6 +112,23 @@ const BrandSpotlight: React.FC<BrandSpotlightProps> = ({
     count: entries.length,
     onIndexChange: handleIndexChange,
   });
+
+  // The strip is as tall as the slide you are on, not as tall as the tallest
+  // slide: a collection says a fraction of what a brand does, and stretching
+  // its card to a brand's height left a large dead area.
+  const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [stripHeight, setStripHeight] = useState<number | undefined>(undefined);
+
+  useLayoutEffect(() => {
+    const el = slideRefs.current[activeIndex];
+    if (!el) return;
+    const measure = () => setStripHeight(el.offsetHeight);
+    measure();
+    // Banner images and font swaps change the height after first layout.
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [activeIndex, entries]);
 
   // A real finger on the strip retires the hint.
   const handlePointerDown = useCallback(() => {
@@ -253,9 +270,16 @@ const BrandSpotlight: React.FC<BrandSpotlightProps> = ({
         ref={scrollerRef}
         onScroll={handleScroll}
         onPointerDown={handlePointerDown}
-        sx={{ ...snapScrollerSx, overflowY: "hidden" }}
+        sx={{
+          ...snapScrollerSx,
+          overflowY: "hidden",
+          // Slides size to their own content; the strip follows the active one.
+          alignItems: "flex-start",
+          height: stripHeight,
+          transition: "height 0.25s ease",
+        }}
       >
-        {entries.map((entry) => {
+        {entries.map((entry, index) => {
           const accent = getBrandAccent(entry.brand, entry.color, mode);
           const collection = isCollectionKey(entry.brand);
           const copy = COLLECTION_COPY[entry.brand];
@@ -272,16 +296,24 @@ const BrandSpotlight: React.FC<BrandSpotlightProps> = ({
           const isActive = entry.brand === activeBrand;
 
           return (
-            <Box key={entry.brand} aria-hidden={isActive ? undefined : true} sx={snapSlideSx}>
+            <Box
+              key={entry.brand}
+              ref={(el: HTMLDivElement | null) => {
+                slideRefs.current[index] = el;
+              }}
+              aria-hidden={isActive ? undefined : true}
+              sx={snapSlideSx}
+            >
               {/* ── Banner band ─────────────────────────────────────────────
-                  The brand's own artwork when there is one, an accent wash
-                  when there isn't. The space is held either way — this is
-                  where per-brand (and later per-category) banners live, and
-                  a card that changes height as you swipe reads as broken. */}
+                  Full height for the brand's own artwork — this is also where
+                  the per-brand (and later per-category) banners will land.
+                  Entries with no artwork get a shallow accent wash instead:
+                  just enough to seat the mark and the info pill, because a
+                  full-height empty wash was mostly dead space. */}
               <Box
                 sx={{
                   position: "relative",
-                  height: { xs: 128, sm: 140, md: 108 },
+                  height: banner ? { xs: 128, sm: 140, md: 108 } : { xs: 60, sm: 68 },
                   background: banner
                     ? undefined
                     : `linear-gradient(135deg, ${accent.soft} 0%, ${accent.main}22 55%, transparent 100%), ${theme.palette.background.paper}`,

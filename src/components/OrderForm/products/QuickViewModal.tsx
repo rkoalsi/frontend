@@ -5,6 +5,7 @@ import {
   DialogContent,
   IconButton,
   Box,
+  Button,
   Typography,
   Chip,
   Accordion,
@@ -58,6 +59,9 @@ interface QuickViewModalProps {
   product: Product | null;
   allVariants?: Product[];
   handleImageClick: any;
+  /** Logged-out visitors get the "register to order" footer. */
+  showRegisterCta?: boolean;
+  onRegisterClick?: () => void;
 }
 
 const QuickViewModal: React.FC<QuickViewModalProps> = ({
@@ -66,6 +70,8 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
   product,
   allVariants = [],
   handleImageClick,
+  showRegisterCta = false,
+  onRegisterClick,
 }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
@@ -187,6 +193,10 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
             width: { xs: '100%', md: '85%' },
             maxWidth: { xs: '100%', md: '1000px' },
             willChange: 'transform',
+            // Column layout so the register footer pins below the scrolling
+            // content instead of scrolling away with it.
+            display: 'flex',
+            flexDirection: 'column',
           },
         },
       }}
@@ -196,7 +206,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        sx={{ p: 0, overflow: 'auto', height: '100%', position: 'relative' }}
+        sx={{ p: 0, overflow: 'auto', flex: 1, minHeight: 0, position: 'relative' }}
       >
         {/* Mobile grab handle — reinforces the bottom-sheet affordance */}
         <Box
@@ -568,6 +578,48 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
           </Box>
         </Box>
       </DialogContent>
+
+      {/* Every card click ends here, so this is where a visitor without an
+          account is told how to actually order. Pinned below the scroll area
+          rather than inside it — a footer they have to scroll to find is a
+          footer nobody sees. */}
+      {showRegisterCta && (
+        <Box
+          sx={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            px: { xs: 2, sm: 3 },
+            py: { xs: 1.25, sm: 1.5 },
+            pb: { xs: 'calc(10px + env(safe-area-inset-bottom))', sm: 1.5 },
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+          }}
+        >
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ flex: 1, minWidth: 0, fontSize: { xs: '0.76rem', sm: '0.82rem' }, lineHeight: 1.4 }}
+          >
+            Retailer account needed to order. Signing up takes a WhatsApp number.
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={onRegisterClick}
+            sx={{
+              flexShrink: 0,
+              textTransform: 'none',
+              fontWeight: 700,
+              borderRadius: 999,
+              px: { xs: 2, sm: 2.5 },
+            }}
+          >
+            Register to order
+          </Button>
+        </Box>
+      )}
     </Dialog>
   );
 };
