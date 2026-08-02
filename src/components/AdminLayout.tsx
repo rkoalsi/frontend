@@ -64,6 +64,7 @@ import {
   Search as SearchIcon,
   ExpandLess,
   ExpandMore,
+  Storefront,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import AuthContext from './Auth';
@@ -116,6 +117,7 @@ const iconMap: { [key: string]: React.ReactElement } = {
   ReceiptLong: <ReceiptLong />,
   Sensors: <Sensors />,
   AddLink: <AddLink />,
+  Storefront: <Storefront />,
   Receipt: <OrdersIcon />,
 };
 
