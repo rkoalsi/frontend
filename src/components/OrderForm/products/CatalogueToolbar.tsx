@@ -20,6 +20,8 @@ import {
   ViewCompact,
   FilterList,
   Sort,
+  Storefront,
+  CategoryOutlined,
 } from "@mui/icons-material";
 
 export type ViewDensity = '3x3' | '4x4' | '5x5';
@@ -34,6 +36,9 @@ interface CatalogueToolbarProps {
   onToggleFilters?: () => void;
   showFilterButton?: boolean;
   activeFilterCount?: number;
+  /** Browse the catalogue brand-first or category-first. Omit to hide the switch. */
+  browseMode?: 'brand' | 'category';
+  onBrowseModeChange?: (mode: 'brand' | 'category') => void;
 }
 
 const CatalogueToolbar: React.FC<CatalogueToolbarProps> = ({
@@ -45,6 +50,8 @@ const CatalogueToolbar: React.FC<CatalogueToolbarProps> = ({
   onToggleFilters,
   showFilterButton = false,
   activeFilterCount = 0,
+  browseMode,
+  onBrowseModeChange,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -120,8 +127,59 @@ const CatalogueToolbar: React.FC<CatalogueToolbarProps> = ({
         </Box>
       </Box>
 
-      {/* Right — sort + density */}
+      {/* Right — browse mode + sort + density */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 }, flexWrap: 'wrap' }}>
+        {/* Browse by — for people shopping for a kind of thing rather than a
+            particular make. */}
+        {browseMode && onBrowseModeChange && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ fontSize: '0.82rem', display: { xs: 'none', sm: 'block' } }}
+            >
+              Browse by
+            </Typography>
+            <ToggleButtonGroup
+              value={browseMode}
+              exclusive
+              onChange={(_, mode) => { if (mode !== null) onBrowseModeChange(mode); }}
+              size="small"
+              sx={{
+                '& .MuiToggleButton-root': {
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  color: 'text.secondary',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  px: 1.25,
+                  py: 0.5,
+                  '&.Mui-selected': {
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    '&:hover': { bgcolor: 'primary.dark' },
+                  },
+                  '&:hover:not(.Mui-selected)': { bgcolor: 'action.hover' },
+                },
+              }}
+            >
+              <ToggleButton value="brand" aria-label="browse by brand">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Storefront fontSize="small" />
+                  <span>Brand</span>
+                </Box>
+              </ToggleButton>
+              <ToggleButton value="category" aria-label="browse by category">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <CategoryOutlined fontSize="small" />
+                  <span>Category</span>
+                </Box>
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+        )}
+
         {/* Sort */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
           <Sort sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />

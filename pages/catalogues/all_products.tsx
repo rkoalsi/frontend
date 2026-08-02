@@ -50,6 +50,12 @@ import {
   type BrandRailEntry,
 } from '../../src/util/brandAccent';
 import { useIntersectionObserver } from '../../src/hooks/useIntersectionObserver';
+import { useScrolledPast } from '../../src/hooks/useScrolledPast';
+import UpNext from '../../src/components/OrderForm/products/UpNext';
+import BrowseSheet from '../../src/components/OrderForm/products/BrowseSheet';
+import StickyBrowseBar from '../../src/components/OrderForm/products/StickyBrowseBar';
+import BrowseFab from '../../src/components/OrderForm/products/BrowseFab';
+import { withCountsFallback } from '../../src/util/browseOrder';
 
 // The "Clearance" brand is an internal routing/counts key — it surfaces to
 // users as "Special Offers", exactly as it does on the order form.
@@ -232,9 +238,29 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
   const [quickViewVariants, setQuickViewVariants] = useState<Product[]>([]);
   const [showQuickView, setShowQuickView] = useState<boolean>(false);
   const [filtersOpen, setFiltersOpen] = useState<boolean>(false);
+  // Browse sheet — the whole rail, reachable from any scroll position.
+  const [browseOpen, setBrowseOpen] = useState<boolean>(false);
+  // Browsing by category across every brand rather than brand-then-category —
+  // the same mode the order form offers, for people shopping for a thing
+  // rather than for a make.
+  const [groupByCategory, setGroupByCategory] = useState<boolean>(false);
+  const [allCategories, setAllCategories] = useState<string[]>([]);
+  // Marks the end of the brand rail: once it scrolls off, the condensed bar
+  // in the sticky header takes over.
+  const railAnchorRef = useRef<HTMLDivElement | null>(null);
+  const gridTopRef = useRef<HTMLDivElement | null>(null);
+  // Inset past the app bar and this page's own sticky search header, so the
+  // handover happens when the rail slides behind them rather than when it
+  // reaches the viewport edge underneath.
+  const railGone = useScrolledPast(railAnchorRef, 128);
   const [outOfStockProducts, setOutOfStockProducts] = useState<Product[]>([]);
   const [outOfStockItems, setOutOfStockItems] = useState<CatalogueItem[]>([]);
   const [loadingOutOfStock, setLoadingOutOfStock] = useState<boolean>(false);
+  // A brand with more than one page of products keeps loading after the first
+  // page is on screen; this drives the "loading the rest" strip under the grid.
+  const [loadingRestOfPages, setLoadingRestOfPages] = useState<boolean>(false);
+  // Invalidates in-flight page requests when the view changes underneath them.
+  const fetchTokenRef = useRef(0);
   const [hideOutOfStock, setHideOutOfStock] = useState<boolean>(true);
   const [productCounts, setProductCounts] = useState<{
     [brand: string]: { [category: string]: number };
@@ -261,10 +287,12 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
 
   const productsKey = useMemo(() => {
     if (searchTerm.trim() !== '') return 'search';
+    // Category mode spans every brand, so the brand plays no part in the key.
+    if (groupByCategory) return activeCategory ? `all-${activeCategory}` : 'all';
     return activeBrand && activeCategory
       ? `${activeBrand}-${activeCategory}`
       : 'all';
-  }, [searchTerm, activeBrand, activeCategory]);
+  }, [searchTerm, activeBrand, activeCategory, groupByCategory]);
 
   const itemsData = useMemo(
     () => productsByBrandCategory[productsKey]?.items ?? null,
@@ -390,9 +418,15 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
     try {
       setLoadingOutOfStock(true);
 
-      // Handle "New Arrivals" brand specially - don't pass brand parameter
-      const brandParam = activeBrand === 'New Arrivals' ? undefined : activeBrand;
-      const categoryParam = (activeBrand === 'New Arrivals' || activeCategory === 'All Products') ? undefined : activeCategory;
+      // Handle "New Arrivals" brand specially - don't pass brand parameter.
+      // Category mode spans every brand, so it drops the brand filter entirely.
+      const brandParam =
+        groupByCategory || activeBrand === 'New Arrivals' ? undefined : activeBrand;
+      const categoryParam = groupByCategory
+        ? activeCategory
+        : (activeBrand === 'New Arrivals' || activeCategory === 'All Products')
+          ? undefined
+          : activeCategory;
 
       const response = await axios.get(`${process.env.api_url}/products/out-of-stock`, {
         params: {
@@ -424,7 +458,7 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
     } finally {
       setLoadingOutOfStock(false);
     }
-  }, [activeBrand, activeCategory, showError]);
+  }, [activeBrand, activeCategory, showError, groupByCategory]);
 
   const fetchAllBrands = useCallback(async () => {
     try {
@@ -511,13 +545,8 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
     // it in the background, so the first pass here would only be a duplicate
     // request behind a skeleton.
     if (seededRef.current) {
-      const wanted = searchTerm.trim()
-        ? 'search'
-        : activeBrand && activeCategory
-          ? `${activeBrand}-${activeCategory}`
-          : 'all';
       seededRef.current = false;
-      if (wanted === seededKey || wanted === 'all') return;
+      if (productsKey === seededKey || productsKey === 'all') return;
     }
     setLoading(true);
     try {
@@ -531,6 +560,9 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
         };
         if (searchTerm) {
           params.search = searchTerm;
+        } else if (groupByCategory) {
+          // One category, every brand — no brand filter at all.
+          if (activeCategory) params.category = activeCategory;
         } else {
           if (activeBrand && activeBrand !== 'New Arrivals') params.brand = activeBrand;
           if (activeBrand !== 'New Arrivals' && activeCategory && activeCategory !== 'All Products') {
@@ -541,59 +573,74 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
         return params;
       };
 
+      // Every response after this one belongs to the view that was active when
+      // the request went out; a brand switch mid-flight bumps the token so the
+      // late pages are dropped instead of landing in the wrong grid.
+      const token = ++fetchTokenRef.current;
+      const key = productsKey;
+
+      // Sort so new products lead, applied to whatever we have so far.
+      const sortNewFirst = (items: CatalogueItem[]) =>
+        [...items].sort((a, b) => {
+          const isNewA = getItemProduct(a)?.new === true;
+          const isNewB = getItemProduct(b)?.new === true;
+          if (isNewA && !isNewB) return -1;
+          if (!isNewA && isNewB) return 1;
+          return 0;
+        });
+
       const firstResponse = await axios.get<CatalogueResponse>(
         `${process.env.api_url}/products/catalogue/all_products`,
         { params: buildParams(1) }
       );
+      if (token !== fetchTokenRef.current) return;
 
       let allItems = firstResponse.data.items || [];
       const totalPages = firstResponse.data.total_pages;
 
-      // Fetch remaining pages if needed
-      if (totalPages > 1) {
-        const remainingRequests = [];
-        for (let page = 2; page <= totalPages; page++) {
-          remainingRequests.push(
-            axios.get<CatalogueResponse>(
-              `${process.env.api_url}/products/catalogue/all_products`,
-              { params: buildParams(page) }
-            )
-          );
-        }
-
-        const remainingResponses = await Promise.all(remainingRequests);
-        remainingResponses.forEach((response) => {
-          if (response.data.items) {
-            allItems = [...allItems, ...response.data.items];
-          }
-        });
-      }
-
-      // Sort items to prioritize new products first
-      const sortedItems = [...allItems].sort((a, b) => {
-        const isNewA = getItemProduct(a)?.new === true;
-        const isNewB = getItemProduct(b)?.new === true;
-        if (isNewA && !isNewB) return -1;
-        if (!isNewA && isNewB) return 1;
-        return 0;
-      });
-
-      const key = searchTerm.trim() !== ''
-        ? 'search'
-        : activeBrand && activeCategory
-          ? `${activeBrand}-${activeCategory}`
-          : 'all';
-
+      // Show the first page straight away rather than making a big brand's
+      // whole catalogue load behind skeletons before anything appears.
       setProductsByBrandCategory((prev) => ({
         ...prev,
-        [key]: { items: sortedItems },
+        [key]: { items: sortNewFirst(allItems) },
       }));
+      setLoading(false);
+
+      if (totalPages > 1) {
+        setLoadingRestOfPages(true);
+        try {
+          const remainingRequests = [];
+          for (let page = 2; page <= totalPages; page++) {
+            remainingRequests.push(
+              axios.get<CatalogueResponse>(
+                `${process.env.api_url}/products/catalogue/all_products`,
+                { params: buildParams(page) }
+              )
+            );
+          }
+
+          const remainingResponses = await Promise.all(remainingRequests);
+          if (token !== fetchTokenRef.current) return;
+          remainingResponses.forEach((response) => {
+            if (response.data.items) {
+              allItems = [...allItems, ...response.data.items];
+            }
+          });
+
+          setProductsByBrandCategory((prev) => ({
+            ...prev,
+            [key]: { items: sortNewFirst(allItems) },
+          }));
+        } finally {
+          if (token === fetchTokenRef.current) setLoadingRestOfPages(false);
+        }
+      }
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
       setLoading(false);
     }
-  }, [activeBrand, searchTerm, activeCategory, seededKey]);
+  }, [activeBrand, searchTerm, activeCategory, seededKey, productsKey, groupByCategory]);
 
   const handleClosePopup = useCallback(() => setOpenImagePopup(false), []);
 
@@ -692,11 +739,12 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
   }, [router.isReady, router.query]);
 
   useEffect(() => {
-    // Fetch categories when brand changes
-    if (activeBrand) {
+    // Fetch categories when brand changes. Skipped in category mode, where it
+    // would resolve the brand's first category over the one being browsed.
+    if (activeBrand && !groupByCategory) {
       fetchCategoriesForBrand(activeBrand);
     }
-  }, [activeBrand, fetchCategoriesForBrand]);
+  }, [activeBrand, fetchCategoriesForBrand, groupByCategory]);
 
   // Fetch out of stock products only when the toggle is enabled
   useEffect(() => {
@@ -708,20 +756,100 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
   useEffect(() => {
     // Fetch products when brand, category, or search changes
     // Fetch if we have a brand OR if we have a search term (search across all brands)
-    if (activeBrand || searchTerm) {
+    if (activeBrand || searchTerm || (groupByCategory && activeCategory)) {
       fetchProducts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBrand, activeCategory, searchTerm]);
+  }, [activeBrand, activeCategory, searchTerm, groupByCategory]);
+
+  /** Every category in the catalogue, for the category-first browse mode. */
+  const fetchAllCategories = useCallback(async () => {
+    try {
+      const response = await axios.get(
+        `${process.env.api_url}/products/all_categories`
+      );
+      const categories: string[] = (response.data.categories || []).sort();
+      setAllCategories(categories);
+      return categories;
+    } catch (error) {
+      showError('Failed to fetch categories.');
+      return [];
+    }
+  }, [showError]);
+
+  /**
+   * Switching browse mode has to leave a concrete category selected either
+   * way, otherwise the grid is left with nothing to fetch.
+   */
+  const toggleGroupByCategory = useCallback(async () => {
+    userNavRef.current = true;
+    const next = !groupByCategory;
+    setGroupByCategory(next);
+    if (next) {
+      const categories = allCategories.length
+        ? allCategories
+        : await fetchAllCategories();
+      const current = activeCategoryRef.current;
+      const resolved =
+        current && categories.includes(current) ? current : categories[0] || '';
+      if (resolved) setActiveCategory(resolved);
+    } else {
+      // Back to brand-first: keep the brand's categories honest.
+      const cats = categoriesByBrand[activeBrand] || [];
+      if (!cats.includes(activeCategoryRef.current)) {
+        setActiveCategory(cats[0] || '');
+      }
+    }
+    requestAnimationFrame(() => {
+      gridTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [groupByCategory, allCategories, fetchAllCategories, categoriesByBrand, activeBrand]);
 
   const handleBrandTabChange = useCallback((newBrand: string) => {
     userNavRef.current = true;
     setActiveBrand(newBrand);
   }, []);
 
+  /**
+   * The browse sheet lists brands, so choosing from it is a request for that
+   * brand — it drops out of category mode rather than silently ignoring the
+   * brand half of the selection.
+   */
+  const selectFromSheet = useCallback(
+    (brand: string, category: string) => {
+      userNavRef.current = true;
+      setGroupByCategory(false);
+      if (brand) setActiveBrand(brand);
+      if (category) setActiveCategory(category);
+      requestAnimationFrame(() => {
+        gridTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    },
+    []
+  );
+
   const handleCategoryTabChange = useCallback((newCategory: string) => {
     setActiveCategory(newCategory);
   }, []);
+
+  /**
+   * Jump to a concrete brand + category in one go — what the end-of-list
+   * block, the browse sheet and the sticky bar all do. `handleBrandTabChange`
+   * can't be reused for this: it leaves the category to be resolved by the
+   * fetch effect, which would ignore the one we were asked for.
+   *
+   * The grid is scrolled back to its top afterwards so the jump lands on
+   * products rather than wherever the old list happened to leave the viewport.
+   */
+  const navigateTo = useCallback((brand: string, category: string) => {
+    userNavRef.current = true;
+    // Category mode has no brand to set — the fetch spans all of them.
+    if (brand && !groupByCategory) setActiveBrand(brand);
+    if (category) setActiveCategory(category);
+    requestAnimationFrame(() => {
+      gridTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [groupByCategory]);
 
   // Create a stable debounced search function using useRef
   const debouncedSearch = useRef(
@@ -873,6 +1001,54 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
   const selectedBrandEntry = useMemo(
     () => brandList.find((b) => b.brand === activeBrand) || brandList[0],
     [brandList, activeBrand]
+  );
+
+  // Everything the browse controls need to work out what comes next. Shared so
+  // the end-of-list block, the sticky bar and the sheet can never disagree.
+  // Brands nobody has opened yet have no entry in `categoriesByBrand`; the
+  // counts payload covers them all, so it stands in until the real list lands.
+  const browseCategories = useMemo(
+    () => withCountsFallback(categoriesByBrand, productCounts),
+    [categoriesByBrand, productCounts]
+  );
+
+  const browseOrder = useMemo(
+    () => ({
+      brandList,
+      categoriesByBrand: browseCategories,
+      counts: productCounts,
+      activeBrand,
+      activeCategory,
+      groupByCategory,
+      allCategories,
+    }),
+    [
+      brandList,
+      browseCategories,
+      productCounts,
+      activeBrand,
+      activeCategory,
+      groupByCategory,
+      allCategories,
+    ]
+  );
+
+  // The category list, and what each one counts, depend on the browse mode:
+  // brand-first counts within the brand, category-first sums across all of them.
+  const visibleCategories = useMemo(
+    () => (groupByCategory ? allCategories : categoriesByBrand[activeBrand] || []),
+    [groupByCategory, allCategories, categoriesByBrand, activeBrand]
+  );
+
+  const categoryCountOf = useCallback(
+    (cat: string) =>
+      groupByCategory
+        ? Object.values(productCounts).reduce(
+            (sum, byCategory) => sum + (byCategory[cat] || 0),
+            0
+          )
+        : productCounts[activeBrand]?.[cat] || 0,
+    [groupByCategory, productCounts, activeBrand]
   );
 
   // Index of the first real brand — the rail draws a divider here so the
@@ -1108,6 +1284,22 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
             />
           </Box>
         </Box>
+
+        {/* The condensed rail. It rides inside the header that is already
+            sticky rather than adding a second sticky layer competing for the
+            same top edge, and only once the real rail has scrolled away. */}
+        {!isSearching && (
+          <Box sx={{ maxWidth: '1400px', margin: '0 auto', px: { xs: 0.5, md: 1.5 } }}>
+            <StickyBrowseBar
+              {...browseOrder}
+              visible={railGone}
+              sticky={false}
+              displayNameOf={brandDisplayName}
+              onSelect={navigateTo}
+              onOpenBrowse={() => setBrowseOpen(true)}
+            />
+          </Box>
+        )}
       </Box>
 
       <Box sx={{ maxWidth: "1400px", margin: "0 auto", width: "100%", p: { xs: 2, sm: 2.5, md: 3 } }}>
@@ -1121,7 +1313,7 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
             above the grid, so a second wall of the same logos is noise.
             Hidden with CSS rather than a breakpoint hook so the wall still
             ships in the server-rendered HTML for phones and crawlers. */}
-        {!isSearching && activeBrand === 'New Arrivals' && brandList.length > 1 && (
+        {!isSearching && !groupByCategory && activeBrand === 'New Arrivals' && brandList.length > 1 && (
           <Box sx={{ display: { xs: 'block', md: 'none' } }}>
             <BrandWall
               entries={brandList}
@@ -1150,7 +1342,9 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
             </Box>
           )}
 
-          {isMobile || isTablet ? (
+          {/* The brand selector has no meaning while browsing by category —
+              the grid deliberately spans every brand. */}
+          {!groupByCategory && (isMobile || isTablet ? (
             <FormControl fullWidth sx={{ mt: 2 }}>
               <InputLabel id="brand-select-label">Brand</InputLabel>
               <Select
@@ -1515,7 +1709,7 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
                 })}
               </Tabs>
             )
-          )}
+          ))}
 
           {/* Says what the selected entry actually is — the rail is for
               choosing, this is for telling. Desktop gets the compact strip
@@ -1523,7 +1717,7 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
               where the rail is a one-at-a-time dropdown, get the swipeable
               spotlight. Hidden while searching, where brand context is
               meaningless. */}
-          {!isSearching &&
+          {!isSearching && !groupByCategory &&
             (isMobile || isTablet ? (
               <BrandSpotlight
                 entries={brandList}
@@ -1567,20 +1761,16 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
                   disabled={isSearching}
                   onChange={(e) => handleCategoryTabChange(e.target.value)}
                 >
-                  {categoriesByBrand[activeBrand]?.map((cat) => {
-                    const catCount = productCounts[activeBrand]?.[cat] || 0;
-                    return (
-                      <MenuItem key={cat} value={cat}>
-                        {cat} ({catCount})
-                      </MenuItem>
-                    );
-                  })}
+                  {visibleCategories.map((cat) => (
+                    <MenuItem key={cat} value={cat}>
+                      {cat} ({categoryCountOf(cat)})
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             ) : (
               !isSearching &&
-              activeBrand &&
-              (categoriesByBrand[activeBrand] || []).length > 0 && (
+              visibleCategories.length > 0 && (
                 <Box>
                   <Typography
                     variant="overline"
@@ -1608,16 +1798,22 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
                       boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                     }}
                   >
-                    {categoriesByBrand[activeBrand].map((cat) => {
-                      const catCount = productCounts[activeBrand]?.[cat] || 0;
-                      const isActive = (activeCategory || categoriesByBrand[activeBrand][0]) === cat;
+                    {visibleCategories.map((cat) => {
+                      const catCount = categoryCountOf(cat);
+                      const isActive = (activeCategory || visibleCategories[0]) === cat;
                       // Categories inherit the selected brand's accent, so the
-                      // whole brand→category path reads as one colour.
-                      const accent = getBrandAccent(
-                        selectedBrandEntry?.brand,
-                        selectedBrandEntry?.color,
-                        themeMode
-                      );
+                      // whole brand→category path reads as one colour. Category
+                      // mode spans every brand, so it falls back to the theme.
+                      const accent = groupByCategory
+                        ? {
+                            main: theme.palette.primary.main,
+                            soft: alpha(theme.palette.primary.main, 0.12),
+                          }
+                        : getBrandAccent(
+                            selectedBrandEntry?.brand,
+                            selectedBrandEntry?.color,
+                            themeMode
+                          );
                       return (
                         <Chip
                           key={cat}
@@ -1647,6 +1843,10 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
             )}
           </Box>
 
+          {/* Hands navigation over to the condensed bar in the header once
+              everything above has scrolled out of reach. */}
+          <Box ref={railAnchorRef} sx={{ height: 1 }} />
+
           {/* Catalogue Toolbar */}
           <CatalogueToolbar
             totalProducts={totalProductCount}
@@ -1657,6 +1857,10 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
             onToggleFilters={() => setFiltersOpen(true)}
             showFilterButton={isMobile || isTablet}
             activeFilterCount={activeFilterCount}
+            browseMode={isSearching ? undefined : groupByCategory ? 'category' : 'brand'}
+            onBrowseModeChange={(mode) => {
+              if ((mode === 'category') !== groupByCategory) toggleGroupByCategory();
+            }}
           />
 
           {/* Active filter chips */}
@@ -1733,6 +1937,9 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
 
             {/* Products Grid */}
             <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+              {/* Where a brand/category jump scrolls back to. Offset upwards so
+                  the sticky header doesn't cover the first row of cards. */}
+              <Box ref={gridTopRef} sx={{ position: 'relative', top: -96, height: 1 }} />
               {/* One placement for this brand, directly above the grid. Hidden
                   while searching, where the grid spans brands and a
                   brand-targeted banner would be misleading. */}
@@ -1821,6 +2028,38 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
                       >
                         <CircularProgress size={24} />
                       </Box>
+                    )}
+                    {/* A brand with several pages keeps loading after the first
+                        is on screen — say so, rather than letting the grid look
+                        like it has already ended. */}
+                    {loadingRestOfPages && (
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 1.5,
+                          py: 3,
+                        }}
+                      >
+                        <CircularProgress size={20} />
+                        <Typography variant="body2" color="text.secondary">
+                          Loading more products…
+                        </Typography>
+                      </Box>
+                    )}
+                    {/* The end of the list is where someone is readiest to move
+                        on, so it offers the next category or brand outright
+                        instead of simply stopping. */}
+                    {!hasMoreToRender && !loadingRestOfPages && !isSearching && (
+                      <UpNext
+                        {...browseOrder}
+                        displayNameOf={brandDisplayName}
+                        onSelect={navigateTo}
+                        onBackToTop={() =>
+                          window.scrollTo({ top: 0, behavior: 'smooth' })
+                        }
+                      />
                     )}
                   </>
                 ) : (
@@ -1926,12 +2165,27 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
           }}
           className='no-pdf'
         >
+          {!isSearching && (
+            <BrowseFab onClick={() => setBrowseOpen(true)} isMobile={isMobile} />
+          )}
           <ScrollTriangleButtons
             onScrollTop={scrollToTop}
             onScrollBottom={scrollToBottom}
             isMobile={isMobile}
           />
         </Box>
+
+        <BrowseSheet
+          open={browseOpen}
+          onClose={() => setBrowseOpen(false)}
+          entries={brandList}
+          categoriesByBrand={browseCategories}
+          counts={productCounts}
+          activeBrand={activeBrand}
+          activeCategory={activeCategory}
+          displayNameOf={brandDisplayName}
+          onSelect={selectFromSheet}
+        />
 
         {showCtaBar && (
           <GuestCta source="bar" onDismiss={() => setCtaDismissed(true)} />

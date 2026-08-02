@@ -13,6 +13,13 @@ import axios from "axios";
 import { useProducts, useBrands, useCategories, useAllCategories, useProductCounts } from "../../hooks/useProducts";
 import { ProductCardSkeleton, ProductGroupCardSkeleton } from "../common/ProductCardSkeleton";
 import { useIntersectionObserver } from "../../hooks/useIntersectionObserver";
+import { useScrolledPast, useElementHeight } from "../../hooks/useScrolledPast";
+import { withCountsFallback } from "../../util/browseOrder";
+import { TOPBAR_HEIGHT } from "../common/Topbar";
+import UpNext from "./products/UpNext";
+import BrowseSheet from "./products/BrowseSheet";
+import BrowseFab from "./products/BrowseFab";
+import StickyBrowseBar from "./products/StickyBrowseBar";
 import {
   TextField,
   Autocomplete,
@@ -735,6 +742,21 @@ const Products: React.FC<ProductsProps> = ({
   const pageTopRef = useRef<HTMLDivElement>(null);
   const pageBottomRef = useRef<HTMLDivElement>(null);
 
+  // ------------------ Browse navigation ------------------
+  // The brand rail only exists at the top of the page. These let someone deep
+  // in a long list change brand without scrolling back up to find it.
+  const [browseOpen, setBrowseOpen] = useState<boolean>(false);
+  // Marks the end of the rail + category tabs: once it scrolls off the top,
+  // the condensed sticky bar takes over.
+  const railAnchorRef = useRef<HTMLDivElement | null>(null);
+  // Where a brand/category jump scrolls back to.
+  const gridTopRef = useRef<HTMLDivElement | null>(null);
+  // The sticky search wrapper, measured so the condensed bar can dock
+  // directly beneath it instead of on top of it.
+  const stickySearchRef = useRef<HTMLDivElement | null>(null);
+  const stickySearchHeight = useElementHeight(stickySearchRef);
+  const railGone = useScrolledPast(railAnchorRef, TOPBAR_HEIGHT.sm + stickySearchHeight);
+
   // ------------------ Optimized Toast Notifications ------------------
   // Remove debounce from errors (critical feedback) and reduce success debounce
   const debouncedSuccess = useCallback(
@@ -1221,6 +1243,53 @@ const Products: React.FC<ProductsProps> = ({
       }
     }, 300),
     [categoriesByBrand, resetPaginationAndFetch]
+  );
+
+  /**
+   * Jump straight to a brand *and* category — what the end-of-list block, the
+   * browse sheet and the condensed bar all do.
+   *
+   * `handleTabChange` can't serve this: it is debounced by 300ms and always
+   * forces the brand's first category, so asking it for "Farmina · Wet Food"
+   * would land on "Farmina · Dry Food" a third of a second later.
+   */
+  const navigateTo = useCallback(
+    (brand: string, category: string) => {
+      // Category-browse mode has no brand to set — the fetch is global.
+      const targetBrand = groupByCategory ? "" : brand || activeBrand;
+      if (targetBrand) setActiveBrand(targetBrand);
+      // Set even when empty: an unknown category has to be *cleared*, not
+      // left pointing at the previous brand's, so `fetchCategories` resolves
+      // this brand's default instead of skipping past its `!activeCategory`
+      // guard and leaving the grid on a category this brand doesn't have.
+      setActiveCategory(category);
+      // With no category to fetch yet, the brand/category effect picks it up
+      // once `fetchCategories` returns.
+      if (category) resetPaginationAndFetch(targetBrand, category);
+      // After the state lands, put the top of the grid back under the user.
+      requestAnimationFrame(() => {
+        gridTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    },
+    [groupByCategory, activeBrand, resetPaginationAndFetch]
+  );
+
+  /**
+   * The browse sheet lists brands, so choosing from it is a request for that
+   * brand — it drops out of category-browse mode rather than silently
+   * ignoring the brand half of the selection.
+   */
+  const selectFromSheet = useCallback(
+    (brand: string, category: string) => {
+      setGroupByCategory(false);
+      if (brand) setActiveBrand(brand);
+      setActiveCategory(category);
+      if (brand && category) resetPaginationAndFetch(brand, category);
+      requestAnimationFrame(() => {
+        gridTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    },
+    [resetPaginationAndFetch]
   );
 
   const handleCategoryTabChange = useCallback(
@@ -1915,6 +1984,36 @@ const Products: React.FC<ProductsProps> = ({
     [filteredBrandList, activeBrand]
   );
 
+  // Everything the browse controls need to work out what comes next. Shared so
+  // the end-of-list block, the condensed bar and the sheet agree.
+  // Brands nobody has opened yet have no entry in `categoriesByBrand`; the
+  // counts payload covers them all, so it stands in until the real list lands.
+  const browseCategories = useMemo(
+    () => withCountsFallback(categoriesByBrand, productCounts),
+    [categoriesByBrand, productCounts]
+  );
+
+  const browseOrder = useMemo(
+    () => ({
+      brandList: filteredBrandList,
+      categoriesByBrand: browseCategories,
+      counts: productCounts,
+      activeBrand,
+      activeCategory,
+      groupByCategory,
+      allCategories,
+    }),
+    [
+      filteredBrandList,
+      browseCategories,
+      productCounts,
+      activeBrand,
+      activeCategory,
+      groupByCategory,
+      allCategories,
+    ]
+  );
+
   // Index of the first real brand — the rail draws a divider here so the three
   // collections read as a separate group rather than three odd brands.
   const firstBrandIndex = useMemo(
@@ -2144,9 +2243,13 @@ const Products: React.FC<ProductsProps> = ({
             search or clear without scrolling back up. Requires the parent
             Card's overflow to be 'visible' (set in orders/new/[id].tsx). */}
         <Box
+          ref={stickySearchRef}
           sx={{
             position: { xs: 'sticky', md: 'static' },
-            top: 0,
+            // Docks under the app bar rather than behind it — at top: 0 the
+            // field stuck to the viewport edge underneath the (higher
+            // z-index) topbar, which hid it exactly when it was needed.
+            top: TOPBAR_HEIGHT,
             zIndex: 5,
             bgcolor: 'background.paper',
             py: { xs: 1, md: 0 },
@@ -2201,6 +2304,27 @@ const Products: React.FC<ProductsProps> = ({
           }}
         />
         </Box>
+
+        {/* The condensed rail: takes over once the real one has scrolled off,
+            so brand and category stay visible — and switchable — all the way
+            down a long list. Docks directly under the sticky search field,
+            whose height is measured rather than assumed. */}
+        {!searchTerm.trim() && (
+          <StickyBrowseBar
+            {...browseOrder}
+            visible={railGone}
+            topOffset={{
+              xs: TOPBAR_HEIGHT.xs + stickySearchHeight,
+              sm: TOPBAR_HEIGHT.sm + stickySearchHeight,
+              // The search field is static from md up, so there is nothing
+              // between the bar and the app bar.
+              md: TOPBAR_HEIGHT.sm,
+            }}
+            displayNameOf={(b) => brandDisplayName(b) || ""}
+            onSelect={navigateTo}
+            onOpenBrowse={() => setBrowseOpen(true)}
+          />
+        )}
 
         {/* Tabs and Sorting Controls */}
         <Box display="flex" flexDirection={"column"} gap="8px" sx={{ mt: 2 }}>
@@ -2823,6 +2947,9 @@ const Products: React.FC<ProductsProps> = ({
               )}
             </Box>
           )}
+          {/* Hands navigation over to the condensed bar once the rail and the
+              category tabs have scrolled out of reach. */}
+          <Box ref={railAnchorRef} sx={{ height: 1 }} />
           {isMobile || isTablet ? (
             <Box
               sx={{
@@ -3022,6 +3149,10 @@ const Products: React.FC<ProductsProps> = ({
           />
         )}
 
+        {/* Where a brand/category jump scrolls back to. Lifted so the sticky
+            search field and condensed bar don't cover the first row. */}
+        <Box ref={gridTopRef} sx={{ position: 'relative', top: -120, height: 1 }} />
+
         {/* Products Display */}
         {isMobile || isTablet ? (
           <Fade in key={productsKey} timeout={250}>
@@ -3167,21 +3298,20 @@ const Products: React.FC<ProductsProps> = ({
               </Box>
             )}
             {!loadingMore && noMoreProducts[productsKey] && (
-              <Box mt={2}>
-                <Typography
-                  variant="body2"
-                  color="textSecondary"
-                  align="center"
-                >
-                  No more products for{" "}
-                  {searchTerm
-                    ? searchTerm
-                    : groupByCategory
-                      ? activeCategory
-                      : activeBrand}{" "}
-                  {searchTerm ? "" : activeCategory}.
-                </Typography>
-              </Box>
+              searchTerm.trim() ? (
+                <Box mt={2}>
+                  <Typography variant="body2" color="textSecondary" align="center">
+                    No more results for {searchTerm}.
+                  </Typography>
+                </Box>
+              ) : (
+                <UpNext
+                  {...browseOrder}
+                  displayNameOf={(b) => brandDisplayName(b) || ""}
+                  onSelect={navigateTo}
+                  onBackToTop={scrollToTop}
+                />
+              )
             )}
 
             {/* Out of Stock Products Section - exclude from New Arrivals and Pre Orders */}
@@ -3550,17 +3680,20 @@ const Products: React.FC<ProductsProps> = ({
               </Box>
             )}
             {!loadingMore && noMoreProducts[productsKey] && (
-              <Box mt={2}>
-                <Typography variant="body2" color="textSecondary" align="center">
-                  No more products for{" "}
-                  {searchTerm
-                    ? searchTerm
-                    : groupByCategory
-                      ? activeCategory
-                      : activeBrand}{" "}
-                  {searchTerm ? "" : activeCategory}.
-                </Typography>
-              </Box>
+              searchTerm.trim() ? (
+                <Box mt={2}>
+                  <Typography variant="body2" color="textSecondary" align="center">
+                    No more results for {searchTerm}.
+                  </Typography>
+                </Box>
+              ) : (
+                <UpNext
+                  {...browseOrder}
+                  displayNameOf={(b) => brandDisplayName(b) || ""}
+                  onSelect={navigateTo}
+                  onBackToTop={scrollToTop}
+                />
+              )
             )}
 
             {/* Out of Stock Products Section - exclude from New Arrivals and Pre Orders */}
@@ -3797,6 +3930,9 @@ const Products: React.FC<ProductsProps> = ({
         }}
         className='no-pdf'
       >
+        {!searchTerm.trim() && (
+          <BrowseFab onClick={() => setBrowseOpen(true)} isMobile={isMobile} />
+        )}
         <ScrollTriangleButtons
           onScrollTop={scrollToTop}
           onScrollBottom={scrollToBottom}
@@ -3804,6 +3940,19 @@ const Products: React.FC<ProductsProps> = ({
           isMobile={isMobile}
         />
       </Box>
+
+      {/* The whole rail, reachable from any scroll position. */}
+      <BrowseSheet
+        open={browseOpen}
+        onClose={() => setBrowseOpen(false)}
+        entries={filteredBrandList}
+        categoriesByBrand={browseCategories}
+        counts={productCounts}
+        activeBrand={activeBrand}
+        activeCategory={activeCategory}
+        displayNameOf={(b) => brandDisplayName(b) || ""}
+        onSelect={selectFromSheet}
+      />
 
       {/* Cart Icon */}
       <IconButton
