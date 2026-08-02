@@ -15,6 +15,7 @@ import {
   CircularProgress,
   Tab,
   Tabs,
+  alpha,
 } from '@mui/material';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Search, Close } from '@mui/icons-material';
@@ -36,6 +37,9 @@ import CatalogueProductGroupCard from '../../src/components/OrderForm/products/C
 import CatalogueFilters from '../../src/components/OrderForm/products/CatalogueFilters';
 import CatalogueToolbar, { type ViewDensity, type SortOption } from '../../src/components/OrderForm/products/CatalogueToolbar';
 import QuickViewModal from '../../src/components/OrderForm/products/QuickViewModal';
+import GuestCta from '../../src/components/catalogue/GuestCta';
+import BrandWall from '../../src/components/catalogue/BrandWall';
+import FeatureBanner, { type Placement } from '../../src/components/OrderForm/products/FeatureBanner';
 import BrandStrip from '../../src/components/OrderForm/products/BrandStrip';
 import BrandSpotlight from '../../src/components/OrderForm/products/BrandSpotlight';
 import BrandInfoDialog from '../../src/components/OrderForm/products/BrandInfoDialog';
@@ -115,28 +119,102 @@ const getUrlParam = (key: string) =>
     ? new URLSearchParams(window.location.search).get(key) || ''
     : '';
 
-export default function AllProductsCatalouge() {
+// ── Server-rendered landing view ────────────────────────────────────────────
+// This page is public and indexed, and until now every product on it arrived
+// after hydration — crawlers and first-time visitors both got an empty shell.
+// The default view (New Arrivals, no filters) is now built at deploy time and
+// refreshed every 5 minutes, so the HTML carries real products and the
+// structured data below describes them.
+//
+// A failed fetch is not an error: props come back null and the page falls back
+// to fetching client-side exactly as it did before.
+interface InitialData {
+  brands: BrandRailEntry[];
+  counts: { [brand: string]: { [category: string]: number } };
+  categories: string[];
+  items: CatalogueItem[];
+}
+
+const SITE_URL = 'https://marketplace.pupscribe.in';
+const CATALOGUE_URL = `${SITE_URL}/catalogues/all_products`;
+// Enough to describe the page without bloating the document.
+const STRUCTURED_DATA_LIMIT = 24;
+
+export async function getStaticProps() {
+  try {
+    const res = await axios.get(`${process.env.api_url}/products/catalogue/init`, {
+      params: { brand: 'New Arrivals' },
+      timeout: 10000,
+    });
+    const initialData: InitialData = {
+      brands: res.data?.brands || [],
+      counts: res.data?.counts || {},
+      categories: res.data?.categories || ['All Products'],
+      items: res.data?.items || [],
+    };
+    return { props: { initialData }, revalidate: 300 };
+  } catch {
+    return { props: { initialData: null }, revalidate: 60 };
+  }
+}
+
+interface AllProductsProps {
+  initialData: InitialData | null;
+}
+
+export default function AllProductsCatalouge({ initialData }: AllProductsProps) {
   const theme = useTheme();
   const router = useRouter();
 
+  // The seeded view is New Arrivals with no filters. A shared link asking for
+  // anything else falls through to the normal client fetch, so this only
+  // suppresses the very first skeleton pass.
+  const seededKey = initialData ? 'New Arrivals-All Products' : '';
+  const seededRef = useRef(!!initialData);
+
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialData);
   const [openImagePopup, setOpenImagePopup] = useState<boolean>(false);
   // Search term is stored raw (not hyphen-encoded) so searches containing "-" work.
   const [searchTerm, setSearchTerm] = useState(() => getUrlParam('search'));
   const [inputValue, setInputValue] = useState(() => getUrlParam('search'));
-  const [brandList, setBrandList] = useState<BrandRailEntry[]>([]);
+  const [brandList, setBrandList] = useState<BrandRailEntry[]>(() =>
+    initialData
+      ? [
+          { brand: 'New Arrivals', url: 'https://assets.pupscribe.in/brands/new-arrivals.svg' },
+          ...initialData.brands,
+        ]
+      : []
+  );
   const [productsByBrandCategory, setProductsByBrandCategory] = useState<{
     [key: string]: { items: CatalogueItem[] };
-  }>({});
+  }>(() => {
+    const seed: { [key: string]: { items: CatalogueItem[] } } = {};
+    if (initialData) {
+      seed['New Arrivals-All Products'] = { items: initialData.items };
+      seed.all = { items: initialData.items };
+    }
+    return seed;
+  });
   const [popupImageSrc, setPopupImageSrc]: any = useState([]);
   const [popupImageIndex, setPopupImageIndex]: any = useState(0);
-  const [activeBrand, setActiveBrand] = useState<string>(() => fromUrlValue(getUrlParam('brand')));
-  const [activeCategory, setActiveCategory] = useState<string>(() => fromUrlValue(getUrlParam('category')));
+  // Defaulting these to the seeded view (rather than '' until the client picks
+  // them up) is what lets the rail, the brand wall and the grid all render on
+  // the server. A ?brand= link overrides it on the client as before.
+  const [activeBrand, setActiveBrand] = useState<string>(
+    () => fromUrlValue(getUrlParam('brand')) || (initialData ? 'New Arrivals' : '')
+  );
+  const [activeCategory, setActiveCategory] = useState<string>(
+    () => fromUrlValue(getUrlParam('category')) || (initialData ? 'All Products' : '')
+  );
   const [categoriesByBrand, setCategoriesByBrand] = useState<{
     [key: string]: string[];
-  }>({});
+  }>(() => {
+    const seed: { [key: string]: string[] } = {};
+    if (initialData) seed['New Arrivals'] = initialData.categories;
+    return seed;
+  });
   const activeCategoryRef = useRef(activeCategory);
   // Set when a state change came from a user click (vs programmatic init),
   // so the URL write below uses push (back-button friendly) instead of replace.
@@ -160,7 +238,7 @@ export default function AllProductsCatalouge() {
   const [hideOutOfStock, setHideOutOfStock] = useState<boolean>(true);
   const [productCounts, setProductCounts] = useState<{
     [brand: string]: { [category: string]: number };
-  }>({});
+  }>(() => initialData?.counts || {});
 
   const showError = useCallback((msg: string) => toast.error(msg), []);
 
@@ -350,7 +428,10 @@ export default function AllProductsCatalouge() {
 
   const fetchAllBrands = useCallback(async () => {
     try {
-      setLoading(true);
+      // With a server-rendered view already on screen this is a background
+      // revalidation, not a load — skeletons over real content would be a
+      // downgrade.
+      if (!seededRef.current) setLoading(true);
       // Use the combined init endpoint — returns brands + counts + categories + first-page products in one shot
       const initialBrand = activeBrand || 'New Arrivals';
       const response = await axios.get(
@@ -426,6 +507,18 @@ export default function AllProductsCatalouge() {
   }, [showError]);
 
   const fetchProducts = useCallback(async () => {
+    // The server already rendered this exact view; `fetchAllBrands` refreshes
+    // it in the background, so the first pass here would only be a duplicate
+    // request behind a skeleton.
+    if (seededRef.current) {
+      const wanted = searchTerm.trim()
+        ? 'search'
+        : activeBrand && activeCategory
+          ? `${activeBrand}-${activeCategory}`
+          : 'all';
+      seededRef.current = false;
+      if (wanted === seededKey || wanted === 'all') return;
+    }
     setLoading(true);
     try {
       // When searching, search across all brands (don't filter by brand/category).
@@ -500,7 +593,7 @@ export default function AllProductsCatalouge() {
     } finally {
       setLoading(false);
     }
-  }, [activeBrand, searchTerm, activeCategory]);
+  }, [activeBrand, searchTerm, activeCategory, seededKey]);
 
   const handleClosePopup = useCallback(() => setOpenImagePopup(false), []);
 
@@ -677,6 +770,93 @@ export default function AllProductsCatalouge() {
     };
   }, [viewDensity]);
 
+  // ── Guest state ────────────────────────────────────────────────────────
+  // This route is in AuthContext's PUBLIC_PATHS, so `user` is never populated
+  // here even for a signed-in salesperson — the register prompts would show to
+  // people who already have an account. One cheap cookie-authenticated probe
+  // settles it. Plain axios, not the shared instance, whose 401 interceptor
+  // would bounce a guest to /login.
+  const [isGuest, setIsGuest] = useState<boolean | null>(null);
+  const [ctaDismissed, setCtaDismissed] = useState(false);
+  const [scrolledIntoGrid, setScrolledIntoGrid] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    axios
+      .get(`${process.env.api_url}/users/me`, { withCredentials: true })
+      .then(() => !cancelled && setIsGuest(false))
+      .catch(() => !cancelled && setIsGuest(true));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // The follow-along bar only earns its place once someone is actually
+  // browsing — showing it on arrival covers the first screen for no reason.
+  // One screen of scrolling is the trigger, so it turns up early on a phone
+  // (where the viewport is short) without ever covering the first view.
+  useEffect(() => {
+    const onScroll = () => {
+      const trigger = Math.min(400, Math.max(200, window.innerHeight * 0.6));
+      setScrolledIntoGrid(window.scrollY > trigger);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, []);
+
+  // Merchandising placements for the open brand. Failures are swallowed — the
+  // catalogue must never depend on them.
+  const [brandBanner, setBrandBanner] = useState<Placement | null>(null);
+  const [inScrollBanners, setInScrollBanners] = useState<Placement[]>([]);
+
+  useEffect(() => {
+    if (!activeBrand) return;
+    let cancelled = false;
+    axios
+      .get(`${process.env.api_url}/promotions/active`, { params: { brand: activeBrand } })
+      .then((res) => {
+        if (cancelled) return;
+        setBrandBanner(res.data?.brand_banner || null);
+        setInScrollBanners(res.data?.in_scroll || []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setBrandBanner(null);
+        setInScrollBanners([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeBrand]);
+
+  // The grid renders from one ordered array, so an in-scroll placement is just
+  // a third entry type alongside 'group' and 'product'. Placements cycle so a
+  // long catalogue doesn't repeat the same artwork every N tiles.
+  const visibleItemsWithPlacements = useMemo(() => {
+    // Placements are brand-targeted; a search spans brands, so they sit out.
+    if (!visibleItems.length || !inScrollBanners.length || searchTerm.trim()) return visibleItems;
+
+    const cadence = Math.max(2, inScrollBanners[0]?.after_n_products || 8);
+    const out: any[] = [];
+    let next = 0;
+    visibleItems.forEach((item, i) => {
+      out.push(item);
+      // Never trail the grid with a placement — it would sit under the last row
+      // with nothing after it and read as page furniture.
+      if ((i + 1) % cadence === 0 && i + 1 < visibleItems.length) {
+        const promo = inScrollBanners[next % inScrollBanners.length];
+        next += 1;
+        out.push({ type: 'placement', promo, placementKey: `p-${promo._id}-${i}` });
+      }
+    });
+    return out;
+  }, [visibleItems, inScrollBanners, searchTerm]);
+
   const themeMode = theme.palette.mode === 'dark' ? 'dark' : 'light';
 
   // Product count for a rail entry, summed across its categories.
@@ -706,6 +886,8 @@ export default function AllProductsCatalouge() {
   const openBrandInfo = useCallback(() => setBrandInfoOpen(true), []);
   const closeBrandInfo = useCallback(() => setBrandInfoOpen(false), []);
 
+  const showCtaBar = !!isGuest && !ctaDismissed && scrolledIntoGrid;
+
   const isPriceFiltered = priceRange[0] > 0 || priceRange[1] < maxPrice;
   const activeFilterCount =
     selectedFilterCategories.length +
@@ -725,14 +907,80 @@ export default function AllProductsCatalouge() {
       ? `Browse ${activeBrand} products in the Pupscribe product catalogue.`
       : 'Browse the latest pet products in the Pupscribe product catalogue.';
 
+  // A brand's own artwork makes the WhatsApp/social unfurl of a shared brand
+  // link look like the brand rather than a generic page card.
+  const shareImage = selectedBrandEntry?.secondary_image_url || undefined;
+  const canonicalUrl = activeBrand
+    ? `${CATALOGUE_URL}?brand=${toUrlValue(activeBrand)}`
+    : CATALOGUE_URL;
+
+  // Structured data for the products actually on the page. Built from the
+  // server-rendered set when there is one, so it ships inside the HTML.
+  const structuredData = useMemo(() => {
+    const source = (itemsData || []).slice(0, STRUCTURED_DATA_LIMIT);
+    if (source.length === 0) return null;
+
+    const itemList = {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      name: headTitle,
+      itemListElement: source.map((item, index) => {
+        const product = getItemProduct(item);
+        return {
+          '@type': 'ListItem',
+          position: index + 1,
+          item: {
+            '@type': 'Product',
+            name: product?.name,
+            ...(product?.images?.[0] ? { image: product.images[0] } : {}),
+            ...(product?.brand ? { brand: { '@type': 'Brand', name: product.brand } } : {}),
+            ...(product?.category ? { category: product.category } : {}),
+            ...(product?.cf_sku_code ? { sku: product.cf_sku_code } : {}),
+            offers: {
+              '@type': 'Offer',
+              priceCurrency: 'INR',
+              price: product?.rate ?? 0,
+              availability: 'https://schema.org/InStock',
+              url: canonicalUrl,
+            },
+          },
+        };
+      }),
+    };
+
+    const breadcrumbs = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Pupscribe Marketplace', item: SITE_URL },
+        { '@type': 'ListItem', position: 2, name: 'Catalogue', item: `${SITE_URL}/catalogues` },
+        ...(activeBrand
+          ? [{ '@type': 'ListItem', position: 3, name: brandDisplayName(activeBrand), item: canonicalUrl }]
+          : []),
+      ],
+    };
+
+    return JSON.stringify([itemList, breadcrumbs]);
+  }, [itemsData, headTitle, canonicalUrl, activeBrand]);
+
   return (
     <>
     <Head>
       <title>{headTitle}</title>
       <meta name='description' content={headDescription} />
+      <link rel='canonical' href={canonicalUrl} />
       <meta property='og:title' content={headTitle} />
       <meta property='og:description' content={headDescription} />
       <meta property='og:type' content='website' />
+      <meta property='og:url' content={canonicalUrl} />
+      {shareImage && <meta property='og:image' content={shareImage} />}
+      <meta name='twitter:card' content={shareImage ? 'summary_large_image' : 'summary'} />
+      {structuredData && (
+        <script
+          type='application/ld+json'
+          dangerouslySetInnerHTML={{ __html: structuredData }}
+        />
+      )}
     </Head>
     {/* Global keyframe for card stagger animation */}
     <style>{`
@@ -761,14 +1009,19 @@ export default function AllProductsCatalouge() {
       {/* Compact sticky header */}
       <Box
         sx={{
-          bgcolor: 'background.paper',
+          // The page ground, translucent — not `paper`, which read as a
+          // separate slab laid over the top of the page.
+          bgcolor: alpha(theme.palette.background.default, 0.85),
           borderBottom: '1px solid',
           borderColor: 'divider',
           position: 'sticky',
           top: 0,
           zIndex: 100,
-          boxShadow: '0 2px 16px rgba(0,0,0,0.07)',
-          backdropFilter: 'blur(10px)',
+          boxShadow: theme.palette.mode === 'dark'
+            ? '0 2px 16px rgba(0,0,0,0.35)'
+            : '0 2px 16px rgba(0,0,0,0.07)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
         }}
       >
         <Box
@@ -814,9 +1067,26 @@ export default function AllProductsCatalouge() {
               onChange={(e) => handleInputChange(e.target.value)}
               sx={{
                 '& .MuiOutlinedInput-root': {
-                  fontSize: { xs: '0.85rem', sm: '0.9rem' },
-                  borderRadius: 2,
+                  // 16px on phones: anything smaller makes iOS Safari zoom the
+                  // whole page in on focus, which is what made the bar look
+                  // broken on mobile.
+                  fontSize: { xs: '1rem', sm: '0.9rem' },
+                  borderRadius: 999,
+                  // No fill: a tinted pill floating on the header read as a
+                  // slab sitting on top of the page. Just an outline, so the
+                  // header — and the page ground behind it — carries through.
+                  backgroundColor: 'transparent',
+                  transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
+                  '& fieldset': { borderColor: 'divider' },
+                  '&:hover fieldset': {
+                    borderColor: alpha(theme.palette.primary.main, 0.5),
+                  },
+                  '&.Mui-focused': {
+                    boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.18)}`,
+                  },
+                  '&.Mui-focused fieldset': { borderColor: 'primary.main' },
                 },
+                '& .MuiOutlinedInput-input::placeholder': { opacity: 0.7 },
               }}
               InputProps={{
                 startAdornment: (
@@ -841,6 +1111,28 @@ export default function AllProductsCatalouge() {
       </Box>
 
       <Box sx={{ maxWidth: "1400px", margin: "0 auto", width: "100%", p: { xs: 2, sm: 2.5, md: 3 } }}>
+
+        {/* No register band here: the topbar already carries a Register button
+            and the follow-along bar picks guests up as they scroll. A third
+            copy of the same ask above the grid was just in the way. */}
+
+        {/* "Who do you carry?" — answered on the landing view only, and only
+            on small screens: the desktop rail already lays every brand out
+            above the grid, so a second wall of the same logos is noise.
+            Hidden with CSS rather than a breakpoint hook so the wall still
+            ships in the server-rendered HTML for phones and crawlers. */}
+        {!isSearching && activeBrand === 'New Arrivals' && brandList.length > 1 && (
+          <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+            <BrandWall
+              entries={brandList}
+              activeBrand={activeBrand}
+              onSelectBrand={handleBrandTabChange}
+              countsByBrand={productCounts}
+              displayNameOf={brandDisplayName}
+              summaryOf={(brand) => categorySummary(brand, productCounts[brand])}
+            />
+          </Box>
+        )}
 
         {/* Tabs and Sorting Controls */}
         <Box display="flex" flexDirection={"column"} gap={{ xs: 1, sm: 1.5, md: 2 }} sx={{ mb: { xs: 2, md: 3 } }}>
@@ -1441,6 +1733,18 @@ export default function AllProductsCatalouge() {
 
             {/* Products Grid */}
             <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+              {/* One placement for this brand, directly above the grid. Hidden
+                  while searching, where the grid spans brands and a
+                  brand-targeted banner would be misleading. */}
+              {brandBanner && !isSearching && (
+                <FeatureBanner
+                  placement={brandBanner}
+                  brand={activeBrand}
+                  onSelectBrand={handleBrandTabChange}
+                  onSelectCategory={handleCategoryTabChange}
+                  sx={{ mb: { xs: 2, md: 2.5 } }}
+                />
+              )}
               <Box
                 sx={{
                   bgcolor: 'background.paper',
@@ -1463,7 +1767,20 @@ export default function AllProductsCatalouge() {
                 ) : filteredAndSortedItems.length > 0 ? (
                   <>
                     <Box sx={gridSx}>
-                      {visibleItems.map((item, index) => {
+                      {visibleItemsWithPlacements.map((item: any, index: number) => {
+                        if (item.type === 'placement') {
+                          return (
+                            <FeatureBanner
+                              key={item.placementKey}
+                              placement={item.promo}
+                              brand={activeBrand}
+                              onSelectBrand={handleBrandTabChange}
+                              onSelectCategory={handleCategoryTabChange}
+                              // Spans the grid rather than sitting in one cell.
+                              sx={{ gridColumn: '1 / -1', my: { xs: 0.5, md: 1 } }}
+                            />
+                          );
+                        }
                         const animDelay = `${Math.min((index % RENDER_CHUNK) * 35, 560)}ms`;
                         const animStyle = {
                           animation: 'catalogueFadeUp 0.42s ease both',
@@ -1593,7 +1910,13 @@ export default function AllProductsCatalouge() {
         <Box
           sx={{
             position: 'fixed',
-            bottom: { xs: theme.spacing(3), sm: theme.spacing(4), md: theme.spacing(5) },
+            // Lifts clear of the register bar when that is on screen.
+            bottom: {
+              xs: showCtaBar ? theme.spacing(12) : theme.spacing(3),
+              sm: theme.spacing(4),
+              md: theme.spacing(5),
+            },
+            transition: 'bottom 0.2s ease',
             right: { xs: theme.spacing(1.5), sm: theme.spacing(2), md: theme.spacing(3) },
             display: 'flex',
             flexDirection: 'column',
@@ -1609,6 +1932,10 @@ export default function AllProductsCatalouge() {
             isMobile={isMobile}
           />
         </Box>
+
+        {showCtaBar && (
+          <GuestCta source="bar" onDismiss={() => setCtaDismissed(true)} />
+        )}
 
         <ImagePopupDialog
           open={openImagePopup}
@@ -1627,6 +1954,8 @@ export default function AllProductsCatalouge() {
           product={quickViewProduct}
           allVariants={quickViewVariants}
           handleImageClick={handleImageClick}
+          showRegisterCta={!!isGuest}
+          onRegisterClick={() => router.push('/register?from=catalogue_product')}
         />
       </Box>
     </Box>
