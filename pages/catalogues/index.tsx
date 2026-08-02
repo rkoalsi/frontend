@@ -13,6 +13,8 @@ import {
   Chip,
   alpha,
   Container,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
@@ -27,8 +29,8 @@ import {
   PictureAsPdf,
   OpenInNew,
   NewReleases,
-  AutoStories,
   Check,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 
@@ -60,6 +62,129 @@ const initialsForName = (name: string): string => {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 };
 
+interface BrandDetail {
+  _id: string;
+  name: string;
+  image_url?: string;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Logo plate — the card's masthead. Brand logos are dark-on-          */
+/*  transparent SVGs, so the plate stays light in both themes.          */
+/*  Catalogues with no linked brand fall back to a gradient monogram.   */
+/* ------------------------------------------------------------------ */
+const LOGO_PLATE_HEIGHT = 132;
+
+const LogoPlate = ({
+  name,
+  brands,
+}: {
+  name: string;
+  brands: BrandDetail[];
+}) => {
+  // Sibling brands can share one logo file (e.g. Afterbath / Afterbath Litter)
+  // — showing it twice just looks like a rendering bug.
+  const withLogos = (brands || []).filter(
+    (b, i, all) =>
+      b?.image_url && all.findIndex((o) => o.image_url === b.image_url) === i
+  );
+  const [g1, g2] = gradientForName(name || '?');
+  const paired = withLogos.length > 1;
+
+  return (
+    <Box
+      className='logo-plate'
+      sx={{
+        position: 'relative',
+        height: LOGO_PLATE_HEIGHT,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 2,
+        px: 3,
+        overflow: 'hidden',
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        background:
+          withLogos.length > 0
+            ? `radial-gradient(120% 120% at 50% 0%, #FFFFFF 40%, #F2F1F8 100%)`
+            : `linear-gradient(135deg, ${g1}, ${g2})`,
+      }}
+    >
+      {/* Light sweep that crosses the plate on hover. */}
+      <Box
+        className='plate-sheen'
+        aria-hidden
+        sx={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          left: '-60%',
+          width: '45%',
+          background: `linear-gradient(90deg, transparent, ${alpha(
+            '#fff',
+            withLogos.length > 0 ? 0.85 : 0.25
+          )}, transparent)`,
+          transform: 'translateX(0) skewX(-18deg)',
+          transition: 'transform 0.75s cubic-bezier(0.4,0,0.2,1)',
+          pointerEvents: 'none',
+        }}
+      />
+      {withLogos.length === 0 ? (
+        <Typography
+          className='logo-mark'
+          sx={{
+            color: '#fff',
+            fontWeight: 800,
+            fontSize: '2.25rem',
+            letterSpacing: '0.04em',
+            transition: 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
+          }}
+        >
+          {initialsForName(name || '?')}
+        </Typography>
+      ) : (
+        withLogos.slice(0, 2).map((b, i) => (
+          <Box
+            key={b._id}
+            className='logo-mark'
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              minWidth: 0,
+              transition: 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
+            }}
+          >
+            {i > 0 && (
+              <Box
+                aria-hidden
+                sx={{
+                  width: '1px',
+                  height: 44,
+                  bgcolor: alpha('#000', 0.12),
+                  flexShrink: 0,
+                }}
+              />
+            )}
+            <Box
+              component='img'
+              src={b.image_url}
+              alt={b.name}
+              loading='lazy'
+              sx={{
+                height: paired ? 56 : 68,
+                maxWidth: paired ? 104 : 190,
+                objectFit: 'contain',
+              }}
+            />
+          </Box>
+        ))
+      )}
+    </Box>
+  );
+};
+
 /* ------------------------------------------------------------------ */
 /*  Styled building blocks                                             */
 /* ------------------------------------------------------------------ */
@@ -68,8 +193,8 @@ const ShowcaseCard = styled(Paper)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   height: '100%',
-  padding: theme.spacing(2.5),
-  borderRadius: 18,
+  padding: 0,
+  borderRadius: 20,
   cursor: 'pointer',
   overflow: 'hidden',
   backgroundColor: theme.palette.background.paper,
@@ -78,29 +203,23 @@ const ShowcaseCard = styled(Paper)(({ theme }) => ({
     theme.palette.mode === 'dark'
       ? '0 1px 2px rgba(0,0,0,0.4)'
       : '0 1px 4px rgba(0,0,0,0.05)',
-  transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s ease, border-color 0.3s ease',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    height: '3px',
-    width: '100%',
-    background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-    transform: 'scaleX(0)',
-    transformOrigin: 'left',
-    transition: 'transform 0.4s cubic-bezier(0.4,0,0.2,1)',
-  },
-  '&:hover': {
+  transition:
+    'transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s ease, border-color 0.3s ease',
+  '&:hover, &:focus-visible': {
     transform: 'translateY(-6px)',
     borderColor: alpha(theme.palette.primary.main, 0.4),
     boxShadow:
       theme.palette.mode === 'dark'
         ? `0 14px 36px ${alpha('#000', 0.55)}`
         : `0 14px 30px ${alpha(theme.palette.primary.main, 0.18)}`,
-    '&::before': { transform: 'scaleX(1)' },
-    '& .monogram': { transform: 'scale(1.06) rotate(-2deg)' },
-    '& .open-cue': { opacity: 1, transform: 'translateX(0)' },
+    '& .logo-mark': { transform: 'scale(1.05)' },
+    '& .plate-sheen': { transform: 'translateX(140%) skewX(-18deg)' },
+    '& .go-cue': { color: theme.palette.primary.main },
+    '& .go-cue .go-arrow': { transform: 'translateX(4px)' },
+  },
+  '&:focus-visible': {
+    outline: `2px solid ${theme.palette.primary.main}`,
+    outlineOffset: 2,
   },
 }));
 
@@ -214,20 +333,27 @@ const CardSkeleton = () => (
   <Paper
     elevation={0}
     sx={{
-      p: 2.5,
-      borderRadius: '18px',
+      borderRadius: '20px',
       border: '1px solid',
       borderColor: 'divider',
       bgcolor: 'background.paper',
       height: '100%',
+      overflow: 'hidden',
     }}
   >
-    <Skeleton variant='rounded' width={56} height={56} sx={{ borderRadius: '14px', mb: 2 }} />
-    <Skeleton variant='text' width='65%' height={28} sx={{ mb: 0.5 }} />
-    <Skeleton variant='text' width='45%' height={20} sx={{ mb: 2 }} />
-    <Box display='flex' gap={1}>
-      <Skeleton variant='rounded' width={76} height={34} sx={{ borderRadius: '10px' }} />
-      <Skeleton variant='rounded' width={76} height={34} sx={{ borderRadius: '10px' }} />
+    <Skeleton
+      variant='rectangular'
+      height={LOGO_PLATE_HEIGHT}
+      sx={{ transform: 'none' }}
+    />
+    <Box sx={{ p: 2.5, pt: 2 }}>
+      <Skeleton variant='text' width='35%' height={16} />
+      <Skeleton variant='text' width='65%' height={30} />
+      <Skeleton variant='text' width='50%' height={20} sx={{ mb: 2 }} />
+      <Box display='flex' justifyContent='space-between' alignItems='center'>
+        <Skeleton variant='text' width={120} height={22} />
+        <Skeleton variant='rounded' width={38} height={34} sx={{ borderRadius: '10px' }} />
+      </Box>
     </Box>
   </Paper>
 );
@@ -238,6 +364,7 @@ function Catalogue(_props: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const prefersReducedMotion = useReducedMotion();
@@ -304,6 +431,20 @@ function Catalogue(_props: Props) {
     ? { initial: false as const }
     : { initial: 'hidden' as const, animate: 'visible' as const };
 
+  // Matches on the catalogue name and on any linked brand name, so searching
+  // "Dogfest" finds the Petfest catalogue.
+  const visibleBrands = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return brands;
+    return brands.filter((b: any) => {
+      const haystack = [b.name, ...(b.brand_details || []).map((d: BrandDetail) => d.name)]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [brands, query]);
+
   const countLabel = useMemo(() => {
     const n = brands.length;
     // +1 for the All Products catalogue
@@ -321,33 +462,6 @@ function Catalogue(_props: Props) {
         overflow: 'hidden',
       }}
     >
-      {/* Brand-tinted background wash */}
-      <Box
-        aria-hidden
-        sx={{
-          position: 'absolute',
-          inset: 0,
-          pointerEvents: 'none',
-          zIndex: 0,
-          background:
-            theme.palette.mode === 'dark'
-              ? `radial-gradient(900px circle at 50% -120px, ${alpha(
-                  theme.palette.secondary.main,
-                  0.18
-                )}, transparent 60%), radial-gradient(700px circle at 100% 0, ${alpha(
-                  theme.palette.primary.main,
-                  0.12
-                )}, transparent 55%)`
-              : `radial-gradient(900px circle at 50% -120px, ${alpha(
-                  theme.palette.secondary.main,
-                  0.1
-                )}, transparent 60%), radial-gradient(700px circle at 100% 0, ${alpha(
-                  theme.palette.primary.main,
-                  0.07
-                )}, transparent 55%)`,
-        }}
-      />
-
       <Container
         maxWidth='lg'
         sx={{ position: 'relative', zIndex: 1, pt: { xs: 3, sm: 5, md: 6 } }}
@@ -363,52 +477,90 @@ function Catalogue(_props: Props) {
         >
           <Header title='View Catalogues' showBackButton useBack />
 
+          {/* Masthead: a single accent rule in the app's primary colour. */}
           <Box
             sx={{
               display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
-              alignItems: 'center',
-              justifyContent: 'space-between',
+              alignItems: 'stretch',
               gap: 2,
-              mt: { xs: 1.5, sm: 2 },
+              mt: { xs: 2, sm: 2.5 },
+              pl: { xs: 1.5, sm: 2 },
+              borderLeft: '3px solid',
+              borderColor: 'primary.main',
             }}
           >
             <Box
               sx={{
                 display: 'flex',
-                alignItems: 'center',
-                gap: 1.25,
-                flexWrap: 'wrap',
-                justifyContent: { xs: 'center', sm: 'flex-start' },
-                textAlign: { xs: 'center', sm: 'left' },
+                flexDirection: { xs: 'column', sm: 'row' },
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                justifyContent: 'space-between',
+                gap: 2,
+                flex: 1,
               }}
             >
-              <Typography variant='body1' color='text.secondary' sx={{ fontWeight: 500 }}>
-                Our complete brand collection, ready to share
-              </Typography>
-              {!loading && !error && (
-                <Chip
-                  label={countLabel}
-                  size='small'
-                  color='primary'
-                  variant='outlined'
-                  sx={{ fontWeight: 600, height: 24 }}
-                />
-              )}
-            </Box>
+              <Box>
+                <Typography
+                  variant='overline'
+                  sx={{
+                    display: 'block',
+                    fontWeight: 800,
+                    letterSpacing: '0.18em',
+                    color: 'text.disabled',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Brand library
+                </Typography>
+                <Typography
+                  variant='body1'
+                  color='text.secondary'
+                  sx={{ fontWeight: 500 }}
+                >
+                  Every brand catalogue, ready to open or share
+                  {!loading && !error && (
+                    <Box
+                      component='span'
+                      sx={{ color: 'text.primary', fontWeight: 700 }}
+                    >
+                      {' '}
+                      — {countLabel}
+                    </Box>
+                  )}
+                </Typography>
+              </Box>
 
-            <ShareButton
-              variant='contained'
-              color='secondary'
-              startIcon={<Share />}
-              onClick={handleShareAll}
-              disabled={brands.length === 0 || loading}
-              fullWidth={isMobile}
-              sx={{ flexShrink: 0 }}
-            >
-              Copy All Links
-            </ShareButton>
+              <ShareButton
+                variant='contained'
+                color='secondary'
+                startIcon={<Share />}
+                onClick={handleShareAll}
+                disabled={brands.length === 0 || loading}
+                fullWidth={isMobile}
+                sx={{ flexShrink: 0 }}
+              >
+                Copy All Links
+              </ShareButton>
+            </Box>
           </Box>
+
+          {!loading && !error && brands.length > 4 && (
+            <TextField
+              size='small'
+              fullWidth
+              placeholder='Search by catalogue or brand…'
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              sx={{ mt: 2.5, maxWidth: { sm: 380 } }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position='start'>
+                    <SearchIcon fontSize='small' />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          )}
         </Box>
 
         {/* ---------------------------------------------------------- */}
@@ -579,8 +731,49 @@ function Catalogue(_props: Props) {
                 </FeaturedCard>
               </Box>
 
+              {/* Section rule */}
+              {visibleBrands.length > 0 && (
+                <Box
+                  component={motion.div}
+                  variants={itemVariants}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    mt: 4,
+                    mb: 2,
+                  }}
+                >
+                  <Typography
+                    variant='overline'
+                    sx={{
+                      fontWeight: 800,
+                      letterSpacing: '0.18em',
+                      color: 'text.secondary',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    By brand
+                  </Typography>
+                  <Box
+                    aria-hidden
+                    sx={{
+                      flex: 1,
+                      height: '1px',
+                      bgcolor: 'divider',
+                    }}
+                  />
+                  <Typography
+                    variant='caption'
+                    sx={{ color: 'text.disabled', fontWeight: 700 }}
+                  >
+                    {visibleBrands.length}
+                  </Typography>
+                </Box>
+              )}
+
               {/* Brand grid */}
-              {brands.length > 0 && (
+              {visibleBrands.length > 0 && (
                 <Box
                   sx={{
                     display: 'grid',
@@ -592,10 +785,19 @@ function Catalogue(_props: Props) {
                     gap: 2.5,
                   }}
                 >
-                  {brands.map((b: any, index: number) => {
+                  {visibleBrands.map((b: any, index: number) => {
                     const key = b._id || `brand-${index}`;
-                    const [g1, g2] = gradientForName(b.name || '?');
                     const isCopied = copiedKey === key;
+                    // Only worth naming the brands when they differ from the
+                    // catalogue title (e.g. Petfest -> Dogfest, Catfest).
+                    const brandNames: string[] = (b.brand_details || [])
+                      .map((d: BrandDetail) => d.name)
+                      .filter(Boolean);
+                    const showBrandNames =
+                      brandNames.length > 1 ||
+                      (brandNames.length === 1 &&
+                        brandNames[0].toLowerCase() !==
+                          String(b.name || '').toLowerCase());
                     return (
                       <Box
                         key={key}
@@ -606,118 +808,123 @@ function Catalogue(_props: Props) {
                       >
                         <ShowcaseCard
                           elevation={0}
+                          tabIndex={0}
+                          role='button'
+                          aria-label={`Open ${b.name} catalogue`}
                           onClick={() => handleOpenCatalogue(b.image_url, b.name)}
+                          onKeyDown={(e: React.KeyboardEvent) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleOpenCatalogue(b.image_url, b.name);
+                            }
+                          }}
                         >
+                          <LogoPlate
+                            name={b.name || '?'}
+                            brands={b.brand_details || []}
+                          />
+
                           <Box
                             sx={{
                               display: 'flex',
-                              alignItems: 'flex-start',
-                              justifyContent: 'space-between',
-                              mb: 2,
+                              flexDirection: 'column',
+                              flex: 1,
+                              p: 2.5,
+                              pt: 2,
                             }}
                           >
-                            <Box
-                              className='monogram'
+                            {/* Index reads as an editorial catalogue number. */}
+                            <Typography
+                              variant='overline'
                               sx={{
-                                position: 'relative',
-                                width: 56,
-                                height: 56,
-                                borderRadius: 14,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: `linear-gradient(135deg, ${g1}, ${g2})`,
-                                boxShadow: `0 6px 16px ${alpha(g1, 0.4)}`,
-                                transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
-                                flexShrink: 0,
+                                color: 'text.disabled',
+                                fontWeight: 700,
+                                letterSpacing: '0.14em',
+                                lineHeight: 1.6,
                               }}
                             >
-                              <Typography
+                              {String(index + 1).padStart(2, '0')} ·{' '}
+                              {showBrandNames
+                                ? `${brandNames.length} brands`
+                                : 'Brand catalogue'}
+                            </Typography>
+
+                            <Typography
+                              variant='h6'
+                              fontWeight={700}
+                              color='text.primary'
+                              sx={{ lineHeight: 1.3 }}
+                              noWrap
+                              title={b.name}
+                            >
+                              {b.name}
+                            </Typography>
+
+                            <Typography
+                              variant='body2'
+                              color='text.secondary'
+                              noWrap
+                              sx={{ mt: 0.25 }}
+                            >
+                              {showBrandNames
+                                ? brandNames.join(' · ')
+                                : 'Full product range, PDF'}
+                            </Typography>
+
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 1,
+                                mt: 'auto',
+                                pt: 2,
+                              }}
+                            >
+                              <Box
+                                className='go-cue'
                                 sx={{
-                                  color: '#fff',
-                                  fontWeight: 800,
-                                  fontSize: '1.15rem',
-                                  letterSpacing: '0.02em',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 0.75,
+                                  color: 'text.secondary',
+                                  fontWeight: 700,
+                                  fontSize: '0.875rem',
+                                  transition: 'color 0.25s ease',
                                 }}
                               >
-                                {initialsForName(b.name || '?')}
-                              </Typography>
-                            </Box>
+                                <PictureAsPdf sx={{ fontSize: 18 }} />
+                                View catalogue
+                                <OpenInNew
+                                  className='go-arrow'
+                                  sx={{
+                                    fontSize: 16,
+                                    transition:
+                                      'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
+                                  }}
+                                />
+                              </Box>
 
-                            <Box
-                              className='open-cue'
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 0.5,
-                                color: 'primary.main',
-                                opacity: 0,
-                                transform: 'translateX(-8px)',
-                                transition: 'all 0.3s ease',
-                                mt: 0.5,
-                              }}
-                            >
-                              <AutoStories sx={{ fontSize: 18 }} />
-                            </Box>
-                          </Box>
-
-                          <Typography
-                            variant='h6'
-                            fontWeight={700}
-                            color='text.primary'
-                            sx={{ lineHeight: 1.3, mb: 0.25 }}
-                            noWrap
-                            title={b.name}
-                          >
-                            {b.name}
-                          </Typography>
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 0.5,
-                              color: 'text.secondary',
-                              mb: 2,
-                            }}
-                          >
-                            <PictureAsPdf sx={{ fontSize: 16 }} />
-                            <Typography variant='body2' color='text.secondary'>
-                              PDF Catalogue
-                            </Typography>
-                          </Box>
-
-                          <Box
-                            display='flex'
-                            gap={1}
-                            mt='auto'
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Tooltip title='Copy link' arrow>
-                              <ActionButton
-                                size='small'
-                                onClick={(e) => handleCopyLink(e, b.image_url, b.name, key)}
+                              <Tooltip
+                                title={isCopied ? 'Copied' : 'Copy link'}
+                                arrow
                               >
-                                {isCopied ? (
-                                  <Check fontSize='small' color='success' />
-                                ) : (
-                                  <ContentCopy fontSize='small' />
-                                )}
-                                <Typography variant='caption' sx={{ ml: 0.5, fontWeight: 600 }}>
-                                  {isCopied ? 'Copied' : 'Copy'}
-                                </Typography>
-                              </ActionButton>
-                            </Tooltip>
-                            <Tooltip title='Open in new tab' arrow>
-                              <ActionButton
-                                size='small'
-                                onClick={() => handleOpenCatalogue(b.image_url, b.name)}
-                              >
-                                <OpenInNew fontSize='small' />
-                                <Typography variant='caption' sx={{ ml: 0.5, fontWeight: 600 }}>
-                                  Open
-                                </Typography>
-                              </ActionButton>
-                            </Tooltip>
+                                <ActionButton
+                                  size='small'
+                                  aria-label={`Copy ${b.name} catalogue link`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCopyLink(e, b.image_url, b.name, key);
+                                  }}
+                                >
+                                  {isCopied ? (
+                                    <Check fontSize='small' color='success' />
+                                  ) : (
+                                    <ContentCopy fontSize='small' />
+                                  )}
+                                </ActionButton>
+                              </Tooltip>
+                            </Box>
                           </Box>
                         </ShowcaseCard>
                       </Box>
@@ -727,7 +934,7 @@ function Catalogue(_props: Props) {
               )}
 
               {/* Empty state */}
-              {brands.length === 0 && (
+              {visibleBrands.length === 0 && (
                 <Box component={motion.div} variants={itemVariants}>
                   <Paper
                     elevation={0}
@@ -742,10 +949,14 @@ function Catalogue(_props: Props) {
                   >
                     <MenuBook sx={{ fontSize: 56, color: 'text.disabled', mb: 1.5 }} />
                     <Typography variant='h6' color='text.secondary' fontWeight={500}>
-                      No brand catalogues available
+                      {query.trim()
+                        ? `No catalogues match “${query.trim()}”`
+                        : 'No brand catalogues available'}
                     </Typography>
                     <Typography variant='body2' color='text.disabled' sx={{ mt: 0.5 }}>
-                      Check back later for brand PDFs
+                      {query.trim()
+                        ? 'Try a different brand or catalogue name'
+                        : 'Check back later for brand PDFs'}
                     </Typography>
                   </Paper>
                 </Box>
