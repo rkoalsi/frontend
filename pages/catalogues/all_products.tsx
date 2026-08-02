@@ -1116,18 +1116,22 @@ export default function AllProductsCatalouge({ initialData }: AllProductsProps) 
             and the follow-along bar picks guests up as they scroll. A third
             copy of the same ask above the grid was just in the way. */}
 
-        {/* "Who do you carry?" — answered on the landing view only. Once a
-            brand is chosen the rail and the spotlight above the grid are the
-            brand context, and a second copy of every logo is just noise. */}
+        {/* "Who do you carry?" — answered on the landing view only, and only
+            on small screens: the desktop rail already lays every brand out
+            above the grid, so a second wall of the same logos is noise.
+            Hidden with CSS rather than a breakpoint hook so the wall still
+            ships in the server-rendered HTML for phones and crawlers. */}
         {!isSearching && activeBrand === 'New Arrivals' && brandList.length > 1 && (
-          <BrandWall
-            entries={brandList}
-            activeBrand={activeBrand}
-            onSelectBrand={handleBrandTabChange}
-            countsByBrand={productCounts}
-            displayNameOf={brandDisplayName}
-            summaryOf={(brand) => categorySummary(brand, productCounts[brand])}
-          />
+          <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+            <BrandWall
+              entries={brandList}
+              activeBrand={activeBrand}
+              onSelectBrand={handleBrandTabChange}
+              countsByBrand={productCounts}
+              displayNameOf={brandDisplayName}
+              summaryOf={(brand) => categorySummary(brand, productCounts[brand])}
+            />
+          </Box>
         )}
 
         {/* Tabs and Sorting Controls */}
