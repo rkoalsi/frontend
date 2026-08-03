@@ -20,8 +20,6 @@ import {
   Card,
   CardContent,
   useMediaQuery,
-  Snackbar,
-  Alert,
   IconButton,
   CircularProgress,
   Dialog,
@@ -386,11 +384,8 @@ const NewOrder: React.FC = () => {
   const [shippingAddress, setShippingAddress] = useState<any>(null);
   const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
   const [activeStep, setActiveStep] = useState<number>(isShared ? 3 : (isCustomerUser ? 1 : 0));
-  const [open, setOpen] = useState<boolean>(false);
-  const [error, setError] = useState<any>(null);
   const [sort, setSort] = useState<string>('default');
   const [link, setLink] = useState(''); // populated by getOrder once the order loads
-  const [linkCopied, setLinkCopied] = useState<boolean>(false);
   const [specialMargins, setSpecialMargins] = useState<{ [key: string]: string }>({});
   const [specialMarginsList, setSpecialMarginsList] = useState<any[]>([]);
   const [marginDialogOpen, setMarginDialogOpen] = useState(false);
@@ -927,8 +922,7 @@ const NewOrder: React.FC = () => {
   const handleNext = useCallback(async () => {
     const { message, body } = validateAndCollectData(activeStep);
     if (message) {
-      setError({ message, status: 'error' });
-      setOpen(true);
+      toast.error(message);
       return;
     }
     const saved = await saveOrder(body);
@@ -990,7 +984,7 @@ const NewOrder: React.FC = () => {
       if (currentCategory) params.set('category', currentCategory);
     }
     const link = `${baseURL}/orders/new/${id}?${params.toString()}`;
-    if (await copyToClipboard(link)) setLinkCopied(true);
+    if (await copyToClipboard(link)) toast.success('Share link copied to clipboard');
   }, [id]);
 
   const handleStepClick = useCallback(
@@ -998,21 +992,13 @@ const NewOrder: React.FC = () => {
       if (isCustomerUser && index === 0) return;
       if (isSharedGuest) {
         if (index < 3 || index > 4) {
-          setError({
-            message: 'You can only navigate between Products and Review steps.',
-            status: 'error',
-          });
-          setOpen(true);
+          toast.error('You can only navigate between Products and Review steps.');
           return;
         }
         // Review requires products in the cart; going (back) to Products is
         // always allowed.
         if (index === 4 && selectedProducts.length === 0) {
-          setError({
-            message: 'Add products to the cart before reviewing the order.',
-            status: 'error',
-          });
-          setOpen(true);
+          toast.error('Add products to the cart before reviewing the order.');
           return;
         }
         setActiveStep(index);
@@ -1040,10 +1026,6 @@ const NewOrder: React.FC = () => {
     [activeStep, isSharedGuest, selectedProducts, validateAndCollectData, saveOrder, isCustomerUser]
   );
 
-  const handleClose = useCallback((reason: any) => {
-    if (reason === 'clickaway') return;
-    setOpen(false);
-  }, []);
 
   useEffect(() => {
     if (isShared && order) {
@@ -1276,6 +1258,18 @@ const NewOrder: React.FC = () => {
   // Customer/Billing/Shipping steps show a fixed Previous/Next bar instead.
   // Products (cart bar) and Review (multiple action buttons) keep inline nav.
   const showMobileNavBar = isMobile && activeStep < 3;
+
+  // Toasts land bottom-centre on phones, exactly where the fixed cart / nav
+  // bars live. BrandToaster reads this custom property to lift them clear —
+  // the same job the old per-page Snackbar did with `mb: 9`.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty(
+      '--app-toast-offset',
+      showCartBar || showMobileNavBar ? '72px' : '0px'
+    );
+    return () => root.style.removeProperty('--app-toast-offset');
+  }, [showCartBar, showMobileNavBar]);
 
   return (
     <Box
@@ -2539,33 +2533,6 @@ const NewOrder: React.FC = () => {
         />
       )}
 
-      {/* ── Snackbars ── */}
-      <Snackbar
-        open={linkCopied}
-        autoHideDuration={3000}
-        onClose={() => setLinkCopied(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        // Clear the fixed cart/nav bars when one is showing
-        sx={{ mb: showCartBar || showMobileNavBar ? 9 : 1 }}
-      >
-        <Alert onClose={() => setLinkCopied(false)} severity='success'>
-          Link copied to clipboard!
-        </Alert>
-      </Snackbar>
-
-      {error && (
-        <Snackbar
-          open={open}
-          autoHideDuration={6000}
-          onClose={handleClose}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-          sx={{ mb: showCartBar || showMobileNavBar ? 9 : 1 }}
-        >
-          <Alert onClose={handleClose} severity={error.status} sx={{ width: '100%' }}>
-            {error.message}
-          </Alert>
-        </Snackbar>
-      )}
     </Box>
   );
 };
