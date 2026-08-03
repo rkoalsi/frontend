@@ -13,7 +13,7 @@ import AdminLayout from '../src/components/AdminLayout';
 import CustomerLayout from '../src/components/CustomerLayout';
 import ErrorBoundary from '../src/components/ErrorBoundary';
 import PresenceHeartbeat from '../src/components/PresenceHeartbeat';
-import { ToastContainer } from 'react-toastify';
+import BrandToaster from '../src/components/common/BrandToaster';
 import 'react-toastify/dist/ReactToastify.css';
 import 'react-quill/dist/quill.snow.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -363,7 +363,7 @@ export default function MyApp(props: AppProps) {
             </Head>
             <PresenceHeartbeat />
             <ThemeWrapper>
-              <ToastContainer position='top-left' autoClose={1000} />
+              <BrandToaster />
               <LayoutComponent>
                 <ErrorBoundary key={router.pathname}>
                   <Component {...pageProps} />
