@@ -71,6 +71,7 @@ import AuthContext from './Auth';
 import { useColorMode } from '../context/ColorModeContext';
 import { appShellBg, headerGradient } from '../util/surfaces';
 import NotificationBell from './common/NotificationBell';
+import CommandPalette from './common/CommandPalette';
 import {
   BrandLockup,
   TopbarAction,
@@ -582,6 +583,9 @@ const AdminLayout = ({ children }: any) => {
         <Toolbar />
         {children}
       </Box>
+
+      {/* ⌘K jump-to-anything, indexing this sidebar plus the home actions. */}
+      <CommandPalette />
     </Box>
   );
 };

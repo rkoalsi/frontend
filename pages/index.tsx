@@ -20,9 +20,10 @@ import {
   DialogActions,
   Drawer,
   Divider,
+  InputBase,
 } from '@mui/material';
 import { useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import AuthContext from '../src/components/Auth';
+import AuthContext, { hadSessionHint } from '../src/components/Auth';
 import ProfileIncompleteBanner from '../src/components/ProfileIncompleteBanner';
 import GuestLanding, { Brand } from '../src/components/marketing/GuestLanding';
 import { useRouter } from 'next/router';
@@ -61,6 +62,7 @@ import {
   Badge,
   QrCode2,
   Close,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import { QRCodeCanvas } from 'qrcode.react';
 import axiosInstance from '../src/util/axios';
@@ -70,6 +72,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CustomerCreationRequestForm from '../src/components/CustomerCreationRequestForm';
 import { toast } from 'react-toastify';
 import CustomerTour, { TourStep } from '../src/components/common/CustomerTour';
+import CatalogueShowcaseCard from '../src/components/catalogue/CatalogueShowcaseCard';
+import HomeHeaderCard from '../src/components/home/HomeHeaderCard';
+import CelebrationOverlay from '../src/components/home/CelebrationOverlay';
+import { MenuItem, digitalCardItem, getMenuSectionsForRole } from '../src/util/homeMenu';
+import {
+  NavEntry,
+  getFrequentIds,
+  recordUsage,
+  searchEntries,
+  syncUsage,
+} from '../src/util/navSearch';
 
 const CUSTOMER_TOUR_STEPS: TourStep[] = [
   {
@@ -263,205 +276,42 @@ const CatalogueActionButton = styled(IconButton)(({ theme }) => ({
   },
 }));
 
-// Actions allowed for customer role (scalable - add more as needed)
-const customerAllowedActions = [
-  'newOrder',
-  'pastOrder',
-  'shipments',
-  'customer'
-];
-
-// Roles allowed to see restricted cards (Payments Due, Return Orders, Shipments,
-// and the entire Daily and Customers sections). Other staff roles (e.g.
-// marketing_manager, hr) do not see these.
-const privilegedRoles = [
-  'admin',
-  'sales_admin',
-  'sales_person',
-  'catalogue_manager',
-  'warehouse',
-];
+// The menu definition itself now lives in src/util/homeMenu.tsx so the ⌘K
+// palette can index the same list this page renders.
 
 // Grouped menu items for better organization
-const menuSections = [
-  {
-    title: 'Orders',
-    items: [
-      {
-        icon: <ShoppingCart />,
-        text: 'Create New Order',
-        color: '#6A5AD1',
-        action: 'newOrder',
-        tourId: 'home-new-order',
-      },
-      {
-        icon: <NewReleases />,
-        text: 'New Arrivals',
-        color: '#e11d48',
-        action: 'new_arrivals',
-      },
-      {
-        icon: <History />,
-        text: 'Past Orders',
-        color: '#8b5cf6',
-        action: 'pastOrder',
-      },
-      {
-        icon: <Payment />,
-        text: 'Payments Due',
-        color: '#ef4444',
-        action: 'paymentsDue',
-        restricted: true,
-      },
-      {
-        icon: <KeyboardReturn />,
-        text: 'Return Orders',
-        color: '#f59e0b',
-        action: 'return_orders',
-        restricted: true,
-      },
-      {
-        icon: <Rocket />,
-        text: 'Shipments',
-        color: '#10b981',
-        action: 'shipments',
-        restricted: true,
-      },
-      {
-        icon: <LineAxis />,
-        text: 'Customer Dashboard',
-        color: '#64748b',
-        action: 'customer',
-      },
-    ],
-  },
-  {
-    title: 'Daily',
-    restricted: true,
-    items: [
-      {
-        icon: <CalendarMonth />,
-        text: 'Daily Visits',
-        color: '#06b6d4',
-        action: 'dailyVisits',
-      },
-      // {
-      //   icon: <Check />,
-      //   text: 'Greythr Login',
-      //   color: '#10b981',
-      //   action: 'check_in',
-      // },
-      {
-        icon: <ReceiptLong />,
-        text: 'Expense Estimates',
-        color: '#f97316',
-        action: 'expenses',
-      },
-      {
-        icon: <Receipt />,
-        text: 'Cheques',
-        color: '#7c3aed',
-        action: 'cheques',
-      },
-    ],
-  },
-  {
-    title: 'Customers',
-    restricted: true,
-    items: [
-      {
-        icon: <PersonAdd />,
-        text: 'Create New Customer',
-        color: '#22c55e',
-        action: 'create_customer',
-      },
-      {
-        icon: <Key />,
-        text: 'Customer Logins',
-        color: '#6366f1',
-        action: 'customer_logins',
-      },
-      {
-        icon: <ShoppingCart />,
-        text: 'Customer Orders',
-        color: '#0ea5e9',
-        action: 'customer_orders',
-      },
-      {
-        icon: <LineAxis />,
-        text: 'Customer Analytics',
-        color: '#64748b',
-        action: 'customer_analytics',
-      },
-      {
-        icon: <Repeat />,
-        text: 'Expected Reorders',
-        color: '#14b8a6',
-        action: 'expected_reorder',
-      },
-      {
-        icon: <Assignment />,
-        text: 'My Customer Requests',
-        color: '#6A5AD1',
-        action: 'my_customer_requests',
-      },
-      {
-        icon: <Insights />,
-        text: 'Potential Customers',
-        color: '#ec4899',
-        action: 'potential_customers',
-      },
-      {
-        icon: <Phishing />,
-        text: 'Set Customer Hooks',
-        color: '#a855f7',
-        action: 'hooks',
-      },
-      {
-        icon: <Radar />,
-        text: 'Targeted Customers',
-        color: '#f97316',
-        action: 'targeted_customer',
-      },
-    ],
-  },
-  {
-    title: 'Resources',
-    items: [
-      {
-        icon: <Campaign />,
-        text: 'Announcements',
-        color: '#f59e0b',
-        action: 'announcements',
-        restricted:true,
-      },
-      {
-        icon: <MenuBook />,
-        text: 'Catalogues',
-        color: '#0d9488',
-        action: 'catalogues',
-      },
-      {
-        icon: <Link />,
-        text: 'External Links',
-        color: '#6b7280',
-        action: 'external_links',
-        restricted:true,
-      },
-      {
-        icon: <PlayCircle />,
-        text: 'Training Videos',
-        color: '#d946ef',
-        action: 'training',
-        restricted:true,
-      },
-    ],
-  },
-];
 
-const Home = ({ brands = [] }: { brands?: Brand[] }) => {
+/**
+ * Shown only in the gap between "this browser had a session" and `/me` coming
+ * back. Deliberately shaped like the real homepage (header card, then a card
+ * grid) so the transition is a fill-in rather than a layout jump.
+ */
+const HomeBootSkeleton = () => (
+  <Box sx={{ flex: 1, pt: { xs: 2.5, sm: 3.5 }, px: { xs: 2, sm: 2.5 }, width: '100%' }}>
+    <Container maxWidth='lg' disableGutters>
+      <Skeleton variant='rounded' height={132} sx={{ borderRadius: 3, mb: 3.5 }} />
+      <Skeleton variant='rounded' height={44} sx={{ borderRadius: 2.5, mb: 2.5 }} />
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
+          gap: 1.5,
+        }}
+      >
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+          <Skeleton key={i} variant='rounded' height={96} sx={{ borderRadius: 3.5 }} />
+        ))}
+      </Box>
+    </Container>
+  </Box>
+);
+
+const Home = ({ brands = [], authed = false }: { brands?: Brand[]; authed?: boolean }) => {
   const router = useRouter();
-  const { user }: any = useContext(AuthContext);
+  const { user, loading: authLoading }: any = useContext(AuthContext);
+  // Read once on mount: localStorage during render would break SSR hydration.
+  const [hadSession, setHadSession] = useState(false);
+  useEffect(() => setHadSession(hadSessionHint()), []);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   // Phones and tablets get a full-screen card sheet; md+ gets a centred dialog.
@@ -469,11 +319,14 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
   const [showCustomerRequestForm, setShowCustomerRequestForm] = useState(false);
   const [catalogues, setCatalogues] = useState<any[]>([]);
   const [cataloguesLoading, setCataloguesLoading] = useState(false);
+  // Drives the transient "Copied" tick on a catalogue card's copy button.
+  const [copiedCatalogueKey, setCopiedCatalogueKey] = useState<string | null>(null);
 
   const isCustomer = user?.role === 'customer';
   const isSalesPerson = user?.role === 'sales_person' || user?.role === 'sales_admin';
 
   const [perfData, setPerfData] = useState<any>(null);
+  const [celebration, setCelebration] = useState<any>(null);
   const [myCard, setMyCard] = useState<any>(null);
   const [cardModalOpen, setCardModalOpen] = useState(false);
   const [cardView, setCardView] = useState<'card' | 'qr'>('card');
@@ -524,6 +377,11 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
         params: { user_id: user._id },
       });
       setPerfData(res);
+      // Held back a beat so the page has painted before the confetti lands —
+      // a modal that appears mid-render reads as a glitch, not a reward.
+      if (res?.celebration) {
+        setTimeout(() => setCelebration(res.celebration), 900);
+      }
     } catch {
       // non-critical
     }
@@ -532,6 +390,18 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
   useEffect(() => {
     if (isSalesPerson) fetchPerformance();
   }, [isSalesPerson, fetchPerformance]);
+
+  /** Dismissing is what marks it seen — the same milestone never fires twice. */
+  const dismissCelebration = useCallback(() => {
+    const key = celebration?.key;
+    setCelebration(null);
+    if (!key) return;
+    axiosInstance
+      .post('/orders/my-performance/celebration_seen', { key })
+      .catch(() => {
+        /* worst case it shows once more next load */
+      });
+  }, [celebration]);
 
   // Fetch catalogues for customer role
   const fetchCatalogues = useCallback(async () => {
@@ -584,58 +454,59 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
       .catch(() => toast.error('Failed to copy links'));
   }, [catalogues]);
 
-  // Filter menu sections based on user role
-  const getFilteredMenuSections = () => {
-    const userRole = user?.role;
-
-    // For customer role, filter to only allowed actions and remove Resources section
-    if (userRole === 'customer') {
-      return menuSections
-        .filter((section) => section.title !== 'Resources')
-        .map((section) => ({
-          ...section,
-          items: section.items.filter((item) =>
-            customerAllowedActions.includes(item.action)
-          ),
-        }))
-        .filter((section) => section.items.length > 0);
-    }
-
-    // For non-customer roles (salesperson, admin), hide Customer Dashboard.
-    // Restricted sections/items are only shown to privileged roles.
-    const isPrivileged = privilegedRoles.includes(userRole);
-    return menuSections
-      .filter((section) => isPrivileged || !(section as any).restricted)
-      .map((section) => ({
-        ...section,
-        items: section.items.filter(
-          (item) =>
-            item.action !== 'customer' &&
-            (isPrivileged || !(item as any).restricted)
-        ),
-      }))
-      .filter((section) => section.items.length > 0);
-  };
-
   // Inject a "My Digital Card" card into Resources once one exists for this
   // staff account. Opens the card in a modal (see below) rather than navigating.
   const filteredMenuSections = useMemo(() => {
-    const sections = getFilteredMenuSections();
+    const sections = getMenuSectionsForRole(user?.role);
     if (isCustomer || !myCard?.slug) return sections;
-    const cardItem = {
-      icon: <Badge />,
-      text: 'My Digital Card',
-      color: '#0ea5e9',
-      action: 'my_digital_card',
-    };
     const resources = sections.find((s) => s.title === 'Resources');
     if (resources) {
-      resources.items = [...resources.items, cardItem as any];
+      resources.items = [...resources.items, digitalCardItem];
       return sections;
     }
-    return [...sections, { title: 'Resources', items: [cardItem as any] }];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return [...sections, { title: 'Resources', items: [digitalCardItem] }];
   }, [user?.role, myCard?.slug, isCustomer]);
+
+  // ---- Search + frequently used -------------------------------------------
+  // Both are staff-only: customers have four cards, which search would only
+  // get in the way of.
+  const showNavAids = !!user && !isCustomer;
+  const [menuQuery, setMenuQuery] = useState('');
+  const [frequentIds, setFrequentIds] = useState<string[]>([]);
+
+  const allItems = useMemo(
+    () => filteredMenuSections.flatMap((s) => s.items),
+    [filteredMenuSections]
+  );
+
+  /** Same scoring the ⌘K palette uses, so a query behaves identically in both. */
+  const searchResults = useMemo(() => {
+    if (!menuQuery.trim()) return [];
+    const entries: (NavEntry & { item: MenuItem })[] = allItems.map((item) => ({
+      id: item.action,
+      label: item.text,
+      group: '',
+      keywords: item.keywords,
+      item,
+    }));
+    return searchEntries(entries, menuQuery).map((e) => e.item);
+  }, [allItems, menuQuery]);
+
+  const frequentItems = useMemo(() => {
+    if (!showNavAids || menuQuery.trim()) return [];
+    const byAction = new Map(allItems.map((i) => [i.action, i]));
+    return frequentIds.map((id) => byAction.get(id)).filter(Boolean) as MenuItem[];
+  }, [showNavAids, menuQuery, frequentIds, allItems]);
+
+  // Pull the user's merged counts from the server, then recompute the row.
+  // Reading after mount (rather than during render) keeps SSR hydration clean.
+  useEffect(() => {
+    if (!showNavAids) return;
+    setFrequentIds(getFrequentIds(5));
+    syncUsage((url, body) => axiosInstance.post(url, body)).then(() =>
+      setFrequentIds(getFrequentIds(5))
+    );
+  }, [showNavAids]);
 
   const handleNewOrder = async () => {
     // Self-registered B2B customers must finish onboarding before ordering.
@@ -658,6 +529,8 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
   };
 
   const handleNavigation = (action: string) => {
+    // Feeds the "Frequently used" row and the palette's default ordering.
+    recordUsage(action);
     switch (action) {
       case 'newOrder':
         handleNewOrder();
@@ -931,6 +804,17 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
     </>
   );
 
+  // While `/users/me` is still in flight we don't yet know which homepage this
+  // is. `authed` comes from the session cookie on the SSR request, so this
+  // branch is what the server paints too — that's what actually removes the
+  // flash. `hadSession` is the client-side fallback for the case where the page
+  // was served from cache without the cookie check.
+  //
+  // Both are gated on `authLoading`, so a cookie that turns out to be expired
+  // falls through to the landing page as soon as /me fails rather than leaving
+  // a permanent skeleton.
+  if (!user && authLoading && (authed || hadSession)) return <HomeBootSkeleton />;
+
   // Logged-out visitors get the marketing landing rather than a redirect to
   // /login. `/` is the URL Google shows for brand searches, and it used to
   // server-render as an empty shell because the dashboard is auth-gated.
@@ -948,9 +832,10 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
         width: '100%',
       }}
     >
-      {/* Customers have a short menu — keep the focused phone-width column.
-          Staff roles have ~20 action cards, so give them room on desktop. */}
-      <Container maxWidth={isCustomer ? 'sm' : 'md'} disableGutters>
+      {/* Both roles get room to breathe on desktop. Customers were previously
+          pinned to `sm`, which rendered as a phone-width column stranded in the
+          middle of a 1440px screen. */}
+      <Container maxWidth={isCustomer ? 'lg' : 'md'} disableGutters>
         <motion.div
           variants={containerVariants}
           initial='hidden'
@@ -958,111 +843,148 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
         >
           <ProfileIncompleteBanner />
 
-          {/* Header */}
-          <Box
-            data-tour='home-greeting'
-            mb={3.5}
-            sx={{
-              bgcolor: 'background.paper',
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 3,
-              px: 2.5,
-              py: 2,
-              boxShadow: 1,
-            }}
-          >
-            <Typography
-              variant='caption'
-              color='text.secondary'
-              sx={{
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                fontSize: '0.65rem',
-                fontWeight: 600,
-              }}
-            >
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </Typography>
-            <Typography
-              variant='h5'
-              component='h1'
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.35rem', sm: '1.6rem' },
-                mt: 0.25,
-                lineHeight: 1.3,
-              }}
-            >
-              {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}, {user?.first_name} 👋
-            </Typography>
-            <Typography
-              variant='body2'
-              color='text.secondary'
-              sx={{ mt: 0.5, fontSize: '0.82rem' }}
-            >
-              {isCustomer ? 'Browse catalogues and manage your orders.' : 'Manage orders, customers, and more — all in one place.'}
-            </Typography>
-          </Box>
+          <HomeHeaderCard
+            firstName={user?.first_name}
+            isCustomer={isCustomer}
+            isSalesPerson={isSalesPerson}
+            perfData={perfData}
+            onViewDetails={() => router.push('/orders/performance')}
+          />
 
-          {/* Performance Card — salesperson only */}
-          {isSalesPerson && perfData && (
-            <Box
-              mb={2.5}
-              sx={{
-                bgcolor: 'background.paper',
-                border: '1px solid',
-                borderColor: 'divider',
-                borderRadius: 3,
-                px: 2.5,
-                py: 2,
-                boxShadow: 1,
-                cursor: 'pointer',
-                '&:hover': { borderColor: 'primary.main' },
-              }}
-              onClick={() => router.push('/orders/performance')}
-            >
-              <Box display='flex' alignItems='center' justifyContent='space-between' mb={1.5}>
-                <Box display='flex' alignItems='center' gap={1}>
-                  <BarChart sx={{ fontSize: 18, color: 'primary.main' }} />
-                  <Typography variant='caption' fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em', color: 'text.secondary', fontSize: '0.65rem' }}>
-                    My Performance · {perfData.period?.this_month_label}
-                  </Typography>
-                </Box>
-                <Typography variant='caption' color='primary.main' fontWeight={600} sx={{ fontSize: '0.72rem' }}>
-                  View details →
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-                {[
-                  { label: 'Orders', value: perfData.this_month?.total_count ?? 0, pct: perfData.count_change_pct },
-                  { label: 'Value', value: `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(perfData.this_month?.total_value ?? 0)}`, pct: perfData.value_change_pct },
-                ].map(({ label, value, pct }) => (
-                  <Box key={label} sx={{ bgcolor: 'action.hover', borderRadius: 2, p: 1.5 }}>
-                    <Typography variant='caption' color='text.secondary' fontWeight={600}>{label}</Typography>
-                    <Typography variant='h6' fontWeight={700} sx={{ lineHeight: 1.2, my: 0.25 }}>{value}</Typography>
-                    {pct !== null && pct !== undefined ? (
-                      <Box display='flex' alignItems='center' gap={0.5}>
-                        {pct > 0
-                          ? <TrendingUp sx={{ fontSize: 14, color: 'success.main' }} />
-                          : pct < 0
-                            ? <TrendingDown sx={{ fontSize: 14, color: 'error.main' }} />
-                            : <TrendingFlat sx={{ fontSize: 14, color: 'text.secondary' }} />}
-                        <Typography variant='caption' sx={{ color: pct > 0 ? 'success.main' : pct < 0 ? 'error.main' : 'text.secondary', fontWeight: 600, fontSize: '0.65rem' }}>
-                          {pct > 0 ? `+${pct}%` : `${pct}%`} vs last month
-                        </Typography>
-                      </Box>
-                    ) : (
-                      <Typography variant='caption' color='text.disabled' sx={{ fontSize: '0.65rem' }}>No prior data</Typography>
-                    )}
-                  </Box>
-                ))}
+          {/* Search + shortcuts — staff only. The search box filters the grid
+              below in place; ⌘K opens the same index app-wide. */}
+          {showNavAids && (
+            <Box sx={{ mb: 2.5 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.25,
+                  px: 1.75,
+                  py: 1.1,
+                  borderRadius: 2.5,
+                  bgcolor: 'background.paper',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  boxShadow: 1,
+                  '&:focus-within': { borderColor: 'primary.main' },
+                }}
+              >
+                <SearchIcon sx={{ fontSize: 19, color: 'text.secondary', flexShrink: 0 }} />
+                <InputBase
+                  fullWidth
+                  value={menuQuery}
+                  onChange={(e) => setMenuQuery(e.target.value)}
+                  placeholder='Search for a page or action…'
+                  inputProps={{ 'aria-label': 'Search pages and actions' }}
+                  // 16px stops iOS Safari zooming the viewport on focus.
+                  sx={{ '& input': { fontSize: '16px', py: 0 } }}
+                />
+                {menuQuery ? (
+                  <IconButton
+                    size='small'
+                    onClick={() => setMenuQuery('')}
+                    aria-label='Clear search'
+                    sx={{ p: 0.25 }}
+                  >
+                    <Close sx={{ fontSize: 17 }} />
+                  </IconButton>
+                ) : (
+                  !isMobile && (
+                    <Chip
+                      label='⌘K'
+                      size='small'
+                      sx={{
+                        height: 20,
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                        color: 'text.secondary',
+                        flexShrink: 0,
+                      }}
+                    />
+                  )
+                )}
               </Box>
             </Box>
           )}
 
-          {/* Menu Sections */}
-          {filteredMenuSections.map((section, sectionIndex) => (
+          {/* Frequently used — built from the user's own click history, so it
+              only appears once there's enough of it to be worth the space. */}
+          {frequentItems.length > 0 && (
+            <Box sx={{ mb: 2.5 }}>
+              <SectionTitle>Frequently Used</SectionTitle>
+              <Grid container spacing={1.5}>
+                {frequentItems.map((item) => (
+                  <Grid size={{ xs: 6, sm: 4, md: 3 }} key={`freq-${item.action}`}>
+                    <motion.div variants={itemVariants} whileTap={{ scale: 0.95 }}>
+                      <ActionCard
+                        onClick={() => handleNavigation(item.action)}
+                        sx={{ '& .MuiSvgIcon-root': { color: item.color } }}
+                      >
+                        {item.icon}
+                        <Typography
+                          sx={{
+                            fontWeight: 500,
+                            textAlign: 'center',
+                            lineHeight: 1.3,
+                            fontSize: '0.78rem',
+                          }}
+                        >
+                          {item.text}
+                        </Typography>
+                      </ActionCard>
+                    </motion.div>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          )}
+
+          {/* Search results replace the grouped sections while a query is active. */}
+          {menuQuery.trim() ? (
+            <Box sx={{ mb: 2.5 }}>
+              <SectionTitle>
+                {searchResults.length} {searchResults.length === 1 ? 'result' : 'results'}
+              </SectionTitle>
+              {searchResults.length === 0 ? (
+                <Typography
+                  variant='body2'
+                  color='text.secondary'
+                  sx={{ px: 0.5, py: 3, textAlign: 'center' }}
+                >
+                  Nothing matches “{menuQuery}”.
+                </Typography>
+              ) : (
+                <Grid container spacing={1.5}>
+                  {searchResults.map((item) => (
+                    <Grid size={{ xs: 6, sm: 4, md: 3 }} key={`res-${item.action}`}>
+                      <motion.div whileTap={{ scale: 0.95 }}>
+                        <ActionCard
+                          onClick={() => handleNavigation(item.action)}
+                          sx={{ '& .MuiSvgIcon-root': { color: item.color } }}
+                        >
+                          {item.icon}
+                          <Typography
+                            sx={{
+                              fontWeight: 500,
+                              textAlign: 'center',
+                              lineHeight: 1.3,
+                              fontSize: '0.78rem',
+                            }}
+                          >
+                            {item.text}
+                          </Typography>
+                        </ActionCard>
+                      </motion.div>
+                    </Grid>
+                  ))}
+                </Grid>
+              )}
+            </Box>
+          ) : (
+            /* Menu Sections */
+            <>
+              {filteredMenuSections.map((section, sectionIndex) => (
             <Box
               key={section.title}
               sx={{ mb: 2.5 }}
@@ -1073,7 +995,7 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
               </SectionTitle>
               <Grid container spacing={1.5}>
                 {section.items.map((item, index) => (
-                  <Grid size={{ xs: 6, sm: 4, md: isCustomer ? 4 : 3 }} key={index}>
+                  <Grid size={{ xs: 6, sm: 4, md: 3 }} key={index}>
                     <motion.div
                       variants={itemVariants}
                       whileTap={{ scale: 0.95 }}
@@ -1104,7 +1026,9 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
                 ))}
               </Grid>
             </Box>
-          ))}
+              ))}
+            </>
+          )}
 
           {/* Catalogues List for Customer Role */}
           {isCustomer && (
@@ -1113,28 +1037,48 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
                 <SectionTitle sx={{ mb: 0 }}>
                   Brand Catalogues
                 </SectionTitle>
-                <Tooltip title='Copy all catalogue links' arrow>
-                  <span>
-                    <IconButton
-                      size='small'
-                      onClick={handleShareAllCatalogues}
-                      disabled={cataloguesLoading || catalogues.length === 0}
-                      sx={{
-                        color: 'text.secondary',
-                        '&:hover': { color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.08) },
-                      }}
-                    >
-                      <ContentCopy sx={{ fontSize: '16px' }} />
-                    </IconButton>
-                  </span>
-                </Tooltip>
+                <Box display='flex' alignItems='center' gap={0.5}>
+                  <Typography
+                    onClick={() => router.push('/catalogues')}
+                    variant='caption'
+                    color='primary.main'
+                    fontWeight={700}
+                    sx={{
+                      cursor: 'pointer',
+                      fontSize: '0.72rem',
+                      '&:hover': { textDecoration: 'underline' },
+                    }}
+                  >
+                    View all →
+                  </Typography>
+                  <Tooltip title='Copy all catalogue links' arrow>
+                    <span>
+                      <IconButton
+                        size='small'
+                        onClick={handleShareAllCatalogues}
+                        disabled={cataloguesLoading || catalogues.length === 0}
+                        sx={{
+                          color: 'text.secondary',
+                          '&:hover': { color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.08) },
+                        }}
+                      >
+                        <ContentCopy sx={{ fontSize: '16px' }} />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </Box>
               </Box>
               {cataloguesLoading ? (
                 <Box
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
-                    gap: 1.5,
+                    gridTemplateColumns: {
+                      xs: '1fr',
+                      sm: 'repeat(2, 1fr)',
+                      md: 'repeat(3, 1fr)',
+                      lg: 'repeat(4, 1fr)',
+                    },
+                    gap: 2,
                   }}
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
@@ -1142,19 +1086,20 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
                       key={i}
                       elevation={0}
                       sx={{
-                        p: 1.5,
-                        borderRadius: 3,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 1,
+                        borderRadius: '20px',
+                        overflow: 'hidden',
                         bgcolor: 'background.paper',
                         border: '1px solid',
                         borderColor: 'divider',
                       }}
                     >
-                      <Skeleton variant='rounded' width={40} height={40} sx={{ borderRadius: 2.5 }} />
-                      <Skeleton variant='text' width='70%' height={20} />
+                      {/* Mirrors the dense showcase card: logo plate, then copy. */}
+                      <Skeleton variant='rectangular' height={104} sx={{ transform: 'none' }} />
+                      <Box sx={{ p: 2, pt: 1.5 }}>
+                        <Skeleton variant='text' width='35%' height={14} />
+                        <Skeleton variant='text' width='70%' height={26} />
+                        <Skeleton variant='text' width='55%' height={18} />
+                      </Box>
                     </Paper>
                   ))}
                 </Box>
@@ -1240,74 +1185,46 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
                         </CatalogueCard>
                       </motion.div>
 
-                      {/* Brand Catalogues — compact tile grid to keep scroll short */}
+                      {/* Brand Catalogues — the same showcase card /catalogues
+                          uses, in its compact variant, so a customer arriving
+                          from the "new catalogue" notification sees one
+                          consistent thing in both places. */}
                       <Box
                         sx={{
                           display: 'grid',
-                          gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
-                          gap: 1.5,
+                          gridTemplateColumns: {
+                            xs: '1fr',
+                            sm: 'repeat(2, 1fr)',
+                            md: 'repeat(3, 1fr)',
+                            lg: 'repeat(4, 1fr)',
+                          },
+                          gap: 2,
                         }}
                       >
-                        {catalogues.map((b: any, index: number) => (
-                          <motion.div key={b._id || index} variants={itemVariants} style={{ minWidth: 0 }}>
-                            <Paper
-                              elevation={0}
-                              onClick={() => handleOpenCatalogue(b.image_url, b.name)}
-                              sx={{
-                                p: 1.5,
-                                pt: 2,
-                                height: '100%',
-                                borderRadius: 3,
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                bgcolor: 'background.paper',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                textAlign: 'center',
-                                gap: 1,
-                                cursor: 'pointer',
-                                position: 'relative',
-                                transition: 'all 0.18s ease',
-                                '&:hover': {
-                                  borderColor: 'primary.main',
-                                  transform: 'translateY(-2px)',
-                                  boxShadow: 2,
-                                },
-                              }}
-                            >
-                              <Tooltip title='Copy link' arrow>
-                                <CatalogueActionButton
-                                  onClick={(e) => { e.stopPropagation(); handleCopyLink(e, b.image_url, b.name); }}
-                                  size='small'
-                                  sx={{ position: 'absolute', top: 4, right: 4 }}
-                                >
-                                  <ContentCopy sx={{ fontSize: '14px' }} />
-                                </CatalogueActionButton>
-                              </Tooltip>
-                              <CatalogueIconWrapper>
-                                <PictureAsPdf
-                                  sx={{ fontSize: { xs: '20px', sm: '22px' }, color: 'primary.main' }}
-                                />
-                              </CatalogueIconWrapper>
-                              <Typography
-                                variant='body2'
-                                fontWeight={600}
-                                color='text.primary'
-                                sx={{
-                                  lineHeight: 1.3,
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: 'vertical',
-                                  overflow: 'hidden',
-                                  wordBreak: 'break-word',
+                        {catalogues.map((b: any, index: number) => {
+                          const key = b._id || `catalogue-${index}`;
+                          return (
+                            <motion.div key={key} variants={itemVariants} style={{ minWidth: 0 }}>
+                              <CatalogueShowcaseCard
+                                dense
+                                name={b.name}
+                                imageUrl={b.image_url}
+                                brandDetails={b.brand_details || []}
+                                index={index + 1}
+                                isCopied={copiedCatalogueKey === key}
+                                onOpen={handleOpenCatalogue}
+                                onCopy={(e, url, name) => {
+                                  handleCopyLink(e, url, name);
+                                  setCopiedCatalogueKey(key);
+                                  setTimeout(
+                                    () => setCopiedCatalogueKey((k) => (k === key ? null : k)),
+                                    1400
+                                  );
                                 }}
-                              >
-                                {b.name}
-                              </Typography>
-                            </Paper>
-                          </motion.div>
-                        ))}
+                              />
+                            </motion.div>
+                          );
+                        })}
                       </Box>
                     </Box>
                   </motion.div>
@@ -1374,6 +1291,8 @@ const Home = ({ brands = [] }: { brands?: Brand[] }) => {
           steps={CUSTOMER_TOUR_STEPS}
         />
       )}
+
+      <CelebrationOverlay celebration={celebration} onDismiss={dismissCelebration} />
     </Box>
   );
 };
@@ -1385,7 +1304,16 @@ export default Home;
 // Logged-in users get the dashboard, so the fetch is skipped when the auth
 // cookie is present — no API call and no cache header on their requests.
 export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
-  if (req.cookies?.access_token) return { props: {} };
+  // A session cookie means this request belongs to a logged-in user, so tell the
+  // page that up front. Without it the server rendered the guest landing markup
+  // — which the browser paints before any JS runs — and the real homepage only
+  // replaced it once /users/me came back. No client-side hook can fix that,
+  // because the flash happens before hydration.
+  //
+  // Presence of the cookie is not proof it's valid, and this is not treated as
+  // authentication: it only picks which placeholder to paint. /users/me is
+  // still what actually establishes the session.
+  if (req.cookies?.access_token) return { props: { authed: true } };
 
   // Vary on the cookie: the same URL serves the dashboard to logged-in users,
   // so a shared cache must not hand this guest HTML to them.
