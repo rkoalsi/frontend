@@ -28,6 +28,41 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
+/**
+ * "This browser was logged in last time" hint.
+ *
+ * The session itself is an HttpOnly cookie, so the client genuinely cannot tell
+ * whether it's authenticated until `/users/me` comes back. Without a hint, the
+ * homepage has to guess during that window and guesses "logged out" — which is
+ * why a returning user saw the marketing landing page flash before their real
+ * homepage appeared.
+ *
+ * This flag is a *rendering hint only* and never grants access: every protected
+ * route is still gated on the real `/me` response and the cookie. Worst case a
+ * stale flag shows a returning user a skeleton for a moment before the landing
+ * page, which is the harmless direction to be wrong in.
+ */
+const SESSION_HINT_KEY = 'pupscribe:hadSession';
+
+export const setSessionHint = (value: boolean) => {
+  if (typeof window === 'undefined') return;
+  try {
+    if (value) window.localStorage.setItem(SESSION_HINT_KEY, '1');
+    else window.localStorage.removeItem(SESSION_HINT_KEY);
+  } catch {
+    /* private browsing — we just fall back to the old flash */
+  }
+};
+
+export const hadSessionHint = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(SESSION_HINT_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
 export const AuthProvider = ({ children }: any) => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
@@ -66,6 +101,7 @@ export const AuthProvider = ({ children }: any) => {
   // Shared post-login handling for any auth method (password or OTP)
   const completeLogin = async (user: any, access_token?: string) => {
     setUser(user);
+    setSessionHint(true);
     // Keep token in localStorage only as a fallback for header-based auth
     // (HttpOnly cookie is the authoritative session credential)
     if (access_token) {
@@ -129,6 +165,7 @@ export const AuthProvider = ({ children }: any) => {
   const logout = async () => {
     setUser(null);
     setPermissions(null);
+    setSessionHint(false);
     localStorage.removeItem('token');
     // Ask the backend to clear the HttpOnly cookie
     try {
@@ -209,11 +246,15 @@ export const AuthProvider = ({ children }: any) => {
         .get('/users/me')
         .then((res) => {
           setUser(res.data.user);
+          setSessionHint(true);
           fetchUserPermissions();
         })
         .catch(() => {
           // 403/401 → axios interceptor redirects to /login
-          // Don't do anything else here to avoid double-redirect
+          // Don't do anything else here to avoid double-redirect.
+          // Clear the hint so the next visit renders the landing page directly
+          // instead of a skeleton that resolves to it.
+          setSessionHint(false);
         })
         .finally(() => setLoading(false));
     } else {
