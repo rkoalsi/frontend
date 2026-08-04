@@ -36,6 +36,7 @@ import {
   topbarToolbarSx,
   useTopbarScrolled,
 } from '../components/common/Topbar';
+import CommandPalette from './common/CommandPalette';
 
 const Layout = ({ children }: any) => {
   const { user = {}, loading, logout }: any = useContext(Auth);
@@ -237,6 +238,9 @@ const Layout = ({ children }: any) => {
       >
         {children}
       </Container>
+
+      {/* ⌘K jump-to-anything. Self-gates to non-customer roles. */}
+      <CommandPalette />
     </Box>
   );
 };

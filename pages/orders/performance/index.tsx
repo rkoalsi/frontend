@@ -19,7 +19,6 @@ import {
 import {
   ArrowBack,
   TrendingUp,
-  TrendingDown,
   TrendingFlat,
   ShoppingCart,
   CheckCircle,
@@ -41,9 +40,11 @@ interface PeriodStats {
 interface PerformanceData {
   this_month: PeriodStats;
   last_month: PeriodStats;
+  /** Same elapsed slice of last month — the like-for-like baseline. */
+  last_month_to_date?: PeriodStats;
   count_change_pct: number | null;
   value_change_pct: number | null;
-  period: { this_month_label: string; last_month_label: string };
+  period: { this_month_label: string; last_month_label: string; comparison_label?: string };
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
@@ -57,50 +58,76 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
 const formatINR = (val: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
 
-const TrendBadge = ({ pct }: { pct: number | null }) => {
+/**
+ * Progress against the same point in last month. Matches the homepage rule:
+ * green only when genuinely ahead, and a shortfall is shown as a gap to close
+ * rather than a red negative — see HomeHeaderCard for the reasoning.
+ */
+const TrendBadge = ({
+  current,
+  previous,
+  format = (v: number) => String(v),
+}: {
+  current: number;
+  previous: number | null;
+  format?: (v: number) => string;
+}) => {
   const theme = useTheme();
-  if (pct === null) return <Chip label='N/A (no prior data)' size='small' color='default' />;
-  if (pct > 0) return (
+  if (previous === null || previous <= 0)
+    return <Chip label='No comparison for last month' size='small' color='default' />;
+
+  if (current > previous) {
+    const pct = Math.round(((current - previous) / previous) * 100);
+    return (
+      <Chip
+        icon={<TrendingUp style={{ fontSize: 16, color: theme.palette.success.main }} />}
+        label={`+${pct}% vs same time last month`}
+        size='small'
+        sx={{
+          backgroundColor: alpha(theme.palette.success.main, 0.15),
+          color: theme.palette.success.main,
+          fontWeight: 700,
+          '& .MuiChip-icon': { color: theme.palette.success.main },
+        }}
+      />
+    );
+  }
+
+  if (current === previous)
+    return (
+      <Chip
+        icon={<TrendingFlat style={{ fontSize: 16 }} />}
+        label='Level with last month'
+        size='small'
+        color='default'
+      />
+    );
+
+  return (
     <Chip
-      icon={<TrendingUp style={{ fontSize: 16, color: theme.palette.success.main }} />}
-      label={`+${pct}% vs last month`}
+      icon={<TrendingFlat style={{ fontSize: 16 }} />}
+      label={`${format(previous - current)} to go to match last month`}
       size='small'
-      sx={{
-        backgroundColor: alpha(theme.palette.success.main, 0.15),
-        color: theme.palette.success.main,
-        fontWeight: 700,
-        '& .MuiChip-icon': { color: theme.palette.success.main },
-      }}
+      color='default'
+      sx={{ fontWeight: 700 }}
     />
   );
-  if (pct < 0) return (
-    <Chip
-      icon={<TrendingDown style={{ fontSize: 16, color: theme.palette.error.main }} />}
-      label={`${pct}% vs last month`}
-      size='small'
-      sx={{
-        backgroundColor: alpha(theme.palette.error.main, 0.15),
-        color: theme.palette.error.main,
-        fontWeight: 700,
-        '& .MuiChip-icon': { color: theme.palette.error.main },
-      }}
-    />
-  );
-  return <Chip icon={<TrendingFlat style={{ fontSize: 16 }} />} label='No change' size='small' color='default' />;
 };
 
 const StatCard = ({
   label,
   thisMonth,
   lastMonth,
-  pct,
+  lastMonthToDate,
   format = (v: number) => String(v),
   highlight = false,
 }: {
   label: string;
   thisMonth: number;
+  /** Full previous month — shown as context under the badge. */
   lastMonth: number;
-  pct: number | null;
+  /** The same slice of last month that has elapsed of this one. */
+  lastMonthToDate: number | null;
   format?: (v: number) => string;
   highlight?: boolean;
 }) => {
@@ -122,9 +149,9 @@ const StatCard = ({
       <Typography variant='h4' fontWeight={700} sx={{ my: 1, color: highlight ? 'primary.main' : 'text.primary' }}>
         {format(thisMonth)}
       </Typography>
-      <TrendBadge pct={pct} />
+      <TrendBadge current={thisMonth} previous={lastMonthToDate} format={format} />
       <Typography variant='caption' color='text.secondary' sx={{ display: 'block', mt: 1 }}>
-        Last month: {format(lastMonth)}
+        Last month, full: {format(lastMonth)}
       </Typography>
     </Paper>
   );
@@ -207,7 +234,8 @@ const PerformancePage = () => {
                 My Performance
               </Typography>
               <Typography variant='body2' sx={{ opacity: 0.9, mt: 0.5 }}>
-                {data.period.this_month_label} vs {data.period.last_month_label}
+                {data.period.this_month_label}, compared with the same days of{' '}
+                {data.period.last_month_label}
               </Typography>
             </Box>
           </Box>
@@ -220,14 +248,14 @@ const PerformancePage = () => {
               label='Orders This Month'
               thisMonth={data.this_month.total_count}
               lastMonth={data.last_month.total_count}
-              pct={data.count_change_pct}
+              lastMonthToDate={data.last_month_to_date?.total_count ?? null}
               highlight
             />
             <StatCard
               label='Total Value'
               thisMonth={data.this_month.total_value}
               lastMonth={data.last_month.total_value}
-              pct={data.value_change_pct}
+              lastMonthToDate={data.last_month_to_date?.total_value ?? null}
               format={formatINR}
             />
           </Stack>
@@ -251,9 +279,8 @@ const PerformancePage = () => {
               const Icon = cfg.icon;
               const thisCount = data.this_month.by_status[status]?.count || 0;
               const lastCount = data.last_month.by_status[status]?.count || 0;
+              const lastToDate = data.last_month_to_date?.by_status[status]?.count ?? null;
               const thisVal = data.this_month.by_status[status]?.value || 0;
-              const pct =
-                lastCount === 0 ? null : Math.round(((thisCount - lastCount) / lastCount) * 100 * 10) / 10;
 
               return (
                 <Paper
@@ -279,10 +306,10 @@ const PerformancePage = () => {
                     {formatINR(thisVal)}
                   </Typography>
                   <Box sx={{ mt: 0.75 }}>
-                    <TrendBadge pct={pct} />
+                    <TrendBadge current={thisCount} previous={lastToDate} />
                   </Box>
                   <Typography variant='caption' color='text.secondary' sx={{ display: 'block', mt: 0.5 }}>
-                    Last month: {lastCount}
+                    Last month, full: {lastCount}
                   </Typography>
                 </Paper>
               );
