@@ -17,6 +17,7 @@ import {
   snapSlideSx,
   useSnapCarousel,
 } from "../../../hooks/useSnapCarousel";
+import NewBrandBadge from "./NewBrandBadge";
 
 const SPECIAL_OFFERS_ICON = "https://assets.pupscribe.in/assets/special_offers.png";
 
@@ -451,6 +452,9 @@ const BrandSpotlight: React.FC<BrandSpotlightProps> = ({
                     >
                       {count} {count === 1 ? "product" : "products"}
                     </Box>
+                    {entry.is_new && (
+                      <NewBrandBadge color={accent.main} soft={accent.soft} />
+                    )}
                   </Box>
 
                   {description ? (

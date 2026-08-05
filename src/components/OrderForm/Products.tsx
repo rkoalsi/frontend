@@ -83,6 +83,8 @@ import { getPreOrderMax, isPreOrderExhausted } from "../../util/preOrder";
 import AuthContext from "../Auth";
 import BrandStrip from "./products/BrandStrip";
 import BrandSpotlight from "./products/BrandSpotlight";
+import NewBrandBadge from "./products/NewBrandBadge";
+import NewBrandCallout from "./products/NewBrandCallout";
 import BrandInfoDialog from "./products/BrandInfoDialog";
 import FeatureBanner, { Placement } from "./products/FeatureBanner";
 import {
@@ -1017,6 +1019,7 @@ const Products: React.FC<ProductsProps> = ({
         secondary_image_url: b.secondary_image_url ?? null,
         description: b.description ?? null,
         color: b.color ?? null,
+        is_new: !!b.is_new,
       }));
 
       const brandsWithNewArrivals = [...COLLECTION_ENTRIES, ...allBrands];
@@ -1171,6 +1174,7 @@ const Products: React.FC<ProductsProps> = ({
       secondary_image_url: b.secondary_image_url ?? null,
       description: b.description ?? null,
       color: b.color ?? null,
+      is_new: !!b.is_new,
     }));
     const brandsWithNewArrivals = [...COLLECTION_ENTRIES, ...allBrands];
 
@@ -2417,16 +2421,32 @@ const Products: React.FC<ProductsProps> = ({
                             >
                               {brandDisplayName(selectedBrand?.brand)}
                             </Typography>
-                            <Typography
-                              variant="caption"
+                            <Box
                               sx={{
-                                color: selectedAccent.main,
-                                fontWeight: 700,
-                                fontVariantNumeric: "tabular-nums",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 0.75,
+                                flexWrap: "wrap",
                               }}
                             >
-                              {selectedCount} products
-                            </Typography>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: selectedAccent.main,
+                                  fontWeight: 700,
+                                  fontVariantNumeric: "tabular-nums",
+                                }}
+                              >
+                                {selectedCount} products
+                              </Typography>
+                              {selectedBrand?.is_new && (
+                                <NewBrandBadge
+                                  color={selectedAccent.main}
+                                  soft={selectedAccent.soft}
+                                  dense
+                                />
+                              )}
+                            </Box>
                           </Box>
                         </Box>
                       );
@@ -2546,9 +2566,25 @@ const Products: React.FC<ProductsProps> = ({
                               </Box>
                             )}
                             <Box display="flex" flexDirection="column" flex={1} minWidth={0}>
-                              <Typography variant="h6" fontWeight="medium">
-                                {brandDisplayName(b.brand)}
-                              </Typography>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 0.75,
+                                  flexWrap: "wrap",
+                                }}
+                              >
+                                <Typography variant="h6" fontWeight="medium">
+                                  {brandDisplayName(b.brand)}
+                                </Typography>
+                                {b.is_new && (
+                                  <NewBrandBadge
+                                    color={accent.main}
+                                    soft={accent.soft}
+                                    dense
+                                  />
+                                )}
+                              </Box>
                               {/* No description here — the dropdown stays a
                                   compact picker, and the BrandStrip directly
                                   below it carries the copy. */}
@@ -2758,6 +2794,14 @@ const Products: React.FC<ProductsProps> = ({
                                 >
                                   {brandDisplayName(b.brand)}
                                 </Typography>
+                                {b.is_new && (
+                                  <Box sx={{ mt: 0.5 }}>
+                                    <NewBrandBadge
+                                      color={accent.main}
+                                      soft={accent.soft}
+                                    />
+                                  </Box>
+                                )}
                                 <Typography
                                   variant="caption"
                                   color="text.secondary"
@@ -3146,6 +3190,19 @@ const Products: React.FC<ProductsProps> = ({
               mx: { xs: '-8px', sm: 0 },
               width: { xs: 'calc(100% + 16px)', sm: '100%' },
             }}
+          />
+        )}
+
+        {/* A brand that has just joined the catalogue. Sits with the other
+            above-grid messaging, and like it is hidden during a search, where
+            the grid spans brands. */}
+        {!searchTerm.trim() && (
+          <NewBrandCallout
+            entries={filteredBrandList}
+            activeBrand={activeBrand}
+            onSelectBrand={handleTabChange}
+            displayNameOf={(b) => brandDisplayName(b) || ""}
+            countOf={brandCountOf}
           />
         )}
 
