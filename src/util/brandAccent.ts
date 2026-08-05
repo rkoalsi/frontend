@@ -19,6 +19,13 @@ export interface BrandRailEntry {
   secondary_image_url?: string | null;
   description?: string | null;
   color?: string | null;
+  /**
+   * Set by the backend for brands we started stocking in the last three months
+   * — every one of the brand's products is that recent. Drives the NEW badge on
+   * the rail and the callout above the grid. Self-clearing: once the brand's
+   * first products age past the window the flag goes away on its own.
+   */
+  is_new?: boolean;
 }
 
 export interface BrandAccent {
