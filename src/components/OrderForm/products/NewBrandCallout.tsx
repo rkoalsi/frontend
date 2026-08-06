@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Box, Button, IconButton, Typography, useTheme } from "@mui/material";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  IconButton,
+  Typography,
+  useTheme,
+  type SxProps,
+  type Theme,
+} from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { getBrandAccent, type BrandRailEntry } from "../../../util/brandAccent";
@@ -21,11 +30,23 @@ function readDismissed(): string[] {
 interface NewBrandCalloutProps {
   /** The full rail list; the callout picks the new brands out of it. */
   entries: BrandRailEntry[];
-  /** Brand currently being browsed — no point announcing where you already are. */
-  activeBrand: string;
-  onSelectBrand: (brand: string) => void;
-  displayNameOf: (brand: string) => string;
-  countOf: (brand: string) => number;
+  /**
+   * Brand currently being browsed — no point announcing where you already are.
+   * Omitted off the order form, where there is no active brand.
+   */
+  activeBrand?: string;
+  /**
+   * What the CTA does with the brand. May be async — the button shows a pending
+   * state while it settles, which matters on the customer dashboard where it
+   * creates a draft order before navigating.
+   */
+  onSelectBrand: (brand: string) => void | Promise<void>;
+  displayNameOf?: (brand: string) => string;
+  /** Live product count. Omitted where the caller has no counts to hand. */
+  countOf?: (brand: string) => number;
+  /** CTA wording — "Take a look" in the grid, "Start an order" on the dashboard. */
+  ctaLabel?: string;
+  sx?: SxProps<Theme>;
 }
 
 /**
@@ -40,13 +61,16 @@ interface NewBrandCalloutProps {
  */
 const NewBrandCallout: React.FC<NewBrandCalloutProps> = ({
   entries,
-  activeBrand,
+  activeBrand = "",
   onSelectBrand,
   displayNameOf,
   countOf,
+  ctaLabel = "Take a look",
+  sx,
 }) => {
   const theme = useTheme();
   const mode = theme.palette.mode === "dark" ? "dark" : "light";
+  const [pending, setPending] = useState(false);
   // Read on mount rather than during render: localStorage is unavailable during
   // SSR, and reading it in render would desync the first client paint.
   const [dismissed, setDismissed] = useState<string[]>([]);
@@ -76,9 +100,18 @@ const NewBrandCallout: React.FC<NewBrandCalloutProps> = ({
   if (!hydrated || !target) return null;
 
   const accent = getBrandAccent(target.brand, target.color, mode);
-  const name = displayNameOf(target.brand);
-  const count = countOf(target.brand);
+  const name = displayNameOf ? displayNameOf(target.brand) : target.brand;
+  const count = countOf ? countOf(target.brand) : 0;
   const logo = target.image || target.url;
+
+  const activate = async () => {
+    try {
+      setPending(true);
+      await onSelectBrand(target.brand);
+    } finally {
+      setPending(false);
+    }
+  };
 
   return (
     <Box
@@ -94,6 +127,7 @@ const NewBrandCallout: React.FC<NewBrandCalloutProps> = ({
         border: "1px solid",
         borderColor: accent.main,
         bgcolor: accent.soft,
+        ...sx,
       }}
     >
       {logo ? (
@@ -151,7 +185,11 @@ const NewBrandCallout: React.FC<NewBrandCalloutProps> = ({
       <Button
         size="small"
         variant="outlined"
-        onClick={() => onSelectBrand(target.brand)}
+        onClick={activate}
+        disabled={pending}
+        startIcon={
+          pending ? <CircularProgress size={14} color="inherit" /> : undefined
+        }
         sx={{
           flexShrink: 0,
           textTransform: "none",
@@ -162,7 +200,7 @@ const NewBrandCallout: React.FC<NewBrandCalloutProps> = ({
           "&:hover": { borderColor: accent.main, bgcolor: accent.soft },
         }}
       >
-        Take a look
+        {ctaLabel}
       </Button>
 
       <IconButton
