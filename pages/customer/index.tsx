@@ -45,6 +45,8 @@ import axios from 'axios';
 import { trackActivity } from '../../src/util/trackActivity';
 import CustomerTour, { TourStep } from '../../src/components/common/CustomerTour';
 import { headerGradient } from '../../src/util/surfaces';
+import NewBrandCallout from '../../src/components/OrderForm/products/NewBrandCallout';
+import type { BrandRailEntry } from '../../src/util/brandAccent';
 
 const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
@@ -133,6 +135,12 @@ const CustomerDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [downloadingStatement, setDownloadingStatement] = useState(false);
+  // Brands that have just joined the catalogue, for the announcement above the
+  // dashboard. Only the new ones are kept — the callout needs nothing else.
+  const [newBrands, setNewBrands] = useState<BrandRailEntry[]>([]);
+  const [newBrandCounts, setNewBrandCounts] = useState<{
+    [brand: string]: { [category: string]: number };
+  }>({});
 
   const fetchStats = useCallback(async () => {
     try {
@@ -179,12 +187,39 @@ const CustomerDashboard = () => {
     }
   }, [user]);
 
+  // Counts are fetched only once a new brand actually exists, which is rare —
+  // the dashboard should not pay for a second catalogue request to render
+  // nothing. Both responses are short-cached by the backend.
+  const fetchNewBrands = useCallback(async () => {
+    try {
+      const { data } = await axiosInstance.get('/products/brands');
+      const flagged: BrandRailEntry[] = (data?.brands || [])
+        .filter((b: any) => b.is_new)
+        .map((b: any) => ({
+          brand: b.brand,
+          url: b.image ?? b.url ?? null,
+          description: b.description ?? null,
+          color: b.color ?? null,
+          is_new: true,
+        }));
+      setNewBrands(flagged);
+      if (flagged.length) {
+        const counts = await axiosInstance.get('/products/counts');
+        setNewBrandCounts(counts.data || {});
+      }
+    } catch (err) {
+      // The dashboard is useful without the announcement; stay quiet.
+      console.error('Error fetching new brands:', err);
+    }
+  }, []);
+
   useEffect(() => {
     if (user) {
       fetchStats();
       fetchDashboardSummary();
+      fetchNewBrands();
     }
-  }, [user, fetchStats, fetchDashboardSummary]);
+  }, [user, fetchStats, fetchDashboardSummary, fetchNewBrands]);
 
   useEffect(() => {
     if (user) {
@@ -193,7 +228,10 @@ const CustomerDashboard = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const handleNewOrder = async () => {
+  // `brand` lands the new order's product step straight on that brand — the
+  // order form reads ?brand= off the URL. Everything else is the same path the
+  // Create Order card takes, onboarding gate included.
+  const handleNewOrder = async (brand?: string) => {
     // Self-registered B2B customers must finish onboarding before ordering.
     if (user?.self_registered && !user?.customer_id) {
       toast.info('Please complete your business details in your profile to start ordering');
@@ -207,7 +245,8 @@ const CustomerDashboard = () => {
         status: 'draft',
       });
       const { data = {} } = resp;
-      router.push(`/orders/new/${data._id}`);
+      const query = brand ? `?brand=${encodeURIComponent(brand)}` : '';
+      router.push(`/orders/new/${data._id}${query}`);
     } catch (error) {
       console.error('Error creating new order:', error);
     }
@@ -333,7 +372,8 @@ const CustomerDashboard = () => {
       description: 'Start a new estimate',
       icon: <Add />,
       color: '#38a169',
-      onClick: handleNewOrder,
+      // Wrapped so the click event is not passed through as the brand argument.
+      onClick: () => handleNewOrder(),
       show: true,
       tourId: 'new-order',
     },
@@ -400,6 +440,20 @@ const CustomerDashboard = () => {
   <>
     <Container maxWidth='lg' sx={{ py: { xs: 1.5, md: 4 }, px: { xs: 0, sm: 2, md: 3 } }}>
       <ProfileIncompleteBanner />
+
+      {/* A brand that has just joined the catalogue. Same component and the same
+          per-brand dismissal as the one above the order form's product grid —
+          waving it away in either place settles it in both. The CTA opens a new
+          draft order landed on that brand. */}
+      <NewBrandCallout
+        entries={newBrands}
+        onSelectBrand={handleNewOrder}
+        countOf={(brand) =>
+          Object.values(newBrandCounts[brand] || {}).reduce((a, b) => a + b, 0)
+        }
+        ctaLabel="Start an order"
+        sx={{ mt: 0, mb: { xs: 2, md: 3 } }}
+      />
       <Paper
         elevation={0}
         sx={{
@@ -680,7 +734,7 @@ const CustomerDashboard = () => {
                         <Button
                           variant='contained'
                           startIcon={<Add />}
-                          onClick={handleNewOrder}
+                          onClick={() => handleNewOrder()}
                           size={isMobile ? 'small' : 'medium'}
                           sx={{
                             backgroundColor: '#38a169',

@@ -74,6 +74,8 @@ import { toast } from 'react-toastify';
 import CustomerTour, { TourStep } from '../src/components/common/CustomerTour';
 import CatalogueShowcaseCard from '../src/components/catalogue/CatalogueShowcaseCard';
 import HomeHeaderCard from '../src/components/home/HomeHeaderCard';
+import NewBrandCallout from '../src/components/OrderForm/products/NewBrandCallout';
+import type { BrandRailEntry } from '../src/util/brandAccent';
 import CelebrationOverlay from '../src/components/home/CelebrationOverlay';
 import { MenuItem, digitalCardItem, getMenuSectionsForRole } from '../src/util/homeMenu';
 import {
@@ -319,6 +321,10 @@ const Home = ({ brands = [], authed = false }: { brands?: Brand[]; authed?: bool
   const [showCustomerRequestForm, setShowCustomerRequestForm] = useState(false);
   const [catalogues, setCatalogues] = useState<any[]>([]);
   const [cataloguesLoading, setCataloguesLoading] = useState(false);
+  const [newBrands, setNewBrands] = useState<BrandRailEntry[]>([]);
+  const [newBrandCounts, setNewBrandCounts] = useState<{
+    [brand: string]: { [category: string]: number };
+  }>({});
   // Drives the transient "Copied" tick on a catalogue card's copy button.
   const [copiedCatalogueKey, setCopiedCatalogueKey] = useState<string | null>(null);
 
@@ -416,11 +422,39 @@ const Home = ({ brands = [], authed = false }: { brands?: Brand[]; authed?: bool
     }
   }, []);
 
+  // Brands that have just joined the catalogue, for the announcement near the
+  // top of the customer home. Counts are only fetched once a new brand actually
+  // exists — that is rare, and the home page should not pay for a second
+  // catalogue request to render nothing. Both responses are short-cached.
+  const fetchNewBrands = useCallback(async () => {
+    try {
+      const { data } = await axiosInstance.get('/products/brands');
+      const flagged: BrandRailEntry[] = (data?.brands || [])
+        .filter((b: any) => b.is_new)
+        .map((b: any) => ({
+          brand: b.brand,
+          url: b.image ?? b.url ?? null,
+          description: b.description ?? null,
+          color: b.color ?? null,
+          is_new: true,
+        }));
+      setNewBrands(flagged);
+      if (flagged.length) {
+        const counts = await axiosInstance.get('/products/counts');
+        setNewBrandCounts(counts.data || {});
+      }
+    } catch (error) {
+      // The home page is useful without the announcement; stay quiet.
+      console.error('Error fetching new brands:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (isCustomer) {
       fetchCatalogues();
+      fetchNewBrands();
     }
-  }, [isCustomer, fetchCatalogues]);
+  }, [isCustomer, fetchCatalogues, fetchNewBrands]);
 
   const handleOpenCatalogue = useCallback((url: string, name: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -508,7 +542,10 @@ const Home = ({ brands = [], authed = false }: { brands?: Brand[]; authed?: bool
     );
   }, [showNavAids]);
 
-  const handleNewOrder = async () => {
+  // `brand` lands the new order's product step straight on that brand — the
+  // order form reads ?brand= off the URL. Everything else is the normal new
+  // order path, onboarding gate included.
+  const handleNewOrder = async (brand?: string) => {
     // Self-registered B2B customers must finish onboarding before ordering.
     if (user?.self_registered && !user?.customer_id) {
       toast.info('Please complete your business details in your profile to start ordering');
@@ -522,7 +559,8 @@ const Home = ({ brands = [], authed = false }: { brands?: Brand[]; authed?: bool
       });
       const { data = {} } = resp;
       const { _id = '' } = data;
-      router.push(`/orders/new/${_id}`);
+      const query = brand ? `?brand=${encodeURIComponent(brand)}` : '';
+      router.push(`/orders/new/${_id}${query}`);
     } catch (error) {
       console.error('Error creating new order:', error);
     }
@@ -850,6 +888,22 @@ const Home = ({ brands = [], authed = false }: { brands?: Brand[]; authed?: bool
             perfData={perfData}
             onViewDetails={() => router.push('/orders/performance')}
           />
+
+          {/* A brand that has just joined the catalogue. Same component and the
+              same per-brand dismissal as the one above the order form's product
+              grid — waving it away in either place settles it in both. The CTA
+              opens a new draft order landed on that brand. */}
+          {isCustomer && (
+            <NewBrandCallout
+              entries={newBrands}
+              onSelectBrand={handleNewOrder}
+              countOf={(brand) =>
+                Object.values(newBrandCounts[brand] || {}).reduce((a, b) => a + b, 0)
+              }
+              ctaLabel='Start an order'
+              sx={{ mt: 0, mb: { xs: 2, md: 2.5 } }}
+            />
+          )}
 
           {/* Search + shortcuts — staff only. The search box filters the grid
               below in place; ⌘K opens the same index app-wide. */}
