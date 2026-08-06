@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, IconButton, Paper, Tooltip, Typography, alpha, styled } from '@mui/material';
-import { Check, ContentCopy, OpenInNew, PictureAsPdf } from '@mui/icons-material';
+import { Check, ContentCopy, OpenInNew, PictureAsPdf, Schedule } from '@mui/icons-material';
+import { formatCatalogueDate } from '../../util/date';
 
 /**
  * The brand-catalogue card, shared by /catalogues and the customer homepage.
@@ -228,6 +229,10 @@ export interface CatalogueShowcaseCardProps {
   onCopy: (event: React.MouseEvent, url: string, name: string) => void;
   /** Compact variant for the homepage, where the card is a secondary element. */
   dense?: boolean;
+  /* Naive-UTC timestamps from Mongo. Customers and salespeople see a single
+     date — the last edit, or the upload date if it has never been edited. */
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 const CatalogueShowcaseCard = ({
@@ -239,7 +244,10 @@ const CatalogueShowcaseCard = ({
   onOpen,
   onCopy,
   dense = false,
+  createdAt,
+  updatedAt,
 }: CatalogueShowcaseCardProps) => {
+  const dateLabel = formatCatalogueDate(updatedAt, createdAt);
   // Only worth naming the brands when they differ from the catalogue title
   // (e.g. Petfest -> Dogfest, Catfest).
   const brandNames: string[] = (brandDetails || []).map((d) => d.name).filter(Boolean);
@@ -305,6 +313,27 @@ const CatalogueShowcaseCard = ({
         <Typography variant='body2' color='text.secondary' noWrap sx={{ mt: 0.25 }}>
           {showBrandNames ? brandNames.join(' · ') : 'Full product range, PDF'}
         </Typography>
+
+        {dateLabel && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              mt: 0.75,
+              color: 'text.disabled',
+            }}
+          >
+            <Schedule sx={{ fontSize: dense ? 13 : 14 }} />
+            <Typography
+              variant='caption'
+              sx={{ fontSize: dense ? '0.68rem' : '0.72rem', lineHeight: 1.4 }}
+              noWrap
+            >
+              {dateLabel}
+            </Typography>
+          </Box>
+        )}
 
         <Box
           sx={{

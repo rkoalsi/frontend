@@ -1264,6 +1264,8 @@ const Home = ({ brands = [], authed = false }: { brands?: Brand[]; authed?: bool
                                 name={b.name}
                                 imageUrl={b.image_url}
                                 brandDetails={b.brand_details || []}
+                                createdAt={b.created_at}
+                                updatedAt={b.updated_at}
                                 index={index + 1}
                                 isCopied={copiedCatalogueKey === key}
                                 onOpen={handleOpenCatalogue}
