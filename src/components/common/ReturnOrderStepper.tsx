@@ -248,7 +248,7 @@ const ProductSearchBar = ({ onProductSelect, disabled }: any) => {
                 >
                   <Image
                     src={product.image_url || '/placeholder.png'}
-                    alt={product.cf_sku_code}
+                    alt={product.cf_sku_code || product.name}
                     width={60}
                     height={60}
                     style={{
@@ -275,7 +275,7 @@ const ProductSearchBar = ({ onProductSelect, disabled }: any) => {
                       wordBreak: 'break-word',
                     }}
                   >
-                    {product.item_name}
+                    {product.name || product.item_name}
                   </Typography>
 
                   <Typography
@@ -289,7 +289,7 @@ const ProductSearchBar = ({ onProductSelect, disabled }: any) => {
                       fontWeight: 400,
                     }}
                   >
-                    SKU: {product.cf_sku_code}
+                    SKU: {product.cf_sku_code || product.sku}
                   </Typography>
                 </Box>
               </Box>
@@ -327,6 +327,9 @@ const ReturnOrderStepper = ({
   orderProducts = null,
   orderId = null,
   createCreditNote = false,
+  // Salespeople can raise a partial return order: pick the customer now and
+  // fill in the products later from the edit flow.
+  allowPartial = false,
 }: any) => {
   const { user }: any = useContext(AuthContext);
   const theme = useTheme();
@@ -376,8 +379,8 @@ const ReturnOrderStepper = ({
         return customer !== null;
       case 1: // Address selection
         return pickupAddress !== null;
-      case 2: // Items selection
-        return returnItems.length > 0;
+      case 2: // Items selection — skippable on a partial return order
+        return allowPartial || returnItems.length > 0;
       case 3: // Return note and details
         return (
           returnReason.trim() !== '' &&
@@ -401,8 +404,13 @@ const ReturnOrderStepper = ({
       return;
     }
 
+    // Products from search carry `name`/`cf_sku_code`; order-based products and
+    // already-saved items carry `name`/`sku`. Normalise so the payload is the
+    // same either way.
     const newItem = {
       ...product,
+      name: product.name || product.product_name,
+      sku: product.sku || product.cf_sku_code,
       quantity: 1,
       returnAmount: product.price,
     };
@@ -483,7 +491,11 @@ const ReturnOrderStepper = ({
           returnOrderData
         );
         returnOrderId = response.data.return_order._id;
-        toast.success('Return order created successfully');
+        toast.success(
+          returnItems.length === 0
+            ? 'Partial return order created — add the products when you have them'
+            : 'Return order created successfully'
+        );
         if (response.data.credit_note_warning) {
           toast.warn(
             `Credit note could not be created automatically: ${response.data.credit_note_warning}`
@@ -620,6 +632,18 @@ const ReturnOrderStepper = ({
                   ? 'Select the products from this order that you want to return'
                   : 'Add products that need to be returned'}
               </Typography>
+
+              {allowPartial && returnItems.length === 0 && (
+                <Alert severity='info' sx={{ mb: 3 }}>
+                  <Typography variant='subtitle2'>
+                    Products optional for now
+                  </Typography>
+                  <Typography variant='body2'>
+                    You can skip this step and submit a partial return order.
+                    Add the products later by editing this return order.
+                  </Typography>
+                </Alert>
+              )}
 
               {orderProducts ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -1437,6 +1461,18 @@ const ReturnOrderStepper = ({
                   />
                 </Box>
 
+                {returnItems.length === 0 && (
+                  <Alert severity='warning'>
+                    <Typography variant='subtitle2'>
+                      No products added yet
+                    </Typography>
+                    <Typography variant='body2'>
+                      This will be saved as a partial return order. Edit it to
+                      add the products once you have them.
+                    </Typography>
+                  </Alert>
+                )}
+
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {returnItems.map((item: any, index: number) => (
                     <Paper
@@ -1748,6 +1784,8 @@ const ReturnOrderStepper = ({
                     : 'Saving...'
                   : isEditing
                   ? 'Update Return Order'
+                  : returnItems.length === 0
+                  ? 'Create Partial Return Order'
                   : 'Create Return Order'}
               </Button>
             ) : (
