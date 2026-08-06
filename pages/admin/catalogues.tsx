@@ -30,6 +30,8 @@ import {
   useTheme,
   DialogActions,
   DialogContentText,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import {
@@ -42,8 +44,46 @@ import {
   PictureAsPdf,
   Add,
   Storefront,
+  History as HistoryIcon,
 } from '@mui/icons-material';
 import axiosInstance from '../../src/util/axios';
+import { formatHumanDateTime } from '../../src/util/date';
+
+/* Timestamps land in Mongo as naive UTC (the backend anchors every write to
+   UTC so a dev machine on IST and the server agree). Admins want IST, so every
+   render goes through the same conversion. */
+const IST_OPTS = { assumeUTC: true, tz: 'Asia/Kolkata' } as const;
+const formatStamp = (value?: string | null) =>
+  value ? formatHumanDateTime(value, IST_OPTS) : '—';
+
+interface CatalogueEvent {
+  catalogue_id: string;
+  catalogue_name: string;
+  action: string;
+  at: string;
+  by?: string | null;
+  fields?: string[];
+}
+
+const ACTION_META: Record<
+  string,
+  { label: string; color: 'success' | 'info' | 'warning' | 'error' | 'default' }
+> = {
+  created: { label: 'Created', color: 'success' },
+  updated: { label: 'Updated', color: 'info' },
+  activated: { label: 'Activated', color: 'success' },
+  deactivated: { label: 'Deactivated', color: 'warning' },
+  deleted: { label: 'Deleted', color: 'error' },
+};
+
+/* `brand_ids` etc. are storage names — spell them the way the form does. */
+const FIELD_LABELS: Record<string, string> = {
+  name: 'name',
+  image_url: 'PDF file',
+  brand_ids: 'brands',
+  brands: 'brands',
+  is_active: 'status',
+};
 
 interface Brand {
   _id: string;
@@ -113,7 +153,10 @@ const Catalogues = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  const [tab, setTab] = useState<'list' | 'history'>('list');
   const [catalogues, setCatalogues] = useState<any[]>([]);
+  const [events, setEvents] = useState<CatalogueEvent[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [page, setPage] = useState(0); // 0-based index
   const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -175,6 +218,24 @@ const Catalogues = () => {
   useEffect(() => {
     fetchCatalogues();
   }, [fetchCatalogues]);
+
+  const fetchHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const response = await axiosInstance.get('/admin/catalogues/history');
+      setEvents(response.data?.events || []);
+    } catch (error) {
+      console.error(error);
+      toast.error('Error fetching catalogue history.');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  // Refetched on every visit to the tab so an edit made moments ago is there.
+  useEffect(() => {
+    if (tab === 'history') fetchHistory();
+  }, [tab, fetchHistory]);
 
   useEffect(() => {
     const fetchBrands = async () => {
@@ -401,6 +462,22 @@ const Catalogues = () => {
           </Box>
         </Box>
 
+        <Tabs
+          value={tab}
+          onChange={(_e, v) => setTab(v)}
+          sx={{ mt: 2, borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab value='list' label='Catalogues' />
+          <Tab
+            value='history'
+            label='History'
+            icon={<HistoryIcon fontSize='small' />}
+            iconPosition='start'
+          />
+        </Tabs>
+
+        {tab === 'list' && (
+        <>
         {/* Filters */}
         <Box
           sx={{
@@ -507,6 +584,31 @@ const Catalogues = () => {
                 <Box mt={1.5}>
                   <BrandCell brands={catalog.brand_details || []} />
                 </Box>
+                <Box
+                  mt={1.5}
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 1,
+                  }}
+                >
+                  <Box>
+                    <Typography variant='caption' color='text.disabled'>
+                      Added
+                    </Typography>
+                    <Typography variant='body2' color='text.secondary'>
+                      {formatStamp(catalog.created_at)}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant='caption' color='text.disabled'>
+                      Last updated
+                    </Typography>
+                    <Typography variant='body2' color='text.secondary'>
+                      {formatStamp(catalog.updated_at)}
+                    </Typography>
+                  </Box>
+                </Box>
                 <Divider sx={{ my: 1.5 }} />
                 <Box
                   display='flex'
@@ -537,6 +639,8 @@ const Catalogues = () => {
                   <TableCell>Name</TableCell>
                   <TableCell>Brand(s)</TableCell>
                   <TableCell>Catalogue File</TableCell>
+                  <TableCell>Added</TableCell>
+                  <TableCell>Last updated</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell align='right'>Actions</TableCell>
                 </TableRow>
@@ -575,6 +679,16 @@ const Catalogues = () => {
                       </Button>
                     </TableCell>
                     <TableCell>
+                      <Typography variant='body2' color='text.secondary' noWrap>
+                        {formatStamp(catalog.created_at)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant='body2' color='text.secondary' noWrap>
+                        {formatStamp(catalog.updated_at)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
                       <Switch
                         checked={Boolean(catalog.is_active)}
                         onChange={() => handleToggleActive(catalog)}
@@ -598,6 +712,80 @@ const Catalogues = () => {
             onPageChange={handleChangePage}
             onRowsPerPageChange={handleChangeRowsPerPage}
           />
+        )}
+        </>
+        )}
+
+        {tab === 'history' && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
+              Every catalogue change, newest first — times shown in IST.
+            </Typography>
+
+            {historyLoading ? (
+              <Box display='flex' justifyContent='center' py={6}>
+                <CircularProgress />
+              </Box>
+            ) : events.length === 0 ? (
+              <Box display='flex' justifyContent='center' py={6}>
+                <Typography color='text.secondary'>
+                  No catalogue activity recorded yet.
+                </Typography>
+              </Box>
+            ) : (
+              <Box sx={{ display: 'grid', gap: 1.5 }}>
+                {events.map((event, i) => {
+                  // Falls back to `info` rather than `default` — a default Chip
+                  // is near-invisible against the dark theme's surface.
+                  const meta = ACTION_META[event.action] || {
+                    label: event.action,
+                    color: 'info' as const,
+                  };
+                  const fields = (event.fields || [])
+                    .map((f) => FIELD_LABELS[f] || f)
+                    .filter((f) => f !== 'updated_at');
+                  return (
+                    <Paper
+                      key={`${event.catalogue_id}-${event.at}-${i}`}
+                      variant='outlined'
+                      sx={{
+                        p: 2,
+                        borderRadius: 3,
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        alignItems: { xs: 'flex-start', sm: 'center' },
+                        gap: { xs: 1, sm: 2 },
+                      }}
+                    >
+                      <Chip
+                        size='small'
+                        label={meta.label}
+                        color={meta.color}
+                        variant='outlined'
+                        sx={{ minWidth: 96 }}
+                      />
+                      <Box flex={1} minWidth={0}>
+                        <Typography fontWeight={600} noWrap>
+                          {event.catalogue_name}
+                        </Typography>
+                        <Typography variant='body2' color='text.secondary'>
+                          {event.by ? `by ${event.by}` : 'author not recorded'}
+                          {fields.length > 0 && ` · changed ${fields.join(', ')}`}
+                        </Typography>
+                      </Box>
+                      <Typography
+                        variant='body2'
+                        color='text.secondary'
+                        sx={{ whiteSpace: 'nowrap' }}
+                      >
+                        {formatStamp(event.at)}
+                      </Typography>
+                    </Paper>
+                  );
+                })}
+              </Box>
+            )}
+          </Box>
         )}
       </Paper>
 
