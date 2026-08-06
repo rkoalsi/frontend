@@ -46,6 +46,10 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [expanded, setExpanded] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  // Partial return orders were raised with the customer only — the products
+  // still have to be filled in.
+  const isPartial =
+    returnOrder.is_partial ?? (returnOrder.items?.length || 0) === 0;
 
   const handleDownloadCreditNotePdf = async () => {
     setPdfLoading(true);
@@ -142,6 +146,14 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {isPartial && (
+            <Chip
+              label='Products pending'
+              color='warning'
+              size='small'
+              sx={{ fontWeight: 'bold' }}
+            />
+          )}
           <Chip
             label={capitalize(returnOrder.status)}
             color={getStatusColor(returnOrder.status)}
@@ -226,6 +238,26 @@ const ReturnOrderCard = ({ user, returnOrder, onEdit, onDelete }: any) => {
             </Typography>
           </Box>
         </Box>
+
+        {/* Partial return order prompt */}
+        {isPartial && (
+          <Alert
+            severity='warning'
+            sx={{ mb: 3 }}
+            action={
+              <Button
+                color='inherit'
+                size='small'
+                startIcon={<InventoryIcon />}
+                onClick={() => onEdit(returnOrder)}
+              >
+                Add Products
+              </Button>
+            }
+          >
+            No products added to this return order yet
+          </Alert>
+        )}
 
         {/* Pickup Address */}
         {returnOrder.pickup_address && (
@@ -536,7 +568,13 @@ function ReturnOrders() {
           currentReturnOrder.contact_name || currentReturnOrder.customer_name,
       },
       pickupAddress: currentReturnOrder.pickup_address,
-      items: currentReturnOrder.items || [],
+      // Saved items store product_id/product_name; the stepper keys and edits
+      // items off _id/name, so map them back.
+      items: (currentReturnOrder.items || []).map((item: any) => ({
+        ...item,
+        _id: item._id || item.product_id,
+        name: item.name || item.product_name,
+      })),
       returnReason: currentReturnOrder.return_reason,
       returnFormDate: currentReturnOrder.return_form_date
         ? new Date(currentReturnOrder.return_form_date)
@@ -732,6 +770,7 @@ function ReturnOrders() {
           onSave={handleStepperSave}
           isEditing={isEditing}
           initialData={getInitialDataForStepper()}
+          allowPartial
         />
       </Dialog>
     </Container>

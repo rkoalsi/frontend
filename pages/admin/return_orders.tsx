@@ -28,6 +28,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Alert,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import {
@@ -501,9 +502,18 @@ const ReturnOrders = () => {
                           <TableCell>
                             <Box display='flex' alignItems='center' gap={1}>
                               <ShoppingCart color='action' fontSize='small' />
-                              <Typography variant='body2'>
-                                {getTotalItems(order.items)} items
-                              </Typography>
+                              {(order.items?.length || 0) === 0 ? (
+                                <Chip
+                                  label='PRODUCTS PENDING'
+                                  color='warning'
+                                  size='small'
+                                  variant='outlined'
+                                />
+                              ) : (
+                                <Typography variant='body2'>
+                                  {getTotalItems(order.items)} items
+                                </Typography>
+                              )}
                             </Box>
                           </TableCell>
 
@@ -796,6 +806,12 @@ const ReturnOrders = () => {
                     <Typography variant='h6' gutterBottom color='primary'>
                       Return Items
                     </Typography>
+                    {(selectedOrder.items?.length || 0) === 0 && (
+                      <Alert severity='warning'>
+                        This is a partial return order — the salesperson has not
+                        added the products yet.
+                      </Alert>
+                    )}
                     {selectedOrder.items?.map((item: any, index: any) => (
                       <Box key={index} sx={{ mb: 2 }}>
                         <Box display='flex' alignItems='center' gap={2}>

@@ -27,7 +27,7 @@ import axiosInstance from '../../src/util/axios';
 const CATEGORY_MAP: Record<string, string[]> = {
   Orders: ['order_placed', 'order_edited'],
   'Catalogue & Products': ['new_catalogue', 'product_back_in_stock', 'new_product'],
-  Returns: ['return_order_created'],
+  Returns: ['return_order_created', 'return_order_status'],
   'Customer Requests': [
     'customer_request_submitted',
     'customer_request_status',
