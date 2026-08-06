@@ -600,6 +600,8 @@ function Catalogue(_props: Props) {
                           name={b.name}
                           imageUrl={b.image_url}
                           brandDetails={b.brand_details || []}
+                          createdAt={b.created_at}
+                          updatedAt={b.updated_at}
                           index={index + 1}
                           isCopied={copiedKey === key}
                           onOpen={handleOpenCatalogue}
