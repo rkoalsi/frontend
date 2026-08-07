@@ -62,6 +62,7 @@ import {
   Badge,
   QrCode2,
   Close,
+  IosShare,
   Search as SearchIcon,
 } from '@mui/icons-material';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -365,6 +366,25 @@ const Home = ({ brands = [], authed = false }: { brands?: Brand[]; authed?: bool
         .catch(() => toast.error('Failed to copy link'));
     },
     []
+  );
+
+  // Native share sheet where it exists (every phone we care about), clipboard
+  // everywhere else — one button that always does something useful.
+  const shareCardLink = useCallback(
+    async (slug?: string, name?: string) => {
+      const url = cardPublicUrl(slug);
+      if (!url) return;
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        try {
+          await navigator.share({ title: name || 'My digital card', url });
+          return;
+        } catch (e: any) {
+          if (e?.name === 'AbortError') return; // user dismissed the sheet
+        }
+      }
+      copyCardLink(slug);
+    },
+    [copyCardLink]
   );
 
   const downloadCardQr = useCallback((slug?: string) => {
@@ -683,37 +703,11 @@ const Home = ({ brands = [], authed = false }: { brands?: Brand[]; authed?: bool
     if (dy > 120) setCardModalOpen(false);
   };
 
-  // Header + body + actions for the digital card, shared by the phone/tablet
-  // sheet and the desktop dialog below.
+  // Header + body + actions for the desktop dialog, where there's room to show
+  // the live card next to its chrome. Phones get `digitalCardSheet` below.
   const digitalCardPanel = (
     <>
-      <Box
-        onTouchStart={isCardDesktop ? undefined : handleCardDragStart}
-        onTouchMove={isCardDesktop ? undefined : handleCardDragMove}
-        onTouchEnd={isCardDesktop ? undefined : handleCardDragEnd}
-        onTouchCancel={isCardDesktop ? undefined : handleCardDragEnd}
-        sx={{
-          px: 2.5,
-          pt: isCardDesktop ? 2 : 1.5,
-          pb: 1.5,
-          flexShrink: 0,
-          touchAction: isCardDesktop ? undefined : 'none',
-        }}
-      >
-        {!isCardDesktop && (
-          /* Grab handle — also the swipe-down target */
-          <Box
-            sx={{
-              width: 40,
-              height: 4,
-              borderRadius: 2,
-              bgcolor: 'divider',
-              mx: 'auto',
-              mb: 1.5,
-            }}
-          />
-        )}
-
+      <Box sx={{ px: 2.5, pt: 2, pb: 1.5, flexShrink: 0 }}>
         <Stack direction='row' spacing={1.5} alignItems='center'>
           <Avatar src={myCard?.photo_url} sx={{ width: 44, height: 44 }}>
             {myCard?.name?.[0]}
@@ -813,11 +807,7 @@ const Home = ({ brands = [], authed = false }: { brands?: Brand[]; authed?: bool
       <Stack
         direction='row'
         spacing={1}
-        sx={{
-          p: 2,
-          pb: isCardDesktop ? 2 : 'calc(16px + env(safe-area-inset-bottom))',
-          flexShrink: 0,
-        }}
+        sx={{ p: 2, flexShrink: 0 }}
       >
         <Button
           variant='contained'
@@ -838,6 +828,145 @@ const Home = ({ brands = [], authed = false }: { brands?: Brand[]; authed?: bool
             <OpenInNew fontSize='small' />
           </IconButton>
         </Tooltip>
+      </Stack>
+    </>
+  );
+
+  // Phone/tablet version. The card page is a full-screen layout of its own, so
+  // framing it in an iframe under a header and an action bar pushed most of it
+  // out of the viewport — people ended up opening it in a new tab just to read
+  // it. Here the sheet carries only what you actually need in the moment (QR,
+  // link, share) and hands you a link to the real page for the rest.
+  const digitalCardSheet = (
+    <>
+      <Box
+        onTouchStart={handleCardDragStart}
+        onTouchMove={handleCardDragMove}
+        onTouchEnd={handleCardDragEnd}
+        onTouchCancel={handleCardDragEnd}
+        sx={{ px: 2.5, pt: 1.5, pb: 1.5, flexShrink: 0, touchAction: 'none' }}
+      >
+        {/* Grab handle — also the swipe-down target */}
+        <Box
+          sx={{ width: 40, height: 4, borderRadius: 2, bgcolor: 'divider', mx: 'auto', mb: 1.5 }}
+        />
+        <Stack direction='row' spacing={1.5} alignItems='center'>
+          <Avatar src={myCard?.photo_url} sx={{ width: 44, height: 44 }}>
+            {myCard?.name?.[0]}
+          </Avatar>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Stack direction='row' alignItems='center' spacing={0.75}>
+              <Typography fontWeight={700} noWrap>
+                {myCard?.name || 'My card'}
+              </Typography>
+              {myCard?.is_active === false && (
+                <Chip size='small' label='Hidden' sx={{ height: 20 }} />
+              )}
+            </Stack>
+            {(myCard?.title || myCard?.company) && (
+              <Typography variant='caption' color='text.secondary' noWrap display='block'>
+                {[myCard?.title, myCard?.company].filter(Boolean).join(' · ')}
+              </Typography>
+            )}
+          </Box>
+          <IconButton onClick={() => setCardModalOpen(false)} aria-label='Close'>
+            <Close fontSize='small' />
+          </IconButton>
+        </Stack>
+      </Box>
+
+      <Divider />
+
+      <Box sx={{ px: 2.5, py: 3, overflowY: 'auto', textAlign: 'center' }}>
+        {myCard?.slug && (
+          <Box
+            sx={{
+              p: 2,
+              display: 'inline-block',
+              bgcolor: '#fff',
+              borderRadius: 2.5,
+              boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
+            }}
+          >
+            <QRCodeCanvas
+              id='home-card-qr'
+              value={`${cardPublicUrl(myCard.slug)}?src=qr`}
+              // Never wider than the sheet on a small phone.
+              size={Math.min(200, typeof window !== 'undefined' ? window.innerWidth - 130 : 200)}
+              level='M'
+            />
+          </Box>
+        )}
+
+        {/* The card link itself — tapping it opens the real page in the app. */}
+        <Typography
+          component='a'
+          href={myCard?.slug ? `/cards/${myCard.slug}` : undefined}
+          onClick={(e: React.MouseEvent) => {
+            if (!myCard?.slug) return;
+            e.preventDefault();
+            setCardModalOpen(false);
+            router.push(`/cards/${myCard.slug}`);
+          }}
+          variant='body2'
+          sx={{
+            display: 'block',
+            mt: 2,
+            wordBreak: 'break-all',
+            color: 'primary.main',
+            fontWeight: 600,
+            textDecoration: 'underline',
+            textUnderlineOffset: 3,
+          }}
+        >
+          {cardPublicUrl(myCard?.slug).replace(/^https?:\/\//, '')}
+        </Typography>
+
+        <Button
+          startIcon={<Download />}
+          onClick={() => downloadCardQr(myCard?.slug)}
+          sx={{ mt: 1, textTransform: 'none' }}
+        >
+          Download QR
+        </Button>
+      </Box>
+
+      <Divider />
+
+      <Stack
+        spacing={1}
+        sx={{ p: 2, pb: 'calc(16px + env(safe-area-inset-bottom))', flexShrink: 0 }}
+      >
+        <Button
+          variant='contained'
+          startIcon={<OpenInNew />}
+          onClick={() => {
+            if (!myCard?.slug) return;
+            setCardModalOpen(false);
+            router.push(`/cards/${myCard.slug}`);
+          }}
+          sx={{ py: 1.2 }}
+        >
+          Open my card
+        </Button>
+        <Stack direction='row' spacing={1}>
+          <Button
+            variant='outlined'
+            startIcon={<ContentCopy />}
+            onClick={() => copyCardLink(myCard?.slug)}
+            sx={{ flex: 1 }}
+          >
+            Copy link
+          </Button>
+          <Button
+            variant='outlined'
+            startIcon={<IosShare />}
+            onClick={() => shareCardLink(myCard?.slug, myCard?.name)}
+            sx={{ flex: 1 }}
+          >
+            Share
+          </Button>
+        </Stack>
       </Stack>
     </>
   );
@@ -1291,10 +1420,11 @@ const Home = ({ brands = [], authed = false }: { brands?: Brand[]; authed?: bool
         </motion.div>
       </Container>
 
-      {/* My Digital Card — opens straight onto the live card (loaded from
-          /cards/[slug]) so sharing it is one tap, not two. The QR is a flip
-          away. Full screen on phones/tablets; a centred panel from md up,
-          where a bottom sheet looked lost against the desktop layout. */}
+      {/* My Digital Card — on phones/tablets a short sheet with the QR, the
+          link and the share actions; the card itself lives one tap away at
+          /cards/[slug], which is a full-screen layout that never fitted inside
+          a framed sheet. From md up the live card is embedded directly, with
+          the QR a flip away. */}
       <Drawer
         anchor='bottom'
         open={cardModalOpen && !isCardDesktop}
@@ -1302,8 +1432,9 @@ const Home = ({ brands = [], authed = false }: { brands?: Brand[]; authed?: bool
         PaperProps={{
           sx: {
             width: '100%',
-            height: '100dvh',
-            borderRadius: 0,
+            maxHeight: '92dvh',
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
             display: 'flex',
             flexDirection: 'column',
             // Follows the thumb while dragging, springs back if the swipe was
@@ -1313,7 +1444,7 @@ const Home = ({ brands = [], authed = false }: { brands?: Brand[]; authed?: bool
           },
         }}
       >
-        {digitalCardPanel}
+        {digitalCardSheet}
       </Drawer>
 
       <Dialog
